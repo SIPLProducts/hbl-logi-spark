@@ -1,158 +1,113 @@
-Logistics Execution (LE) Frontend for HBL Power Systems — Full Implementation Plan
 
-## Summary
-Build a complete frontend-only Logistics Execution desktop web application for HBL Power Systems (battery manufacturer), designed to consume a SAP HANA backend. The app uses a persistent sidebar navigation with Dashboard, Inbound, Outbound, Transportation, and Reports modules. Each module has list screens (dense data tables), detail screens (document header + line items + status timeline), and operator task views. Visual direction: Industrial Foundry — high-contrast enterprise, border-heavy aesthetic, Inter + JetBrains Mono typography, dark sidebar on light canvas.
+# LE Module — 12 Screens per HBL Document
 
-## Design Tokens
-- Fonts: Inter (400/500/600), JetBrains Mono (400/700)
-- Colors: Deep zinc sidebar (#18181b), accent blue (#1d4ed8), status greens/reds/amber, clean white panels with subtle borders
-- Density: High — compact tables, small status pills, minimal padding, uppercase micro-labels
-- Border radius: Mostly sharp (2-4px) for industrial precision feel
+Rebuild the sidebar and routes around the exact 12 screens shown in the uploaded `LE-HBL Overall Screens.pdf`, keeping the existing Industrial Foundry visual style. All data stays mock/static (SAP HANA backend will be wired later).
 
-## Route Architecture
-All routes are file-based under `src/routes/`:
+## Navigation (sidebar, in this exact order)
 
+| # | Screen | Icon (lucide) |
+|---|--------|---------------|
+| 1 | Dispatch Orders | ClipboardList |
+| 2 | Dispatch | Truck |
+| 3 | Order Info | FileText |
+| 4 | Shipment Details | PackageOpen |
+| 5 | Invoice Load Details | Receipt |
+| 6 | Segment Info | Split |
+| 7 | Vehicle Info | Bus |
+| 8 | Transit Info | Route |
+| 9 | Freight Billing | IndianRupee |
+| 10 | Service Level (Shipment Feedback) | Gauge |
+| 11 | Transit Damage Info | AlertTriangle |
+| 12 | Insurance Claim Tracking | ShieldCheck |
+
+A small "HBL" logo block stays in the sidebar header (matches current look). Existing Dashboard / Reports / Inbound / Outbound / Tracking links are removed — the app is now strictly the 12 LE screens. Home `/` redirects to `/dispatch-orders`.
+
+## Common screen shell (applies to screens 3–12)
+
+Every screen follows the same pattern visible in the PDF:
+
+- Page header: title + `+ New`, `Export`, `Refresh` action buttons
+- Mode tabs: **Outward** (active) | With SAP | Without SAP
+- Status chips: 🟡 Pending: N   🟢 Completed: N
+- Worklist table with `Select`, `Sl.No`, and screen-specific columns (see field list below); per-row delete action
+- Lookup bar: Invoice Number dropdown · `GET` button · Select dropdown · "Enter Reference / Invoice / ODN / SO Number" search · 🔍
+- Detail panel (shown when a row is selected) with grouped form fields
+- Sticky action bar: `Save`, `Save and Next`, `Save and Previous`
+- Footer: `2026 © Sharviinfotech All rights reserved.`
+
+A reusable `LeScreenShell` component will render all of this; each route just passes columns, fields, and mock rows.
+
+## Per-screen field capture (max fields from the PDF)
+
+### 1. Dispatch Orders
+Worklist columns: Sl.No, Vehicle Type, Workorder, No Of Trucks, No Of Invoices, Vendor Code, Transporter, Plant, Division, No. of LRs, LR Number, Loading Points, Unloading Points, Remarks, Action.
+
+### 2. Dispatch
+Same columns as Dispatch Orders plus a "Dispatch Status" pill (Planned / Dispatched / In Transit / Delivered) and `Dispatch Date`, `Gate-Out Time`.
+
+### 3. Order Info
+Worklist: Select, Sl.No, Reference Number, Work Order Number, LR Number, Transporter, Action.
+Detail fields: Tax Invoice, ODN Number, Invoice Date, Basic Shipment Value, Invoice Value With GST, Required Date & Time, Reported Date & Time, Physical Dispatch Date & Time, Plant, Transaction Type, Billing Transaction Type, Division, Sub Division, SO / Ref. Number, Customer Name.
+
+### 4. Shipment Details
+Worklist: Select, Sl.No, Map ID, Reference Number, Work Order Number, LR Number, Transporter, Action.
+Top fields: Invoice Number, Incoterms, Insurance Scope, Kilometres, DC Reference Number (Without SAP).
+Line-items table: Sl.No, Map ID, Product, Type of Material, Material Description, No of Sets/No (Qty), Ah Loaded, Shipment Weight (kg), Battery Condition, Action.
+
+### 5. Invoice Load Details
+Worklist: standard columns. Detail: Invoice No., Invoice Date, HSN, UoM, Qty, Rate, Taxable Value, CGST, SGST, IGST, Total Invoice Value, Eway Bill No., Eway Bill Validity, Pack Type, No. of Packages, Gross Wt., Net Wt.
+
+### 6. Segment Info
+Detail: Segment No., Origin, Destination, Mode (Road/Rail/Air/Sea), Distance (km), Planned Departure, Planned Arrival, Actual Departure, Actual Arrival, Carrier, Vehicle/Container No., Stage Cost, Remarks.
+
+### 7. Vehicle Info
+Detail: Vehicle Type, Vehicle Reg. No., Make/Model, Capacity (T), Driver Name, Driver Mobile, Driver Licence No., Licence Expiry, RC No., Fitness Validity, Insurance No., Insurance Validity, PUC Validity, GPS Device ID, Owner Type (Own/Hired), Vendor Code, Transporter.
+
+### 8. Transit Info
+Detail: Shipment No., Current Location, Last Ping Time, Next Stop, ETA, Delay (hrs), Temperature, Geofence Status, Exception (Breakdown/Detention/Re-routed/None), Remarks. Stops timeline (sequence, location, planned, actual, status).
+
+### 9. Freight Billing
+Sub-tabs: **Full Truck Load** | **Cargo**.
+Worklist (FTL): Sl.No, Reference Number, LR Number, Work Order Number, Transporter, Action.
+Detail: Basic Freight, Detention, Loading/Unloading Charges, Multi-point Charges, Toll, Other Charges, Sub Total, GST %, GST Value, TDS %, TDS Value, Total Payable, Invoice No. (Vendor), Invoice Date, PO Number, Payment Status.
+
+### 10. Service Level (Shipment Feedback)
+Detail: Shipment No., Customer, Delivery Date Planned/Actual, OTIF (Y/N), Delay Reason, Damage at Receipt (Y/N), Quantity Short, Customer Rating (1–5), Feedback Notes, Photo Upload (placeholder), POD Received (Y/N), POD Date.
+
+### 11. Transit Damage Info
+Detail: Shipment No., LR No., Material, Damaged Qty, Damage Type (Wet/Crushed/Broken/Leak), Stage Detected, Reported By, Reported Date, Photo/Evidence (placeholder), Cost Estimate, Recovery From (Transporter/Insurance/HBL), Remarks.
+
+### 12. Insurance Claim Tracking
+Detail: Claim No., Policy No., Insurer, Shipment No., LR No., Date of Loss, Date of Intimation, Surveyor, Survey Date, Claim Amount, Approved Amount, Status (Intimated/Surveyed/Approved/Settled/Rejected), Settlement Date, Remarks.
+
+## Files to create / modify
+
+```text
+src/components/app-sidebar.tsx           (rewrite: only 12 LE items)
+src/components/le-screen-shell.tsx       (new: shared layout for screens 3–12)
+src/components/le-worklist-toolbar.tsx   (new: mode tabs + Pending/Completed chips + lookup bar)
+src/components/le-footer.tsx             (new: Sharviinfotech footer)
+src/lib/le-mock-data.ts                  (new: typed mock rows per screen)
+
+src/routes/index.tsx                     (rewrite → redirect to /dispatch-orders)
+src/routes/dispatch-orders.tsx           (new — screen 1)
+src/routes/dispatch.tsx                  (new — screen 2)
+src/routes/order-info.tsx                (new — screen 3)
+src/routes/shipment-details.tsx          (new — screen 4)
+src/routes/invoice-load-details.tsx      (new — screen 5)
+src/routes/segment-info.tsx              (new — screen 6)
+src/routes/vehicle-info.tsx              (new — screen 7)
+src/routes/transit-info.tsx              (new — screen 8)
+src/routes/freight-billing.tsx           (new — screen 9, with FTL/Cargo sub-tabs)
+src/routes/service-level.tsx             (new — screen 10)
+src/routes/transit-damage-info.tsx       (new — screen 11)
+src/routes/insurance-claim-tracking.tsx  (new — screen 12)
 ```
-src/routes/
-  __root.tsx          -> App shell with SidebarProvider, sidebar, top bar
-  index.tsx           -> / (Dashboard: KPIs, exceptions, charts, worklist)
-  inbound.tsx         -> /inbound layout (sidebar group active)
-  inbound.index.tsx   -> /inbound (Inbound Deliveries worklist table)
-  inbound.asn.tsx     -> /inbound/asn (ASN list)
-  inbound.putaway.tsx -> /inbound/putaway (Putaway task list)
-  inbound.delivery.$id.tsx -> /inbound/delivery/$id (Inbound Delivery detail)
-  outbound.tsx        -> /outbound layout
-  outbound.index.tsx  -> /outbound (Outbound Deliveries worklist)
-  outbound.picking.tsx -> /outbound/picking (Picking operator task list)
-  outbound.packing.tsx -> /outbound/packing (Packing list)
-  outbound.goods-issue.tsx -> /outbound/goods-issue (Goods Issue list)
-  outbound.delivery.$id.tsx -> /outbound/delivery/$id (Outbound Delivery detail)
-  transportation.tsx  -> /transportation layout
-  transportation.index.tsx -> /transportation (Shipments list)
-  transportation.tracking.tsx -> /transportation/tracking (Freight tracking)
-  transportation.shipment.$id.tsx -> /transportation/shipment/$id (Shipment detail)
-  reports.index.tsx   -> /reports (Reports placeholder)
-```
 
-## Module Screens Detail
+Old route files (`inbound.*`, `outbound.*`, `transportation.*`, `reports.index.tsx`) are deleted along with their now-unused components so the route tree only contains the 12 screens + root.
 
-### Dashboard (`/`)
-- 5 KPI tiles: Open GRs (142), Pending Putaway (89), Picks Due (312), In Transit (18), OTIF % (94.2)
-- Throughput Volume bar chart (mock data, 24h bars)
-- On-Time Delivery donut chart (94.2% actual vs 98% target)
-- Exceptions Queue panel (2-3 exception cards: shortage, unassigned gate)
-- Inbound Deliveries quick table (5-6 rows with status pills, priority, dock, actions)
+## Out of scope
 
-### Inbound (`/inbound`)
-- Worklist table: Delivery #, Vendor, Items, Dock, Status pill, Priority, ETA, Actions
-- Filters: Plant, Date range, Status, Priority
-- Action buttons: Confirm GR, Scan, View Detail
-- Statuses: Arrived, Gate-In, Unloaded, Putaway Complete, Exception
-
-### Inbound ASN (`/inbound/asn`)
-- Table: ASN #, PO Reference, Vendor, Expected Date, Items, Status
-- Statuses: Expected, Arrived, Cancelled
-
-### Inbound Putaway (`/inbound/putaway`)
-- Task table: Task ID, Source Bin, Destination Bin, Material, Batch, Qty, Status
-- Statuses: Open, In Progress, Completed, Blocked
-- Operator actions: Confirm, Reject, View HU
-
-### Inbound Delivery Detail (`/inbound/delivery/$id`)
-- Header card: Delivery #, Vendor, Plant, Dock, ETA, Overall Status
-- Line items table: Item #, Material, Description, Batch, Order Qty, GR Qty, UoM, Status
-- Status timeline: vertical stepper (Created -> Arrived -> GR Posted -> Putaway Complete)
-- Action bar: Post GR, Reverse GR, Print
-
-### Outbound (`/outbound`)
-- Worklist table: Delivery #, Customer, Items, ETD, Status, Priority, Actions
-- Statuses: Created, Picking, Picked, Packed, Goods Issued, Shipped
-
-### Outbound Picking (`/outbound/picking`)
-- Task table: Pick Task ID, Warehouse Task, Source Bin, Material, Batch, Qty, Confirmed Qty, Status
-- Current task operator view: large location code, material info, quantity, scan input
-- Batch confirm actions
-
-### Outbound Packing (`/outbound/packing`)
-- Table: Delivery #, HU (Handling Unit), Packed Qty, Gross Weight, Packing Status
-- Statuses: Open, In Progress, Complete
-
-### Outbound Goods Issue (`/outbound/goods-issue`)
-- Table: Delivery #, GI Date, PGI Status, Material, Batch, Qty, Batch
-- Post GI / Reverse GI actions
-
-### Outbound Delivery Detail (`/outbound/delivery/$id`)
-- Header: Delivery #, Customer, Ship-To, Plant, Shipping Point, Route, ETD
-- Line items: Item, Material, Description, Order Qty, Pick Qty, GI Qty, UoM, Batch
-- Status timeline: Created -> Picking -> Picked -> Packed -> Goods Issued -> Shipped
-- Action bar: Pick, Pack, Post GI, Create Shipment
-
-### Transportation (`/transportation`)
-- Shipments table: Shipment #, Route, Carrier, Vehicle, Stops, Status, Departure, Arrival
-- Statuses: Planned, Checked-In, Loaded, Departed, In Transit, Delivered
-
-### Transportation Tracking (`/transportation/tracking`)
-- Shipment search
-- Tracking card: Shipment #, Route, Carrier, Vehicle Reg, Driver, Current Status
-- Stops list: Location, Planned/Actual Arrival, Status
-- Map placeholder area
-
-### Shipment Detail (`/transportation/shipment/$id`)
-- Header: Shipment #, Route, Carrier, Vehicle, Driver, Planned/Actual dates
-- Stops table with ETAs
-- Deliveries assigned to shipment
-- Freight cost summary
-
-### Reports (`/reports`)
-- Placeholder with report categories: Inbound Summary, Outbound Summary, OTIF Analysis, Exception Log
-
-## Component Reusables
-- `AppSidebar` — persistent sidebar with nav groups, active route highlighting
-- `TopBar` — plant selector, global search, notifications, user avatar
-- `KpiTile` — compact stat card with label, value, micro-trend
-- `StatusBadge` — colored pill badges for all LE statuses
-- `DataTable` — shared table wrapper with sortable headers, row actions
-- `DocumentHeader` — reusable document header for detail pages
-- `StatusTimeline` — vertical stepper for document lifecycle
-- `PageHeader` — page title + breadcrumb + action buttons
-
-## Technical Details
-- All data is mock/static — no backend calls
-- Use `createFileRoute` from `@tanstack/react-router` for all routes
-- Use shadcn/ui components: Table, Badge, Button, Card, Select, Input, Tabs, Separator
-- Icons from `lucide-react`
-- No additional packages needed beyond existing project dependencies
-- Strict TypeScript: all mock data typed with interfaces (Delivery, Shipment, Task, etc.)
-- Head metadata per route with title + description
-- Active sidebar items highlighted via `useRouterState` pathname
-- Route guards: none needed (frontend-only, auth handled separately)
-
-## Files to Create/Modify
-- Modify `src/routes/__root.tsx` — add SidebarProvider + AppSidebar + TopBar shell
-- Modify `src/styles.css` — add custom tokens for LE theme (industrial foundry)
-- Modify `src/routes/index.tsx` — replace placeholder with full Dashboard
-- Create `src/components/app-sidebar.tsx`
-- Create `src/components/top-bar.tsx`
-- Create `src/components/kpi-tile.tsx`
-- Create `src/components/status-badge.tsx`
-- Create `src/components/data-table.tsx`
-- Create `src/components/document-header.tsx`
-- Create `src/components/status-timeline.tsx`
-- Create `src/components/page-header.tsx`
-- Create `src/lib/mock-data.ts` — all mock LE data
-- Create `src/routes/inbound.tsx`
-- Create `src/routes/inbound.index.tsx`
-- Create `src/routes/inbound.asn.tsx`
-- Create `src/routes/inbound.putaway.tsx`
-- Create `src/routes/inbound.delivery.$id.tsx`
-- Create `src/routes/outbound.tsx`
-- Create `src/routes/outbound.index.tsx`
-- Create `src/routes/outbound.picking.tsx`
-- Create `src/routes/outbound.packing.tsx`
-- Create `src/routes/outbound.goods-issue.tsx`
-- Create `src/routes/outbound.delivery.$id.tsx`
-- Create `src/routes/transportation.tsx`
-- Create `src/routes/transportation.index.tsx`
-- Create `src/routes/transportation.tracking.tsx`
-- Create `src/routes/transportation.shipment.$id.tsx`
-- Create `src/routes/reports.index.tsx`
+- Real SAP HANA data binding (all rows are mock arrays in `le-mock-data.ts`).
+- Authentication / user-creation screen (item 13 in the PDF) — not in the 1–12 list.
+- Filter & Download modal (PDF pages 41–43) — can be added in a follow-up if you want it.
