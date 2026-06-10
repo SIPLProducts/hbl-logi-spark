@@ -9,20 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VehicleInfoRouteImport } from './routes/vehicle-info'
+import { Route as TransitInfoRouteImport } from './routes/transit-info'
 import { Route as ShipmentDetailsRouteImport } from './routes/shipment-details'
+import { Route as SegmentInfoRouteImport } from './routes/segment-info'
 import { Route as OrderInfoRouteImport } from './routes/order-info'
+import { Route as InvoiceLoadDetailsRouteImport } from './routes/invoice-load-details'
 import { Route as DispatchOrdersRouteImport } from './routes/dispatch-orders'
 import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as IndexRouteImport } from './routes/index'
 
+const VehicleInfoRoute = VehicleInfoRouteImport.update({
+  id: '/vehicle-info',
+  path: '/vehicle-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransitInfoRoute = TransitInfoRouteImport.update({
+  id: '/transit-info',
+  path: '/transit-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShipmentDetailsRoute = ShipmentDetailsRouteImport.update({
   id: '/shipment-details',
   path: '/shipment-details',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SegmentInfoRoute = SegmentInfoRouteImport.update({
+  id: '/segment-info',
+  path: '/segment-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrderInfoRoute = OrderInfoRouteImport.update({
   id: '/order-info',
   path: '/order-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoiceLoadDetailsRoute = InvoiceLoadDetailsRouteImport.update({
+  id: '/invoice-load-details',
+  path: '/invoice-load-details',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DispatchOrdersRoute = DispatchOrdersRouteImport.update({
@@ -45,23 +69,35 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/invoice-load-details': typeof InvoiceLoadDetailsRoute
   '/order-info': typeof OrderInfoRoute
+  '/segment-info': typeof SegmentInfoRoute
   '/shipment-details': typeof ShipmentDetailsRoute
+  '/transit-info': typeof TransitInfoRoute
+  '/vehicle-info': typeof VehicleInfoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/invoice-load-details': typeof InvoiceLoadDetailsRoute
   '/order-info': typeof OrderInfoRoute
+  '/segment-info': typeof SegmentInfoRoute
   '/shipment-details': typeof ShipmentDetailsRoute
+  '/transit-info': typeof TransitInfoRoute
+  '/vehicle-info': typeof VehicleInfoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/invoice-load-details': typeof InvoiceLoadDetailsRoute
   '/order-info': typeof OrderInfoRoute
+  '/segment-info': typeof SegmentInfoRoute
   '/shipment-details': typeof ShipmentDetailsRoute
+  '/transit-info': typeof TransitInfoRoute
+  '/vehicle-info': typeof VehicleInfoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -69,34 +105,64 @@ export interface FileRouteTypes {
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/invoice-load-details'
     | '/order-info'
+    | '/segment-info'
     | '/shipment-details'
+    | '/transit-info'
+    | '/vehicle-info'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/invoice-load-details'
     | '/order-info'
+    | '/segment-info'
     | '/shipment-details'
+    | '/transit-info'
+    | '/vehicle-info'
   id:
     | '__root__'
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/invoice-load-details'
     | '/order-info'
+    | '/segment-info'
     | '/shipment-details'
+    | '/transit-info'
+    | '/vehicle-info'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DispatchRoute: typeof DispatchRoute
   DispatchOrdersRoute: typeof DispatchOrdersRoute
+  InvoiceLoadDetailsRoute: typeof InvoiceLoadDetailsRoute
   OrderInfoRoute: typeof OrderInfoRoute
+  SegmentInfoRoute: typeof SegmentInfoRoute
   ShipmentDetailsRoute: typeof ShipmentDetailsRoute
+  TransitInfoRoute: typeof TransitInfoRoute
+  VehicleInfoRoute: typeof VehicleInfoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/vehicle-info': {
+      id: '/vehicle-info'
+      path: '/vehicle-info'
+      fullPath: '/vehicle-info'
+      preLoaderRoute: typeof VehicleInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transit-info': {
+      id: '/transit-info'
+      path: '/transit-info'
+      fullPath: '/transit-info'
+      preLoaderRoute: typeof TransitInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shipment-details': {
       id: '/shipment-details'
       path: '/shipment-details'
@@ -104,11 +170,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShipmentDetailsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/segment-info': {
+      id: '/segment-info'
+      path: '/segment-info'
+      fullPath: '/segment-info'
+      preLoaderRoute: typeof SegmentInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/order-info': {
       id: '/order-info'
       path: '/order-info'
       fullPath: '/order-info'
       preLoaderRoute: typeof OrderInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoice-load-details': {
+      id: '/invoice-load-details'
+      path: '/invoice-load-details'
+      fullPath: '/invoice-load-details'
+      preLoaderRoute: typeof InvoiceLoadDetailsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dispatch-orders': {
@@ -139,8 +219,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DispatchRoute: DispatchRoute,
   DispatchOrdersRoute: DispatchOrdersRoute,
+  InvoiceLoadDetailsRoute: InvoiceLoadDetailsRoute,
   OrderInfoRoute: OrderInfoRoute,
+  SegmentInfoRoute: SegmentInfoRoute,
   ShipmentDetailsRoute: ShipmentDetailsRoute,
+  TransitInfoRoute: TransitInfoRoute,
+  VehicleInfoRoute: VehicleInfoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
