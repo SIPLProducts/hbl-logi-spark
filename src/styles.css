@@ -4,6 +4,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* HBL Logistics Execution — Industrial Foundry theme tokens */
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
 /*
  * Design system definition.
  *
