@@ -9,8 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ShipmentDetailsRouteImport } from './routes/shipment-details'
+import { Route as OrderInfoRouteImport } from './routes/order-info'
+import { Route as DispatchOrdersRouteImport } from './routes/dispatch-orders'
+import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ShipmentDetailsRoute = ShipmentDetailsRouteImport.update({
+  id: '/shipment-details',
+  path: '/shipment-details',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderInfoRoute = OrderInfoRouteImport.update({
+  id: '/order-info',
+  path: '/order-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DispatchOrdersRoute = DispatchOrdersRouteImport.update({
+  id: '/dispatch-orders',
+  path: '/dispatch-orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DispatchRoute = DispatchRouteImport.update({
+  id: '/dispatch',
+  path: '/dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +43,88 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dispatch': typeof DispatchRoute
+  '/dispatch-orders': typeof DispatchOrdersRoute
+  '/order-info': typeof OrderInfoRoute
+  '/shipment-details': typeof ShipmentDetailsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dispatch': typeof DispatchRoute
+  '/dispatch-orders': typeof DispatchOrdersRoute
+  '/order-info': typeof OrderInfoRoute
+  '/shipment-details': typeof ShipmentDetailsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dispatch': typeof DispatchRoute
+  '/dispatch-orders': typeof DispatchOrdersRoute
+  '/order-info': typeof OrderInfoRoute
+  '/shipment-details': typeof ShipmentDetailsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/dispatch'
+    | '/dispatch-orders'
+    | '/order-info'
+    | '/shipment-details'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/dispatch'
+    | '/dispatch-orders'
+    | '/order-info'
+    | '/shipment-details'
+  id:
+    | '__root__'
+    | '/'
+    | '/dispatch'
+    | '/dispatch-orders'
+    | '/order-info'
+    | '/shipment-details'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DispatchRoute: typeof DispatchRoute
+  DispatchOrdersRoute: typeof DispatchOrdersRoute
+  OrderInfoRoute: typeof OrderInfoRoute
+  ShipmentDetailsRoute: typeof ShipmentDetailsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/shipment-details': {
+      id: '/shipment-details'
+      path: '/shipment-details'
+      fullPath: '/shipment-details'
+      preLoaderRoute: typeof ShipmentDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order-info': {
+      id: '/order-info'
+      path: '/order-info'
+      fullPath: '/order-info'
+      preLoaderRoute: typeof OrderInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dispatch-orders': {
+      id: '/dispatch-orders'
+      path: '/dispatch-orders'
+      fullPath: '/dispatch-orders'
+      preLoaderRoute: typeof DispatchOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dispatch': {
+      id: '/dispatch'
+      path: '/dispatch'
+      fullPath: '/dispatch'
+      preLoaderRoute: typeof DispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +137,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DispatchRoute: DispatchRoute,
+  DispatchOrdersRoute: DispatchOrdersRoute,
+  OrderInfoRoute: OrderInfoRoute,
+  ShipmentDetailsRoute: ShipmentDetailsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
