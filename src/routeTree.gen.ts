@@ -9,37 +9,78 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TransportationRouteImport } from './routes/transportation'
-import { Route as OutboundRouteImport } from './routes/outbound'
-import { Route as InboundRouteImport } from './routes/inbound'
+import { Route as VehicleInfoRouteImport } from './routes/vehicle-info'
+import { Route as TransitInfoRouteImport } from './routes/transit-info'
+import { Route as TransitDamageInfoRouteImport } from './routes/transit-damage-info'
+import { Route as ShipmentDetailsRouteImport } from './routes/shipment-details'
+import { Route as ServiceLevelRouteImport } from './routes/service-level'
+import { Route as SegmentInfoRouteImport } from './routes/segment-info'
+import { Route as OrderInfoRouteImport } from './routes/order-info'
+import { Route as InvoiceLoadDetailsRouteImport } from './routes/invoice-load-details'
+import { Route as InsuranceClaimTrackingRouteImport } from './routes/insurance-claim-tracking'
+import { Route as FreightBillingRouteImport } from './routes/freight-billing'
+import { Route as DispatchOrdersRouteImport } from './routes/dispatch-orders'
+import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TransportationIndexRouteImport } from './routes/transportation.index'
-import { Route as ReportsIndexRouteImport } from './routes/reports.index'
-import { Route as OutboundIndexRouteImport } from './routes/outbound.index'
-import { Route as InboundIndexRouteImport } from './routes/inbound.index'
-import { Route as TransportationTrackingRouteImport } from './routes/transportation.tracking'
-import { Route as OutboundPickingRouteImport } from './routes/outbound.picking'
-import { Route as OutboundPackingRouteImport } from './routes/outbound.packing'
-import { Route as OutboundGoodsIssueRouteImport } from './routes/outbound.goods-issue'
-import { Route as InboundPutawayRouteImport } from './routes/inbound.putaway'
-import { Route as InboundAsnRouteImport } from './routes/inbound.asn'
-import { Route as TransportationShipmentIdRouteImport } from './routes/transportation.shipment.$id'
-import { Route as OutboundDeliveryIdRouteImport } from './routes/outbound.delivery.$id'
-import { Route as InboundDeliveryIdRouteImport } from './routes/inbound.delivery.$id'
 
-const TransportationRoute = TransportationRouteImport.update({
-  id: '/transportation',
-  path: '/transportation',
+const VehicleInfoRoute = VehicleInfoRouteImport.update({
+  id: '/vehicle-info',
+  path: '/vehicle-info',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OutboundRoute = OutboundRouteImport.update({
-  id: '/outbound',
-  path: '/outbound',
+const TransitInfoRoute = TransitInfoRouteImport.update({
+  id: '/transit-info',
+  path: '/transit-info',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InboundRoute = InboundRouteImport.update({
-  id: '/inbound',
-  path: '/inbound',
+const TransitDamageInfoRoute = TransitDamageInfoRouteImport.update({
+  id: '/transit-damage-info',
+  path: '/transit-damage-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShipmentDetailsRoute = ShipmentDetailsRouteImport.update({
+  id: '/shipment-details',
+  path: '/shipment-details',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServiceLevelRoute = ServiceLevelRouteImport.update({
+  id: '/service-level',
+  path: '/service-level',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SegmentInfoRoute = SegmentInfoRouteImport.update({
+  id: '/segment-info',
+  path: '/segment-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderInfoRoute = OrderInfoRouteImport.update({
+  id: '/order-info',
+  path: '/order-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvoiceLoadDetailsRoute = InvoiceLoadDetailsRouteImport.update({
+  id: '/invoice-load-details',
+  path: '/invoice-load-details',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsuranceClaimTrackingRoute = InsuranceClaimTrackingRouteImport.update({
+  id: '/insurance-claim-tracking',
+  path: '/insurance-claim-tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FreightBillingRoute = FreightBillingRouteImport.update({
+  id: '/freight-billing',
+  path: '/freight-billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DispatchOrdersRoute = DispatchOrdersRouteImport.update({
+  id: '/dispatch-orders',
+  path: '/dispatch-orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DispatchRoute = DispatchRouteImport.update({
+  id: '/dispatch',
+  path: '/dispatch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -47,214 +88,201 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TransportationIndexRoute = TransportationIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => TransportationRoute,
-} as any)
-const ReportsIndexRoute = ReportsIndexRouteImport.update({
-  id: '/reports/',
-  path: '/reports/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OutboundIndexRoute = OutboundIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => OutboundRoute,
-} as any)
-const InboundIndexRoute = InboundIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => InboundRoute,
-} as any)
-const TransportationTrackingRoute = TransportationTrackingRouteImport.update({
-  id: '/tracking',
-  path: '/tracking',
-  getParentRoute: () => TransportationRoute,
-} as any)
-const OutboundPickingRoute = OutboundPickingRouteImport.update({
-  id: '/picking',
-  path: '/picking',
-  getParentRoute: () => OutboundRoute,
-} as any)
-const OutboundPackingRoute = OutboundPackingRouteImport.update({
-  id: '/packing',
-  path: '/packing',
-  getParentRoute: () => OutboundRoute,
-} as any)
-const OutboundGoodsIssueRoute = OutboundGoodsIssueRouteImport.update({
-  id: '/goods-issue',
-  path: '/goods-issue',
-  getParentRoute: () => OutboundRoute,
-} as any)
-const InboundPutawayRoute = InboundPutawayRouteImport.update({
-  id: '/putaway',
-  path: '/putaway',
-  getParentRoute: () => InboundRoute,
-} as any)
-const InboundAsnRoute = InboundAsnRouteImport.update({
-  id: '/asn',
-  path: '/asn',
-  getParentRoute: () => InboundRoute,
-} as any)
-const TransportationShipmentIdRoute =
-  TransportationShipmentIdRouteImport.update({
-    id: '/shipment/$id',
-    path: '/shipment/$id',
-    getParentRoute: () => TransportationRoute,
-  } as any)
-const OutboundDeliveryIdRoute = OutboundDeliveryIdRouteImport.update({
-  id: '/delivery/$id',
-  path: '/delivery/$id',
-  getParentRoute: () => OutboundRoute,
-} as any)
-const InboundDeliveryIdRoute = InboundDeliveryIdRouteImport.update({
-  id: '/delivery/$id',
-  path: '/delivery/$id',
-  getParentRoute: () => InboundRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/inbound': typeof InboundRouteWithChildren
-  '/outbound': typeof OutboundRouteWithChildren
-  '/transportation': typeof TransportationRouteWithChildren
-  '/inbound/asn': typeof InboundAsnRoute
-  '/inbound/putaway': typeof InboundPutawayRoute
-  '/outbound/goods-issue': typeof OutboundGoodsIssueRoute
-  '/outbound/packing': typeof OutboundPackingRoute
-  '/outbound/picking': typeof OutboundPickingRoute
-  '/transportation/tracking': typeof TransportationTrackingRoute
-  '/inbound/': typeof InboundIndexRoute
-  '/outbound/': typeof OutboundIndexRoute
-  '/reports/': typeof ReportsIndexRoute
-  '/transportation/': typeof TransportationIndexRoute
-  '/inbound/delivery/$id': typeof InboundDeliveryIdRoute
-  '/outbound/delivery/$id': typeof OutboundDeliveryIdRoute
-  '/transportation/shipment/$id': typeof TransportationShipmentIdRoute
+  '/dispatch': typeof DispatchRoute
+  '/dispatch-orders': typeof DispatchOrdersRoute
+  '/freight-billing': typeof FreightBillingRoute
+  '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
+  '/invoice-load-details': typeof InvoiceLoadDetailsRoute
+  '/order-info': typeof OrderInfoRoute
+  '/segment-info': typeof SegmentInfoRoute
+  '/service-level': typeof ServiceLevelRoute
+  '/shipment-details': typeof ShipmentDetailsRoute
+  '/transit-damage-info': typeof TransitDamageInfoRoute
+  '/transit-info': typeof TransitInfoRoute
+  '/vehicle-info': typeof VehicleInfoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/inbound/asn': typeof InboundAsnRoute
-  '/inbound/putaway': typeof InboundPutawayRoute
-  '/outbound/goods-issue': typeof OutboundGoodsIssueRoute
-  '/outbound/packing': typeof OutboundPackingRoute
-  '/outbound/picking': typeof OutboundPickingRoute
-  '/transportation/tracking': typeof TransportationTrackingRoute
-  '/inbound': typeof InboundIndexRoute
-  '/outbound': typeof OutboundIndexRoute
-  '/reports': typeof ReportsIndexRoute
-  '/transportation': typeof TransportationIndexRoute
-  '/inbound/delivery/$id': typeof InboundDeliveryIdRoute
-  '/outbound/delivery/$id': typeof OutboundDeliveryIdRoute
-  '/transportation/shipment/$id': typeof TransportationShipmentIdRoute
+  '/dispatch': typeof DispatchRoute
+  '/dispatch-orders': typeof DispatchOrdersRoute
+  '/freight-billing': typeof FreightBillingRoute
+  '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
+  '/invoice-load-details': typeof InvoiceLoadDetailsRoute
+  '/order-info': typeof OrderInfoRoute
+  '/segment-info': typeof SegmentInfoRoute
+  '/service-level': typeof ServiceLevelRoute
+  '/shipment-details': typeof ShipmentDetailsRoute
+  '/transit-damage-info': typeof TransitDamageInfoRoute
+  '/transit-info': typeof TransitInfoRoute
+  '/vehicle-info': typeof VehicleInfoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/inbound': typeof InboundRouteWithChildren
-  '/outbound': typeof OutboundRouteWithChildren
-  '/transportation': typeof TransportationRouteWithChildren
-  '/inbound/asn': typeof InboundAsnRoute
-  '/inbound/putaway': typeof InboundPutawayRoute
-  '/outbound/goods-issue': typeof OutboundGoodsIssueRoute
-  '/outbound/packing': typeof OutboundPackingRoute
-  '/outbound/picking': typeof OutboundPickingRoute
-  '/transportation/tracking': typeof TransportationTrackingRoute
-  '/inbound/': typeof InboundIndexRoute
-  '/outbound/': typeof OutboundIndexRoute
-  '/reports/': typeof ReportsIndexRoute
-  '/transportation/': typeof TransportationIndexRoute
-  '/inbound/delivery/$id': typeof InboundDeliveryIdRoute
-  '/outbound/delivery/$id': typeof OutboundDeliveryIdRoute
-  '/transportation/shipment/$id': typeof TransportationShipmentIdRoute
+  '/dispatch': typeof DispatchRoute
+  '/dispatch-orders': typeof DispatchOrdersRoute
+  '/freight-billing': typeof FreightBillingRoute
+  '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
+  '/invoice-load-details': typeof InvoiceLoadDetailsRoute
+  '/order-info': typeof OrderInfoRoute
+  '/segment-info': typeof SegmentInfoRoute
+  '/service-level': typeof ServiceLevelRoute
+  '/shipment-details': typeof ShipmentDetailsRoute
+  '/transit-damage-info': typeof TransitDamageInfoRoute
+  '/transit-info': typeof TransitInfoRoute
+  '/vehicle-info': typeof VehicleInfoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/inbound'
-    | '/outbound'
-    | '/transportation'
-    | '/inbound/asn'
-    | '/inbound/putaway'
-    | '/outbound/goods-issue'
-    | '/outbound/packing'
-    | '/outbound/picking'
-    | '/transportation/tracking'
-    | '/inbound/'
-    | '/outbound/'
-    | '/reports/'
-    | '/transportation/'
-    | '/inbound/delivery/$id'
-    | '/outbound/delivery/$id'
-    | '/transportation/shipment/$id'
+    | '/dispatch'
+    | '/dispatch-orders'
+    | '/freight-billing'
+    | '/insurance-claim-tracking'
+    | '/invoice-load-details'
+    | '/order-info'
+    | '/segment-info'
+    | '/service-level'
+    | '/shipment-details'
+    | '/transit-damage-info'
+    | '/transit-info'
+    | '/vehicle-info'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/inbound/asn'
-    | '/inbound/putaway'
-    | '/outbound/goods-issue'
-    | '/outbound/packing'
-    | '/outbound/picking'
-    | '/transportation/tracking'
-    | '/inbound'
-    | '/outbound'
-    | '/reports'
-    | '/transportation'
-    | '/inbound/delivery/$id'
-    | '/outbound/delivery/$id'
-    | '/transportation/shipment/$id'
+    | '/dispatch'
+    | '/dispatch-orders'
+    | '/freight-billing'
+    | '/insurance-claim-tracking'
+    | '/invoice-load-details'
+    | '/order-info'
+    | '/segment-info'
+    | '/service-level'
+    | '/shipment-details'
+    | '/transit-damage-info'
+    | '/transit-info'
+    | '/vehicle-info'
   id:
     | '__root__'
     | '/'
-    | '/inbound'
-    | '/outbound'
-    | '/transportation'
-    | '/inbound/asn'
-    | '/inbound/putaway'
-    | '/outbound/goods-issue'
-    | '/outbound/packing'
-    | '/outbound/picking'
-    | '/transportation/tracking'
-    | '/inbound/'
-    | '/outbound/'
-    | '/reports/'
-    | '/transportation/'
-    | '/inbound/delivery/$id'
-    | '/outbound/delivery/$id'
-    | '/transportation/shipment/$id'
+    | '/dispatch'
+    | '/dispatch-orders'
+    | '/freight-billing'
+    | '/insurance-claim-tracking'
+    | '/invoice-load-details'
+    | '/order-info'
+    | '/segment-info'
+    | '/service-level'
+    | '/shipment-details'
+    | '/transit-damage-info'
+    | '/transit-info'
+    | '/vehicle-info'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  InboundRoute: typeof InboundRouteWithChildren
-  OutboundRoute: typeof OutboundRouteWithChildren
-  TransportationRoute: typeof TransportationRouteWithChildren
-  ReportsIndexRoute: typeof ReportsIndexRoute
+  DispatchRoute: typeof DispatchRoute
+  DispatchOrdersRoute: typeof DispatchOrdersRoute
+  FreightBillingRoute: typeof FreightBillingRoute
+  InsuranceClaimTrackingRoute: typeof InsuranceClaimTrackingRoute
+  InvoiceLoadDetailsRoute: typeof InvoiceLoadDetailsRoute
+  OrderInfoRoute: typeof OrderInfoRoute
+  SegmentInfoRoute: typeof SegmentInfoRoute
+  ServiceLevelRoute: typeof ServiceLevelRoute
+  ShipmentDetailsRoute: typeof ShipmentDetailsRoute
+  TransitDamageInfoRoute: typeof TransitDamageInfoRoute
+  TransitInfoRoute: typeof TransitInfoRoute
+  VehicleInfoRoute: typeof VehicleInfoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/transportation': {
-      id: '/transportation'
-      path: '/transportation'
-      fullPath: '/transportation'
-      preLoaderRoute: typeof TransportationRouteImport
+    '/vehicle-info': {
+      id: '/vehicle-info'
+      path: '/vehicle-info'
+      fullPath: '/vehicle-info'
+      preLoaderRoute: typeof VehicleInfoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/outbound': {
-      id: '/outbound'
-      path: '/outbound'
-      fullPath: '/outbound'
-      preLoaderRoute: typeof OutboundRouteImport
+    '/transit-info': {
+      id: '/transit-info'
+      path: '/transit-info'
+      fullPath: '/transit-info'
+      preLoaderRoute: typeof TransitInfoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/inbound': {
-      id: '/inbound'
-      path: '/inbound'
-      fullPath: '/inbound'
-      preLoaderRoute: typeof InboundRouteImport
+    '/transit-damage-info': {
+      id: '/transit-damage-info'
+      path: '/transit-damage-info'
+      fullPath: '/transit-damage-info'
+      preLoaderRoute: typeof TransitDamageInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shipment-details': {
+      id: '/shipment-details'
+      path: '/shipment-details'
+      fullPath: '/shipment-details'
+      preLoaderRoute: typeof ShipmentDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/service-level': {
+      id: '/service-level'
+      path: '/service-level'
+      fullPath: '/service-level'
+      preLoaderRoute: typeof ServiceLevelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/segment-info': {
+      id: '/segment-info'
+      path: '/segment-info'
+      fullPath: '/segment-info'
+      preLoaderRoute: typeof SegmentInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order-info': {
+      id: '/order-info'
+      path: '/order-info'
+      fullPath: '/order-info'
+      preLoaderRoute: typeof OrderInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invoice-load-details': {
+      id: '/invoice-load-details'
+      path: '/invoice-load-details'
+      fullPath: '/invoice-load-details'
+      preLoaderRoute: typeof InvoiceLoadDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insurance-claim-tracking': {
+      id: '/insurance-claim-tracking'
+      path: '/insurance-claim-tracking'
+      fullPath: '/insurance-claim-tracking'
+      preLoaderRoute: typeof InsuranceClaimTrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/freight-billing': {
+      id: '/freight-billing'
+      path: '/freight-billing'
+      fullPath: '/freight-billing'
+      preLoaderRoute: typeof FreightBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dispatch-orders': {
+      id: '/dispatch-orders'
+      path: '/dispatch-orders'
+      fullPath: '/dispatch-orders'
+      preLoaderRoute: typeof DispatchOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dispatch': {
+      id: '/dispatch'
+      path: '/dispatch'
+      fullPath: '/dispatch'
+      preLoaderRoute: typeof DispatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -264,170 +292,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/transportation/': {
-      id: '/transportation/'
-      path: '/'
-      fullPath: '/transportation/'
-      preLoaderRoute: typeof TransportationIndexRouteImport
-      parentRoute: typeof TransportationRoute
-    }
-    '/reports/': {
-      id: '/reports/'
-      path: '/reports'
-      fullPath: '/reports/'
-      preLoaderRoute: typeof ReportsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/outbound/': {
-      id: '/outbound/'
-      path: '/'
-      fullPath: '/outbound/'
-      preLoaderRoute: typeof OutboundIndexRouteImport
-      parentRoute: typeof OutboundRoute
-    }
-    '/inbound/': {
-      id: '/inbound/'
-      path: '/'
-      fullPath: '/inbound/'
-      preLoaderRoute: typeof InboundIndexRouteImport
-      parentRoute: typeof InboundRoute
-    }
-    '/transportation/tracking': {
-      id: '/transportation/tracking'
-      path: '/tracking'
-      fullPath: '/transportation/tracking'
-      preLoaderRoute: typeof TransportationTrackingRouteImport
-      parentRoute: typeof TransportationRoute
-    }
-    '/outbound/picking': {
-      id: '/outbound/picking'
-      path: '/picking'
-      fullPath: '/outbound/picking'
-      preLoaderRoute: typeof OutboundPickingRouteImport
-      parentRoute: typeof OutboundRoute
-    }
-    '/outbound/packing': {
-      id: '/outbound/packing'
-      path: '/packing'
-      fullPath: '/outbound/packing'
-      preLoaderRoute: typeof OutboundPackingRouteImport
-      parentRoute: typeof OutboundRoute
-    }
-    '/outbound/goods-issue': {
-      id: '/outbound/goods-issue'
-      path: '/goods-issue'
-      fullPath: '/outbound/goods-issue'
-      preLoaderRoute: typeof OutboundGoodsIssueRouteImport
-      parentRoute: typeof OutboundRoute
-    }
-    '/inbound/putaway': {
-      id: '/inbound/putaway'
-      path: '/putaway'
-      fullPath: '/inbound/putaway'
-      preLoaderRoute: typeof InboundPutawayRouteImport
-      parentRoute: typeof InboundRoute
-    }
-    '/inbound/asn': {
-      id: '/inbound/asn'
-      path: '/asn'
-      fullPath: '/inbound/asn'
-      preLoaderRoute: typeof InboundAsnRouteImport
-      parentRoute: typeof InboundRoute
-    }
-    '/transportation/shipment/$id': {
-      id: '/transportation/shipment/$id'
-      path: '/shipment/$id'
-      fullPath: '/transportation/shipment/$id'
-      preLoaderRoute: typeof TransportationShipmentIdRouteImport
-      parentRoute: typeof TransportationRoute
-    }
-    '/outbound/delivery/$id': {
-      id: '/outbound/delivery/$id'
-      path: '/delivery/$id'
-      fullPath: '/outbound/delivery/$id'
-      preLoaderRoute: typeof OutboundDeliveryIdRouteImport
-      parentRoute: typeof OutboundRoute
-    }
-    '/inbound/delivery/$id': {
-      id: '/inbound/delivery/$id'
-      path: '/delivery/$id'
-      fullPath: '/inbound/delivery/$id'
-      preLoaderRoute: typeof InboundDeliveryIdRouteImport
-      parentRoute: typeof InboundRoute
-    }
   }
 }
 
-interface InboundRouteChildren {
-  InboundAsnRoute: typeof InboundAsnRoute
-  InboundPutawayRoute: typeof InboundPutawayRoute
-  InboundIndexRoute: typeof InboundIndexRoute
-  InboundDeliveryIdRoute: typeof InboundDeliveryIdRoute
-}
-
-const InboundRouteChildren: InboundRouteChildren = {
-  InboundAsnRoute: InboundAsnRoute,
-  InboundPutawayRoute: InboundPutawayRoute,
-  InboundIndexRoute: InboundIndexRoute,
-  InboundDeliveryIdRoute: InboundDeliveryIdRoute,
-}
-
-const InboundRouteWithChildren =
-  InboundRoute._addFileChildren(InboundRouteChildren)
-
-interface OutboundRouteChildren {
-  OutboundGoodsIssueRoute: typeof OutboundGoodsIssueRoute
-  OutboundPackingRoute: typeof OutboundPackingRoute
-  OutboundPickingRoute: typeof OutboundPickingRoute
-  OutboundIndexRoute: typeof OutboundIndexRoute
-  OutboundDeliveryIdRoute: typeof OutboundDeliveryIdRoute
-}
-
-const OutboundRouteChildren: OutboundRouteChildren = {
-  OutboundGoodsIssueRoute: OutboundGoodsIssueRoute,
-  OutboundPackingRoute: OutboundPackingRoute,
-  OutboundPickingRoute: OutboundPickingRoute,
-  OutboundIndexRoute: OutboundIndexRoute,
-  OutboundDeliveryIdRoute: OutboundDeliveryIdRoute,
-}
-
-const OutboundRouteWithChildren = OutboundRoute._addFileChildren(
-  OutboundRouteChildren,
-)
-
-interface TransportationRouteChildren {
-  TransportationTrackingRoute: typeof TransportationTrackingRoute
-  TransportationIndexRoute: typeof TransportationIndexRoute
-  TransportationShipmentIdRoute: typeof TransportationShipmentIdRoute
-}
-
-const TransportationRouteChildren: TransportationRouteChildren = {
-  TransportationTrackingRoute: TransportationTrackingRoute,
-  TransportationIndexRoute: TransportationIndexRoute,
-  TransportationShipmentIdRoute: TransportationShipmentIdRoute,
-}
-
-const TransportationRouteWithChildren = TransportationRoute._addFileChildren(
-  TransportationRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  InboundRoute: InboundRouteWithChildren,
-  OutboundRoute: OutboundRouteWithChildren,
-  TransportationRoute: TransportationRouteWithChildren,
-  ReportsIndexRoute: ReportsIndexRoute,
+  DispatchRoute: DispatchRoute,
+  DispatchOrdersRoute: DispatchOrdersRoute,
+  FreightBillingRoute: FreightBillingRoute,
+  InsuranceClaimTrackingRoute: InsuranceClaimTrackingRoute,
+  InvoiceLoadDetailsRoute: InvoiceLoadDetailsRoute,
+  OrderInfoRoute: OrderInfoRoute,
+  SegmentInfoRoute: SegmentInfoRoute,
+  ServiceLevelRoute: ServiceLevelRoute,
+  ShipmentDetailsRoute: ShipmentDetailsRoute,
+  TransitDamageInfoRoute: TransitDamageInfoRoute,
+  TransitInfoRoute: TransitInfoRoute,
+  VehicleInfoRoute: VehicleInfoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
