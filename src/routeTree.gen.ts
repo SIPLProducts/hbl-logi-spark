@@ -17,6 +17,7 @@ import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as InboundIndexRouteImport } from './routes/inbound.index'
 import { Route as InboundPutawayRouteImport } from './routes/inbound.putaway'
 import { Route as InboundAsnRouteImport } from './routes/inbound.asn'
+import { Route as InboundDeliveryIdRouteImport } from './routes/inbound.delivery.$id'
 
 const TransportationRoute = TransportationRouteImport.update({
   id: '/transportation',
@@ -58,6 +59,11 @@ const InboundAsnRoute = InboundAsnRouteImport.update({
   path: '/asn',
   getParentRoute: () => InboundRoute,
 } as any)
+const InboundDeliveryIdRoute = InboundDeliveryIdRouteImport.update({
+  id: '/delivery/$id',
+  path: '/delivery/$id',
+  getParentRoute: () => InboundRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/inbound/putaway': typeof InboundPutawayRoute
   '/inbound/': typeof InboundIndexRoute
   '/reports/': typeof ReportsIndexRoute
+  '/inbound/delivery/$id': typeof InboundDeliveryIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/inbound/putaway': typeof InboundPutawayRoute
   '/inbound': typeof InboundIndexRoute
   '/reports': typeof ReportsIndexRoute
+  '/inbound/delivery/$id': typeof InboundDeliveryIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/inbound/putaway': typeof InboundPutawayRoute
   '/inbound/': typeof InboundIndexRoute
   '/reports/': typeof ReportsIndexRoute
+  '/inbound/delivery/$id': typeof InboundDeliveryIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/inbound/putaway'
     | '/inbound/'
     | '/reports/'
+    | '/inbound/delivery/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/inbound/putaway'
     | '/inbound'
     | '/reports'
+    | '/inbound/delivery/$id'
   id:
     | '__root__'
     | '/'
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/inbound/putaway'
     | '/inbound/'
     | '/reports/'
+    | '/inbound/delivery/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -187,6 +199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InboundAsnRouteImport
       parentRoute: typeof InboundRoute
     }
+    '/inbound/delivery/$id': {
+      id: '/inbound/delivery/$id'
+      path: '/delivery/$id'
+      fullPath: '/inbound/delivery/$id'
+      preLoaderRoute: typeof InboundDeliveryIdRouteImport
+      parentRoute: typeof InboundRoute
+    }
   }
 }
 
@@ -194,12 +213,14 @@ interface InboundRouteChildren {
   InboundAsnRoute: typeof InboundAsnRoute
   InboundPutawayRoute: typeof InboundPutawayRoute
   InboundIndexRoute: typeof InboundIndexRoute
+  InboundDeliveryIdRoute: typeof InboundDeliveryIdRoute
 }
 
 const InboundRouteChildren: InboundRouteChildren = {
   InboundAsnRoute: InboundAsnRoute,
   InboundPutawayRoute: InboundPutawayRoute,
   InboundIndexRoute: InboundIndexRoute,
+  InboundDeliveryIdRoute: InboundDeliveryIdRoute,
 }
 
 const InboundRouteWithChildren =
