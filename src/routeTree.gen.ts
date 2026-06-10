@@ -15,6 +15,8 @@ import { Route as InboundRouteImport } from './routes/inbound'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as InboundIndexRouteImport } from './routes/inbound.index'
+import { Route as InboundPutawayRouteImport } from './routes/inbound.putaway'
+import { Route as InboundAsnRouteImport } from './routes/inbound.asn'
 
 const TransportationRoute = TransportationRouteImport.update({
   id: '/transportation',
@@ -46,12 +48,24 @@ const InboundIndexRoute = InboundIndexRouteImport.update({
   path: '/',
   getParentRoute: () => InboundRoute,
 } as any)
+const InboundPutawayRoute = InboundPutawayRouteImport.update({
+  id: '/putaway',
+  path: '/putaway',
+  getParentRoute: () => InboundRoute,
+} as any)
+const InboundAsnRoute = InboundAsnRouteImport.update({
+  id: '/asn',
+  path: '/asn',
+  getParentRoute: () => InboundRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/inbound': typeof InboundRouteWithChildren
   '/outbound': typeof OutboundRoute
   '/transportation': typeof TransportationRoute
+  '/inbound/asn': typeof InboundAsnRoute
+  '/inbound/putaway': typeof InboundPutawayRoute
   '/inbound/': typeof InboundIndexRoute
   '/reports/': typeof ReportsIndexRoute
 }
@@ -59,6 +73,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/outbound': typeof OutboundRoute
   '/transportation': typeof TransportationRoute
+  '/inbound/asn': typeof InboundAsnRoute
+  '/inbound/putaway': typeof InboundPutawayRoute
   '/inbound': typeof InboundIndexRoute
   '/reports': typeof ReportsIndexRoute
 }
@@ -68,6 +84,8 @@ export interface FileRoutesById {
   '/inbound': typeof InboundRouteWithChildren
   '/outbound': typeof OutboundRoute
   '/transportation': typeof TransportationRoute
+  '/inbound/asn': typeof InboundAsnRoute
+  '/inbound/putaway': typeof InboundPutawayRoute
   '/inbound/': typeof InboundIndexRoute
   '/reports/': typeof ReportsIndexRoute
 }
@@ -78,16 +96,27 @@ export interface FileRouteTypes {
     | '/inbound'
     | '/outbound'
     | '/transportation'
+    | '/inbound/asn'
+    | '/inbound/putaway'
     | '/inbound/'
     | '/reports/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/outbound' | '/transportation' | '/inbound' | '/reports'
+  to:
+    | '/'
+    | '/outbound'
+    | '/transportation'
+    | '/inbound/asn'
+    | '/inbound/putaway'
+    | '/inbound'
+    | '/reports'
   id:
     | '__root__'
     | '/'
     | '/inbound'
     | '/outbound'
     | '/transportation'
+    | '/inbound/asn'
+    | '/inbound/putaway'
     | '/inbound/'
     | '/reports/'
   fileRoutesById: FileRoutesById
@@ -144,14 +173,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InboundIndexRouteImport
       parentRoute: typeof InboundRoute
     }
+    '/inbound/putaway': {
+      id: '/inbound/putaway'
+      path: '/putaway'
+      fullPath: '/inbound/putaway'
+      preLoaderRoute: typeof InboundPutawayRouteImport
+      parentRoute: typeof InboundRoute
+    }
+    '/inbound/asn': {
+      id: '/inbound/asn'
+      path: '/asn'
+      fullPath: '/inbound/asn'
+      preLoaderRoute: typeof InboundAsnRouteImport
+      parentRoute: typeof InboundRoute
+    }
   }
 }
 
 interface InboundRouteChildren {
+  InboundAsnRoute: typeof InboundAsnRoute
+  InboundPutawayRoute: typeof InboundPutawayRoute
   InboundIndexRoute: typeof InboundIndexRoute
 }
 
 const InboundRouteChildren: InboundRouteChildren = {
+  InboundAsnRoute: InboundAsnRoute,
+  InboundPutawayRoute: InboundPutawayRoute,
   InboundIndexRoute: InboundIndexRoute,
 }
 
