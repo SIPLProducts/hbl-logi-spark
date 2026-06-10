@@ -14,6 +14,7 @@ import { Route as OutboundRouteImport } from './routes/outbound'
 import { Route as InboundRouteImport } from './routes/inbound'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
+import { Route as InboundIndexRouteImport } from './routes/inbound.index'
 
 const TransportationRoute = TransportationRouteImport.update({
   id: '/transportation',
@@ -40,46 +41,60 @@ const ReportsIndexRoute = ReportsIndexRouteImport.update({
   path: '/reports/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InboundIndexRoute = InboundIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => InboundRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/inbound': typeof InboundRoute
+  '/inbound': typeof InboundRouteWithChildren
   '/outbound': typeof OutboundRoute
   '/transportation': typeof TransportationRoute
+  '/inbound/': typeof InboundIndexRoute
   '/reports/': typeof ReportsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/inbound': typeof InboundRoute
   '/outbound': typeof OutboundRoute
   '/transportation': typeof TransportationRoute
+  '/inbound': typeof InboundIndexRoute
   '/reports': typeof ReportsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/inbound': typeof InboundRoute
+  '/inbound': typeof InboundRouteWithChildren
   '/outbound': typeof OutboundRoute
   '/transportation': typeof TransportationRoute
+  '/inbound/': typeof InboundIndexRoute
   '/reports/': typeof ReportsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/inbound' | '/outbound' | '/transportation' | '/reports/'
+  fullPaths:
+    | '/'
+    | '/inbound'
+    | '/outbound'
+    | '/transportation'
+    | '/inbound/'
+    | '/reports/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/inbound' | '/outbound' | '/transportation' | '/reports'
+  to: '/' | '/outbound' | '/transportation' | '/inbound' | '/reports'
   id:
     | '__root__'
     | '/'
     | '/inbound'
     | '/outbound'
     | '/transportation'
+    | '/inbound/'
     | '/reports/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  InboundRoute: typeof InboundRoute
+  InboundRoute: typeof InboundRouteWithChildren
   OutboundRoute: typeof OutboundRoute
   TransportationRoute: typeof TransportationRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
@@ -122,12 +137,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/inbound/': {
+      id: '/inbound/'
+      path: '/'
+      fullPath: '/inbound/'
+      preLoaderRoute: typeof InboundIndexRouteImport
+      parentRoute: typeof InboundRoute
+    }
   }
 }
 
+interface InboundRouteChildren {
+  InboundIndexRoute: typeof InboundIndexRoute
+}
+
+const InboundRouteChildren: InboundRouteChildren = {
+  InboundIndexRoute: InboundIndexRoute,
+}
+
+const InboundRouteWithChildren =
+  InboundRoute._addFileChildren(InboundRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  InboundRoute: InboundRoute,
+  InboundRoute: InboundRouteWithChildren,
   OutboundRoute: OutboundRoute,
   TransportationRoute: TransportationRoute,
   ReportsIndexRoute: ReportsIndexRoute,
