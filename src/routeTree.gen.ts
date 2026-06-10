@@ -13,14 +13,17 @@ import { Route as TransportationRouteImport } from './routes/transportation'
 import { Route as OutboundRouteImport } from './routes/outbound'
 import { Route as InboundRouteImport } from './routes/inbound'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TransportationIndexRouteImport } from './routes/transportation.index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as OutboundIndexRouteImport } from './routes/outbound.index'
 import { Route as InboundIndexRouteImport } from './routes/inbound.index'
+import { Route as TransportationTrackingRouteImport } from './routes/transportation.tracking'
 import { Route as OutboundPickingRouteImport } from './routes/outbound.picking'
 import { Route as OutboundPackingRouteImport } from './routes/outbound.packing'
 import { Route as OutboundGoodsIssueRouteImport } from './routes/outbound.goods-issue'
 import { Route as InboundPutawayRouteImport } from './routes/inbound.putaway'
 import { Route as InboundAsnRouteImport } from './routes/inbound.asn'
+import { Route as TransportationShipmentIdRouteImport } from './routes/transportation.shipment.$id'
 import { Route as OutboundDeliveryIdRouteImport } from './routes/outbound.delivery.$id'
 import { Route as InboundDeliveryIdRouteImport } from './routes/inbound.delivery.$id'
 
@@ -44,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TransportationIndexRoute = TransportationIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TransportationRoute,
+} as any)
 const ReportsIndexRoute = ReportsIndexRouteImport.update({
   id: '/reports/',
   path: '/reports/',
@@ -58,6 +66,11 @@ const InboundIndexRoute = InboundIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => InboundRoute,
+} as any)
+const TransportationTrackingRoute = TransportationTrackingRouteImport.update({
+  id: '/tracking',
+  path: '/tracking',
+  getParentRoute: () => TransportationRoute,
 } as any)
 const OutboundPickingRoute = OutboundPickingRouteImport.update({
   id: '/picking',
@@ -84,6 +97,12 @@ const InboundAsnRoute = InboundAsnRouteImport.update({
   path: '/asn',
   getParentRoute: () => InboundRoute,
 } as any)
+const TransportationShipmentIdRoute =
+  TransportationShipmentIdRouteImport.update({
+    id: '/shipment/$id',
+    path: '/shipment/$id',
+    getParentRoute: () => TransportationRoute,
+  } as any)
 const OutboundDeliveryIdRoute = OutboundDeliveryIdRouteImport.update({
   id: '/delivery/$id',
   path: '/delivery/$id',
@@ -99,48 +118,56 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/inbound': typeof InboundRouteWithChildren
   '/outbound': typeof OutboundRouteWithChildren
-  '/transportation': typeof TransportationRoute
+  '/transportation': typeof TransportationRouteWithChildren
   '/inbound/asn': typeof InboundAsnRoute
   '/inbound/putaway': typeof InboundPutawayRoute
   '/outbound/goods-issue': typeof OutboundGoodsIssueRoute
   '/outbound/packing': typeof OutboundPackingRoute
   '/outbound/picking': typeof OutboundPickingRoute
+  '/transportation/tracking': typeof TransportationTrackingRoute
   '/inbound/': typeof InboundIndexRoute
   '/outbound/': typeof OutboundIndexRoute
   '/reports/': typeof ReportsIndexRoute
+  '/transportation/': typeof TransportationIndexRoute
   '/inbound/delivery/$id': typeof InboundDeliveryIdRoute
   '/outbound/delivery/$id': typeof OutboundDeliveryIdRoute
+  '/transportation/shipment/$id': typeof TransportationShipmentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/transportation': typeof TransportationRoute
   '/inbound/asn': typeof InboundAsnRoute
   '/inbound/putaway': typeof InboundPutawayRoute
   '/outbound/goods-issue': typeof OutboundGoodsIssueRoute
   '/outbound/packing': typeof OutboundPackingRoute
   '/outbound/picking': typeof OutboundPickingRoute
+  '/transportation/tracking': typeof TransportationTrackingRoute
   '/inbound': typeof InboundIndexRoute
   '/outbound': typeof OutboundIndexRoute
   '/reports': typeof ReportsIndexRoute
+  '/transportation': typeof TransportationIndexRoute
   '/inbound/delivery/$id': typeof InboundDeliveryIdRoute
   '/outbound/delivery/$id': typeof OutboundDeliveryIdRoute
+  '/transportation/shipment/$id': typeof TransportationShipmentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/inbound': typeof InboundRouteWithChildren
   '/outbound': typeof OutboundRouteWithChildren
-  '/transportation': typeof TransportationRoute
+  '/transportation': typeof TransportationRouteWithChildren
   '/inbound/asn': typeof InboundAsnRoute
   '/inbound/putaway': typeof InboundPutawayRoute
   '/outbound/goods-issue': typeof OutboundGoodsIssueRoute
   '/outbound/packing': typeof OutboundPackingRoute
   '/outbound/picking': typeof OutboundPickingRoute
+  '/transportation/tracking': typeof TransportationTrackingRoute
   '/inbound/': typeof InboundIndexRoute
   '/outbound/': typeof OutboundIndexRoute
   '/reports/': typeof ReportsIndexRoute
+  '/transportation/': typeof TransportationIndexRoute
   '/inbound/delivery/$id': typeof InboundDeliveryIdRoute
   '/outbound/delivery/$id': typeof OutboundDeliveryIdRoute
+  '/transportation/shipment/$id': typeof TransportationShipmentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -154,25 +181,30 @@ export interface FileRouteTypes {
     | '/outbound/goods-issue'
     | '/outbound/packing'
     | '/outbound/picking'
+    | '/transportation/tracking'
     | '/inbound/'
     | '/outbound/'
     | '/reports/'
+    | '/transportation/'
     | '/inbound/delivery/$id'
     | '/outbound/delivery/$id'
+    | '/transportation/shipment/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/transportation'
     | '/inbound/asn'
     | '/inbound/putaway'
     | '/outbound/goods-issue'
     | '/outbound/packing'
     | '/outbound/picking'
+    | '/transportation/tracking'
     | '/inbound'
     | '/outbound'
     | '/reports'
+    | '/transportation'
     | '/inbound/delivery/$id'
     | '/outbound/delivery/$id'
+    | '/transportation/shipment/$id'
   id:
     | '__root__'
     | '/'
@@ -184,18 +216,21 @@ export interface FileRouteTypes {
     | '/outbound/goods-issue'
     | '/outbound/packing'
     | '/outbound/picking'
+    | '/transportation/tracking'
     | '/inbound/'
     | '/outbound/'
     | '/reports/'
+    | '/transportation/'
     | '/inbound/delivery/$id'
     | '/outbound/delivery/$id'
+    | '/transportation/shipment/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   InboundRoute: typeof InboundRouteWithChildren
   OutboundRoute: typeof OutboundRouteWithChildren
-  TransportationRoute: typeof TransportationRoute
+  TransportationRoute: typeof TransportationRouteWithChildren
   ReportsIndexRoute: typeof ReportsIndexRoute
 }
 
@@ -229,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/transportation/': {
+      id: '/transportation/'
+      path: '/'
+      fullPath: '/transportation/'
+      preLoaderRoute: typeof TransportationIndexRouteImport
+      parentRoute: typeof TransportationRoute
+    }
     '/reports/': {
       id: '/reports/'
       path: '/reports'
@@ -249,6 +291,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/inbound/'
       preLoaderRoute: typeof InboundIndexRouteImport
       parentRoute: typeof InboundRoute
+    }
+    '/transportation/tracking': {
+      id: '/transportation/tracking'
+      path: '/tracking'
+      fullPath: '/transportation/tracking'
+      preLoaderRoute: typeof TransportationTrackingRouteImport
+      parentRoute: typeof TransportationRoute
     }
     '/outbound/picking': {
       id: '/outbound/picking'
@@ -284,6 +333,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/inbound/asn'
       preLoaderRoute: typeof InboundAsnRouteImport
       parentRoute: typeof InboundRoute
+    }
+    '/transportation/shipment/$id': {
+      id: '/transportation/shipment/$id'
+      path: '/shipment/$id'
+      fullPath: '/transportation/shipment/$id'
+      preLoaderRoute: typeof TransportationShipmentIdRouteImport
+      parentRoute: typeof TransportationRoute
     }
     '/outbound/delivery/$id': {
       id: '/outbound/delivery/$id'
@@ -339,11 +395,27 @@ const OutboundRouteWithChildren = OutboundRoute._addFileChildren(
   OutboundRouteChildren,
 )
 
+interface TransportationRouteChildren {
+  TransportationTrackingRoute: typeof TransportationTrackingRoute
+  TransportationIndexRoute: typeof TransportationIndexRoute
+  TransportationShipmentIdRoute: typeof TransportationShipmentIdRoute
+}
+
+const TransportationRouteChildren: TransportationRouteChildren = {
+  TransportationTrackingRoute: TransportationTrackingRoute,
+  TransportationIndexRoute: TransportationIndexRoute,
+  TransportationShipmentIdRoute: TransportationShipmentIdRoute,
+}
+
+const TransportationRouteWithChildren = TransportationRoute._addFileChildren(
+  TransportationRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   InboundRoute: InboundRouteWithChildren,
   OutboundRoute: OutboundRouteWithChildren,
-  TransportationRoute: TransportationRoute,
+  TransportationRoute: TransportationRouteWithChildren,
   ReportsIndexRoute: ReportsIndexRoute,
 }
 export const routeTree = rootRouteImport
