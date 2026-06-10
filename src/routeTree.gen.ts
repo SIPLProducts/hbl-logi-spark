@@ -11,10 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VehicleInfoRouteImport } from './routes/vehicle-info'
 import { Route as TransitInfoRouteImport } from './routes/transit-info'
+import { Route as TransitDamageInfoRouteImport } from './routes/transit-damage-info'
 import { Route as ShipmentDetailsRouteImport } from './routes/shipment-details'
+import { Route as ServiceLevelRouteImport } from './routes/service-level'
 import { Route as SegmentInfoRouteImport } from './routes/segment-info'
 import { Route as OrderInfoRouteImport } from './routes/order-info'
 import { Route as InvoiceLoadDetailsRouteImport } from './routes/invoice-load-details'
+import { Route as InsuranceClaimTrackingRouteImport } from './routes/insurance-claim-tracking'
+import { Route as FreightBillingRouteImport } from './routes/freight-billing'
 import { Route as DispatchOrdersRouteImport } from './routes/dispatch-orders'
 import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as IndexRouteImport } from './routes/index'
@@ -29,9 +33,19 @@ const TransitInfoRoute = TransitInfoRouteImport.update({
   path: '/transit-info',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TransitDamageInfoRoute = TransitDamageInfoRouteImport.update({
+  id: '/transit-damage-info',
+  path: '/transit-damage-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ShipmentDetailsRoute = ShipmentDetailsRouteImport.update({
   id: '/shipment-details',
   path: '/shipment-details',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServiceLevelRoute = ServiceLevelRouteImport.update({
+  id: '/service-level',
+  path: '/service-level',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SegmentInfoRoute = SegmentInfoRouteImport.update({
@@ -47,6 +61,16 @@ const OrderInfoRoute = OrderInfoRouteImport.update({
 const InvoiceLoadDetailsRoute = InvoiceLoadDetailsRouteImport.update({
   id: '/invoice-load-details',
   path: '/invoice-load-details',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsuranceClaimTrackingRoute = InsuranceClaimTrackingRouteImport.update({
+  id: '/insurance-claim-tracking',
+  path: '/insurance-claim-tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FreightBillingRoute = FreightBillingRouteImport.update({
+  id: '/freight-billing',
+  path: '/freight-billing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DispatchOrdersRoute = DispatchOrdersRouteImport.update({
@@ -69,10 +93,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/freight-billing': typeof FreightBillingRoute
+  '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
   '/invoice-load-details': typeof InvoiceLoadDetailsRoute
   '/order-info': typeof OrderInfoRoute
   '/segment-info': typeof SegmentInfoRoute
+  '/service-level': typeof ServiceLevelRoute
   '/shipment-details': typeof ShipmentDetailsRoute
+  '/transit-damage-info': typeof TransitDamageInfoRoute
   '/transit-info': typeof TransitInfoRoute
   '/vehicle-info': typeof VehicleInfoRoute
 }
@@ -80,10 +108,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/freight-billing': typeof FreightBillingRoute
+  '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
   '/invoice-load-details': typeof InvoiceLoadDetailsRoute
   '/order-info': typeof OrderInfoRoute
   '/segment-info': typeof SegmentInfoRoute
+  '/service-level': typeof ServiceLevelRoute
   '/shipment-details': typeof ShipmentDetailsRoute
+  '/transit-damage-info': typeof TransitDamageInfoRoute
   '/transit-info': typeof TransitInfoRoute
   '/vehicle-info': typeof VehicleInfoRoute
 }
@@ -92,10 +124,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/freight-billing': typeof FreightBillingRoute
+  '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
   '/invoice-load-details': typeof InvoiceLoadDetailsRoute
   '/order-info': typeof OrderInfoRoute
   '/segment-info': typeof SegmentInfoRoute
+  '/service-level': typeof ServiceLevelRoute
   '/shipment-details': typeof ShipmentDetailsRoute
+  '/transit-damage-info': typeof TransitDamageInfoRoute
   '/transit-info': typeof TransitInfoRoute
   '/vehicle-info': typeof VehicleInfoRoute
 }
@@ -105,10 +141,14 @@ export interface FileRouteTypes {
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/freight-billing'
+    | '/insurance-claim-tracking'
     | '/invoice-load-details'
     | '/order-info'
     | '/segment-info'
+    | '/service-level'
     | '/shipment-details'
+    | '/transit-damage-info'
     | '/transit-info'
     | '/vehicle-info'
   fileRoutesByTo: FileRoutesByTo
@@ -116,10 +156,14 @@ export interface FileRouteTypes {
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/freight-billing'
+    | '/insurance-claim-tracking'
     | '/invoice-load-details'
     | '/order-info'
     | '/segment-info'
+    | '/service-level'
     | '/shipment-details'
+    | '/transit-damage-info'
     | '/transit-info'
     | '/vehicle-info'
   id:
@@ -127,10 +171,14 @@ export interface FileRouteTypes {
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/freight-billing'
+    | '/insurance-claim-tracking'
     | '/invoice-load-details'
     | '/order-info'
     | '/segment-info'
+    | '/service-level'
     | '/shipment-details'
+    | '/transit-damage-info'
     | '/transit-info'
     | '/vehicle-info'
   fileRoutesById: FileRoutesById
@@ -139,10 +187,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DispatchRoute: typeof DispatchRoute
   DispatchOrdersRoute: typeof DispatchOrdersRoute
+  FreightBillingRoute: typeof FreightBillingRoute
+  InsuranceClaimTrackingRoute: typeof InsuranceClaimTrackingRoute
   InvoiceLoadDetailsRoute: typeof InvoiceLoadDetailsRoute
   OrderInfoRoute: typeof OrderInfoRoute
   SegmentInfoRoute: typeof SegmentInfoRoute
+  ServiceLevelRoute: typeof ServiceLevelRoute
   ShipmentDetailsRoute: typeof ShipmentDetailsRoute
+  TransitDamageInfoRoute: typeof TransitDamageInfoRoute
   TransitInfoRoute: typeof TransitInfoRoute
   VehicleInfoRoute: typeof VehicleInfoRoute
 }
@@ -163,11 +215,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TransitInfoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/transit-damage-info': {
+      id: '/transit-damage-info'
+      path: '/transit-damage-info'
+      fullPath: '/transit-damage-info'
+      preLoaderRoute: typeof TransitDamageInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/shipment-details': {
       id: '/shipment-details'
       path: '/shipment-details'
       fullPath: '/shipment-details'
       preLoaderRoute: typeof ShipmentDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/service-level': {
+      id: '/service-level'
+      path: '/service-level'
+      fullPath: '/service-level'
+      preLoaderRoute: typeof ServiceLevelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/segment-info': {
@@ -189,6 +255,20 @@ declare module '@tanstack/react-router' {
       path: '/invoice-load-details'
       fullPath: '/invoice-load-details'
       preLoaderRoute: typeof InvoiceLoadDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insurance-claim-tracking': {
+      id: '/insurance-claim-tracking'
+      path: '/insurance-claim-tracking'
+      fullPath: '/insurance-claim-tracking'
+      preLoaderRoute: typeof InsuranceClaimTrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/freight-billing': {
+      id: '/freight-billing'
+      path: '/freight-billing'
+      fullPath: '/freight-billing'
+      preLoaderRoute: typeof FreightBillingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dispatch-orders': {
@@ -219,10 +299,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DispatchRoute: DispatchRoute,
   DispatchOrdersRoute: DispatchOrdersRoute,
+  FreightBillingRoute: FreightBillingRoute,
+  InsuranceClaimTrackingRoute: InsuranceClaimTrackingRoute,
   InvoiceLoadDetailsRoute: InvoiceLoadDetailsRoute,
   OrderInfoRoute: OrderInfoRoute,
   SegmentInfoRoute: SegmentInfoRoute,
+  ServiceLevelRoute: ServiceLevelRoute,
   ShipmentDetailsRoute: ShipmentDetailsRoute,
+  TransitDamageInfoRoute: TransitDamageInfoRoute,
   TransitInfoRoute: TransitInfoRoute,
   VehicleInfoRoute: VehicleInfoRoute,
 }
