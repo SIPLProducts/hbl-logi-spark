@@ -42,11 +42,9 @@ function DeliveryDetailPage() {
     <>
       <PageHeader
         breadcrumb={
-          (
-            <Link to="/inbound" className="hover:text-zinc-900 inline-flex items-center gap-1">
-              <ChevronLeft className="size-3" /> Inbound
-            </Link>
-          ) as unknown as string
+          <Link to="/inbound" className="hover:text-zinc-900 inline-flex items-center gap-1">
+            <ChevronLeft className="size-3" /> Inbound
+          </Link>
         }
         title={`Inbound Delivery ${delivery.id}`}
         description={`Goods receipt from ${delivery.vendor} at dock ${delivery.dock}.`}
