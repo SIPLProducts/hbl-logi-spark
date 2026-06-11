@@ -1,23 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Pencil, Trash2, ShieldCheck } from "lucide-react";
+import { Plus } from "lucide-react";
 import { CreateUserDialog, type UserFormValues } from "@/components/create-user-dialog";
-
-const SEED_USER: UserFormValues = {
-  userId: "2424",
-  firstName: "Admin",
-  lastName: "User",
-  contact: "7337283880",
-  email: "inturimounika@sharviinfotech.com",
-  category: "Internal",
-  employeeCode: "2424",
-  inOutType: "Outward",
-  plants: "1100, 1101, 1102, 1105, 1106, 1200, 1300",
-  divisions: "NCPP, COMMON SERVICE, Corporate",
-  role: "ADMIN",
-  screensCount: 23,
-  active: true,
-};
 
 export const Route = createFileRoute("/user-creation")({
   head: () => ({
