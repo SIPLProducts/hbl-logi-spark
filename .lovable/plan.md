@@ -1,52 +1,40 @@
 ## Goal
-Add a "User Creation" screen accessible after Insurance Claim Tracking in the sidebar, matching the existing LE app look & feel.
+Replace the current `/user-creation` screen with a simple User Management list page plus a "Create New User" modal popup, matching the two reference screenshots.
 
 ## Changes
 
-### 1. New route: `src/routes/user-creation.tsx`
-- `createFileRoute("/user-creation")` with `head()` setting title "User Creation · HBL LE" and matching description.
-- Uses `LeScreenShell` for consistent header/Create+Search tabs styling.
-- Provides `renderCreateBody` returning a custom `<UserCreationCreate />` component so the body matches the recent SAP create components (no SAP toggle is relevant here — but `LeScreenShell` always shows it; that's acceptable to keep the look consistent with sibling screens, same as Order Info / Insurance Claim).
-- Passes a minimal `groups` array (used by Search & Reports view-mode fallback only).
+### 1. Rewrite `src/routes/user-creation.tsx`
+Drop `LeScreenShell` entirely (the tabs / SAP toggle / "Direction" bar don't belong here). Render a standalone page:
 
-### 2. New component: `src/components/user-creation-create.tsx`
-A single create body styled the same as `insurance-claim-tracking-sap-create.tsx` (green-themed inputs, rounded surface cards). Sections:
+- Wrapper card containing:
+  - Header row: title "User Management" (left, indigo accent) + **"+ Create New User"** button (right, gradient indigo→purple to match the reference). Clicking opens the modal.
+  - Data table with sky→teal gradient header (matching the rest of the LE app) and these columns:
+    `User ID, First Name, Last Name, Email, Contact, Employee Code, In/Out, Category, Roles, Status, Plants, Divisions, Activities, Actions`.
+  - One seed row: `2424 / Admin / User / inturimounika@sharviinfotech.com / 7337283880 / 2424 / outward / Internal / ADMIN / Active(green pill) / Plants (10)(pill) / Divisions (10)(pill) / 🛡 Screens (23)(pill) / edit + delete icons`.
+- "Items per page: 1" footer line below the table.
 
-- **Users list table** (reference table, same emerald/teal gradient header as other screens) with columns:
-  Select, Sl.No, User ID, Full Name, Email, Role, Plant, Status, Action (⋮). One placeholder row.
+- `head()` keeps title "User Creation · HBL LE".
 
-- **Search bar**: Select (User ID / Name / Email / Role) + text input + search icon button (identical pattern to existing screens).
+State: `const [open, setOpen] = useState(false);` — `open` controls the modal.
 
-- **User details form** (field grid, 3-col on lg) — fields:
-  - User ID
-  - Full Name
-  - Employee Code
-  - Email (type=email)
-  - Mobile Number
-  - Designation
-  - Department (select: Logistics / Finance / Sales / Plant Ops / IT)
-  - Role (select: Admin / LE Operator / Approver / Viewer)
-  - Plant (select: HBL NCPP-SHPT / HBL VSP-SHPT / HBL HYD-PLANT-04)
-  - Division (select: NCPP / VSP / Industrial)
-  - Reporting Manager
-  - Joining Date (date)
-  - Valid From (date)
-  - Valid To (date)
-  - Status (select: Active / Inactive / Suspended)
-  - Username
-  - Password (type=password)
-  - Confirm Password (type=password)
-  - Profile Photo (file)
+### 2. New component: `src/components/create-user-dialog.tsx`
+Modal popup using existing shadcn `Dialog` (`@/components/ui/dialog`). Receives `{ open, onOpenChange }` props.
 
-- **Permissions table** (secondary table, same styled header) with columns:
-  Select, Sl.No, Module, View, Create, Edit, Delete, Approve, Action (+ / ×). Prepopulate one row (e.g. "Order Info") with checkboxes per permission.
+- Dialog header: gradient indigo→purple bar with title **"Create New User"** + close (×).
+- Body fields in a 3-column responsive grid:
+  - Row 1: User ID* (prefilled `2424`), First Name*, Last Name
+  - Row 2: Contact*, Email*, Category (select: Internal / External; default Internal)
+  - Row 3: Password* (type=password, eye toggle icon), Confirm Password* (type=password, eye toggle icon), Employee Code*
+  - Row 4: In/Out Type* (select), Plants (multi-select look — single text input "Select Plants"), Divisions ("Select Divisions")
+  - Row 5: Role (select), Activities (Screens) → a blue button labelled **"Select Screens (0)"**, Status → segmented `Inactive | toggle | Active` (toggle defaults Active green)
+- Footer: dark-red **Create** button right-aligned.
+- Inputs styled with the existing emerald GREEN_INPUT pattern? — No, the modal in the reference uses neutral white inputs with light borders. Use plain inputs: `h-9 w-full rounded-md border border-input bg-background px-3 text-[12.5px]` with red asterisks on required labels.
+- Local component state only (no submission wiring); on Create just calls `onOpenChange(false)`.
 
-- **Footer**: Save / Save and Next / Save and Previous buttons (same three colored buttons used elsewhere).
+### 3. Sidebar — no change
+`User Creation` entry already added; URL unchanged.
 
-No `revealed` GET-gating — fields/tables/footer always visible (this screen has no SAP-based reveal).
+### 4. Remove `src/components/user-creation-create.tsx`
+It is no longer referenced.
 
-### 3. Edit: `src/components/app-sidebar.tsx`
-- Add a new sidebar group below the existing Insurance Claim Tracking group containing one item:
-  `{ title: "User Creation", to: "/user-creation", icon: UserPlus }` (import `UserPlus` from `lucide-react`).
-
-No other files touched. Pure UI / route work; no backend changes.
+No backend or schema changes.
