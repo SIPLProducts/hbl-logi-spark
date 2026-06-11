@@ -103,7 +103,7 @@ export function AppSidebar() {
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto scrollbar-elegant py-4 px-2.5 space-y-5">
+      <nav className="flex-1 overflow-y-auto scrollbar-elegant py-4 px-2.5 space-y-0">
         {!collapsed && (
           <Link
             to="/"
