@@ -29,7 +29,42 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
   const [searchValue, setSearchValue] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [revealed, setRevealed] = useState(false);
-  const [lineChecked, setLineChecked] = useState(false);
+  type LineItem = {
+    id: number;
+    checked: boolean;
+    mapId: string;
+    product: string;
+    materialType: string;
+    description: string;
+    qty: string;
+    ahLoaded: string;
+    weight: string;
+    batteryCondition: string;
+  };
+  const newLineItem = (id: number): LineItem => ({
+    id,
+    checked: false,
+    mapId: "",
+    product: "",
+    materialType: "",
+    description: "",
+    qty: "",
+    ahLoaded: "",
+    weight: "0",
+    batteryCondition: "",
+  });
+  const [lineItems, setLineItems] = useState<LineItem[]>([newLineItem(1)]);
+  const [nextId, setNextId] = useState(2);
+  const addLineItem = () => {
+    setLineItems((prev) => [...prev, newLineItem(nextId)]);
+    setNextId((n) => n + 1);
+  };
+  const removeLineItem = (id: number) => {
+    setLineItems((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
+  };
+  const updateLineItem = (id: number, patch: Partial<LineItem>) => {
+    setLineItems((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  };
   const showFields = isWithout || revealed;
 
   return (
@@ -206,63 +241,113 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td className="px-2 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={lineChecked}
-                      onChange={(e) => setLineChecked(e.target.checked)}
-                      className="size-4 accent-sky-600"
-                    />
-                  </td>
-                  <td className="px-2 py-2 text-center">1</td>
-                  <td className="px-2 py-2">
-                    <select defaultValue="" className={GREEN_INPUT}>
-                      <option value="" disabled>Select</option>
-                      {MAP_IDS.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-2 py-2">
-                    <select defaultValue="" className={GREEN_INPUT}>
-                      <option value="" disabled>Select Product</option>
-                      {PRODUCTS.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-2 py-2">
-                    <select defaultValue="" className={GREEN_INPUT}>
-                      <option value="" disabled>Select Type</option>
-                      {MATERIAL_TYPES.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-2 py-2">
-                    <input placeholder="Enter Description" className={GREEN_INPUT} />
-                  </td>
-                  <td className="px-2 py-2">
-                    <input type="number" placeholder="0" className={GREEN_INPUT + " text-center"} />
-                  </td>
-                  <td className="px-2 py-2">
-                    <input placeholder="Ah" className={GREEN_INPUT + " text-center"} />
-                  </td>
-                  <td className="px-2 py-2">
-                    <input type="number" defaultValue={0} className={GREEN_INPUT + " text-center"} />
-                  </td>
-                  <td className="px-2 py-2">
-                    <select defaultValue="" className={GREEN_INPUT}>
-                      <option value="" disabled>Select</option>
-                      {BATTERY_CONDITIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </td>
-                  <td className="px-2 py-2">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button className="inline-grid place-items-center size-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm">
-                        <Plus className="size-3.5" />
-                      </button>
-                      <button className="inline-grid place-items-center size-7 rounded-md bg-red-500 hover:bg-red-600 text-white shadow-sm">
-                        <X className="size-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                {lineItems.map((row, idx) => (
+                  <tr key={row.id}>
+                    <td className="px-2 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={row.checked}
+                        onChange={(e) => updateLineItem(row.id, { checked: e.target.checked })}
+                        className="size-4 accent-sky-600"
+                      />
+                    </td>
+                    <td className="px-2 py-2 text-center">{idx + 1}</td>
+                    <td className="px-2 py-2">
+                      <select
+                        value={row.mapId}
+                        onChange={(e) => updateLineItem(row.id, { mapId: e.target.value })}
+                        className={GREEN_INPUT}
+                      >
+                        <option value="" disabled>Select</option>
+                        {MAP_IDS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-2 py-2">
+                      <select
+                        value={row.product}
+                        onChange={(e) => updateLineItem(row.id, { product: e.target.value })}
+                        className={GREEN_INPUT}
+                      >
+                        <option value="" disabled>Select Product</option>
+                        {PRODUCTS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-2 py-2">
+                      <select
+                        value={row.materialType}
+                        onChange={(e) => updateLineItem(row.id, { materialType: e.target.value })}
+                        className={GREEN_INPUT}
+                      >
+                        <option value="" disabled>Select Type</option>
+                        {MATERIAL_TYPES.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        value={row.description}
+                        onChange={(e) => updateLineItem(row.id, { description: e.target.value })}
+                        placeholder="Enter Description"
+                        className={GREEN_INPUT}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        type="number"
+                        value={row.qty}
+                        onChange={(e) => updateLineItem(row.id, { qty: e.target.value })}
+                        placeholder="0"
+                        className={GREEN_INPUT + " text-center"}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        value={row.ahLoaded}
+                        onChange={(e) => updateLineItem(row.id, { ahLoaded: e.target.value })}
+                        placeholder="Ah"
+                        className={GREEN_INPUT + " text-center"}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        type="number"
+                        value={row.weight}
+                        onChange={(e) => updateLineItem(row.id, { weight: e.target.value })}
+                        className={GREEN_INPUT + " text-center"}
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <select
+                        value={row.batteryCondition}
+                        onChange={(e) => updateLineItem(row.id, { batteryCondition: e.target.value })}
+                        className={GREEN_INPUT}
+                      >
+                        <option value="" disabled>Select</option>
+                        {BATTERY_CONDITIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-2 py-2">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={addLineItem}
+                          aria-label="Add row"
+                          className="inline-grid place-items-center size-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm"
+                        >
+                          <Plus className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeLineItem(row.id)}
+                          disabled={lineItems.length === 1}
+                          aria-label="Delete row"
+                          className="inline-grid place-items-center size-7 rounded-md bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-sm"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
