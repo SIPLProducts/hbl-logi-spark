@@ -16,10 +16,6 @@ function ServiceLevelPage() {
   return (
     <LeScreenShell
       title="Service Level (Shipment Feedback)"
-      extraTabs={[
-        { label: "Full Truck Load", active: true },
-        { label: "Cargo" },
-      ]}
       renderCreateBody={({ sap, direction }) =>
         direction === "outward" ? (
           <ServiceLevelSapCreate mode={sap === "with" ? "with" : "without"} />
