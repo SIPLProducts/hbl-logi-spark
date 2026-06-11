@@ -23,68 +23,69 @@ type FieldSpec = {
 };
 
 const FIELDS: FieldSpec[] = [
-  { label: "Tax Invoice", value: "900000080" },
-  { label: "ODN Number", value: "900000080" },
-  { label: "Invoice Date", value: "2014-10-31", type: "date" },
+  { label: "Tax Invoice", value: "" },
+  { label: "ODN Number", value: "" },
+  { label: "Invoice Date", value: "", type: "date" },
 
-  { label: "Basic Shipment Value", value: "177421.96" },
-  { label: "Invoice Value With GST", value: "180970.4" },
-  { label: "Fiscal Year", value: "FY-27" },
+  { label: "Basic Shipment Value", value: "" },
+  { label: "Invoice Value With GST", value: "" },
+  { label: "Fiscal Year", value: "" },
 
-  { label: "Fiscal Quarter", value: "Q1 (Apr–Jun)" },
-  { label: "Month", value: "June" },
-  { label: "Required Date & Time", value: "2026-03-05T13:08", type: "date" },
+  { label: "Fiscal Quarter", value: "" },
+  { label: "Month", value: "" },
+  { label: "Required Date & Time", value: "", type: "date" },
 
-  { label: "Reported Date & Time", value: "2026-06-09T13:08", type: "date" },
-  { label: "Physical Dispatch Date & Time", value: "2026-06-10T13:08", type: "date" },
+  { label: "Reported Date & Time", value: "", type: "date" },
+  { label: "Physical Dispatch Date & Time", value: "", type: "date" },
   {
     label: "Plant",
-    value: "HBL NCPP-SHPT",
+    value: "",
     type: "select",
     options: ["HBL NCPP-SHPT", "HBL VSP-SHPT", "HBL HYD-PLANT-04"],
   },
 
   {
     label: "Transaction Type",
-    value: "FULL TRUCK LOAD",
+    value: "",
     type: "select",
     options: ["FULL TRUCK LOAD", "PART LOAD", "COURIER"],
   },
   {
     label: "Billing Transaction Type",
-    value: "Domestic Invoice",
+    value: "",
     type: "select",
     options: ["Domestic Invoice", "Export Invoice", "Stock Transfer"],
   },
   {
     label: "Division",
-    value: "NCPP",
+    value: "",
     type: "select",
     options: ["NCPP", "VSP", "Industrial"],
   },
 
   {
     label: "Sub Division",
-    value: "FUZE",
+    value: "",
     type: "select",
     options: ["FUZE", "BATTERY", "POWER"],
   },
-  { label: "SO / Ref. Number", value: "1001141" },
-  { label: "Customer Name", value: "EMERSON NETWORK POWER  (PUNE) Private ltd" },
+  { label: "SO / Ref. Number", value: "" },
+  { label: "Customer Name", value: "" },
 
-  { label: "Customer Group", value: "HBL" },
-  { label: "Consignee Name", value: "Senior Manager, Bandel Thermal Power Station" },
-  { label: "Destination Location", value: "Hooghly 712503" },
+  { label: "Customer Group", value: "" },
+  { label: "Consignee Name", value: "" },
+  { label: "Destination Location", value: "" },
 
-  { label: "Destination State", value: "West Bengal" },
-  { label: "Destination Zone", value: "north" },
+  { label: "Destination State", value: "" },
+  { label: "Destination Zone", value: "" },
 ];
 
 export function OrderInfoSapCreate() {
   const [checked, setChecked] = useState(true);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
-  const [invoiceNumber, setInvoiceNumber] = useState("900000080");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [revealed, setRevealed] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -156,7 +157,13 @@ export function OrderInfoSapCreate() {
               className={GREEN_INPUT}
             />
           </div>
-          <button className="h-9 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-bold tracking-wider shadow-sm">
+          <button
+            onClick={() => {
+              if (invoiceNumber.trim()) setRevealed(true);
+            }}
+            disabled={!invoiceNumber.trim()}
+            className="h-9 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
+          >
             GET
           </button>
           <div className="min-w-[160px]">
@@ -187,6 +194,14 @@ export function OrderInfoSapCreate() {
         </div>
       </div>
 
+      {!revealed && (
+        <p className="text-[12px] text-muted-foreground px-1">
+          Enter an Invoice Number and click <span className="font-semibold">GET</span> to load fields.
+        </p>
+      )}
+
+      {revealed && (
+        <>
       {/* Field grid */}
       <div className="bg-surface border border-hairline rounded-xl p-5 shadow-elegant">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4">
@@ -208,6 +223,8 @@ export function OrderInfoSapCreate() {
           <ChevronLeft className="size-3.5" /> Save and Previous
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 }
@@ -219,7 +236,10 @@ function SapField({ field }: { field: FieldSpec }) {
       <label className={LABEL}>{label}</label>
       {type === "select" ? (
         <select defaultValue={value} className={GREEN_INPUT}>
-          {(options ?? [value]).map((o) => (
+          <option value="" disabled>
+            Select
+          </option>
+          {(options ?? []).map((o) => (
             <option key={o} value={o}>
               {o}
             </option>
@@ -228,7 +248,7 @@ function SapField({ field }: { field: FieldSpec }) {
       ) : type === "date" ? (
         <input type="datetime-local" defaultValue={value} className={GREEN_INPUT} />
       ) : (
-        <input defaultValue={value} className={GREEN_INPUT} />
+        <input defaultValue={value} placeholder={`Enter ${label}`} className={GREEN_INPUT} />
       )}
     </div>
   );
