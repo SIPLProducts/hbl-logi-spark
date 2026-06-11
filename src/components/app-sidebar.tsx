@@ -19,7 +19,6 @@ import {
 import { useState } from "react";
 
 type NavItem = {
-  index: number;
   title: string;
   to: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -29,33 +28,33 @@ const groups: { label: string; items: NavItem[] }[] = [
   {
     label: "Dispatch",
     items: [
-      { index: 1, title: "Dispatch Orders", to: "/dispatch-orders", icon: ClipboardList },
-      { index: 2, title: "Dispatch", to: "/dispatch", icon: Truck },
+      { title: "Dispatch Orders", to: "/dispatch-orders", icon: ClipboardList },
+      { title: "Dispatch", to: "/dispatch", icon: Truck },
     ],
   },
   {
     label: "Shipment",
     items: [
-      { index: 3, title: "Order Info", to: "/order-info", icon: FileText },
-      { index: 4, title: "Shipment Details", to: "/shipment-details", icon: PackageOpen },
-      { index: 5, title: "Invoice Load Details", to: "/invoice-load-details", icon: Receipt },
-      { index: 6, title: "Segment Info", to: "/segment-info", icon: Split },
+      { title: "Order Info", to: "/order-info", icon: FileText },
+      { title: "Shipment Details", to: "/shipment-details", icon: PackageOpen },
+      { title: "Invoice Load Details", to: "/invoice-load-details", icon: Receipt },
+      { title: "Segment Info", to: "/segment-info", icon: Split },
     ],
   },
   {
     label: "Transit",
     items: [
-      { index: 7, title: "Vehicle Info", to: "/vehicle-info", icon: Bus },
-      { index: 8, title: "Transit Info", to: "/transit-info", icon: RouteIcon },
+      { title: "Vehicle Info", to: "/vehicle-info", icon: Bus },
+      { title: "Transit Info", to: "/transit-info", icon: RouteIcon },
     ],
   },
   {
     label: "Billing & Claims",
     items: [
-      { index: 9, title: "Freight Billing", to: "/freight-billing", icon: IndianRupee },
-      { index: 10, title: "Service Level", to: "/service-level", icon: Gauge },
-      { index: 11, title: "Transit Damage Info", to: "/transit-damage-info", icon: AlertTriangle },
-      { index: 12, title: "Insurance Claim Tracking", to: "/insurance-claim-tracking", icon: ShieldCheck },
+      { title: "Freight Billing", to: "/freight-billing", icon: IndianRupee },
+      { title: "Service Level", to: "/service-level", icon: Gauge },
+      { title: "Transit Damage Info", to: "/transit-damage-info", icon: AlertTriangle },
+      { title: "Insurance Claim Tracking", to: "/insurance-claim-tracking", icon: ShieldCheck },
     ],
   },
 ];
@@ -128,7 +127,7 @@ export function AppSidebar() {
                   <li key={item.to}>
                     <Link
                       to={item.to}
-                      title={collapsed ? `${item.index}. ${item.title}` : undefined}
+                      title={collapsed ? item.title : undefined}
                       className={
                         "group relative flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12.5px] transition-colors " +
                         (active
@@ -138,16 +137,6 @@ export function AppSidebar() {
                     >
                       {active && (
                         <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-accent" />
-                      )}
-                      {!collapsed && (
-                        <span
-                          className={
-                            "w-5 text-[10px] font-mono shrink-0 text-right " +
-                            (active ? "text-accent" : "text-sidebar-foreground/40")
-                          }
-                        >
-                          {String(item.index).padStart(2, "0")}
-                        </span>
                       )}
                       <Icon className="size-4 shrink-0" />
                       {!collapsed && <span className="truncate">{item.title}</span>}
