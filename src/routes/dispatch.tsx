@@ -153,40 +153,6 @@ function DispatchPage() {
   );
 }
 
-/* ──────────────────────────────────────────── KPI ──────────────────────────────────────────── */
-
-function Kpi({
-  label,
-  value,
-  delta,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  delta?: string;
-  tone?: "default" | "success" | "warning" | "danger" | "info";
-}) {
-  const dot: Record<string, string> = {
-    default: "bg-muted-foreground",
-    success: "bg-success",
-    warning: "bg-warning",
-    danger: "bg-destructive",
-    info: "bg-info",
-  };
-  return (
-    <div className="bg-surface border border-hairline rounded-xl p-4 shadow-xs hover:shadow-sm hover:border-accent/40 transition-all">
-      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        <span className={"size-1.5 rounded-full " + dot[tone]} />
-        {label}
-      </div>
-      <div className="mt-2 font-display text-3xl font-semibold tabular-nums text-foreground">
-        {value}
-      </div>
-      {delta && <div className="mt-1 text-[11px] text-muted-foreground">{delta}</div>}
-    </div>
-  );
-}
-
 /* ──────────────────────────────────── Mode 1 — Create ──────────────────────────────────── */
 
 function CreateDispatch() {
