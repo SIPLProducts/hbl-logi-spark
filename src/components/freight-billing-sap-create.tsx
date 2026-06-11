@@ -337,7 +337,6 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
                   className={GREEN_INPUT}
                 />
               </div>
-              <div className="hidden lg:block" />
             </>
           )}
 
