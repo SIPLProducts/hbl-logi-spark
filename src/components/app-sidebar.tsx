@@ -13,6 +13,7 @@ import {
   Gauge,
   AlertTriangle,
   ShieldCheck,
+  UserPlus,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
@@ -51,6 +52,11 @@ const groups: { items: NavItem[] }[] = [
       { title: "Service Level", to: "/service-level", icon: Gauge },
       { title: "Transit Damage Info", to: "/transit-damage-info", icon: AlertTriangle },
       { title: "Insurance Claim Tracking", to: "/insurance-claim-tracking", icon: ShieldCheck },
+    ],
+  },
+  {
+    items: [
+      { title: "User Creation", to: "/user-creation", icon: UserPlus },
     ],
   },
 ];
