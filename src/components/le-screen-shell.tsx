@@ -324,6 +324,7 @@ export function LeScreenShell({
             {children}
 
             {/* Action bar */}
+            {!renderCreateBody && (
             <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/95 backdrop-blur border-t border-hairline px-6 py-3 flex items-center justify-end gap-2 z-10">
               <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
                 <ChevronLeft className="size-3.5" /> Save and Previous
@@ -335,6 +336,7 @@ export function LeScreenShell({
                 Save and Next <ChevronRight className="size-3.5" />
               </button>
             </div>
+            )}
           </TabsContent>
 
           {/* ───────── Search & Reports tab ───────── */}
