@@ -259,6 +259,82 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
             </label>
           </div>
 
+          {provision && (
+            <>
+              <div className="animate-in fade-in slide-in-from-top-2">
+                <label className={LABEL}>Provision Amount</label>
+                <input
+                  readOnly
+                  value={provisionTotal === "" ? "" : String(provisionTotal)}
+                  onClick={() => setProvisionOpen(true)}
+                  placeholder="Click to enter amount"
+                  className={GREEN_INPUT + " cursor-pointer"}
+                />
+              </div>
+              <div className="animate-in fade-in slide-in-from-top-2">
+                <label className={LABEL}>Provision Date</label>
+                <input
+                  type="date"
+                  value={provisionDate}
+                  onChange={(e) => setProvisionDate(e.target.value)}
+                  className={GREEN_INPUT}
+                />
+              </div>
+            </>
+          )}
+
+          {account && (
+            <>
+              <div className="animate-in fade-in slide-in-from-top-2">
+                <label className={LABEL}>Freight Bill Number</label>
+                <input
+                  value={freightBillNo}
+                  onChange={(e) => setFreightBillNo(e.target.value)}
+                  placeholder="Freight Bill Number"
+                  className={GREEN_INPUT}
+                />
+              </div>
+              <div className="animate-in fade-in slide-in-from-top-2">
+                <label className={LABEL}>Freight Bill Date</label>
+                <input
+                  type="date"
+                  value={freightBillDate}
+                  onChange={(e) => setFreightBillDate(e.target.value)}
+                  className={GREEN_INPUT}
+                />
+              </div>
+              <div className="animate-in fade-in slide-in-from-top-2">
+                <label className={LABEL}>Physical Submission Date</label>
+                <input
+                  type="date"
+                  value={physicalSubmissionDate}
+                  onChange={(e) => setPhysicalSubmissionDate(e.target.value)}
+                  className={GREEN_INPUT}
+                />
+              </div>
+              <div className="animate-in fade-in slide-in-from-top-2">
+                <label className={LABEL}>Freight Charges</label>
+                <input
+                  readOnly
+                  value={freightTotal === "" ? "" : String(freightTotal)}
+                  onClick={() => setFreightOpen(true)}
+                  placeholder="Click to enter charges"
+                  className={GREEN_INPUT + " cursor-pointer"}
+                />
+              </div>
+              <div className="animate-in fade-in slide-in-from-top-2">
+                <label className={LABEL}>Bill Submission To F&amp;A</label>
+                <input
+                  type="date"
+                  value={billSubmissionDate}
+                  onChange={(e) => setBillSubmissionDate(e.target.value)}
+                  className={GREEN_INPUT}
+                />
+              </div>
+              <div className="hidden lg:block" />
+            </>
+          )}
+
           <div>
             <label className={LABEL}>Freight Bill upload</label>
             <input type="file" className={GREEN_INPUT + " py-1.5"} />
@@ -290,6 +366,29 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
           <ChevronLeft className="size-3.5" /> Save and Previous
         </button>
       </div>
+
+      <ChargesBreakdownDialog
+        open={provisionOpen}
+        onOpenChange={setProvisionOpen}
+        title="Detailed Provision Amount Input"
+        totalLabel="Total Provision"
+        value={provisionBreakdown}
+        onSave={(b, total) => {
+          setProvisionBreakdown(b);
+          setProvisionTotal(total);
+        }}
+      />
+      <ChargesBreakdownDialog
+        open={freightOpen}
+        onOpenChange={setFreightOpen}
+        title="Detailed Freight Charges Input"
+        totalLabel="Total Freight"
+        value={freightBreakdown}
+        onSave={(b, total) => {
+          setFreightBreakdown(b);
+          setFreightTotal(total);
+        }}
+      />
     </div>
   );
 }
