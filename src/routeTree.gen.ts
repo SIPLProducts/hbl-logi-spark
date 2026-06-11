@@ -27,6 +27,7 @@ import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as ReportsTransitEwayBillRouteImport } from './routes/reports.transit-eway-bill'
 import { Route as ReportsPendingPodsRouteImport } from './routes/reports.pending-pods'
 import { Route as ReportsLoadingFactorCostRouteImport } from './routes/reports.loading-factor-cost'
+import { Route as ReportsInsuranceRouteImport } from './routes/reports.insurance'
 import { Route as ReportsFreightBillsRouteImport } from './routes/reports.freight-bills'
 import { Route as ReportsDamageListRouteImport } from './routes/reports.damage-list'
 import { Route as ReportsBusinessShareMatrixRouteImport } from './routes/reports.business-share-matrix'
@@ -122,6 +123,11 @@ const ReportsLoadingFactorCostRoute =
     path: '/reports/loading-factor-cost',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ReportsInsuranceRoute = ReportsInsuranceRouteImport.update({
+  id: '/reports/insurance',
+  path: '/reports/insurance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsFreightBillsRoute = ReportsFreightBillsRouteImport.update({
   id: '/reports/freight-bills',
   path: '/reports/freight-bills',
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
   '/reports/damage-list': typeof ReportsDamageListRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
+  '/reports/insurance': typeof ReportsInsuranceRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
   '/reports/damage-list': typeof ReportsDamageListRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
+  '/reports/insurance': typeof ReportsInsuranceRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
   '/reports/damage-list': typeof ReportsDamageListRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
+  '/reports/insurance': typeof ReportsInsuranceRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/reports/business-share-matrix'
     | '/reports/damage-list'
     | '/reports/freight-bills'
+    | '/reports/insurance'
     | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
     | '/reports/transit-eway-bill'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/reports/business-share-matrix'
     | '/reports/damage-list'
     | '/reports/freight-bills'
+    | '/reports/insurance'
     | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
     | '/reports/transit-eway-bill'
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/reports/business-share-matrix'
     | '/reports/damage-list'
     | '/reports/freight-bills'
+    | '/reports/insurance'
     | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
     | '/reports/transit-eway-bill'
@@ -299,6 +311,7 @@ export interface RootRouteChildren {
   ReportsBusinessShareMatrixRoute: typeof ReportsBusinessShareMatrixRoute
   ReportsDamageListRoute: typeof ReportsDamageListRoute
   ReportsFreightBillsRoute: typeof ReportsFreightBillsRoute
+  ReportsInsuranceRoute: typeof ReportsInsuranceRoute
   ReportsLoadingFactorCostRoute: typeof ReportsLoadingFactorCostRoute
   ReportsPendingPodsRoute: typeof ReportsPendingPodsRoute
   ReportsTransitEwayBillRoute: typeof ReportsTransitEwayBillRoute
@@ -433,6 +446,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsLoadingFactorCostRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/insurance': {
+      id: '/reports/insurance'
+      path: '/reports/insurance'
+      fullPath: '/reports/insurance'
+      preLoaderRoute: typeof ReportsInsuranceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports/freight-bills': {
       id: '/reports/freight-bills'
       path: '/reports/freight-bills'
@@ -475,6 +495,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsBusinessShareMatrixRoute: ReportsBusinessShareMatrixRoute,
   ReportsDamageListRoute: ReportsDamageListRoute,
   ReportsFreightBillsRoute: ReportsFreightBillsRoute,
+  ReportsInsuranceRoute: ReportsInsuranceRoute,
   ReportsLoadingFactorCostRoute: ReportsLoadingFactorCostRoute,
   ReportsPendingPodsRoute: ReportsPendingPodsRoute,
   ReportsTransitEwayBillRoute: ReportsTransitEwayBillRoute,
