@@ -191,7 +191,7 @@ function CreateDispatch() {
             />
             Outward
           </label>
-          <label className={cn(
+          {/* <label className={cn(
             "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer",
             direction === "inward" ? "text-foreground" : "text-muted-foreground",
           )}>
@@ -202,7 +202,7 @@ function CreateDispatch() {
               className="accent-accent"
             />
             Inward
-          </label>
+          </label> */}
 
           {direction && (
             <>
