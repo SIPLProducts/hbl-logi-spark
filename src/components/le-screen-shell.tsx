@@ -109,6 +109,7 @@ export function LeScreenShell({
   extraTabs?: { label: string; active?: boolean }[];
   children?: ReactNode;
   renderCreateBody?: (ctx: { sap: SapMode; direction: "outward" | "inward" }) => ReactNode;
+  renderDirectionExtras?: (ctx: { sap: SapMode; direction: "outward" | "inward" }) => ReactNode;
 }) {
   const [tab, setTab] = useState<"create" | "search">("create");
   const [selectedId, setSelectedId] = useState<string>(rows[0]?.id ?? "");
@@ -229,6 +230,7 @@ export function LeScreenShell({
                 /> */}
                 <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
                 <SapToggle value={sap} onChange={setSap} />
+                {renderDirectionExtras?.({ sap, direction })}
               </div>
             </div>
 
