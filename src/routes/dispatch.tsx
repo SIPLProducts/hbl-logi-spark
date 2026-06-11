@@ -590,11 +590,11 @@ function SearchDispatch() {
 
   return (
     <div className="space-y-5">
-      <div className="bg-surface border border-hairline rounded-xl shadow-xs">
-        <div className="px-4 py-3 border-b border-hairline flex items-center justify-between bg-muted/40">
+      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant">
+        <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
           <div className="flex items-center gap-2">
             <Filter className="size-4 text-accent" />
-            <h3 className="text-[13px] font-semibold text-foreground">Filter Options</h3>
+            <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Filter Options</h3>
           </div>
           <SapToggle value={sap} onChange={setSap} />
         </div>
