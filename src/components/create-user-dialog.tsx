@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff, X } from "lucide-react";
 import {
   Dialog,
@@ -11,16 +11,67 @@ const INPUT =
 const LABEL = "block text-[11px] font-semibold text-foreground mb-1.5";
 const REQ = <span className="text-rose-500 ml-0.5">*</span>;
 
+export type UserFormValues = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  contact: string;
+  email: string;
+  category: string;
+  employeeCode: string;
+  inOutType: string;
+  plants: string;
+  divisions: string;
+  role: string;
+  screensCount: number;
+  active: boolean;
+};
+
+const BLANK: UserFormValues = {
+  userId: "2424",
+  firstName: "",
+  lastName: "",
+  contact: "",
+  email: "",
+  category: "Internal",
+  employeeCode: "",
+  inOutType: "",
+  plants: "",
+  divisions: "",
+  role: "",
+  screensCount: 0,
+  active: true,
+};
+
 export function CreateUserDialog({
   open,
   onOpenChange,
+  mode = "create",
+  initialValues,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  mode?: "create" | "edit";
+  initialValues?: UserFormValues;
 }) {
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [active, setActive] = useState(true);
+  const [values, setValues] = useState<UserFormValues>(initialValues ?? BLANK);
+  const [changePwd, setChangePwd] = useState(false);
+  const isEdit = mode === "edit";
+
+  useEffect(() => {
+    if (open) {
+      setValues(initialValues ?? BLANK);
+      setChangePwd(false);
+      setShowPwd(false);
+      setShowConfirm(false);
+    }
+  }, [open, initialValues]);
+
+  const pwdDisabled = isEdit && !changePwd;
+  const set = <K extends keyof UserFormValues>(k: K, v: UserFormValues[K]) =>
+    setValues((s) => ({ ...s, [k]: v }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -30,7 +81,7 @@ export function CreateUserDialog({
         {/* Gradient header */}
         <div className="bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 px-5 py-3.5 flex items-center justify-between">
           <DialogTitle className="text-white font-semibold text-[15px] tracking-tight">
-            Create New User
+            {isEdit ? "Edit User" : "Create New User"}
           </DialogTitle>
           <button
             onClick={() => onOpenChange(false)}
@@ -44,23 +95,23 @@ export function CreateUserDialog({
         {/* Body */}
         <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-4 bg-surface">
           <Field label={<>User ID{REQ}</>}>
-            <input defaultValue="2424" className={INPUT} />
+            <input value={values.userId} onChange={(e) => set("userId", e.target.value)} className={INPUT} />
           </Field>
           <Field label={<>First Name{REQ}</>}>
-            <input placeholder="Enter first name" className={INPUT} />
+            <input value={values.firstName} onChange={(e) => set("firstName", e.target.value)} placeholder="Enter first name" className={INPUT} />
           </Field>
           <Field label="Last Name">
-            <input placeholder="Enter last name" className={INPUT} />
+            <input value={values.lastName} onChange={(e) => set("lastName", e.target.value)} placeholder="Enter last name" className={INPUT} />
           </Field>
 
           <Field label={<>Contact{REQ}</>}>
-            <input placeholder="Enter contact number" className={INPUT} />
+            <input value={values.contact} onChange={(e) => set("contact", e.target.value)} placeholder="Enter contact number" className={INPUT} />
           </Field>
           <Field label={<>Email{REQ}</>}>
-            <input type="email" placeholder="Enter email address" className={INPUT} />
+            <input type="email" value={values.email} onChange={(e) => set("email", e.target.value)} placeholder="Enter email address" className={INPUT} />
           </Field>
           <Field label="Category">
-            <select defaultValue="Internal" className={INPUT}>
+            <select value={values.category} onChange={(e) => set("category", e.target.value)} className={INPUT}>
               <option value="Internal">Internal</option>
               <option value="External">External</option>
             </select>
@@ -70,8 +121,10 @@ export function CreateUserDialog({
             <div className="relative">
               <input
                 type={showPwd ? "text" : "password"}
-                defaultValue="password12"
-                className={INPUT + " pr-9"}
+                defaultValue={isEdit ? "••••••••••" : "password12"}
+                disabled={pwdDisabled}
+                className={INPUT + " pr-9" + (pwdDisabled ? " bg-muted cursor-not-allowed" : "")}
+                key={`pwd-${changePwd}`}
               />
               <button
                 type="button"
@@ -86,8 +139,11 @@ export function CreateUserDialog({
             <div className="relative">
               <input
                 type={showConfirm ? "text" : "password"}
+                defaultValue={isEdit && !changePwd ? "••••••••••" : ""}
                 placeholder="Enter password"
-                className={INPUT + " pr-9"}
+                disabled={pwdDisabled}
+                className={INPUT + " pr-9" + (pwdDisabled ? " bg-muted cursor-not-allowed" : "")}
+                key={`cpwd-${changePwd}`}
               />
               <button
                 type="button"
@@ -99,28 +155,27 @@ export function CreateUserDialog({
             </div>
           </Field>
           <Field label={<>Employee Code{REQ}</>}>
-            <input placeholder="Enter employee code" className={INPUT} />
+            <input value={values.employeeCode} onChange={(e) => set("employeeCode", e.target.value)} placeholder="Enter employee code" className={INPUT} />
           </Field>
 
           <Field label={<>In/Out Type{REQ}</>}>
-            <select defaultValue="" className={INPUT}>
+            <select value={values.inOutType} onChange={(e) => set("inOutType", e.target.value)} className={INPUT}>
               <option value="" disabled></option>
-              <option value="Internal">Internal</option>
-              <option value="External">External</option>
-              <option value="Contract">Contract</option>
+              <option value="Inward">Inward</option>
+              <option value="Outward">Outward</option>
             </select>
           </Field>
           <Field label="Plants">
-            <input placeholder="Select Plants" className={INPUT} />
+            <input value={values.plants} onChange={(e) => set("plants", e.target.value)} placeholder="Select Plants" className={INPUT} />
           </Field>
           <Field label="Divisions">
-            <input placeholder="Select Divisions" className={INPUT} />
+            <input value={values.divisions} onChange={(e) => set("divisions", e.target.value)} placeholder="Select Divisions" className={INPUT} />
           </Field>
 
           <Field label="Role">
-            <select defaultValue="" className={INPUT}>
+            <select value={values.role} onChange={(e) => set("role", e.target.value)} className={INPUT}>
               <option value="" disabled></option>
-              <option value="Admin">Admin</option>
+              <option value="ADMIN">ADMIN</option>
               <option value="LE Operator">LE Operator</option>
               <option value="Approver">Approver</option>
               <option value="Viewer">Viewer</option>
@@ -131,7 +186,7 @@ export function CreateUserDialog({
               type="button"
               className="h-9 px-4 rounded-md bg-sky-500 hover:bg-sky-600 text-white text-[12.5px] font-semibold shadow-sm"
             >
-              Select Screens (0)
+              Select Screens ({values.screensCount})
             </button>
           </Field>
           <Field label="Status">
@@ -139,31 +194,31 @@ export function CreateUserDialog({
               <span
                 className={
                   "px-2.5 py-1 rounded text-[11px] font-semibold " +
-                  (!active ? "bg-muted text-foreground" : "text-muted-foreground")
+                  (!values.active ? "bg-muted text-foreground" : "text-muted-foreground")
                 }
               >
                 Inactive
               </span>
               <button
                 type="button"
-                onClick={() => setActive((v) => !v)}
+                onClick={() => set("active", !values.active)}
                 className={
                   "relative inline-flex h-5 w-9 items-center rounded-full transition-colors " +
-                  (active ? "bg-emerald-500" : "bg-muted")
+                  (values.active ? "bg-emerald-500" : "bg-muted")
                 }
-                aria-pressed={active}
+                aria-pressed={values.active}
               >
                 <span
                   className={
                     "inline-block size-4 transform rounded-full bg-white shadow transition-transform " +
-                    (active ? "translate-x-[18px]" : "translate-x-0.5")
+                    (values.active ? "translate-x-[18px]" : "translate-x-0.5")
                   }
                 />
               </button>
               <span
                 className={
                   "px-2.5 py-1 rounded text-[11px] font-semibold " +
-                  (active ? "bg-emerald-500 text-white" : "text-muted-foreground")
+                  (values.active ? "bg-emerald-500 text-white" : "text-muted-foreground")
                 }
               >
                 Active
@@ -172,13 +227,27 @@ export function CreateUserDialog({
           </Field>
         </div>
 
+        {isEdit && (
+          <div className="px-6 pb-4 bg-surface">
+            <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={changePwd}
+                onChange={(e) => setChangePwd(e.target.checked)}
+                className="size-3.5 rounded border-input accent-indigo-600"
+              />
+              Change Password
+            </label>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="px-6 py-4 border-t border-hairline flex justify-end bg-surface">
           <button
             onClick={() => onOpenChange(false)}
             className="h-9 px-6 rounded-md bg-[#7a1325] hover:bg-[#92172d] text-white text-[12.5px] font-semibold shadow-sm"
           >
-            Create
+            {isEdit ? "Update" : "Create"}
           </button>
         </div>
       </DialogContent>
