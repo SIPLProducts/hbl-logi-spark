@@ -24,6 +24,8 @@ import { Route as DispatchOrdersRouteImport } from './routes/dispatch-orders'
 import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
+import { Route as ReportsTransitEwayBillRouteImport } from './routes/reports.transit-eway-bill'
+import { Route as ReportsPendingPodsRouteImport } from './routes/reports.pending-pods'
 
 const VehicleInfoRoute = VehicleInfoRouteImport.update({
   id: '/vehicle-info',
@@ -100,6 +102,16 @@ const ReportsIndexRoute = ReportsIndexRouteImport.update({
   path: '/reports/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsTransitEwayBillRoute = ReportsTransitEwayBillRouteImport.update({
+  id: '/reports/transit-eway-bill',
+  path: '/reports/transit-eway-bill',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsPendingPodsRoute = ReportsPendingPodsRouteImport.update({
+  id: '/reports/pending-pods',
+  path: '/reports/pending-pods',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -116,6 +128,8 @@ export interface FileRoutesByFullPath {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports/': typeof ReportsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -133,6 +147,8 @@ export interface FileRoutesByTo {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports': typeof ReportsIndexRoute
 }
 export interface FileRoutesById {
@@ -151,6 +167,8 @@ export interface FileRoutesById {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports/': typeof ReportsIndexRoute
 }
 export interface FileRouteTypes {
@@ -170,6 +188,8 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/pending-pods'
+    | '/reports/transit-eway-bill'
     | '/reports/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -187,6 +207,8 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/pending-pods'
+    | '/reports/transit-eway-bill'
     | '/reports'
   id:
     | '__root__'
@@ -204,6 +226,8 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/pending-pods'
+    | '/reports/transit-eway-bill'
     | '/reports/'
   fileRoutesById: FileRoutesById
 }
@@ -222,6 +246,8 @@ export interface RootRouteChildren {
   TransitInfoRoute: typeof TransitInfoRoute
   UserCreationRoute: typeof UserCreationRoute
   VehicleInfoRoute: typeof VehicleInfoRoute
+  ReportsPendingPodsRoute: typeof ReportsPendingPodsRoute
+  ReportsTransitEwayBillRoute: typeof ReportsTransitEwayBillRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
 }
 
@@ -332,6 +358,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/transit-eway-bill': {
+      id: '/reports/transit-eway-bill'
+      path: '/reports/transit-eway-bill'
+      fullPath: '/reports/transit-eway-bill'
+      preLoaderRoute: typeof ReportsTransitEwayBillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/pending-pods': {
+      id: '/reports/pending-pods'
+      path: '/reports/pending-pods'
+      fullPath: '/reports/pending-pods'
+      preLoaderRoute: typeof ReportsPendingPodsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -350,8 +390,20 @@ const rootRouteChildren: RootRouteChildren = {
   TransitInfoRoute: TransitInfoRoute,
   UserCreationRoute: UserCreationRoute,
   VehicleInfoRoute: VehicleInfoRoute,
+  ReportsPendingPodsRoute: ReportsPendingPodsRoute,
+  ReportsTransitEwayBillRoute: ReportsTransitEwayBillRoute,
   ReportsIndexRoute: ReportsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
