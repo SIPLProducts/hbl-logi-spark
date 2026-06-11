@@ -1,20 +1,38 @@
-# Plan: Add Profile + Logout to Top-Right of App
+# Plan: Professional Login Page
 
-## Approach
-Restore the empty `TopBar` with a minimal right-aligned area containing a Profile avatar dropdown and a Logout button. UI-only — no real auth backend.
+## Route
+Create `src/routes/login.tsx` rendering at `/login`. Standalone page (no sidebar/topbar) — uses its own full-viewport layout.
 
-## Change in `src/components/top-bar.tsx`
-- Render a thin `<header>` (h-12, surface bg, bottom hairline border, sticky) with `justify-end`
-- Right side:
-  - Avatar dropdown (shadcn `DropdownMenu`) showing initials "AD" / "Admin User · admin@hbl.com"
-    - Menu items: **Profile** (navigates to `/profile`), Divider, **Logout** (navigates to `/login`)
-  - Standalone **Logout** icon button next to it (`LogOut` lucide icon) for one-click sign out
-- Use TanStack `useNavigate` for navigation; both `/profile` and `/login` are placeholder routes that don't exist yet — clicking will hit the root 404 boundary. Since user picked "Just UI buttons", that's acceptable; no new route files are created.
+## Layout (split-screen, matches reference)
+Two-column grid on `md+`, stacked on mobile:
+
+**Left column (~40%)** — white card, centered vertically:
+- HBL logo (reuse `src/assets/hbl-logo.png.asset.json`), large
+- Heading: "Sign in to your account" / subtle: "Logistics Execution Module"
+- `User Name` label + input (`Enter User Name` placeholder)
+- `Password` label + input with eye toggle for show/hide
+- Primary "Log In" button (gradient primary, full-width, with LogIn lucide icon)
+- "Forgot Password?" text link below
+- Footer at bottom: "© 2026 HBL Power Systems. All Rights Reserved"
+
+**Right column (~60%)** — visual panel:
+- Three-image collage (port containers, highway truck, container ship) using royalty-free Unsplash URLs split into 3 angled/diagonal panels with subtle clip-path
+- Bottom overlay band: large display-font title "LOGISTIC EXECUTION MODULE" + small "HBL Engineering Limited" with logo on the right
+- Subtle dark gradient overlay on imagery for legibility
+- Hidden on `<md` screens
+
+## Behavior
+- Form is UI-only with local `useState` for the two fields and `showPassword` toggle
+- Submit: zod validation (username min 1 max 100, password min 1 max 100), toast success "Signed in", then `navigate({ to: "/" })`
+- "Forgot Password?" toast: "Contact your administrator"
+
+## SEO / head
+- `title: "Login · HBL LE"`, description, canonical
 
 ## Files
-- `src/components/top-bar.tsx` — rewritten with the dropdown + logout button
+- `src/routes/login.tsx` (new)
 
 ## Out of scope
-- No `/profile` or `/login` page implementation
-- No auth state, no Lovable Cloud
-- Sidebar untouched
+- No auth backend, no session, no route guards
+- No new images uploaded; use Unsplash URLs for the right-side collage
+- Existing `/login` link from TopBar Logout button now resolves to this page
