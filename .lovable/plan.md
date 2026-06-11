@@ -1,18 +1,14 @@
-## Shipment Details — Without SAP variant
+## Shipment Details — Add/Delete Line Items
 
-Mirror the With SAP layout but adapt for Without SAP per the reference image.
+Make the **Line Items** table (second table) in `shipment-details-sap-create.tsx` dynamic by wiring the **+** and **×** action buttons.
 
 ### Changes
 
 **`src/components/shipment-details-sap-create.tsx`**
-- Add `mode?: "with" | "without"` prop (default `"with"`).
-- When `mode === "without"`:
-  - Hide the Invoice Number input + GET button (keep the Select dropdown + search input row).
-  - Always render the fields section (no gated reveal, no helper hint).
-  - In the top fields row, after Kilometres add a 4th field **DC Reference Number** (text input) — placed below as a second row item using the same grid.
-- When `mode === "with"`: behavior unchanged.
-
-**`src/routes/shipment-details.tsx`**
-- Update `renderCreateBody` so outward + Without SAP also renders `<ShipmentDetailsSapCreate mode="without" />`. Outward + With SAP keeps `mode="with"`. Inward unchanged.
+- Replace the single hardcoded `<tr>` row with an array of line-item objects in state.
+- Each line item tracks its own `checked` flag and field values.
+- **+ button**: appends a new empty line item to the array.
+- **× button**: removes that specific row from the array.
+- Re-render the `<tbody>` by mapping over the line-items array so Sl.No auto-updates.
 
 No other screens or business logic touched.
