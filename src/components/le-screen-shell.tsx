@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { format } from "date-fns";
 import {
   Plus,
   Download,
@@ -12,8 +13,21 @@ import {
   Eye,
   Pencil,
   FileText,
+  FileDown,
+  CalendarIcon,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PLANTS, DIVISIONS, TRANSPORTERS, VEHICLE_TYPES } from "@/lib/dispatch-mock";
 import { sampleRows, counts, type WorklistRow } from "@/lib/le-mock-data";
 import { LeFooter } from "./le-footer";
 import { cn } from "@/lib/utils";
@@ -27,6 +41,7 @@ const SEARCH_TYPES = [
   "Work Order",
   "LR Number",
 ] as const;
+const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
 const SEARCH_TYPE_TO_KEY: Record<(typeof SEARCH_TYPES)[number], keyof WorklistRow> = {
   Reference: "reference",
   Invoice: "reference",
@@ -95,13 +110,33 @@ export function LeScreenShell({
 }) {
   const [tab, setTab] = useState<"create" | "search">("create");
   const [selectedId, setSelectedId] = useState<string>(rows[0]?.id ?? "");
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
   const [direction, setDirection] = useState<"outward" | "inward">("outward");
   const [sap, setSap] = useState<SapMode>("with");
   const [searchType, setSearchType] = useState<(typeof SEARCH_TYPES)[number]>("Reference");
   const [searchValue, setSearchValue] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+
+  // Search & Reports filter state (Dispatch-style)
+  const [searchSap, setSearchSap] = useState<SapMode | null>(null);
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
+  const [fPlant, setFPlant] = useState("");
+  const [fDivision, setFDivision] = useState("");
+  const [fTransporter, setFTransporter] = useState("");
+  const [fVehicleType, setFVehicleType] = useState("");
+  const [fStatus, setFStatus] = useState("");
+  const [applied, setApplied] = useState(false);
+
+  const resetFilters = () => {
+    setFromDate(undefined);
+    setToDate(undefined);
+    setFPlant("");
+    setFDivision("");
+    setFTransporter("");
+    setFVehicleType("");
+    setFStatus("");
+    setApplied(false);
+    setSearchSap(null);
+  };
 
   // Avoid SSR/CSR hydration mismatch on the live clock
   const [syncedAt, setSyncedAt] = useState<string>("—");
