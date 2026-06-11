@@ -59,11 +59,15 @@ function YesNo({
   );
 }
 
-export function ServiceLevelSapCreate(_: { mode?: "with" | "without" } = {}) {
+export function ServiceLevelSapCreate({
+  loadType = null,
+}: {
+  mode?: "with" | "without";
+  loadType?: "ftl" | "cargo" | null;
+} = {}) {
   const [checked, setChecked] = useState(true);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [revealed, setRevealed] = useState(false);
-  const [loadType, setLoadType] = useState<"ftl" | "cargo" | null>(null);
   const [answers, setAnswers] = useState<Record<Q, "yes" | "no" | null>>(
     () => QUESTIONS.reduce((a, q) => ({ ...a, [q]: null }), {} as Record<Q, "yes" | "no" | null>),
   );
@@ -79,31 +83,6 @@ export function ServiceLevelSapCreate(_: { mode?: "with" | "without" } = {}) {
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-semibold border border-emerald-200">
           <span className="size-1.5 rounded-full bg-emerald-500" /> Completed: 1
         </span>
-      </div>
-
-      {/* Load Type toggle */}
-      <div className="bg-surface border border-hairline rounded-xl p-3 shadow-elegant flex flex-wrap items-center gap-3">
-        <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-          Load Type
-        </span>
-        {([
-          { id: "ftl", label: "Full Truck Load" },
-          { id: "cargo", label: "Cargo" },
-        ] as const).map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            onClick={() => setLoadType((cur) => (cur === o.id ? null : o.id))}
-            className={
-              "px-4 h-8 rounded-full text-[12px] font-semibold border transition-colors " +
-              (loadType === o.id
-                ? "bg-accent text-accent-foreground border-accent shadow-sm"
-                : "bg-muted text-muted-foreground border-hairline hover:bg-accent/10")
-            }
-          >
-            {o.label}
-          </button>
-        ))}
       </div>
 
       {!loadType && (
@@ -163,9 +142,9 @@ export function ServiceLevelSapCreate(_: { mode?: "with" | "without" } = {}) {
       </div>
 
       {/* Invoice lookup bar */}
-      <div className="bg-surface border border-hairline rounded-xl p-3 shadow-elegant">
+      <div className="bg-surface border border-hairline rounded-xl p-3 shadow-elegant max-w-md">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[220px]">
+          <div className="flex-1 min-w-[160px]">
             <label className={LABEL}>Invoice Number</label>
             <input
               value={invoiceNumber}
