@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Plus,
   Download,
@@ -8,16 +8,25 @@ import {
   Save,
   ChevronLeft,
   ChevronRight,
-  SlidersHorizontal,
+  Filter,
   Eye,
   Pencil,
+  FileText,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { sampleRows, counts, type WorklistRow } from "@/lib/le-mock-data";
 import { LeFooter } from "./le-footer";
 import { cn } from "@/lib/utils";
 
 type SapMode = "with" | "without";
-const SEARCH_TYPES = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"] as const;
+const SEARCH_TYPES = [
+  "Reference",
+  "Invoice",
+  "ODN",
+  "SO Number",
+  "Work Order",
+  "LR Number",
+] as const;
 const SEARCH_TYPE_TO_KEY: Record<(typeof SEARCH_TYPES)[number], keyof WorklistRow> = {
   Reference: "reference",
   Invoice: "reference",
@@ -71,7 +80,6 @@ export function LeScreenShell({
   groups,
   topFields,
   lineItems,
-  extraTabs,
   children,
 }: {
   title: string;
@@ -85,14 +93,21 @@ export function LeScreenShell({
   extraTabs?: { label: string; active?: boolean }[];
   children?: ReactNode;
 }) {
-  const [mode, setMode] = useState<"with-sap" | "without-sap">("with-sap");
+  const [tab, setTab] = useState<"create" | "search">("create");
   const [selectedId, setSelectedId] = useState<string>(rows[0]?.id ?? "");
-  const [activeTab, setActiveTab] = useState<string>(extraTabs?.[0]?.label ?? "");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
   const [direction, setDirection] = useState<"outward" | "inward">("outward");
   const [sap, setSap] = useState<SapMode>("with");
   const [searchType, setSearchType] = useState<(typeof SEARCH_TYPES)[number]>("Reference");
   const [searchValue, setSearchValue] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Avoid SSR/CSR hydration mismatch on the live clock
+  const [syncedAt, setSyncedAt] = useState<string>("—");
+  useEffect(() => {
+    setSyncedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+  }, []);
 
   const filteredRows = searchValue.trim()
     ? rows.filter((r) => {
@@ -105,373 +120,376 @@ export function LeScreenShell({
   return (
     <div className="flex flex-col min-h-full">
       {/* Page header */}
-      <div className="bg-surface border-b border-hairline px-6 py-5">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0">
-            <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
-              {title}
-            </h1>
-            {description && (
-              <p className="mt-1 text-[12.5px] text-muted-foreground max-w-2xl">{description}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden md:inline text-[11px] font-mono text-muted-foreground">
-              Synced ·{" "}
-              {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
-            <button
-              onClick={() => window.location.reload()}
-              className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted"
-            >
-              <RefreshCw className="size-3.5" /> Refresh
-            </button>
-            <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted">
-              <Download className="size-3.5" /> Export
-            </button>
-            <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm">
-              <Plus className="size-3.5" /> New
-            </button>
-          </div>
-        </div>
-
-        {kpis && kpis.length > 0 && (
-          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {kpis.map((k) => (
-              <KpiCard key={k.label} {...k} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="p-6 space-y-5 flex-1">
-        {/* Direction + SAP + Filter toolbar */}
-        <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Direction
-            </span>
-            <PremiumRadio
-              label="Outward"
-              checked={direction === "outward"}
-              onSelect={() => setDirection("outward")}
-            />
-            {/* <PremiumRadio
-              label="Inward"
-              checked={direction === "inward"}
-              onSelect={() => setDirection("inward")}
-            /> */}
-
-            <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
-            <SapToggle value={sap} onChange={setSap} />
-
-            <div className="h-6 w-px bg-hairline mx-1 hidden lg:block" />
-            <div className="flex flex-wrap items-center gap-2 ml-auto w-full lg:w-auto">
-              <select
-                value={searchType}
-                onChange={(e) => setSearchType(e.target.value as (typeof SEARCH_TYPES)[number])}
-                className="bg-surface border border-hairline rounded-md px-2 h-9 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              >
-                {SEARCH_TYPES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <div className="relative flex-1 min-w-[220px]">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                <input
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  placeholder={`Enter ${searchType}…`}
-                  className="w-full h-9 bg-surface border border-hairline rounded-md pl-8 pr-3 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                />
-              </div>
-              <button className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md text-[12px] font-semibold text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm">
-                <Search className="size-3.5" /> Search
-              </button>
-              {searchValue && (
-                <button
-                  onClick={() => setSearchValue("")}
-                  className="h-9 px-3 rounded-md text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-                >
-                  Reset
-                </button>
+      <div className="bg-surface/80 backdrop-blur border-b border-hairline px-4 sm:px-6 lg:px-8 pt-6 pb-5 shadow-soft">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="hidden sm:grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-primary text-white shadow-cta">
+              <FileText className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-display text-[26px] leading-none font-bold tracking-tight text-foreground truncate">
+                {title}
+              </h1>
+              {description && (
+                <p className="text-[12.5px] text-muted-foreground mt-1.5 max-w-2xl">
+                  {description}
+                </p>
               )}
             </div>
           </div>
-        </div>
-
-        {/* Mode + chips */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="inline-flex items-center p-0.5 rounded-md bg-muted border border-hairline text-[12px]">
-            {(["with-sap", "without-sap"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={
-                  "px-3 h-7 rounded-[5px] font-medium transition-colors " +
-                  (mode === m
-                    ? "bg-surface text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground")
-                }
-              >
-                {m === "with-sap" ? "With SAP" : "Without SAP"}
-              </button>
-            ))}
-          </div>
-
-          <div className="inline-flex items-center gap-1.5 flex-wrap">
-            {(
-              [
-                {
-                  key: "all",
-                  label: "All",
-                  count: counts.pending + counts.completed,
-                  dot: "bg-muted-foreground",
-                },
-                { key: "pending", label: "Pending", count: counts.pending, dot: "bg-warning" },
-                {
-                  key: "completed",
-                  label: "Completed",
-                  count: counts.completed,
-                  dot: "bg-success",
-                },
-              ] as const
-            ).map((chip) => (
-              <button
-                key={chip.key}
-                onClick={() => setStatusFilter(chip.key)}
-                className={
-                  "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[11.5px] transition-colors " +
-                  (statusFilter === chip.key
-                    ? "border-accent/40 bg-accent/10 text-accent"
-                    : "border-hairline bg-surface text-muted-foreground hover:text-foreground")
-                }
-              >
-                <span className={"size-1.5 rounded-full " + chip.dot} />
-                {chip.label}
-                <span className="font-mono font-semibold ml-0.5">{chip.count}</span>
-              </button>
-            ))}
-            <button className="ml-1 inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-hairline bg-surface text-[11.5px] text-muted-foreground hover:text-foreground">
-              <SlidersHorizontal className="size-3" /> Filters
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="hidden md:inline text-[11px] font-mono text-muted-foreground">
+              Synced · {syncedAt}
+            </span>
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted"
+            >
+              <RefreshCw className="size-3.5" /> Refresh
+            </button>
+            <button className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
+              <Download className="size-3.5" /> Export
             </button>
           </div>
         </div>
-
-        {/* Sub-tabs */}
-        {extraTabs && (
-          <div className="flex items-center gap-1 border-b border-hairline">
-            {extraTabs.map((t) => (
-              <button
-                key={t.label}
-                onClick={() => setActiveTab(t.label)}
-                className={
-                  "px-4 py-2 text-[12.5px] font-semibold border-b-2 -mb-px " +
-                  (activeTab === t.label
-                    ? "border-accent text-accent"
-                    : "border-transparent text-muted-foreground hover:text-foreground")
-                }
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Worklist */}
-        <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-[12.5px]">
-              <thead>
-                <tr className="bg-muted/60 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
-                  <th className="px-3 py-2.5 w-10 text-center">
-                    <input type="checkbox" className="accent-accent" />
-                  </th>
-                  {columns.map((c) => (
-                    <th
-                      key={c.key as string}
-                      className={"px-3 py-2.5 whitespace-nowrap " + (c.className ?? "")}
-                    >
-                      {c.header}
-                    </th>
-                  ))}
-                  <th className="px-3 py-2.5 w-28 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-hairline/70">
-                {filteredRows.map((r) => (
-                  <tr
-                    key={r.id}
-                    className={
-                      "group cursor-pointer transition-colors " +
-                      (selectedId === r.id ? "bg-accent/5" : "hover:bg-muted/50")
-                    }
-                    onClick={() => setSelectedId(r.id)}
-                  >
-                    <td className="px-3 py-2.5 text-center">
-                      <input
-                        type="radio"
-                        checked={selectedId === r.id}
-                        onChange={() => setSelectedId(r.id)}
-                        className="accent-accent"
-                      />
-                    </td>
-                    {columns.map((c) => (
-                      <td key={c.key as string} className="px-3 py-2.5 whitespace-nowrap">
-                        {c.render
-                          ? c.render(r)
-                          : ((r as Record<string, unknown>)[c.key as string] as ReactNode)}
-                      </td>
-                    ))}
-                    <td className="px-3 py-2.5 text-right">
-                      <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
-                          aria-label="View"
-                        >
-                          <Eye className="size-3.5" />
-                        </button>
-                        <button
-                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
-                          aria-label="Edit"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button
-                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="border-t border-hairline bg-muted/40 px-4 py-3 flex flex-wrap items-center gap-2">
-            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Invoice Number
-            </label>
-            <select className="bg-surface border border-hairline rounded-md px-2 h-7 text-[12px] font-mono">
-              <option>900215479</option>
-              <option>900000088</option>
-            </select>
-            <button className="px-3 h-7 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground rounded-md hover:bg-primary/90">
-              GET
-            </button>
-            <div className="h-4 w-px bg-hairline mx-1" />
-            <select className="bg-surface border border-hairline rounded-md px-2 h-7 text-[12px]">
-              <option>Reference</option>
-              <option>Invoice</option>
-              <option>ODN</option>
-              <option>SO Number</option>
-            </select>
-            <div className="relative flex-1 min-w-[260px]">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-              <input
-                placeholder="Enter Reference / Invoice / ODN / SO Number"
-                className="w-full h-7 bg-surface border border-hairline rounded-md pl-8 pr-3 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              />
-            </div>
-            <button className="px-3 h-7 text-[11px] font-bold uppercase tracking-wider bg-accent text-accent-foreground rounded-md hover:bg-accent/90">
-              Search
-            </button>
-          </div>
-        </div>
-
-        {topFields && topFields.length > 0 && (
-          <div className="bg-surface border border-hairline rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4 shadow-xs">
-            {topFields.map((f) => (
-              <FieldInput key={f.label} field={f} />
-            ))}
-          </div>
-        )}
-
-        {groups?.map((g) => (
-          <div
-            key={g.title}
-            className="bg-surface border border-hairline rounded-lg shadow-xs"
-          >
-            <div className="px-4 py-2.5 border-b border-hairline bg-muted/50">
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
-                {g.title}
-              </h3>
-            </div>
-            <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {g.fields.map((f) => (
-                <div key={f.label} className={spanClass(f.span)}>
-                  <FieldInput field={f} />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {lineItems && (
-          <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-xs">
-            <div className="px-4 py-2.5 border-b border-hairline bg-muted/50 flex items-center justify-between">
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
-                Line Items
-              </h3>
-              <button className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent/10 rounded-md">
-                <Plus className="size-3" /> Add Row
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-[12.5px]">
-                <thead>
-                  <tr className="bg-muted/40 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
-                    {lineItems.columns.map((c) => (
-                      <th key={c} className="px-3 py-2 text-left">
-                        {c}
-                      </th>
-                    ))}
-                    <th className="px-3 py-2 w-16 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-hairline/70">
-                  {lineItems.rows.map((row, i) => (
-                    <tr key={i} className="hover:bg-muted/40">
-                      {row.map((cell, j) => (
-                        <td key={j} className="px-3 py-2">
-                          {typeof cell === "number" ? (
-                            <span className="font-mono">{cell}</span>
-                          ) : (
-                            cell
-                          )}
-                        </td>
-                      ))}
-                      <td className="px-3 py-2 text-right">
-                        <button className="text-muted-foreground hover:text-destructive">
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {children}
       </div>
 
-      <div className="sticky bottom-0 bg-surface/95 backdrop-blur border-t border-hairline px-6 py-3 flex items-center justify-end gap-2 z-10">
-        <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted">
-          <ChevronLeft className="size-3.5" /> Save and Previous
-        </button>
-        <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-accent-foreground bg-accent rounded-md hover:bg-accent/90 shadow-sm">
-          <Save className="size-3.5" /> Save
-        </button>
-        <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90">
-          Save and Next <ChevronRight className="size-3.5" />
-        </button>
+      {/* Tabs */}
+      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-7">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
+          <TabsList className="bg-surface border border-hairline rounded-xl p-1 h-auto shadow-soft">
+            <TabsTrigger
+              value="create"
+              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-lg px-4 py-2 text-[12.5px] font-semibold gap-1.5 transition-all"
+            >
+              <Plus className="size-3.5" /> Create
+            </TabsTrigger>
+            <TabsTrigger
+              value="search"
+              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-lg px-4 py-2 text-[12.5px] font-semibold gap-1.5 transition-all"
+            >
+              <Filter className="size-3.5" /> Search &amp; Reports
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ───────── Create tab ───────── */}
+          <TabsContent value="create" className="mt-5 space-y-5">
+            {/* Direction + SAP */}
+            <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Direction
+                </span>
+                <PremiumRadio
+                  label="Outward"
+                  checked={direction === "outward"}
+                  onSelect={() => setDirection("outward")}
+                />
+                {/* <PremiumRadio
+                  label="Inward"
+                  checked={direction === "inward"}
+                  onSelect={() => setDirection("inward")}
+                /> */}
+                <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
+                <SapToggle value={sap} onChange={setSap} />
+              </div>
+            </div>
+
+            {kpis && kpis.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {kpis.map((k) => (
+                  <KpiCard key={k.label} {...k} />
+                ))}
+              </div>
+            )}
+
+            {topFields && topFields.length > 0 && (
+              <div className="bg-surface border border-hairline rounded-2xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4 shadow-elegant">
+                {topFields.map((f) => (
+                  <FieldInput key={f.label} field={f} />
+                ))}
+              </div>
+            )}
+
+            {groups?.map((g) => (
+              <div
+                key={g.title}
+                className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden"
+              >
+                <div className="px-5 py-3 border-b border-hairline bg-surface-2/60">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
+                    {g.title}
+                  </h3>
+                </div>
+                <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {g.fields.map((f) => (
+                    <div key={f.label} className={spanClass(f.span)}>
+                      <FieldInput field={f} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {lineItems && (
+              <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden">
+                <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
+                    Line Items
+                  </h3>
+                  <button className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent/10 rounded-md">
+                    <Plus className="size-3" /> Add Row
+                  </button>
+                </div>
+                <div className="overflow-x-auto scrollbar-elegant">
+                  <table className="w-full text-[12.5px]">
+                    <thead>
+                      <tr className="bg-surface-2/80 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
+                        {lineItems.columns.map((c) => (
+                          <th key={c} className="px-3 py-2 text-left">
+                            {c}
+                          </th>
+                        ))}
+                        <th className="px-3 py-2 w-16 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-hairline/60">
+                      {lineItems.rows.map((row, i) => (
+                        <tr key={i} className="hover:bg-accent/[0.04]">
+                          {row.map((cell, j) => (
+                            <td key={j} className="px-3 py-2">
+                              {typeof cell === "number" ? (
+                                <span className="font-mono">{cell}</span>
+                              ) : (
+                                cell
+                              )}
+                            </td>
+                          ))}
+                          <td className="px-3 py-2 text-right">
+                            <button className="text-muted-foreground hover:text-destructive">
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {children}
+
+            {/* Action bar */}
+            <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/95 backdrop-blur border-t border-hairline px-6 py-3 flex items-center justify-end gap-2 z-10">
+              <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
+                <ChevronLeft className="size-3.5" /> Save and Previous
+              </button>
+              <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
+                <Save className="size-3.5" /> Save
+              </button>
+              <button className="inline-flex items-center gap-1.5 px-4 h-9 text-[12px] font-semibold text-primary-foreground bg-gradient-primary rounded-lg shadow-cta hover:-translate-y-0.5 transition-transform">
+                Save and Next <ChevronRight className="size-3.5" />
+              </button>
+            </div>
+          </TabsContent>
+
+          {/* ───────── Search & Reports tab ───────── */}
+          <TabsContent value="search" className="mt-5 space-y-5">
+            <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                <LabeledField label="Date From">
+                  <input
+                    type="datetime-local"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-9 w-full bg-surface border border-hairline rounded-md px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  />
+                </LabeledField>
+                <LabeledField label="Date To">
+                  <input
+                    type="datetime-local"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-9 w-full bg-surface border border-hairline rounded-md px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  />
+                </LabeledField>
+                <LabeledField label="Search By">
+                  <select
+                    value={searchType}
+                    onChange={(e) =>
+                      setSearchType(e.target.value as (typeof SEARCH_TYPES)[number])
+                    }
+                    className="h-9 w-full bg-surface border border-hairline rounded-md px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  >
+                    {SEARCH_TYPES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </LabeledField>
+                <LabeledField label="Value">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                    <input
+                      value={searchValue}
+                      onChange={(e) => setSearchValue(e.target.value)}
+                      placeholder={`Enter ${searchType}…`}
+                      className="w-full h-9 bg-surface border border-hairline rounded-md pl-8 pr-3 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                    />
+                  </div>
+                </LabeledField>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-1.5 flex-wrap">
+                  {(
+                    [
+                      {
+                        key: "all",
+                        label: "All",
+                        count: counts.pending + counts.completed,
+                        dot: "bg-muted-foreground",
+                      },
+                      { key: "pending", label: "Pending", count: counts.pending, dot: "bg-warning" },
+                      {
+                        key: "completed",
+                        label: "Completed",
+                        count: counts.completed,
+                        dot: "bg-success",
+                      },
+                    ] as const
+                  ).map((chip) => (
+                    <button
+                      key={chip.key}
+                      onClick={() => setStatusFilter(chip.key)}
+                      className={
+                        "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[11.5px] transition-colors " +
+                        (statusFilter === chip.key
+                          ? "border-accent/40 bg-accent/10 text-accent"
+                          : "border-hairline bg-surface text-muted-foreground hover:text-foreground")
+                      }
+                    >
+                      <span className={"size-1.5 rounded-full " + chip.dot} />
+                      {chip.label}
+                      <span className="font-mono font-semibold ml-0.5">{chip.count}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSearchValue("");
+                      setDateFrom("");
+                      setDateTo("");
+                      setStatusFilter("all");
+                    }}
+                    className="h-9 px-3 rounded-lg text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    Reset
+                  </button>
+                  <button className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-[12px] font-semibold text-primary-foreground bg-gradient-primary shadow-cta hover:-translate-y-0.5 transition-transform">
+                    <Search className="size-3.5" /> Search
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden">
+              <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+                <div>
+                  <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+                    Results
+                  </h3>
+                  <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                    {filteredRows.length} row{filteredRows.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
+              <div className="overflow-x-auto scrollbar-elegant">
+                <table className="w-full text-left border-collapse text-[12.5px]">
+                  <thead>
+                    <tr className="bg-surface-2/80 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground border-b border-hairline">
+                      <th className="px-3 py-3 w-10 text-center">
+                        <input type="checkbox" className="accent-accent" />
+                      </th>
+                      {columns.map((c) => (
+                        <th
+                          key={c.key as string}
+                          className={"px-3 py-3 whitespace-nowrap " + (c.className ?? "")}
+                        >
+                          {c.header}
+                        </th>
+                      ))}
+                      <th className="px-3 py-3 w-28 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/60">
+                    {filteredRows.map((r) => (
+                      <tr
+                        key={r.id}
+                        className={
+                          "group cursor-pointer transition-colors " +
+                          (selectedId === r.id ? "bg-accent/[0.06]" : "hover:bg-accent/[0.04]")
+                        }
+                        onClick={() => setSelectedId(r.id)}
+                      >
+                        <td className="px-3 py-2.5 text-center">
+                          <input
+                            type="radio"
+                            checked={selectedId === r.id}
+                            onChange={() => setSelectedId(r.id)}
+                            className="accent-accent"
+                          />
+                        </td>
+                        {columns.map((c) => (
+                          <td key={c.key as string} className="px-3 py-2.5 whitespace-nowrap">
+                            {c.render
+                              ? c.render(r)
+                              : ((r as Record<string, unknown>)[c.key as string] as ReactNode)}
+                          </td>
+                        ))}
+                        <td className="px-3 py-2.5 text-right">
+                          <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                              aria-label="View"
+                            >
+                              <Eye className="size-3.5" />
+                            </button>
+                            <button
+                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                              aria-label="Edit"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                            <button
+                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredRows.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={columns.length + 2}
+                          className="px-3 py-10 text-center text-[12.5px] text-muted-foreground"
+                        >
+                          No records match your filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <LeFooter />
@@ -492,6 +510,17 @@ function spanClass(span?: 1 | 2 | 3 | 4) {
   }
 }
 
+function LabeledField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
 function FieldInput({ field }: { field: FieldDef }) {
   const { label, value, type = "text", options } = field;
   return (
@@ -502,7 +531,7 @@ function FieldInput({ field }: { field: FieldDef }) {
       {type === "select" ? (
         <select
           defaultValue={value as string}
-          className="bg-surface border border-hairline rounded-md px-2 h-8 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+          className="bg-surface border border-hairline rounded-md px-2 h-9 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         >
           {(options ?? [String(value ?? "Select")]).map((o) => (
             <option key={o}>{o}</option>
@@ -518,7 +547,7 @@ function FieldInput({ field }: { field: FieldDef }) {
         <input
           type={type === "date" ? "datetime-local" : type}
           defaultValue={value as string | number}
-          className="bg-surface border border-hairline rounded-md px-2 h-8 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 font-mono"
+          className="bg-surface border border-hairline rounded-md px-2 h-9 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 font-mono"
         />
       )}
     </div>
@@ -541,7 +570,7 @@ function KpiCard({ label, value, delta, tone = "default" }: KpiTile) {
     info: "bg-info",
   };
   return (
-    <div className="bg-surface border border-hairline rounded-lg p-3 hover:border-accent/40 transition-colors">
+    <div className="bg-surface border border-hairline rounded-2xl p-4 shadow-elegant hover:border-accent/40 transition-colors">
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
         <span className={"size-1.5 rounded-full " + dotClasses[tone]} />
         {label}
