@@ -1,38 +1,23 @@
-# Plan: Professional Login Page
+# Plan: Sticky Top Bar + Page Header
 
-## Route
-Create `src/routes/login.tsx` rendering at `/login`. Standalone page (no sidebar/topbar) — uses its own full-viewport layout.
+## Current state
+- `TopBar` is already `sticky top-0 z-20` inside the flex column, so it stays fixed when the page body scrolls (scroll container is `<main className="overflow-y-auto">`).
+- Each screen's page header (title, description, Refresh button) scrolls away with the body.
 
-## Layout (split-screen, matches reference)
-Two-column grid on `md+`, stacked on mobile:
+## Change
+Make the per-screen page header `sticky top-0 z-10` so it pins to the top of the scroll area (directly below the TopBar). Body content scrolls underneath.
 
-**Left column (~40%)** — white card, centered vertically:
-- HBL logo (reuse `src/assets/hbl-logo.png.asset.json`), large
-- Heading: "Sign in to your account" / subtle: "Logistics Execution Module"
-- `User Name` label + input (`Enter User Name` placeholder)
-- `Password` label + input with eye toggle for show/hide
-- Primary "Log In" button (gradient primary, full-width, with LogIn lucide icon)
-- "Forgot Password?" text link below
-- Footer at bottom: "© 2026 HBL Power Systems. All Rights Reserved"
+Apply to every page that renders its own header bar:
 
-**Right column (~60%)** — visual panel:
-- Three-image collage (port containers, highway truck, container ship) using royalty-free Unsplash URLs split into 3 angled/diagonal panels with subtle clip-path
-- Bottom overlay band: large display-font title "LOGISTIC EXECUTION MODULE" + small "HBL Engineering Limited" with logo on the right
-- Subtle dark gradient overlay on imagery for legibility
-- Hidden on `<md` screens
+1. **`src/components/le-screen-shell.tsx`** (line ~155) — shared header used by Order Info → Insurance Claim Tracking. Add `sticky top-0 z-10`.
+2. **`src/routes/dispatch.tsx`** (line ~75) — same header pattern. Add `sticky top-0 z-10`.
+3. **`src/routes/dispatch-orders.tsx`** (line ~169) — add `sticky top-0 z-10` and ensure background is opaque (`bg-surface` already is).
+4. **`src/routes/index.tsx`** (line ~88) — dashboard header. Add `sticky top-0 z-10`.
 
-## Behavior
-- Form is UI-only with local `useState` for the two fields and `showPassword` toggle
-- Submit: zod validation (username min 1 max 100, password min 1 max 100), toast success "Signed in", then `navigate({ to: "/" })`
-- "Forgot Password?" toast: "Contact your administrator"
-
-## SEO / head
-- `title: "Login · HBL LE"`, description, canonical
-
-## Files
-- `src/routes/login.tsx` (new)
+## Notes
+- TopBar already uses `bg-surface/90 backdrop-blur` so it remains opaque while content scrolls under it. The page-header div in le-screen-shell/dispatch uses `bg-surface/80 backdrop-blur` — fine. The dispatch-orders and index headers use solid `bg-surface` — also fine.
+- Existing internal `sticky top-0` thead/footer elements inside scroll regions are scoped to their own table containers and unaffected.
 
 ## Out of scope
-- No auth backend, no session, no route guards
-- No new images uploaded; use Unsplash URLs for the right-side collage
-- Existing `/login` link from TopBar Logout button now resolves to this page
+- No layout, sidebar, or visual restyling beyond adding sticky positioning.
+- No changes to the login page (no scroll there).
