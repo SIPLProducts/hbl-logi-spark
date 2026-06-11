@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LeScreenShell } from "@/components/le-screen-shell";
+import { TransitInfoSapCreate } from "@/components/transit-info-sap-create";
 
 export const Route = createFileRoute("/transit-info")({
   head: () => ({
@@ -15,6 +16,11 @@ function TransitInfoPage() {
   return (
     <LeScreenShell
       title="Transit Info"
+      renderCreateBody={({ sap, direction }) =>
+        direction === "outward" ? (
+          <TransitInfoSapCreate mode={sap === "with" ? "with" : "without"} />
+        ) : null
+      }
       groups={[
         {
           title: "Live Status",
