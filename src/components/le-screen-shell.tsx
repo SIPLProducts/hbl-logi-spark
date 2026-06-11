@@ -97,6 +97,7 @@ export function LeScreenShell({
   lineItems,
   children,
   renderCreateBody,
+  renderDirectionExtras,
 }: {
   title: string;
   description?: string;
