@@ -17,31 +17,31 @@ export function KpiTile({
 }) {
   const trendColor =
     trendTone === "green"
-      ? "text-emerald-600"
+      ? "text-success"
       : trendTone === "red"
-      ? "text-red-600"
+      ? "text-destructive"
       : trendTone === "amber"
-      ? "text-amber-600"
-      : "text-zinc-500";
+      ? "text-warning"
+      : "text-muted-foreground";
 
   return (
-    <div className="bg-white p-4 ring-1 ring-zinc-200 rounded-sm">
-      <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-500">
+    <div className="bg-surface border border-hairline rounded-xl p-4 shadow-soft transition-shadow hover:shadow-elegant">
+      <div className="text-[10px] uppercase font-bold tracking-[0.14em] text-muted-foreground">
         {label}
       </div>
-      <div className="mt-1 flex items-baseline gap-1">
+      <div className="mt-1.5 flex items-baseline gap-1.5">
         <span
           className={
-            "text-2xl font-mono font-bold tracking-tight " +
-            (accent ? "text-blue-600" : "text-zinc-900")
+            "font-display text-[26px] leading-none font-bold tracking-tight " +
+            (accent ? "text-primary" : "text-foreground")
           }
         >
           {value}
         </span>
-        {unit && <span className="text-[11px] text-zinc-400 font-medium">{unit}</span>}
+        {unit && <span className="text-[11px] text-muted-foreground font-medium">{unit}</span>}
       </div>
       {trend && (
-        <div className={"mt-2 text-[11px] font-medium " + trendColor}>{trend}</div>
+        <div className={"mt-2 text-[11px] font-semibold " + trendColor}>{trend}</div>
       )}
     </div>
   );
