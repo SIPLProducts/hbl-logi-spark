@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { format } from "date-fns";
 import {
   Plus,
   Download,
@@ -12,8 +13,21 @@ import {
   Eye,
   Pencil,
   FileText,
+  FileDown,
+  CalendarIcon,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PLANTS, DIVISIONS, TRANSPORTERS, VEHICLE_TYPES } from "@/lib/dispatch-mock";
 import { sampleRows, counts, type WorklistRow } from "@/lib/le-mock-data";
 import { LeFooter } from "./le-footer";
 import { cn } from "@/lib/utils";
@@ -27,6 +41,7 @@ const SEARCH_TYPES = [
   "Work Order",
   "LR Number",
 ] as const;
+const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
 const SEARCH_TYPE_TO_KEY: Record<(typeof SEARCH_TYPES)[number], keyof WorklistRow> = {
   Reference: "reference",
   Invoice: "reference",
@@ -95,13 +110,33 @@ export function LeScreenShell({
 }) {
   const [tab, setTab] = useState<"create" | "search">("create");
   const [selectedId, setSelectedId] = useState<string>(rows[0]?.id ?? "");
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
   const [direction, setDirection] = useState<"outward" | "inward">("outward");
   const [sap, setSap] = useState<SapMode>("with");
   const [searchType, setSearchType] = useState<(typeof SEARCH_TYPES)[number]>("Reference");
   const [searchValue, setSearchValue] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+
+  // Search & Reports filter state (Dispatch-style)
+  const [searchSap, setSearchSap] = useState<SapMode | null>(null);
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
+  const [fPlant, setFPlant] = useState("");
+  const [fDivision, setFDivision] = useState("");
+  const [fTransporter, setFTransporter] = useState("");
+  const [fVehicleType, setFVehicleType] = useState("");
+  const [fStatus, setFStatus] = useState("");
+  const [applied, setApplied] = useState(false);
+
+  const resetFilters = () => {
+    setFromDate(undefined);
+    setToDate(undefined);
+    setFPlant("");
+    setFDivision("");
+    setFTransporter("");
+    setFVehicleType("");
+    setFStatus("");
+    setApplied(false);
+    setSearchSap(null);
+  };
 
   // Avoid SSR/CSR hydration mismatch on the live clock
   const [syncedAt, setSyncedAt] = useState<string>("—");
@@ -296,106 +331,98 @@ export function LeScreenShell({
 
           {/* ───────── Search & Reports tab ───────── */}
           <TabsContent value="search" className="mt-5 space-y-5">
-            <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <LabeledField label="Date From">
-                  <input
-                    type="datetime-local"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="h-9 w-full bg-surface border border-hairline rounded-md px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  />
-                </LabeledField>
-                <LabeledField label="Date To">
-                  <input
-                    type="datetime-local"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="h-9 w-full bg-surface border border-hairline rounded-md px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  />
-                </LabeledField>
-                <LabeledField label="Search By">
-                  <select
-                    value={searchType}
-                    onChange={(e) =>
-                      setSearchType(e.target.value as (typeof SEARCH_TYPES)[number])
-                    }
-                    className="h-9 w-full bg-surface border border-hairline rounded-md px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  >
-                    {SEARCH_TYPES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </LabeledField>
-                <LabeledField label="Value">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                    <input
-                      value={searchValue}
-                      onChange={(e) => setSearchValue(e.target.value)}
-                      placeholder={`Enter ${searchType}…`}
-                      className="w-full h-9 bg-surface border border-hairline rounded-md pl-8 pr-3 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            <div className="bg-surface border border-hairline rounded-2xl shadow-elegant">
+              <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
+                <div className="flex items-center gap-2">
+                  <Filter className="size-4 text-accent" />
+                  <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+                    Filter Options
+                  </h3>
+                </div>
+                <SearchSapToggle value={searchSap} onChange={setSearchSap} />
+              </div>
+
+              {!searchSap && (
+                <div className="p-6 text-center text-[12.5px] text-muted-foreground">
+                  Select <span className="font-semibold">With SAP</span> or{" "}
+                  <span className="font-semibold">Without SAP</span> to view filters.
+                </div>
+              )}
+
+              {searchSap && (
+                <>
+                  <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <DateField label="From Date" value={fromDate} onChange={setFromDate} />
+                    <DateField label="To Date" value={toDate} onChange={setToDate} />
+                    <SelectField
+                      label="Plant"
+                      value={fPlant}
+                      onChange={setFPlant}
+                      options={PLANTS}
+                      placeholder="Select Plant"
+                    />
+                    <SelectField
+                      label="Division"
+                      value={fDivision}
+                      onChange={setFDivision}
+                      options={DIVISIONS}
+                      placeholder="Select Division"
+                    />
+                    <SelectField
+                      label="Transporter"
+                      value={fTransporter}
+                      onChange={setFTransporter}
+                      options={TRANSPORTERS}
+                      placeholder="Select Transporter"
+                    />
+                    <SelectField
+                      label="Vehicle Type"
+                      value={fVehicleType}
+                      onChange={setFVehicleType}
+                      options={VEHICLE_TYPES}
+                      placeholder="Select Vehicle Type"
+                    />
+                    <SelectField
+                      label="Status"
+                      value={fStatus}
+                      onChange={setFStatus}
+                      options={[...STATUS_OPTIONS]}
+                      placeholder="Select Status"
                     />
                   </div>
-                </LabeledField>
-              </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-1.5 flex-wrap">
-                  {(
-                    [
-                      {
-                        key: "all",
-                        label: "All",
-                        count: counts.pending + counts.completed,
-                        dot: "bg-muted-foreground",
-                      },
-                      { key: "pending", label: "Pending", count: counts.pending, dot: "bg-warning" },
-                      {
-                        key: "completed",
-                        label: "Completed",
-                        count: counts.completed,
-                        dot: "bg-success",
-                      },
-                    ] as const
-                  ).map((chip) => (
-                    <button
-                      key={chip.key}
-                      onClick={() => setStatusFilter(chip.key)}
-                      className={
-                        "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[11.5px] transition-colors " +
-                        (statusFilter === chip.key
-                          ? "border-accent/40 bg-accent/10 text-accent"
-                          : "border-hairline bg-surface text-muted-foreground hover:text-foreground")
-                      }
-                    >
-                      <span className={"size-1.5 rounded-full " + chip.dot} />
-                      {chip.label}
-                      <span className="font-mono font-semibold ml-0.5">{chip.count}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setSearchValue("");
-                      setDateFrom("");
-                      setDateTo("");
-                      setStatusFilter("all");
-                    }}
-                    className="h-9 px-3 rounded-lg text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-                  >
-                    Reset
-                  </button>
-                  <button className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-[12px] font-semibold text-primary-foreground bg-gradient-primary shadow-cta hover:-translate-y-0.5 transition-transform">
-                    <Search className="size-3.5" /> Search
-                  </button>
-                </div>
-              </div>
+                  <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
+                    <Button variant="ghost" size="sm" onClick={resetFilters}>
+                      Reset
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <FileText className="size-3.5" /> Download PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <FileDown className="size-3.5 text-emerald-600" /> Download Excel
+                    </Button>
+                    <Button size="sm" onClick={() => setApplied(true)} className="gap-1.5">
+                      <Filter className="size-3.5" /> Apply Filter
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
 
+            {!applied ? (
+              <div className="bg-surface border border-dashed border-hairline rounded-2xl p-10 text-center">
+                <div className="mx-auto size-12 grid place-items-center rounded-full bg-muted text-muted-foreground">
+                  <Filter className="size-5" />
+                </div>
+                <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
+                  No results yet
+                </h3>
+                <p className="mt-1 text-[12.5px] text-muted-foreground max-w-md mx-auto">
+                  Choose your filters above and click{" "}
+                  <span className="font-semibold">Apply Filter</span> to load records.
+                </p>
+              </div>
+            ) : (
             <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden">
               <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
                 <div>
@@ -488,6 +515,7 @@ export function LeScreenShell({
                 </table>
               </div>
             </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -645,5 +673,113 @@ function PremiumRadio({
       </span>
       {label}
     </button>
+  );
+}
+
+function SearchSapToggle({
+  value,
+  onChange,
+}: {
+  value: SapMode | null;
+  onChange: (v: SapMode) => void;
+}) {
+  const idx = value === "with" ? 0 : value === "without" ? 1 : -1;
+  return (
+    <div className="relative inline-flex items-center p-1 rounded-full bg-muted border border-hairline text-[12px] shadow-inner">
+      {idx >= 0 && (
+        <span
+          className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface shadow-sm ring-1 ring-hairline transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(${idx * 100}%)` }}
+          aria-hidden
+        />
+      )}
+      {(["with", "without"] as const).map((m) => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          className={cn(
+            "relative z-10 px-4 h-8 rounded-full font-semibold transition-colors min-w-[96px]",
+            value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {m === "with" ? "With SAP" : "Without SAP"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function DateField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: Date | undefined;
+  onChange: (d: Date | undefined) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "h-10 justify-start text-left font-normal",
+              !value && "text-muted-foreground",
+            )}
+          >
+            <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
+            {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={value}
+            onSelect={onChange}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-10">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o} value={o}>
+              {o}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

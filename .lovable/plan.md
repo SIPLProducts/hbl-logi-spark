@@ -1,65 +1,43 @@
 ## Goal
 
-Restructure all 10 LE screens (Order Info → Insurance Claim Tracking) to use the same **two-tab layout** as the Dispatch screen:
+Make the **Search & Reports** tab in all 10 LE screens (Order Info → Insurance Claim Tracking) use the exact same premium filter layout as the Dispatch screen's "Filter Options" card — and add a new **Status** dropdown field.
 
-- **Create** tab — entry form (each screen keeps its own field groups).
-- **Search & Reports** tab — filter bar + results worklist.
+## Scope
 
-Each screen keeps its **own different fields** (no field changes); only the surrounding layout becomes tabbed.
+Single file: `src/components/le-screen-shell.tsx` (the shared shell rendered by every LE route). No route file changes, no data model changes.
 
-## Affected screens (10, unchanged set)
+## New filter layout (replaces current Search & Reports filter card)
 
-`/order-info`, `/shipment-details`, `/invoice-load-details`, `/segment-info`, `/vehicle-info`, `/transit-info`, `/freight-billing`, `/service-level`, `/transit-damage-info`, `/insurance-claim-tracking`.
+A single card titled **Filter Options** (with a funnel icon in the header) and a `SapToggle` on the right of the header. Body shows a 3-column grid of fields, followed by an action bar.
 
-`/dispatch` and `/dispatch-orders` are not touched.
+Fields (7 total — adds Status as 7th):
 
-## Approach — refactor `src/components/le-screen-shell.tsx`
+1. **From Date** — date picker (calendar popover, same `DateField` as Dispatch)
+2. **To Date** — date picker
+3. **Plant** — Select (options from `PLANTS`)
+4. **Division** — Select (options from `DIVISIONS`)
+5. **Transporter** — Select (options from `TRANSPORTERS`)
+6. **Vehicle Type** — Select (options from `VEHICLE_TYPES`)
+7. **Status** — Select (`All`, `Pending`, `Completed`) — **new**
 
-Add a Dispatch-style `Tabs` (Create / Search & Reports) wrapping the body. No per-route file changes.
+Action bar (right-aligned, on a muted strip below the grid):
+- `Reset` (ghost)
+- `Download PDF` (outline, FileText icon)
+- `Download Excel` (outline, green FileDown icon)
+- `Apply Filter` (primary, Filter icon)
 
-### Header (unchanged)
-- Page title, description, Refresh / Export buttons.
-- Add an icon tile matching Dispatch (gradient square with screen-specific Lucide icon — falls back to a generic icon if none provided).
+Empty state (before Apply Filter is clicked): dashed-border card with funnel icon, heading "No results yet", and helper text — same pattern as Dispatch.
 
-### New Tabs row (below header)
-Reuses the Dispatch `TabsList` styling:
-```
-[ + Create ]   [ ⏚ Search & Reports ]
-```
-Active tab: `bg-gradient-primary text-primary-foreground shadow-cta rounded-lg`.
+## Implementation notes
 
-### Create tab content
-1. **Direction + SAP toolbar** (already added last turn — keep as is).
-2. **KPI cards** (if `kpis` provided).
-3. **Field groups** (`groups` prop) — each rendered as the existing white card with uppercase section title and 4-col grid.
-4. **Top fields** (`topFields` prop) if present.
-5. **Line items** (`lineItems` prop) if present.
-6. **Bottom action bar** — `Save and Previous` / `Save` / `Save and Next` (existing sticky bar).
+- Reuse the **`DateField`** and **`SelectField`** components from `src/routes/dispatch.tsx` by extracting them into the shell file (or duplicating locally — small components).
+- Import `PLANTS, DIVISIONS, TRANSPORTERS, VEHICLE_TYPES` from `@/lib/dispatch-mock`.
+- Keep the existing `SapToggle` (already in shell). Card body and action bar render only when `sap` is set.
+- Add `STATUS_OPTIONS = ["Pending", "Completed"]` constant.
+- Remove the old custom filter block (From/To/Search By/Value grid + status chips + Reset/Search row) in the Search tab — replace with the new card.
+- Keep the existing **results table** below (rendered after Apply Filter), wired to the same `rows`/`columns` props.
+- Create-tab layout is untouched.
 
-### Search & Reports tab content
-1. **Filter card** (mirrors Dispatch search):
-   - Date From / Date To (`datetime-local`).
-   - Search-type `Select` (Reference / Invoice / ODN / SO Number / Work Order / LR Number).
-   - Search-value text input.
-   - Status chips (All / Pending / Completed) — existing chip styling reused.
-   - `Search` primary button + `Reset` ghost button.
-2. **Worklist table** (existing `columns` + `rows`, with the filter row at the bottom of the card removed since filters now live above).
-3. **No bottom Save bar** in this tab (matches Dispatch Search mode).
+## Result
 
-### Existing controls that move/get removed
-- The current "Mode + chips" row (with-sap/without-sap pill + status chips + Filters button) is **removed** from the top — its SAP function is handled by the Direction/SAP toolbar in Create tab, and the chips move into the Search tab.
-- The existing in-card filter strip at the bottom of the worklist (Invoice Number / Get / search row) is **removed** in favor of the new top filter card.
-- `extraTabs` prop usage: none of the 10 routes pass it; safe to deprecate (kept in props but not rendered to avoid TS breakage).
-
-### Fix runtime hydration warning (unrelated bug noticed)
-The header renders `new Date().toLocaleTimeString(...)` at render time, causing SSR/CSR text mismatch. Wrap it in a `useState` + `useEffect` so the time is only rendered after mount (initial render shows an em dash placeholder). Small, isolated change in the same file.
-
-## Files to edit
-
-- `src/components/le-screen-shell.tsx` — only file. All 10 routes inherit the new layout automatically; their `groups` / `kpis` / `columns` props stay untouched.
-
-## Out of scope
-
-- No changes to individual route files (fields stay different per screen).
-- No data model, backend, or routing changes.
-- Dispatch / Dispatch Orders untouched.
+All 10 LE screens (Order Info, Shipment Details, Invoice & Load Details, Segment Info, Vehicle Info, Transit Info, Freight Billing, Service Level, Transit Damage Info, Insurance Claim Tracking) automatically get the new Dispatch-style filter + Status field on their Search & Reports tab.
