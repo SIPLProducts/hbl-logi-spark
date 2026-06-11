@@ -1,65 +1,65 @@
 ## Goal
 
-Replicate the Dispatch screen's top controls — **Direction** (Outward active, Inward commented out), **With SAP / Without SAP** segmented toggle, and a **Search filter row** (search-type select + value input + Search button) — on every LE screen from Order Info through Insurance Claim Tracking, while keeping each screen's existing fields/groups intact.
+Restructure all 10 LE screens (Order Info → Insurance Claim Tracking) to use the same **two-tab layout** as the Dispatch screen:
 
-## Affected screens (10)
+- **Create** tab — entry form (each screen keeps its own field groups).
+- **Search & Reports** tab — filter bar + results worklist.
 
-All render via `LeScreenShell`:
-1. `/order-info`
-2. `/shipment-details`
-3. `/invoice-load-details`
-4. `/segment-info`
-5. `/vehicle-info`
-6. `/transit-info`
-7. `/freight-billing`
-8. `/service-level`
-9. `/transit-damage-info`
-10. `/insurance-claim-tracking`
+Each screen keeps its **own different fields** (no field changes); only the surrounding layout becomes tabbed.
 
-`/dispatch-orders` and `/dispatch` already have their own logic and are NOT touched.
+## Affected screens (10, unchanged set)
 
-## Approach
+`/order-info`, `/shipment-details`, `/invoice-load-details`, `/segment-info`, `/vehicle-info`, `/transit-info`, `/freight-billing`, `/service-level`, `/transit-damage-info`, `/insurance-claim-tracking`.
 
-Add the controls **once** inside `LeScreenShell` (above the existing worklist) so all 10 screens get them automatically. No per-route edits required.
+`/dispatch` and `/dispatch-orders` are not touched.
 
-### Changes to `src/components/le-screen-shell.tsx`
+## Approach — refactor `src/components/le-screen-shell.tsx`
 
-1. **Add local state**
-   - `direction: "outward" | "inward" | null` (default `"outward"`)
-   - `sap: "with" | "without" | null` (default `"with"`)
-   - `searchType: string` (default `"Reference"`)
-   - `searchValue: string`
+Add a Dispatch-style `Tabs` (Create / Search & Reports) wrapping the body. No per-route file changes.
 
-2. **New "Direction + SAP" toolbar card** (rendered just under the page header, before the existing mode/chips row):
-   - Label `DIRECTION` + `PremiumRadio`-style Outward button (active).
-   - Inward radio wrapped in `{/* ... */}` JSX comment (kept for future re-enable), matching the Dispatch pattern.
-   - Pill-shaped segmented `With SAP / Without SAP` toggle with sliding thumb (reuse the same Tailwind classes used on `/dispatch`).
+### Header (unchanged)
+- Page title, description, Refresh / Export buttons.
+- Add an icon tile matching Dispatch (gradient square with screen-specific Lucide icon — falls back to a generic icon if none provided).
 
-3. **New "Filter" row** inside the same card:
-   - `Select` for search type: `Reference | Invoice | ODN | SO Number | Work Order | LR Number`.
-   - Text `Input` with placeholder reflecting the chosen type.
-   - Primary `Search` button (gradient, matches existing CTA style).
-   - Ghost `Reset` button to clear `searchValue`.
+### New Tabs row (below header)
+Reuses the Dispatch `TabsList` styling:
+```
+[ + Create ]   [ ⏚ Search & Reports ]
+```
+Active tab: `bg-gradient-primary text-primary-foreground shadow-cta rounded-lg`.
 
-4. **Wire filter to the existing worklist**
-   - Filter `rows` by `searchValue` against the chosen `searchType` field (case-insensitive `includes`).
-   - When `searchValue` is empty, show all rows unchanged.
+### Create tab content
+1. **Direction + SAP toolbar** (already added last turn — keep as is).
+2. **KPI cards** (if `kpis` provided).
+3. **Field groups** (`groups` prop) — each rendered as the existing white card with uppercase section title and 4-col grid.
+4. **Top fields** (`topFields` prop) if present.
+5. **Line items** (`lineItems` prop) if present.
+6. **Bottom action bar** — `Save and Previous` / `Save` / `Save and Next` (existing sticky bar).
 
-5. **No changes** to: KPIs, sub-tabs, existing mode/chips row, field groups, line items, footer, or the bottom action bar.
+### Search & Reports tab content
+1. **Filter card** (mirrors Dispatch search):
+   - Date From / Date To (`datetime-local`).
+   - Search-type `Select` (Reference / Invoice / ODN / SO Number / Work Order / LR Number).
+   - Search-value text input.
+   - Status chips (All / Pending / Completed) — existing chip styling reused.
+   - `Search` primary button + `Reset` ghost button.
+2. **Worklist table** (existing `columns` + `rows`, with the filter row at the bottom of the card removed since filters now live above).
+3. **No bottom Save bar** in this tab (matches Dispatch Search mode).
 
-### Visual style
+### Existing controls that move/get removed
+- The current "Mode + chips" row (with-sap/without-sap pill + status chips + Filters button) is **removed** from the top — its SAP function is handled by the Direction/SAP toolbar in Create tab, and the chips move into the Search tab.
+- The existing in-card filter strip at the bottom of the worklist (Invoice Number / Get / search row) is **removed** in favor of the new top filter card.
+- `extraTabs` prop usage: none of the 10 routes pass it; safe to deprecate (kept in props but not rendered to avoid TS breakage).
 
-Match Dispatch toolbar exactly:
-- `bg-surface border border-hairline rounded-2xl p-5 shadow-elegant`
-- Uppercase tracked `DIRECTION` / `MODE` / `FILTER` labels (`text-[10.5px] font-bold tracking-[0.14em] text-muted-foreground`).
-- Segmented toggle: pill `rounded-full bg-muted p-1` with sliding `bg-surface shadow-sm` thumb.
-
-## Out of scope
-
-- No new routes, no data model changes, no backend.
-- Inward radio stays commented out (per existing Dispatch convention).
-- Dispatch / Dispatch Orders screens unchanged.
+### Fix runtime hydration warning (unrelated bug noticed)
+The header renders `new Date().toLocaleTimeString(...)` at render time, causing SSR/CSR text mismatch. Wrap it in a `useState` + `useEffect` so the time is only rendered after mount (initial render shows an em dash placeholder). Small, isolated change in the same file.
 
 ## Files to edit
 
-- `src/components/le-screen-shell.tsx` (only file)
+- `src/components/le-screen-shell.tsx` — only file. All 10 routes inherit the new layout automatically; their `groups` / `kpis` / `columns` props stay untouched.
+
+## Out of scope
+
+- No changes to individual route files (fields stay different per screen).
+- No data model, backend, or routing changes.
+- Dispatch / Dispatch Orders untouched.
