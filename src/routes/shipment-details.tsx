@@ -27,9 +27,9 @@ function ShipmentDetailsPage() {
       title="Shipment Details"
       columns={columns}
       renderCreateBody={({ sap, direction }) =>
-        direction === "outward" && sap === "with" ? (
-          <ShipmentDetailsSapCreate />
-        ) : null
+        direction === "outward"
+          ? <ShipmentDetailsSapCreate mode={sap === "with" ? "with" : "without"} />
+          : null
       }
       topFields={[
         { label: "Incoterms", value: "FOR", type: "select", options: ["FOR", "FOB", "CIF", "EXW", "DAP"] },
