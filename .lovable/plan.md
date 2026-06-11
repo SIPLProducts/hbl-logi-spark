@@ -1,15 +1,17 @@
-# Plan: Remove Empty Top Bar Space
+# Plan: Remove Synced Time & Export Button from Screen Headers
 
-## Problem
-The previous change commented out the inner contents of `TopBar`, but the `<header>` element itself still renders with `h-14` height, `border-b`, and `sticky top-0 z-20`, leaving an empty 56px bar at the top of every screen.
+## Scope
+All screens from Order Info through Insurance Claim Tracking use the shared `LeScreenShell` component, so a single edit covers them all.
 
 ## Change
-In `src/components/top-bar.tsx`, remove the `<header>` wrapper entirely so the component returns `null` (or a fragment). This eliminates the empty space and lets the page content sit flush at the top.
+In `src/components/le-screen-shell.tsx`:
+- Remove the `<span>Synced · {syncedAt}</span>` element in the page header (line ~180-182)
+- Remove the `<button>...Export</button>` element (line ~189-191)
+- Keep the Refresh button intact
+- Remove now-unused `syncedAt` state, the `useState`/`useEffect` for it, and the `Download` icon import if no longer used
 
 ## Files
-- `src/components/top-bar.tsx` — replace the `<header>...</header>` return with `return null;`
+- `src/components/le-screen-shell.tsx` only
 
-## Impact
-- No visual top bar on any screen
-- Main content area gains ~56px of vertical space
-- Fully reversible by reverting the change
+## Out of Scope
+- `src/routes/dispatch.tsx` and `src/routes/dispatch-orders.tsx` are not in the requested range (Order Info → Insurance Claim Tracking), so their Export buttons stay.

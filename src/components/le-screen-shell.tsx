@@ -1,8 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import {
   Plus,
-  Download,
   RefreshCw,
   Search,
   Trash2,
@@ -142,12 +141,6 @@ export function LeScreenShell({
     setSearchSap(null);
   };
 
-  // Avoid SSR/CSR hydration mismatch on the live clock
-  const [syncedAt, setSyncedAt] = useState<string>("—");
-  useEffect(() => {
-    setSyncedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-  }, []);
-
   const filteredRows = searchValue.trim()
     ? rows.filter((r) => {
         const key = SEARCH_TYPE_TO_KEY[searchType];
@@ -177,17 +170,11 @@ export function LeScreenShell({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="hidden md:inline text-[11px] font-mono text-muted-foreground">
-              Synced · {syncedAt}
-            </span>
             <button
               onClick={() => window.location.reload()}
               className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted"
             >
               <RefreshCw className="size-3.5" /> Refresh
-            </button>
-            <button className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
-              <Download className="size-3.5" /> Export
             </button>
           </div>
         </div>
