@@ -1,31 +1,47 @@
 ## Goal
 
-On Order Info → With SAP, hide the 3-column field grid until the user enters an Invoice Number and clicks **GET**. When revealed, all fields render empty (no dummy values).
+On Order Info → **Without SAP** (outward), show the same SAP-style layout used for With SAP, but:
+- Remove the Invoice Number input and GET button (and the empty-state hint / reveal gating).
+- Rename the first field **Tax Invoice** → **DC Reference Number**.
+- Fields are visible immediately (no GET gate).
+
+Selection table, search-type dropdown + search input remain (same as With SAP). All other fields stay identical and empty.
 
 ## Scope
 
-Single file: `src/components/order-info-sap-create.tsx`. No other screens or routes are affected.
+- `src/components/order-info-sap-create.tsx` — refactor to accept a `mode: "with" | "without"` prop and conditionally render the Invoice Number + GET block and the reveal gating.
+- `src/routes/order-info.tsx` — wire the component for `sap === "without"` as well, passing the mode.
+
+No other screens or routes are affected.
 
 ## Changes
 
-1. **Gate the field grid** behind a new `revealed` state.
-   - `const [revealed, setRevealed] = useState(false)`
-   - The "Field grid" card and the "Footer action bar" only render when `revealed === true`.
-   - The selection table and invoice lookup bar always render.
+### 1. `src/components/order-info-sap-create.tsx`
 
-2. **GET button behavior**
-   - On click, if `invoiceNumber.trim()` is non-empty → `setRevealed(true)`.
-   - If empty → do nothing (button stays disabled-looking via `disabled` attr when input is blank).
+- Add prop: `export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" })`.
+- Compute `const isWithout = mode === "without"`.
+- `FIELDS[0].label` stays "Tax Invoice" in the array; when rendering, if `isWithout`, replace the first field's label with **"DC Reference Number"** (map over FIELDS and override label for index 0 when `isWithout`).
+- Invoice lookup bar block (the `<div>` containing Invoice Number input + GET button + Select + Search): wrap in `{!isWithout && (...) }`.
+- Empty-state hint paragraph: wrap in `{!isWithout && !revealed && ...}`.
+- Reveal gating: when `isWithout`, force fields + footer to always render. Implement via `const showFields = isWithout || revealed;` and use `{showFields && (<>...field grid + footer...</>)}`.
+- Keep the selection table and the (now-standalone for Without SAP) Search bar untouched. Note: for With SAP the Search dropdown + search input live inside the lookup bar; for Without SAP we still want them visible. Approach: split the lookup bar into two rows/blocks — (a) Invoice Number + GET (with-only), (b) Select dropdown + Search input (always shown). Both stay inside one card for visual consistency; if `isWithout`, the card only contains row (b).
 
-3. **Strip dummy data** from every field in the `FIELDS` array — set each `value` to an empty string `""`. Keep `label`, `type`, and `options` (so dropdowns still list valid choices but show the placeholder).
-   - For `select` fields, render with `defaultValue=""` and prepend a placeholder `<option value="" disabled>Select</option>`.
-   - For `date` fields, no default value.
-   - For text fields, no default; add a subtle `placeholder` of the label (e.g. `Enter Tax Invoice`).
+### 2. `src/routes/order-info.tsx`
 
-4. **Empty-state hint** (optional, small): when `!revealed`, show a thin muted line under the lookup bar: "Enter an Invoice Number and click GET to load fields."
+Change the `renderCreateBody` to:
 
-5. **Reset behavior**: clearing the Invoice Number does NOT auto-hide; only the GET click toggles `revealed`. Keeps it simple and matches the requested flow.
+```tsx
+renderCreateBody={({ sap, direction }) =>
+  direction === "outward"
+    ? <OrderInfoSapCreate mode={sap === "with" ? "with" : "without"} />
+    : null
+}
+```
+
+Inward behavior is unchanged (falls back to default group rendering).
 
 ## Result
 
-The form fields are hidden until GET is pressed with a valid Invoice Number. Once shown, every field is empty for the user to fill in. Selection table and lookup bar remain visible at all times. Other screens unchanged.
+- With SAP (outward): unchanged behavior — Invoice Number + GET gate fields, first field labeled "Tax Invoice".
+- Without SAP (outward): same visual layout, no Invoice Number / GET, fields visible immediately, first field labeled "DC Reference Number".
+- Inward and other screens unchanged.
