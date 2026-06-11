@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LeScreenShell } from "@/components/le-screen-shell";
+import { SegmentInfoSapCreate } from "@/components/segment-info-sap-create";
 
 export const Route = createFileRoute("/segment-info")({
   head: () => ({
@@ -15,6 +16,11 @@ function SegmentInfoPage() {
   return (
     <LeScreenShell
       title="Segment Info"
+      renderCreateBody={({ sap, direction }) =>
+        direction === "outward"
+          ? <SegmentInfoSapCreate mode={sap === "with" ? "with" : "without"} />
+          : null
+      }
       groups={[
         {
           title: "Segment",
