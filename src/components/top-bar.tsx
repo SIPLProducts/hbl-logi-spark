@@ -24,6 +24,7 @@ export function TopBar() {
 
   return (
     <header className="h-14 bg-surface/90 backdrop-blur border-b border-hairline flex items-center justify-between px-5 sticky top-0 z-20">
+      {/*
       <div className="flex items-center gap-4 min-w-0">
         <nav className="flex items-center gap-1.5 text-[12px] min-w-0">
           <span className="text-muted-foreground">LE Module</span>
@@ -76,6 +77,7 @@ export function TopBar() {
           <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-destructive ring-2 ring-surface" />
         </button>
       </div>
+      */}
     </header>
   );
 }

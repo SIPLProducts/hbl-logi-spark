@@ -1,14 +1,8 @@
-## Remove dummy data from the Reference/Worklist tables
+Comment out the elements visible in the screenshot from `src/components/top-bar.tsx`:
 
-Every screen built on `LeScreenShell` (Order Info, Shipment Details, Invoice Load Details, Segment Info, Vehicle Info, Transit Info, Freight Billing, Service Level, Transit Damage Info, Insurance Claim Tracking) defaults its worklist/reference table to `sampleRows` from `src/lib/le-mock-data.ts`. We will make that default empty.
+- Left side: breadcrumb nav ("LE Module / Order Info")
+- Right side: search input, DEV status pill, plant selector (HYD-PLANT-04), ThemeToggle, Help button, Notifications bell
 
-### Change
-In **`src/components/le-screen-shell.tsx`**:
-- Remove the `sampleRows` import from `@/lib/le-mock-data` (keep `counts` and `type WorklistRow`).
-- Change the prop default from `rows = sampleRows` to `rows = []`.
+Approach: wrap the inner contents of the `<header>` in `{/* ... */}` JSX comments so the header bar (with its height, border, sticky positioning) remains in place but renders empty. This is fully reversible by removing the comment markers.
 
-This single edit empties the Reference table across every screen that uses the shell, without touching individual route files. Table headers, search, filters, pagination, and styling remain intact — empty state will render automatically.
-
-### Not changed
-- `src/lib/le-mock-data.ts` (left in place so types/counts still resolve).
-- Individual route files (none pass a custom `rows` prop today).
+No other files touched.
