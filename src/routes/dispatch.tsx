@@ -419,16 +419,24 @@ function CreateDispatch() {
 }
 
 function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: SapMode) => void }) {
+  const idx = value === "with" ? 0 : value === "without" ? 1 : -1;
   return (
-    <div className="inline-flex items-center p-0.5 rounded-lg bg-muted border border-hairline text-[12px]">
+    <div className="relative inline-flex items-center p-1 rounded-full bg-muted border border-hairline text-[12px] shadow-inner">
+      {idx >= 0 && (
+        <span
+          className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface shadow-soft ring-1 ring-hairline transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(${idx * 100}%)` }}
+          aria-hidden
+        />
+      )}
       {(["with", "without"] as const).map((m) => (
         <button
           key={m}
           onClick={() => onChange(m)}
           className={cn(
-            "px-3 h-8 rounded-md font-semibold transition-colors",
+            "relative z-10 px-4 h-8 rounded-full font-semibold transition-colors min-w-[96px]",
             value === m
-              ? "bg-surface text-foreground shadow-sm"
+              ? "text-foreground"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -436,6 +444,44 @@ function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: S
         </button>
       ))}
     </div>
+  );
+}
+
+function PremiumRadio({
+  label,
+  checked,
+  onSelect,
+}: {
+  label: string;
+  checked: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      onClick={onSelect}
+      className={cn(
+        "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer rounded-full pl-1.5 pr-3 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+        checked ? "text-foreground bg-accent/8" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <span
+        className={cn(
+          "grid place-items-center size-4 rounded-full border-2 transition-all",
+          checked ? "border-accent" : "border-hairline",
+        )}
+      >
+        <span
+          className={cn(
+            "size-1.5 rounded-full transition-all",
+            checked ? "bg-accent scale-100" : "bg-transparent scale-0",
+          )}
+        />
+      </span>
+      {label}
+    </button>
   );
 }
 
