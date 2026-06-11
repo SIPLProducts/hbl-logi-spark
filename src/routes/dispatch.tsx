@@ -545,19 +545,21 @@ function CellSelect({
 }) {
   return (
     <td className="px-2 py-1.5">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={{ minWidth }}
-        className="w-full h-8 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-2 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition"
-      >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
+      <div className="relative" style={{ minWidth }}>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full h-8 appearance-none bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-lg pl-2.5 pr-7 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition cursor-pointer"
+        >
+          <option value="">{placeholder}</option>
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground/70" />
+      </div>
     </td>
   );
 }
