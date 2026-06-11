@@ -26,6 +26,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as ReportsTransitEwayBillRouteImport } from './routes/reports.transit-eway-bill'
 import { Route as ReportsPendingPodsRouteImport } from './routes/reports.pending-pods'
+import { Route as ReportsFreightBillsRouteImport } from './routes/reports.freight-bills'
 
 const VehicleInfoRoute = VehicleInfoRouteImport.update({
   id: '/vehicle-info',
@@ -112,6 +113,11 @@ const ReportsPendingPodsRoute = ReportsPendingPodsRouteImport.update({
   path: '/reports/pending-pods',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsFreightBillsRoute = ReportsFreightBillsRouteImport.update({
+  id: '/reports/freight-bills',
+  path: '/reports/freight-bills',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/freight-bills': typeof ReportsFreightBillsRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports/': typeof ReportsIndexRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/freight-bills': typeof ReportsFreightBillsRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports': typeof ReportsIndexRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/freight-bills': typeof ReportsFreightBillsRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports/': typeof ReportsIndexRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/freight-bills'
     | '/reports/pending-pods'
     | '/reports/transit-eway-bill'
     | '/reports/'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/freight-bills'
     | '/reports/pending-pods'
     | '/reports/transit-eway-bill'
     | '/reports'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/freight-bills'
     | '/reports/pending-pods'
     | '/reports/transit-eway-bill'
     | '/reports/'
@@ -246,6 +258,7 @@ export interface RootRouteChildren {
   TransitInfoRoute: typeof TransitInfoRoute
   UserCreationRoute: typeof UserCreationRoute
   VehicleInfoRoute: typeof VehicleInfoRoute
+  ReportsFreightBillsRoute: typeof ReportsFreightBillsRoute
   ReportsPendingPodsRoute: typeof ReportsPendingPodsRoute
   ReportsTransitEwayBillRoute: typeof ReportsTransitEwayBillRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
@@ -372,6 +385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsPendingPodsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/freight-bills': {
+      id: '/reports/freight-bills'
+      path: '/reports/freight-bills'
+      fullPath: '/reports/freight-bills'
+      preLoaderRoute: typeof ReportsFreightBillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -390,6 +410,7 @@ const rootRouteChildren: RootRouteChildren = {
   TransitInfoRoute: TransitInfoRoute,
   UserCreationRoute: UserCreationRoute,
   VehicleInfoRoute: VehicleInfoRoute,
+  ReportsFreightBillsRoute: ReportsFreightBillsRoute,
   ReportsPendingPodsRoute: ReportsPendingPodsRoute,
   ReportsTransitEwayBillRoute: ReportsTransitEwayBillRoute,
   ReportsIndexRoute: ReportsIndexRoute,
