@@ -1,15 +1,8 @@
-## Goal
-Remove the numeric index labels (e.g., "01", "02") displayed beside each screen name in the application sidebar.
+1. **Sidebar (`src/components/app-sidebar.tsx`)**
+   - Remove the group label headings ("Dispatch", "Shipment", "Transit", "Billing & Claims").
+   - Keep the nav items themselves and the Dashboard link; only the uppercase section headers are removed.
+   - Simplify the `groups` data structure to no longer need the `label` field.
 
-## Scope
-- **File:** `src/components/app-sidebar.tsx`
-
-## Changes
-1. Remove the `<span>` element that renders `String(item.index).padStart(2, "0")` inside each nav item row (currently lines 142-151).
-2. Update the `title` attribute on the nav `<Link>` to remove the `${item.index}. ` prefix (currently line 131).
-3. Remove the unused `index` field from the `NavItem` type and from every item in the `groups` array, since it will no longer serve any purpose.
-
-## Result
-- Sidebar nav items will show only the icon and the screen title — no leading number.
-- Collapsed sidebar tooltips will show only the title without a number prefix.
-- No visual or behavioral impact on any other part of the application.
+2. **Top bar (`src/components/top-bar.tsx`)**
+   - Remove the `no` field from `ROUTE_LABELS` and delete the numbered badge rendering (the small pill showing "01", "02", etc. next to the breadcrumb label).
+   - Keep the breadcrumb label text unchanged.

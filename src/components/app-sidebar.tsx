@@ -24,16 +24,14 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
-const groups: { label: string; items: NavItem[] }[] = [
+const groups: { items: NavItem[] }[] = [
   {
-    label: "Dispatch",
     items: [
       { title: "Dispatch Orders", to: "/dispatch-orders", icon: ClipboardList },
       { title: "Dispatch", to: "/dispatch", icon: Truck },
     ],
   },
   {
-    label: "Shipment",
     items: [
       { title: "Order Info", to: "/order-info", icon: FileText },
       { title: "Shipment Details", to: "/shipment-details", icon: PackageOpen },
@@ -42,14 +40,12 @@ const groups: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: "Transit",
     items: [
       { title: "Vehicle Info", to: "/vehicle-info", icon: Bus },
       { title: "Transit Info", to: "/transit-info", icon: RouteIcon },
     ],
   },
   {
-    label: "Billing & Claims",
     items: [
       { title: "Freight Billing", to: "/freight-billing", icon: IndianRupee },
       { title: "Service Level", to: "/service-level", icon: Gauge },
@@ -112,13 +108,8 @@ export function AppSidebar() {
           </Link>
         )}
 
-        {groups.map((group) => (
-          <div key={group.label}>
-            {!collapsed && (
-              <div className="px-2.5 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/45">
-                {group.label}
-              </div>
-            )}
+        {groups.map((group, gi) => (
+          <div key={gi}>
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const active = isActive(item.to);
