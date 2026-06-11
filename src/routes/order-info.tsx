@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LeScreenShell } from "@/components/le-screen-shell";
+import { OrderInfoSapCreate } from "@/components/order-info-sap-create";
 
 export const Route = createFileRoute("/order-info")({
   head: () => ({
@@ -15,6 +16,9 @@ function OrderInfoPage() {
   return (
     <LeScreenShell
       title="Order Info"
+      renderCreateBody={({ sap, direction }) =>
+        sap === "with" && direction === "outward" ? <OrderInfoSapCreate /> : null
+      }
       groups={[
         {
           title: "Invoice Header",
