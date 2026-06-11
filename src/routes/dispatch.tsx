@@ -175,23 +175,16 @@ function CreateDispatch() {
   return (
     <div className="space-y-5">
       {/* Toolbar */}
-      <div className="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
+      <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             Direction
           </span>
-          <label className={cn(
-            "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer",
-            direction === "outward" ? "text-foreground" : "text-muted-foreground",
-          )}>
-            <input
-              type="radio"
-              checked={direction === "outward"}
-              onChange={() => setDirection("outward")}
-              className="accent-accent"
-            />
-            Outward
-          </label>
+          <PremiumRadio
+            label="Outward"
+            checked={direction === "outward"}
+            onSelect={() => setDirection("outward")}
+          />
           {/* <label className={cn(
             "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer",
             direction === "inward" ? "text-foreground" : "text-muted-foreground",
