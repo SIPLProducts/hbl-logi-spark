@@ -125,18 +125,18 @@ function DispatchPage() {
       </div>
 
       {/* Body */}
-      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-7">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
-          <TabsList className="bg-surface border border-hairline rounded-lg p-1 h-auto">
+          <TabsList className="bg-surface border border-hairline rounded-xl p-1 h-auto shadow-soft">
             <TabsTrigger
               value="create"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md px-4 py-2 text-[12.5px] font-semibold gap-1.5"
+              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-lg px-4 py-2 text-[12.5px] font-semibold gap-1.5 transition-all"
             >
               <Plus className="size-3.5" /> Create Dispatch
             </TabsTrigger>
             <TabsTrigger
               value="search"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md px-4 py-2 text-[12.5px] font-semibold gap-1.5"
+              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-lg px-4 py-2 text-[12.5px] font-semibold gap-1.5 transition-all"
             >
               <Filter className="size-3.5" /> Search &amp; Reports
             </TabsTrigger>
