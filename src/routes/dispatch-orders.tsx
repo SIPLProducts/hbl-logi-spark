@@ -167,14 +167,6 @@ function DispatchOrdersPage() {
     <div className="flex flex-col min-h-full">
       {/* Page header */}
       <div className="bg-surface border-b border-hairline px-6 py-5">
-        <div className="flex items-center gap-2 mb-1.5">
-          <span className="inline-flex items-center justify-center min-w-[26px] h-[22px] px-1.5 rounded-md text-[11px] font-mono font-bold bg-accent/10 text-accent">
-            01
-          </span>
-          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-            Logistics Execution
-          </span>
-        </div>
         <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
           Dispatch Orders
         </h1>

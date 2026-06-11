@@ -43,7 +43,6 @@ const columns: WorklistColumn[] = [
 function DispatchPage() {
   return (
     <LeScreenShell
-      screenNo={2}
       title="Dispatch"
       columns={columns}
       groups={[

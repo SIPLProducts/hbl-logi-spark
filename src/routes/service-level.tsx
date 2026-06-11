@@ -14,7 +14,6 @@ export const Route = createFileRoute("/service-level")({
 function ServiceLevelPage() {
   return (
     <LeScreenShell
-      screenNo={10}
       title="Service Level (Shipment Feedback)"
       groups={[
         {

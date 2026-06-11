@@ -14,7 +14,6 @@ export const Route = createFileRoute("/invoice-load-details")({
 function InvoiceLoadDetailsPage() {
   return (
     <LeScreenShell
-      screenNo={5}
       title="Invoice Load Details"
       groups={[
         {

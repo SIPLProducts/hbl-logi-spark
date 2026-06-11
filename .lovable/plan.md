@@ -1,8 +1,22 @@
-1. **Sidebar (`src/components/app-sidebar.tsx`)**
-   - Remove the group label headings ("Dispatch", "Shipment", "Transit", "Billing & Claims").
-   - Keep the nav items themselves and the Dashboard link; only the uppercase section headers are removed.
-   - Simplify the `groups` data structure to no longer need the `label` field.
+Remove the number badge and "Logistics Execution" label that appear at the top of every screen.
 
-2. **Top bar (`src/components/top-bar.tsx`)**
-   - Remove the `no` field from `ROUTE_LABELS` and delete the numbered badge rendering (the small pill showing "01", "02", etc. next to the breadcrumb label).
-   - Keep the breadcrumb label text unchanged.
+Changes:
+1. `src/components/le-screen-shell.tsx`
+   - Remove the `screenNo` prop from the component signature.
+   - Delete the rendered number badge (`{String(screenNo).padStart(2, "0")}`) and the "Logistics Execution" `<span>` from the page header.
+
+2. Update all route files using `LeScreenShell` to stop passing `screenNo`:
+   - `src/routes/dispatch.tsx`
+   - `src/routes/order-info.tsx`
+   - `src/routes/shipment-details.tsx`
+   - `src/routes/invoice-load-details.tsx`
+   - `src/routes/segment-info.tsx`
+   - `src/routes/vehicle-info.tsx`
+   - `src/routes/transit-info.tsx`
+   - `src/routes/freight-billing.tsx`
+   - `src/routes/service-level.tsx`
+   - `src/routes/transit-damage-info.tsx`
+   - `src/routes/insurance-claim-tracking.tsx`
+
+3. `src/routes/dispatch-orders.tsx`
+   - Remove the inline number badge (`01`) and the "Logistics Execution" `<span>` from the page header (keeps the `<h1>` and description unchanged).

@@ -14,7 +14,6 @@ export const Route = createFileRoute("/vehicle-info")({
 function VehicleInfoPage() {
   return (
     <LeScreenShell
-      screenNo={7}
       title="Vehicle Info"
       groups={[
         {
