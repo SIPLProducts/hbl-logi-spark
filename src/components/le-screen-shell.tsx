@@ -331,106 +331,98 @@ export function LeScreenShell({
 
           {/* ───────── Search & Reports tab ───────── */}
           <TabsContent value="search" className="mt-5 space-y-5">
-            <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <LabeledField label="Date From">
-                  <input
-                    type="datetime-local"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="h-9 w-full bg-surface border border-hairline rounded-md px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  />
-                </LabeledField>
-                <LabeledField label="Date To">
-                  <input
-                    type="datetime-local"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="h-9 w-full bg-surface border border-hairline rounded-md px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  />
-                </LabeledField>
-                <LabeledField label="Search By">
-                  <select
-                    value={searchType}
-                    onChange={(e) =>
-                      setSearchType(e.target.value as (typeof SEARCH_TYPES)[number])
-                    }
-                    className="h-9 w-full bg-surface border border-hairline rounded-md px-2 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  >
-                    {SEARCH_TYPES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </LabeledField>
-                <LabeledField label="Value">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                    <input
-                      value={searchValue}
-                      onChange={(e) => setSearchValue(e.target.value)}
-                      placeholder={`Enter ${searchType}…`}
-                      className="w-full h-9 bg-surface border border-hairline rounded-md pl-8 pr-3 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            <div className="bg-surface border border-hairline rounded-2xl shadow-elegant">
+              <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
+                <div className="flex items-center gap-2">
+                  <Filter className="size-4 text-accent" />
+                  <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+                    Filter Options
+                  </h3>
+                </div>
+                <SearchSapToggle value={searchSap} onChange={setSearchSap} />
+              </div>
+
+              {!searchSap && (
+                <div className="p-6 text-center text-[12.5px] text-muted-foreground">
+                  Select <span className="font-semibold">With SAP</span> or{" "}
+                  <span className="font-semibold">Without SAP</span> to view filters.
+                </div>
+              )}
+
+              {searchSap && (
+                <>
+                  <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <DateField label="From Date" value={fromDate} onChange={setFromDate} />
+                    <DateField label="To Date" value={toDate} onChange={setToDate} />
+                    <SelectField
+                      label="Plant"
+                      value={fPlant}
+                      onChange={setFPlant}
+                      options={PLANTS}
+                      placeholder="Select Plant"
+                    />
+                    <SelectField
+                      label="Division"
+                      value={fDivision}
+                      onChange={setFDivision}
+                      options={DIVISIONS}
+                      placeholder="Select Division"
+                    />
+                    <SelectField
+                      label="Transporter"
+                      value={fTransporter}
+                      onChange={setFTransporter}
+                      options={TRANSPORTERS}
+                      placeholder="Select Transporter"
+                    />
+                    <SelectField
+                      label="Vehicle Type"
+                      value={fVehicleType}
+                      onChange={setFVehicleType}
+                      options={VEHICLE_TYPES}
+                      placeholder="Select Vehicle Type"
+                    />
+                    <SelectField
+                      label="Status"
+                      value={fStatus}
+                      onChange={setFStatus}
+                      options={[...STATUS_OPTIONS]}
+                      placeholder="Select Status"
                     />
                   </div>
-                </LabeledField>
-              </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-1.5 flex-wrap">
-                  {(
-                    [
-                      {
-                        key: "all",
-                        label: "All",
-                        count: counts.pending + counts.completed,
-                        dot: "bg-muted-foreground",
-                      },
-                      { key: "pending", label: "Pending", count: counts.pending, dot: "bg-warning" },
-                      {
-                        key: "completed",
-                        label: "Completed",
-                        count: counts.completed,
-                        dot: "bg-success",
-                      },
-                    ] as const
-                  ).map((chip) => (
-                    <button
-                      key={chip.key}
-                      onClick={() => setStatusFilter(chip.key)}
-                      className={
-                        "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[11.5px] transition-colors " +
-                        (statusFilter === chip.key
-                          ? "border-accent/40 bg-accent/10 text-accent"
-                          : "border-hairline bg-surface text-muted-foreground hover:text-foreground")
-                      }
-                    >
-                      <span className={"size-1.5 rounded-full " + chip.dot} />
-                      {chip.label}
-                      <span className="font-mono font-semibold ml-0.5">{chip.count}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setSearchValue("");
-                      setDateFrom("");
-                      setDateTo("");
-                      setStatusFilter("all");
-                    }}
-                    className="h-9 px-3 rounded-lg text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-                  >
-                    Reset
-                  </button>
-                  <button className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-[12px] font-semibold text-primary-foreground bg-gradient-primary shadow-cta hover:-translate-y-0.5 transition-transform">
-                    <Search className="size-3.5" /> Search
-                  </button>
-                </div>
-              </div>
+                  <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
+                    <Button variant="ghost" size="sm" onClick={resetFilters}>
+                      Reset
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <FileText className="size-3.5" /> Download PDF
+                    </Button>
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <FileDown className="size-3.5 text-emerald-600" /> Download Excel
+                    </Button>
+                    <Button size="sm" onClick={() => setApplied(true)} className="gap-1.5">
+                      <Filter className="size-3.5" /> Apply Filter
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
 
+            {!applied ? (
+              <div className="bg-surface border border-dashed border-hairline rounded-2xl p-10 text-center">
+                <div className="mx-auto size-12 grid place-items-center rounded-full bg-muted text-muted-foreground">
+                  <Filter className="size-5" />
+                </div>
+                <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
+                  No results yet
+                </h3>
+                <p className="mt-1 text-[12.5px] text-muted-foreground max-w-md mx-auto">
+                  Choose your filters above and click{" "}
+                  <span className="font-semibold">Apply Filter</span> to load records.
+                </p>
+              </div>
+            ) : (
             <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden">
               <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
                 <div>
