@@ -26,6 +26,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as ReportsTransitEwayBillRouteImport } from './routes/reports.transit-eway-bill'
 import { Route as ReportsPendingPodsRouteImport } from './routes/reports.pending-pods'
+import { Route as ReportsLoadingFactorCostRouteImport } from './routes/reports.loading-factor-cost'
 import { Route as ReportsFreightBillsRouteImport } from './routes/reports.freight-bills'
 
 const VehicleInfoRoute = VehicleInfoRouteImport.update({
@@ -113,6 +114,12 @@ const ReportsPendingPodsRoute = ReportsPendingPodsRouteImport.update({
   path: '/reports/pending-pods',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsLoadingFactorCostRoute =
+  ReportsLoadingFactorCostRouteImport.update({
+    id: '/reports/loading-factor-cost',
+    path: '/reports/loading-factor-cost',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ReportsFreightBillsRoute = ReportsFreightBillsRouteImport.update({
   id: '/reports/freight-bills',
   path: '/reports/freight-bills',
@@ -135,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
+  '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports/': typeof ReportsIndexRoute
@@ -155,6 +163,7 @@ export interface FileRoutesByTo {
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
+  '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports': typeof ReportsIndexRoute
@@ -176,6 +185,7 @@ export interface FileRoutesById {
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
+  '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports/': typeof ReportsIndexRoute
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/user-creation'
     | '/vehicle-info'
     | '/reports/freight-bills'
+    | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
     | '/reports/transit-eway-bill'
     | '/reports/'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/user-creation'
     | '/vehicle-info'
     | '/reports/freight-bills'
+    | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
     | '/reports/transit-eway-bill'
     | '/reports'
@@ -238,6 +250,7 @@ export interface FileRouteTypes {
     | '/user-creation'
     | '/vehicle-info'
     | '/reports/freight-bills'
+    | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
     | '/reports/transit-eway-bill'
     | '/reports/'
@@ -259,6 +272,7 @@ export interface RootRouteChildren {
   UserCreationRoute: typeof UserCreationRoute
   VehicleInfoRoute: typeof VehicleInfoRoute
   ReportsFreightBillsRoute: typeof ReportsFreightBillsRoute
+  ReportsLoadingFactorCostRoute: typeof ReportsLoadingFactorCostRoute
   ReportsPendingPodsRoute: typeof ReportsPendingPodsRoute
   ReportsTransitEwayBillRoute: typeof ReportsTransitEwayBillRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
@@ -385,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsPendingPodsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/loading-factor-cost': {
+      id: '/reports/loading-factor-cost'
+      path: '/reports/loading-factor-cost'
+      fullPath: '/reports/loading-factor-cost'
+      preLoaderRoute: typeof ReportsLoadingFactorCostRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports/freight-bills': {
       id: '/reports/freight-bills'
       path: '/reports/freight-bills'
@@ -411,6 +432,7 @@ const rootRouteChildren: RootRouteChildren = {
   UserCreationRoute: UserCreationRoute,
   VehicleInfoRoute: VehicleInfoRoute,
   ReportsFreightBillsRoute: ReportsFreightBillsRoute,
+  ReportsLoadingFactorCostRoute: ReportsLoadingFactorCostRoute,
   ReportsPendingPodsRoute: ReportsPendingPodsRoute,
   ReportsTransitEwayBillRoute: ReportsTransitEwayBillRoute,
   ReportsIndexRoute: ReportsIndexRoute,
