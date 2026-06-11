@@ -23,6 +23,15 @@ import { Route as FreightBillingRouteImport } from './routes/freight-billing'
 import { Route as DispatchOrdersRouteImport } from './routes/dispatch-orders'
 import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReportsIndexRouteImport } from './routes/reports.index'
+import { Route as ReportsTransitEwayBillRouteImport } from './routes/reports.transit-eway-bill'
+import { Route as ReportsServiceLevelReportRouteImport } from './routes/reports.service-level-report'
+import { Route as ReportsPendingPodsRouteImport } from './routes/reports.pending-pods'
+import { Route as ReportsLoadingFactorCostRouteImport } from './routes/reports.loading-factor-cost'
+import { Route as ReportsInsuranceRouteImport } from './routes/reports.insurance'
+import { Route as ReportsFreightBillsRouteImport } from './routes/reports.freight-bills'
+import { Route as ReportsDamageListRouteImport } from './routes/reports.damage-list'
+import { Route as ReportsBusinessShareMatrixRouteImport } from './routes/reports.business-share-matrix'
 
 const VehicleInfoRoute = VehicleInfoRouteImport.update({
   id: '/vehicle-info',
@@ -94,6 +103,54 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsIndexRoute = ReportsIndexRouteImport.update({
+  id: '/reports/',
+  path: '/reports/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsTransitEwayBillRoute = ReportsTransitEwayBillRouteImport.update({
+  id: '/reports/transit-eway-bill',
+  path: '/reports/transit-eway-bill',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsServiceLevelReportRoute =
+  ReportsServiceLevelReportRouteImport.update({
+    id: '/reports/service-level-report',
+    path: '/reports/service-level-report',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ReportsPendingPodsRoute = ReportsPendingPodsRouteImport.update({
+  id: '/reports/pending-pods',
+  path: '/reports/pending-pods',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsLoadingFactorCostRoute =
+  ReportsLoadingFactorCostRouteImport.update({
+    id: '/reports/loading-factor-cost',
+    path: '/reports/loading-factor-cost',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ReportsInsuranceRoute = ReportsInsuranceRouteImport.update({
+  id: '/reports/insurance',
+  path: '/reports/insurance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsFreightBillsRoute = ReportsFreightBillsRouteImport.update({
+  id: '/reports/freight-bills',
+  path: '/reports/freight-bills',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsDamageListRoute = ReportsDamageListRouteImport.update({
+  id: '/reports/damage-list',
+  path: '/reports/damage-list',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsBusinessShareMatrixRoute =
+  ReportsBusinessShareMatrixRouteImport.update({
+    id: '/reports/business-share-matrix',
+    path: '/reports/business-share-matrix',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -110,6 +167,15 @@ export interface FileRoutesByFullPath {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
+  '/reports/damage-list': typeof ReportsDamageListRoute
+  '/reports/freight-bills': typeof ReportsFreightBillsRoute
+  '/reports/insurance': typeof ReportsInsuranceRoute
+  '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
+  '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/service-level-report': typeof ReportsServiceLevelReportRoute
+  '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
+  '/reports/': typeof ReportsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,6 +192,15 @@ export interface FileRoutesByTo {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
+  '/reports/damage-list': typeof ReportsDamageListRoute
+  '/reports/freight-bills': typeof ReportsFreightBillsRoute
+  '/reports/insurance': typeof ReportsInsuranceRoute
+  '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
+  '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/service-level-report': typeof ReportsServiceLevelReportRoute
+  '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
+  '/reports': typeof ReportsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +218,15 @@ export interface FileRoutesById {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
+  '/reports/damage-list': typeof ReportsDamageListRoute
+  '/reports/freight-bills': typeof ReportsFreightBillsRoute
+  '/reports/insurance': typeof ReportsInsuranceRoute
+  '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
+  '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/service-level-report': typeof ReportsServiceLevelReportRoute
+  '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
+  '/reports/': typeof ReportsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,6 +245,15 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/business-share-matrix'
+    | '/reports/damage-list'
+    | '/reports/freight-bills'
+    | '/reports/insurance'
+    | '/reports/loading-factor-cost'
+    | '/reports/pending-pods'
+    | '/reports/service-level-report'
+    | '/reports/transit-eway-bill'
+    | '/reports/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -177,6 +270,15 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/business-share-matrix'
+    | '/reports/damage-list'
+    | '/reports/freight-bills'
+    | '/reports/insurance'
+    | '/reports/loading-factor-cost'
+    | '/reports/pending-pods'
+    | '/reports/service-level-report'
+    | '/reports/transit-eway-bill'
+    | '/reports'
   id:
     | '__root__'
     | '/'
@@ -193,6 +295,15 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/business-share-matrix'
+    | '/reports/damage-list'
+    | '/reports/freight-bills'
+    | '/reports/insurance'
+    | '/reports/loading-factor-cost'
+    | '/reports/pending-pods'
+    | '/reports/service-level-report'
+    | '/reports/transit-eway-bill'
+    | '/reports/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -210,6 +321,15 @@ export interface RootRouteChildren {
   TransitInfoRoute: typeof TransitInfoRoute
   UserCreationRoute: typeof UserCreationRoute
   VehicleInfoRoute: typeof VehicleInfoRoute
+  ReportsBusinessShareMatrixRoute: typeof ReportsBusinessShareMatrixRoute
+  ReportsDamageListRoute: typeof ReportsDamageListRoute
+  ReportsFreightBillsRoute: typeof ReportsFreightBillsRoute
+  ReportsInsuranceRoute: typeof ReportsInsuranceRoute
+  ReportsLoadingFactorCostRoute: typeof ReportsLoadingFactorCostRoute
+  ReportsPendingPodsRoute: typeof ReportsPendingPodsRoute
+  ReportsServiceLevelReportRoute: typeof ReportsServiceLevelReportRoute
+  ReportsTransitEwayBillRoute: typeof ReportsTransitEwayBillRoute
+  ReportsIndexRoute: typeof ReportsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -312,6 +432,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/': {
+      id: '/reports/'
+      path: '/reports'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof ReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/transit-eway-bill': {
+      id: '/reports/transit-eway-bill'
+      path: '/reports/transit-eway-bill'
+      fullPath: '/reports/transit-eway-bill'
+      preLoaderRoute: typeof ReportsTransitEwayBillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/service-level-report': {
+      id: '/reports/service-level-report'
+      path: '/reports/service-level-report'
+      fullPath: '/reports/service-level-report'
+      preLoaderRoute: typeof ReportsServiceLevelReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/pending-pods': {
+      id: '/reports/pending-pods'
+      path: '/reports/pending-pods'
+      fullPath: '/reports/pending-pods'
+      preLoaderRoute: typeof ReportsPendingPodsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/loading-factor-cost': {
+      id: '/reports/loading-factor-cost'
+      path: '/reports/loading-factor-cost'
+      fullPath: '/reports/loading-factor-cost'
+      preLoaderRoute: typeof ReportsLoadingFactorCostRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/insurance': {
+      id: '/reports/insurance'
+      path: '/reports/insurance'
+      fullPath: '/reports/insurance'
+      preLoaderRoute: typeof ReportsInsuranceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/freight-bills': {
+      id: '/reports/freight-bills'
+      path: '/reports/freight-bills'
+      fullPath: '/reports/freight-bills'
+      preLoaderRoute: typeof ReportsFreightBillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/damage-list': {
+      id: '/reports/damage-list'
+      path: '/reports/damage-list'
+      fullPath: '/reports/damage-list'
+      preLoaderRoute: typeof ReportsDamageListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/business-share-matrix': {
+      id: '/reports/business-share-matrix'
+      path: '/reports/business-share-matrix'
+      fullPath: '/reports/business-share-matrix'
+      preLoaderRoute: typeof ReportsBusinessShareMatrixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -330,6 +513,15 @@ const rootRouteChildren: RootRouteChildren = {
   TransitInfoRoute: TransitInfoRoute,
   UserCreationRoute: UserCreationRoute,
   VehicleInfoRoute: VehicleInfoRoute,
+  ReportsBusinessShareMatrixRoute: ReportsBusinessShareMatrixRoute,
+  ReportsDamageListRoute: ReportsDamageListRoute,
+  ReportsFreightBillsRoute: ReportsFreightBillsRoute,
+  ReportsInsuranceRoute: ReportsInsuranceRoute,
+  ReportsLoadingFactorCostRoute: ReportsLoadingFactorCostRoute,
+  ReportsPendingPodsRoute: ReportsPendingPodsRoute,
+  ReportsServiceLevelReportRoute: ReportsServiceLevelReportRoute,
+  ReportsTransitEwayBillRoute: ReportsTransitEwayBillRoute,
+  ReportsIndexRoute: ReportsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
