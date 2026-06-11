@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LeScreenShell, type WorklistColumn } from "@/components/le-screen-shell";
+import { ShipmentDetailsSapCreate } from "@/components/shipment-details-sap-create";
 
 export const Route = createFileRoute("/shipment-details")({
   head: () => ({
@@ -25,6 +26,11 @@ function ShipmentDetailsPage() {
     <LeScreenShell
       title="Shipment Details"
       columns={columns}
+      renderCreateBody={({ sap, direction }) =>
+        direction === "outward" && sap === "with" ? (
+          <ShipmentDetailsSapCreate />
+        ) : null
+      }
       topFields={[
         { label: "Incoterms", value: "FOR", type: "select", options: ["FOR", "FOB", "CIF", "EXW", "DAP"] },
         { label: "Insurance Scope", value: "Select Insurance Scope", type: "select", options: ["Transit Insurance", "Open Policy", "Self Insured"] },
