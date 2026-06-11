@@ -1,28 +1,52 @@
 ## Goal
-Add a Create-mode body for the Insurance Claim Tracking screen that mirrors the Order Info / Transit Damage Info layout, with With-SAP and Without-SAP variants matching the two reference screenshots.
+Add a "User Creation" screen accessible after Insurance Claim Tracking in the sidebar, matching the existing LE app look & feel.
 
 ## Changes
 
-### 1. New file: `src/components/insurance-claim-tracking-sap-create.tsx`
-Built from the same skeleton as `transit-damage-info-sap-create.tsx` (status chips, reference table, lookup bar, field grid, secondary vehicle table, footer Save / Save and Next / Save and Previous).
+### 1. New route: `src/routes/user-creation.tsx`
+- `createFileRoute("/user-creation")` with `head()` setting title "User Creation · HBL LE" and matching description.
+- Uses `LeScreenShell` for consistent header/Create+Search tabs styling.
+- Provides `renderCreateBody` returning a custom `<UserCreationCreate />` component so the body matches the recent SAP create components (no SAP toggle is relevant here — but `LeScreenShell` always shows it; that's acceptable to keep the look consistent with sibling screens, same as Order Info / Insurance Claim).
+- Passes a minimal `groups` array (used by Search & Reports view-mode fallback only).
 
-Differences from Transit Damage:
+### 2. New component: `src/components/user-creation-create.tsx`
+A single create body styled the same as `insurance-claim-tracking-sap-create.tsx` (green-themed inputs, rounded surface cards). Sections:
 
-- **Field list (With SAP, 19 fields)** matching screenshot #1:
-  Fiscal Year, Reported Date (date), Claim Reference, Invoice Date (date), Invoice Basic Value, Loss Declared, Claim Received (date), Salvage Value, Customer, SO Number, Location, Damage Remarks (select: Wet / Crushed / Broken / Leak), Claim Info Sent, Claim Status (select: Open / In Review / Approved / Rejected / Settled), Claim Document Status (select: Pending / Submitted / Verified), Courier Details, Payment Status (select: Pending / Partial / Paid), Payment Info, UTR, Claim Settlement Date (date), Supporting Document (file), Approve Document (file).
+- **Users list table** (reference table, same emerald/teal gradient header as other screens) with columns:
+  Select, Sl.No, User ID, Full Name, Email, Role, Plant, Status, Action (⋮). One placeholder row.
 
-- **Field list (Without SAP)** = With-SAP list with `DC Reference Number` inserted as the first field (replaces the Invoice Number lookup bar, mirroring transit-damage pattern).
+- **Search bar**: Select (User ID / Name / Email / Role) + text input + search icon button (identical pattern to existing screens).
 
-- **Secondary table columns** (per screenshots): Select, Sl.No, Map ID (select), Vehicle Line, Vehicle Type, Truck Number, LR Number, AH, No. of Sets, Transporter, Action (+ / ×).
+- **User details form** (field grid, 3-col on lg) — fields:
+  - User ID
+  - Full Name
+  - Employee Code
+  - Email (type=email)
+  - Mobile Number
+  - Designation
+  - Department (select: Logistics / Finance / Sales / Plant Ops / IT)
+  - Role (select: Admin / LE Operator / Approver / Viewer)
+  - Plant (select: HBL NCPP-SHPT / HBL VSP-SHPT / HBL HYD-PLANT-04)
+  - Division (select: NCPP / VSP / Industrial)
+  - Reporting Manager
+  - Joining Date (date)
+  - Valid From (date)
+  - Valid To (date)
+  - Status (select: Active / Inactive / Suspended)
+  - Username
+  - Password (type=password)
+  - Confirm Password (type=password)
+  - Profile Photo (file)
 
-- **Lookup bar behavior** (identical to transit-damage):
-  - With-SAP: shows Invoice Number input + GET button. Fields/secondary table/footer hidden until GET clicked with a non-empty value.
-  - Without-SAP: no lookup row; fields always visible.
-  - `showFields = isWithout || revealed` so toggling SAP from with→without always reveals fields.
+- **Permissions table** (secondary table, same styled header) with columns:
+  Select, Sl.No, Module, View, Create, Edit, Delete, Approve, Action (+ / ×). Prepopulate one row (e.g. "Order Info") with checkboxes per permission.
 
-### 2. Edit: `src/routes/insurance-claim-tracking.tsx`
-- Import `InsuranceClaimTrackingSapCreate`.
-- Add `renderCreateBody={({ sap, direction }) => direction === "outward" ? <InsuranceClaimTrackingSapCreate mode={sap === "with" ? "with" : "without"} /> : null}` on the existing `LeScreenShell` (same wiring as Order Info / Transit Damage).
-- Leave existing `groups` (view-mode content) untouched.
+- **Footer**: Save / Save and Next / Save and Previous buttons (same three colored buttons used elsewhere).
 
-No other files touched. Pure UI work.
+No `revealed` GET-gating — fields/tables/footer always visible (this screen has no SAP-based reveal).
+
+### 3. Edit: `src/components/app-sidebar.tsx`
+- Add a new sidebar group below the existing Insurance Claim Tracking group containing one item:
+  `{ title: "User Creation", to: "/user-creation", icon: UserPlus }` (import `UserPlus` from `lucide-react`).
+
+No other files touched. Pure UI / route work; no backend changes.
