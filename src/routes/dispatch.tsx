@@ -254,23 +254,23 @@ function CreateDispatch() {
       {sap && (
       <>
       {/* Editable table card */}
-      <div className="bg-surface border border-hairline rounded-xl shadow-xs overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-        <div className="px-4 py-3 border-b border-hairline flex items-center justify-between bg-muted/40">
+      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
           <div>
-            <h3 className="text-[13px] font-semibold text-foreground">Dispatch Lines</h3>
-            <p className="text-[11.5px] text-muted-foreground">
+            <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Dispatch Lines</h3>
+            <p className="text-[11.5px] text-muted-foreground mt-0.5">
               {rows.length} row{rows.length === 1 ? "" : "s"} · auto-numbered
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={addRow} className="gap-1.5">
+          <Button size="sm" variant="outline" onClick={addRow} className="gap-1.5 rounded-lg">
             <Plus className="size-3.5" /> Add Row
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scrollbar-elegant">
           <table className="w-full text-[12.5px] border-collapse">
-            <thead className="bg-muted/60 sticky top-0 z-10">
-              <tr className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
+            <thead className="bg-surface-2/80 sticky top-0 z-10 backdrop-blur">
+              <tr className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground border-b border-hairline">
                 {[
                   "Sl.No",
                   "Vehicle Type",
@@ -291,7 +291,7 @@ function CreateDispatch() {
                   <th
                     key={i}
                     className={cn(
-                      "px-3 py-2.5 text-left whitespace-nowrap",
+                      "px-3 py-3 text-left whitespace-nowrap",
                       i === 0 && "w-14 text-center",
                       i === 14 && "w-14 text-right",
                     )}
@@ -301,9 +301,9 @@ function CreateDispatch() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-hairline/70">
+            <tbody className="divide-y divide-hairline/60">
               {rows.map((row) => (
-                <tr key={row.id} className="hover:bg-muted/40 transition-colors group">
+                <tr key={row.id} className="hover:bg-accent/[0.04] transition-colors group">
                   <td className="px-3 py-1.5 text-center font-mono text-muted-foreground">
                     {row.slNo}
                   </td>
