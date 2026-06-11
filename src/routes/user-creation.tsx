@@ -1,7 +1,23 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus, Pencil, Trash2, ShieldCheck } from "lucide-react";
-import { CreateUserDialog } from "@/components/create-user-dialog";
+import { CreateUserDialog, type UserFormValues } from "@/components/create-user-dialog";
+
+const SEED_USER: UserFormValues = {
+  userId: "2424",
+  firstName: "Admin",
+  lastName: "User",
+  contact: "7337283880",
+  email: "inturimounika@sharviinfotech.com",
+  category: "Internal",
+  employeeCode: "2424",
+  inOutType: "Outward",
+  plants: "1100, 1101, 1102, 1105, 1106, 1200, 1300",
+  divisions: "NCPP, COMMON SERVICE, Corporate",
+  role: "ADMIN",
+  screensCount: 23,
+  active: true,
+};
 
 export const Route = createFileRoute("/user-creation")({
   head: () => ({
@@ -14,7 +30,11 @@ export const Route = createFileRoute("/user-creation")({
 });
 
 function UserCreationPage() {
-  const [open, setOpen] = useState(false);
+  const [dialog, setDialog] = useState<{
+    open: boolean;
+    mode: "create" | "edit";
+    values?: UserFormValues;
+  }>({ open: false, mode: "create" });
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -25,7 +45,7 @@ function UserCreationPage() {
             User Management
           </h1>
           <button
-            onClick={() => setOpen(true)}
+            onClick={() => setDialog({ open: true, mode: "create" })}
             className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform"
           >
             <Plus className="size-3.5" /> Create New User
@@ -86,7 +106,10 @@ function UserCreationPage() {
                 </td>
                 <td className="px-3 py-3 text-center">
                   <div className="inline-flex items-center gap-1.5">
-                    <button className="inline-grid place-items-center size-7 rounded-md text-sky-600 hover:bg-sky-50">
+                    <button
+                      onClick={() => setDialog({ open: true, mode: "edit", values: SEED_USER })}
+                      className="inline-grid place-items-center size-7 rounded-md text-sky-600 hover:bg-sky-50"
+                    >
                       <Pencil className="size-3.5" />
                     </button>
                     <button className="inline-grid place-items-center size-7 rounded-md text-rose-600 hover:bg-rose-50">
@@ -105,7 +128,12 @@ function UserCreationPage() {
         </div>
       </div>
 
-      <CreateUserDialog open={open} onOpenChange={setOpen} />
+      <CreateUserDialog
+        open={dialog.open}
+        onOpenChange={(v) => setDialog((d) => ({ ...d, open: v }))}
+        mode={dialog.mode}
+        initialValues={dialog.values}
+      />
     </div>
   );
 }
