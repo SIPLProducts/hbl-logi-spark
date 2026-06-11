@@ -19,9 +19,8 @@ const ROUTE_LABELS: Record<string, { label: string }> = {
 };
 
 export function TopBar() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const current = ROUTE_LABELS[pathname] ?? { label: "—" };
-
+  return null;
+  // eslint-disable-next-line no-unreachable
   return (
     <header className="h-14 bg-surface/90 backdrop-blur border-b border-hairline flex items-center justify-between px-5 sticky top-0 z-20">
       {/*
