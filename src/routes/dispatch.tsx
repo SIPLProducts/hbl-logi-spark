@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import {
   ArrowUpDown,
   CalendarIcon,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -73,7 +74,7 @@ function DispatchPage() {
   return (
     <div className="flex flex-col min-h-full bg-background">
       {/* Header */}
-      <div className="bg-surface border-b border-hairline px-4 sm:px-6 lg:px-8 pt-5 pb-4">
+      <div className="bg-surface/80 backdrop-blur border-b border-hairline px-4 sm:px-6 lg:px-8 pt-6 pb-5 shadow-soft">
         <Breadcrumb className="mb-3">
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -93,14 +94,14 @@ function DispatchPage() {
 
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="hidden sm:grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+            <div className="hidden sm:grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-primary text-white shadow-cta">
               <Truck className="size-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground truncate">
+              <h1 className="font-display text-[26px] leading-none font-bold tracking-tight text-foreground truncate">
                 Dispatch
               </h1>
-              <p className="text-[12.5px] text-muted-foreground mt-0.5 max-w-2xl">
+              <p className="text-[12.5px] text-muted-foreground mt-1.5 max-w-2xl">
                 Plan outbound shipments, allocate trucks against work orders, and search executed
                 dispatch records.
               </p>
@@ -110,12 +111,12 @@ function DispatchPage() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5"
+              className="gap-1.5 rounded-lg"
               onClick={() => window.location.reload()}
             >
               <RefreshCw className="size-3.5" /> Refresh
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-lg">
               <Download className="size-3.5" /> Export
             </Button>
           </div>
@@ -124,18 +125,18 @@ function DispatchPage() {
       </div>
 
       {/* Body */}
-      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-7">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
-          <TabsList className="bg-surface border border-hairline rounded-lg p-1 h-auto">
+          <TabsList className="bg-surface border border-hairline rounded-xl p-1 h-auto shadow-soft">
             <TabsTrigger
               value="create"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md px-4 py-2 text-[12.5px] font-semibold gap-1.5"
+              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-lg px-4 py-2 text-[12.5px] font-semibold gap-1.5 transition-all"
             >
               <Plus className="size-3.5" /> Create Dispatch
             </TabsTrigger>
             <TabsTrigger
               value="search"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md px-4 py-2 text-[12.5px] font-semibold gap-1.5"
+              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-lg px-4 py-2 text-[12.5px] font-semibold gap-1.5 transition-all"
             >
               <Filter className="size-3.5" /> Search &amp; Reports
             </TabsTrigger>
@@ -174,23 +175,16 @@ function CreateDispatch() {
   return (
     <div className="space-y-5">
       {/* Toolbar */}
-      <div className="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
+      <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             Direction
           </span>
-          <label className={cn(
-            "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer",
-            direction === "outward" ? "text-foreground" : "text-muted-foreground",
-          )}>
-            <input
-              type="radio"
-              checked={direction === "outward"}
-              onChange={() => setDirection("outward")}
-              className="accent-accent"
-            />
-            Outward
-          </label>
+          <PremiumRadio
+            label="Outward"
+            checked={direction === "outward"}
+            onSelect={() => setDirection("outward")}
+          />
           {/* <label className={cn(
             "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer",
             direction === "inward" ? "text-foreground" : "text-muted-foreground",
@@ -260,23 +254,23 @@ function CreateDispatch() {
       {sap && (
       <>
       {/* Editable table card */}
-      <div className="bg-surface border border-hairline rounded-xl shadow-xs overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-        <div className="px-4 py-3 border-b border-hairline flex items-center justify-between bg-muted/40">
+      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
           <div>
-            <h3 className="text-[13px] font-semibold text-foreground">Dispatch Lines</h3>
-            <p className="text-[11.5px] text-muted-foreground">
+            <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Dispatch Lines</h3>
+            <p className="text-[11.5px] text-muted-foreground mt-0.5">
               {rows.length} row{rows.length === 1 ? "" : "s"} · auto-numbered
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={addRow} className="gap-1.5">
+          <Button size="sm" variant="outline" onClick={addRow} className="gap-1.5 rounded-lg">
             <Plus className="size-3.5" /> Add Row
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scrollbar-elegant">
           <table className="w-full text-[12.5px] border-collapse">
-            <thead className="bg-muted/60 sticky top-0 z-10">
-              <tr className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
+            <thead className="bg-surface-2/80 sticky top-0 z-10 backdrop-blur">
+              <tr className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground border-b border-hairline">
                 {[
                   "Sl.No",
                   "Vehicle Type",
@@ -297,7 +291,7 @@ function CreateDispatch() {
                   <th
                     key={i}
                     className={cn(
-                      "px-3 py-2.5 text-left whitespace-nowrap",
+                      "px-3 py-3 text-left whitespace-nowrap",
                       i === 0 && "w-14 text-center",
                       i === 14 && "w-14 text-right",
                     )}
@@ -307,9 +301,9 @@ function CreateDispatch() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-hairline/70">
+            <tbody className="divide-y divide-hairline/60">
               {rows.map((row) => (
-                <tr key={row.id} className="hover:bg-muted/40 transition-colors group">
+                <tr key={row.id} className="hover:bg-accent/[0.04] transition-colors group">
                   <td className="px-3 py-1.5 text-center font-mono text-muted-foreground">
                     {row.slNo}
                   </td>
@@ -407,14 +401,14 @@ function CreateDispatch() {
       </div>
 
       {/* Sticky footer actions */}
-      <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/95 backdrop-blur border-t border-hairline px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-end gap-2 z-10">
-        <Button variant="outline" size="sm" className="gap-1.5">
+      <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/90 backdrop-blur border-t border-hairline px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-end gap-2.5 z-10">
+        <Button variant="ghost" size="sm" className="gap-1.5 rounded-lg text-muted-foreground hover:text-foreground">
           <ChevronLeft className="size-3.5" /> Previous
         </Button>
-        <Button variant="secondary" size="sm" className="gap-1.5">
+        <Button variant="outline" size="sm" className="gap-1.5 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent">
           <Save className="size-3.5" /> Save
         </Button>
-        <Button size="sm" className="gap-1.5">
+        <Button size="sm" className="gap-1.5 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0">
           Save &amp; Next <ChevronRight className="size-3.5" />
         </Button>
       </div>
@@ -425,16 +419,24 @@ function CreateDispatch() {
 }
 
 function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: SapMode) => void }) {
+  const idx = value === "with" ? 0 : value === "without" ? 1 : -1;
   return (
-    <div className="inline-flex items-center p-0.5 rounded-lg bg-muted border border-hairline text-[12px]">
+    <div className="relative inline-flex items-center p-1 rounded-full bg-muted border border-hairline text-[12px] shadow-inner">
+      {idx >= 0 && (
+        <span
+          className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface shadow-soft ring-1 ring-hairline transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(${idx * 100}%)` }}
+          aria-hidden
+        />
+      )}
       {(["with", "without"] as const).map((m) => (
         <button
           key={m}
           onClick={() => onChange(m)}
           className={cn(
-            "px-3 h-8 rounded-md font-semibold transition-colors",
+            "relative z-10 px-4 h-8 rounded-full font-semibold transition-colors min-w-[96px]",
             value === m
-              ? "bg-surface text-foreground shadow-sm"
+              ? "text-foreground"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -442,6 +444,44 @@ function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: S
         </button>
       ))}
     </div>
+  );
+}
+
+function PremiumRadio({
+  label,
+  checked,
+  onSelect,
+}: {
+  label: string;
+  checked: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      onClick={onSelect}
+      className={cn(
+        "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer rounded-full pl-1.5 pr-3 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+        checked ? "text-foreground bg-accent/8" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <span
+        className={cn(
+          "grid place-items-center size-4 rounded-full border-2 transition-all",
+          checked ? "border-accent" : "border-hairline",
+        )}
+      >
+        <span
+          className={cn(
+            "size-1.5 rounded-full transition-all",
+            checked ? "bg-accent scale-100" : "bg-transparent scale-0",
+          )}
+        />
+      </span>
+      {label}
+    </button>
   );
 }
 
@@ -505,19 +545,21 @@ function CellSelect({
 }) {
   return (
     <td className="px-2 py-1.5">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={{ minWidth }}
-        className="w-full h-8 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-2 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition"
-      >
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
+      <div className="relative" style={{ minWidth }}>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full h-8 appearance-none bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-lg pl-2.5 pr-7 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition cursor-pointer"
+        >
+          <option value="">{placeholder}</option>
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground/70" />
+      </div>
     </td>
   );
 }
@@ -548,11 +590,11 @@ function SearchDispatch() {
 
   return (
     <div className="space-y-5">
-      <div className="bg-surface border border-hairline rounded-xl shadow-xs">
-        <div className="px-4 py-3 border-b border-hairline flex items-center justify-between bg-muted/40">
+      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant">
+        <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
           <div className="flex items-center gap-2">
             <Filter className="size-4 text-accent" />
-            <h3 className="text-[13px] font-semibold text-foreground">Filter Options</h3>
+            <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Filter Options</h3>
           </div>
           <SapToggle value={sap} onChange={setSap} />
         </div>
