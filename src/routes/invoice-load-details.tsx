@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LeScreenShell } from "@/components/le-screen-shell";
+import { InvoiceLoadDetailsSapCreate } from "@/components/invoice-load-details-sap-create";
 
 export const Route = createFileRoute("/invoice-load-details")({
   head: () => ({
@@ -15,6 +16,11 @@ function InvoiceLoadDetailsPage() {
   return (
     <LeScreenShell
       title="Invoice Load Details"
+      renderCreateBody={({ sap, direction }) =>
+        direction === "outward"
+          ? <InvoiceLoadDetailsSapCreate mode={sap === "with" ? "with" : "without"} />
+          : null
+      }
       groups={[
         {
           title: "Invoice",
