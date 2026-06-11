@@ -243,7 +243,10 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
               <input
                 type="checkbox"
                 checked={provision}
-                onChange={(e) => setProvision(e.target.checked)}
+                onChange={(e) => {
+                  setProvision(e.target.checked);
+                  if (e.target.checked) setAccount(false);
+                }}
                 className="size-4 accent-emerald-600"
               />
               Provision
@@ -252,7 +255,10 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
               <input
                 type="checkbox"
                 checked={account}
-                onChange={(e) => setAccount(e.target.checked)}
+                onChange={(e) => {
+                  setAccount(e.target.checked);
+                  if (e.target.checked) setProvision(false);
+                }}
                 className="size-4 accent-emerald-600"
               />
               Account
