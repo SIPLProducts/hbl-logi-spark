@@ -17,7 +17,9 @@ function OrderInfoPage() {
     <LeScreenShell
       title="Order Info"
       renderCreateBody={({ sap, direction }) =>
-        sap === "with" && direction === "outward" ? <OrderInfoSapCreate /> : null
+        direction === "outward" ? (
+          <OrderInfoSapCreate mode={sap === "with" ? "with" : "without"} />
+        ) : null
       }
       groups={[
         {
