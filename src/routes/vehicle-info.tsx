@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LeScreenShell } from "@/components/le-screen-shell";
+import { VehicleInfoSapCreate } from "@/components/vehicle-info-sap-create";
 
 export const Route = createFileRoute("/vehicle-info")({
   head: () => ({
@@ -15,6 +16,11 @@ function VehicleInfoPage() {
   return (
     <LeScreenShell
       title="Vehicle Info"
+      renderCreateBody={({ sap, direction }) =>
+        direction === "outward" ? (
+          <VehicleInfoSapCreate mode={sap === "with" ? "with" : "without"} />
+        ) : null
+      }
       groups={[
         {
           title: "Vehicle",
