@@ -17,6 +17,7 @@ import { Route as ShipmentDetailsRouteImport } from './routes/shipment-details'
 import { Route as ServiceLevelRouteImport } from './routes/service-level'
 import { Route as SegmentInfoRouteImport } from './routes/segment-info'
 import { Route as OrderInfoRouteImport } from './routes/order-info'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as InvoiceLoadDetailsRouteImport } from './routes/invoice-load-details'
 import { Route as InsuranceClaimTrackingRouteImport } from './routes/insurance-claim-tracking'
 import { Route as FreightBillingRouteImport } from './routes/freight-billing'
@@ -71,6 +72,11 @@ const SegmentInfoRoute = SegmentInfoRouteImport.update({
 const OrderInfoRoute = OrderInfoRouteImport.update({
   id: '/order-info',
   path: '/order-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvoiceLoadDetailsRoute = InvoiceLoadDetailsRouteImport.update({
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/freight-billing': typeof FreightBillingRoute
   '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
   '/invoice-load-details': typeof InvoiceLoadDetailsRoute
+  '/login': typeof LoginRoute
   '/order-info': typeof OrderInfoRoute
   '/segment-info': typeof SegmentInfoRoute
   '/service-level': typeof ServiceLevelRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/freight-billing': typeof FreightBillingRoute
   '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
   '/invoice-load-details': typeof InvoiceLoadDetailsRoute
+  '/login': typeof LoginRoute
   '/order-info': typeof OrderInfoRoute
   '/segment-info': typeof SegmentInfoRoute
   '/service-level': typeof ServiceLevelRoute
@@ -210,6 +218,7 @@ export interface FileRoutesById {
   '/freight-billing': typeof FreightBillingRoute
   '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
   '/invoice-load-details': typeof InvoiceLoadDetailsRoute
+  '/login': typeof LoginRoute
   '/order-info': typeof OrderInfoRoute
   '/segment-info': typeof SegmentInfoRoute
   '/service-level': typeof ServiceLevelRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
     | '/freight-billing'
     | '/insurance-claim-tracking'
     | '/invoice-load-details'
+    | '/login'
     | '/order-info'
     | '/segment-info'
     | '/service-level'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/freight-billing'
     | '/insurance-claim-tracking'
     | '/invoice-load-details'
+    | '/login'
     | '/order-info'
     | '/segment-info'
     | '/service-level'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/freight-billing'
     | '/insurance-claim-tracking'
     | '/invoice-load-details'
+    | '/login'
     | '/order-info'
     | '/segment-info'
     | '/service-level'
@@ -313,6 +325,7 @@ export interface RootRouteChildren {
   FreightBillingRoute: typeof FreightBillingRoute
   InsuranceClaimTrackingRoute: typeof InsuranceClaimTrackingRoute
   InvoiceLoadDetailsRoute: typeof InvoiceLoadDetailsRoute
+  LoginRoute: typeof LoginRoute
   OrderInfoRoute: typeof OrderInfoRoute
   SegmentInfoRoute: typeof SegmentInfoRoute
   ServiceLevelRoute: typeof ServiceLevelRoute
@@ -388,6 +401,13 @@ declare module '@tanstack/react-router' {
       path: '/order-info'
       fullPath: '/order-info'
       preLoaderRoute: typeof OrderInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invoice-load-details': {
@@ -505,6 +525,7 @@ const rootRouteChildren: RootRouteChildren = {
   FreightBillingRoute: FreightBillingRoute,
   InsuranceClaimTrackingRoute: InsuranceClaimTrackingRoute,
   InvoiceLoadDetailsRoute: InvoiceLoadDetailsRoute,
+  LoginRoute: LoginRoute,
   OrderInfoRoute: OrderInfoRoute,
   SegmentInfoRoute: SegmentInfoRoute,
   ServiceLevelRoute: ServiceLevelRoute,
@@ -526,3 +547,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
