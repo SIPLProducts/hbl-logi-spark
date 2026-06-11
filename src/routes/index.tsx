@@ -85,7 +85,7 @@ const PIPELINE = [
 function DashboardPage() {
   return (
     <div className="flex flex-col min-h-full">
-      <div className="bg-surface border-b border-hairline px-6 py-5">
+      <div className="sticky top-0 z-10 bg-surface border-b border-hairline px-6 py-5">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2 mb-1.5">

@@ -166,7 +166,7 @@ function DispatchOrdersPage() {
   return (
     <div className="flex flex-col min-h-full">
       {/* Page header */}
-      <div className="bg-surface border-b border-hairline px-6 py-5">
+      <div className="sticky top-0 z-10 bg-surface border-b border-hairline px-6 py-5">
         <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
           Dispatch Orders
         </h1>
