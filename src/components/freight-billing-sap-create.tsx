@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search, MoreVertical, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 const GREEN_INPUT =
   "h-9 w-full rounded-md bg-white dark:bg-surface border border-emerald-400/70 px-2.5 text-[12.5px] text-emerald-700 dark:text-emerald-300 font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/30";
@@ -15,12 +15,127 @@ const SEARCH_OPTIONS = [
   "LR Number",
 ];
 
+const BREAKDOWN_FIELDS = [
+  "Basic Freight",
+  "Detention Loading",
+  "Detention Unloading",
+  "Loading Charges",
+  "Unloading Charges",
+  "Route Change",
+  "Transhipment Charges",
+  "Other Charges",
+  "Deduction",
+] as const;
+type BreakdownKey = (typeof BREAKDOWN_FIELDS)[number];
+type Breakdown = Record<BreakdownKey, number>;
+const EMPTY_BREAKDOWN: Breakdown = BREAKDOWN_FIELDS.reduce((acc, k) => {
+  acc[k] = 0;
+  return acc;
+}, {} as Breakdown);
+
+function computeTotal(b: Breakdown) {
+  const sum = BREAKDOWN_FIELDS.filter((k) => k !== "Deduction").reduce(
+    (s, k) => s + (Number(b[k]) || 0),
+    0,
+  );
+  return sum - (Number(b.Deduction) || 0);
+}
+
+function ChargesBreakdownDialog({
+  open,
+  onOpenChange,
+  title,
+  totalLabel,
+  value,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  title: string;
+  totalLabel: string;
+  value: Breakdown;
+  onSave: (b: Breakdown, total: number) => void;
+}) {
+  const [draft, setDraft] = useState<Breakdown>(value);
+  // Sync when reopened
+  const total = useMemo(() => computeTotal(draft), [draft]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 animate-in fade-in">
+      <div className="w-full max-w-3xl rounded-xl overflow-hidden bg-surface border border-hairline shadow-elegant animate-in zoom-in-95">
+        <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-3 flex items-center justify-between">
+          <h3 className="text-white text-[14px] font-semibold tracking-wide">{title}</h3>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="text-white/80 hover:text-white"
+            aria-label="Close"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-4">
+            {BREAKDOWN_FIELDS.map((k) => (
+              <div key={k}>
+                <label className={LABEL}>{k}</label>
+                <input
+                  type="number"
+                  value={draft[k]}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, [k]: Number(e.target.value) || 0 }))
+                  }
+                  className={GREEN_INPUT}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 text-[13px] font-semibold text-foreground">
+            {totalLabel}: {total}
+          </div>
+        </div>
+        <div className="px-6 pb-5 flex items-center justify-end gap-2">
+          <button
+            onClick={() => onOpenChange(false)}
+            className="inline-flex items-center px-5 h-9 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[12.5px] font-semibold shadow-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onSave(draft, total);
+              onOpenChange(false);
+            }}
+            className="inline-flex items-center px-5 h-9 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12.5px] font-semibold shadow-sm"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
   const [checked, setChecked] = useState(false);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [provision, setProvision] = useState(false);
   const [account, setAccount] = useState(false);
+
+  const [provisionBreakdown, setProvisionBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
+  const [provisionTotal, setProvisionTotal] = useState<number | "">("");
+  const [provisionDate, setProvisionDate] = useState("");
+  const [provisionOpen, setProvisionOpen] = useState(false);
+
+  const [freightBreakdown, setFreightBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
+  const [freightTotal, setFreightTotal] = useState<number | "">("");
+  const [freightOpen, setFreightOpen] = useState(false);
+  const [freightBillNo, setFreightBillNo] = useState("");
+  const [freightBillDate, setFreightBillDate] = useState("");
+  const [billSubmissionDate, setBillSubmissionDate] = useState("");
+  const [physicalSubmissionDate, setPhysicalSubmissionDate] = useState("");
 
   return (
     <div className="space-y-4">
