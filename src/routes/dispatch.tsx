@@ -401,14 +401,14 @@ function CreateDispatch() {
       </div>
 
       {/* Sticky footer actions */}
-      <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/95 backdrop-blur border-t border-hairline px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-end gap-2 z-10">
-        <Button variant="outline" size="sm" className="gap-1.5">
+      <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/90 backdrop-blur border-t border-hairline px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-end gap-2.5 z-10">
+        <Button variant="ghost" size="sm" className="gap-1.5 rounded-lg text-muted-foreground hover:text-foreground">
           <ChevronLeft className="size-3.5" /> Previous
         </Button>
-        <Button variant="secondary" size="sm" className="gap-1.5">
+        <Button variant="outline" size="sm" className="gap-1.5 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent">
           <Save className="size-3.5" /> Save
         </Button>
-        <Button size="sm" className="gap-1.5">
+        <Button size="sm" className="gap-1.5 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0">
           Save &amp; Next <ChevronRight className="size-3.5" />
         </Button>
       </div>
