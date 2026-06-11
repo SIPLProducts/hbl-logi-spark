@@ -1,40 +1,35 @@
 ## Goal
-Replace the current `/user-creation` screen with a simple User Management list page plus a "Create New User" modal popup, matching the two reference screenshots.
+Reuse the existing Create New User popup for the Edit action on the User Management table. In Edit mode the popup shows "Edit User" header, prefilled user data, password fields disabled behind a "Change Password" checkbox, and an "Update" button instead of "Create".
 
 ## Changes
 
-### 1. Rewrite `src/routes/user-creation.tsx`
-Drop `LeScreenShell` entirely (the tabs / SAP toggle / "Direction" bar don't belong here). Render a standalone page:
+### 1. `src/components/create-user-dialog.tsx` — extend to support both modes
+- Accept new optional props:
+  - `mode?: "create" | "edit"` (default `"create"`)
+  - `initialValues?: UserFormValues` — pre-populates every field when provided
+- Drive the dialog from local state seeded from `initialValues` (via `useEffect` on `open`) so each open re-syncs the form. Reset to blank defaults in create mode.
+- Header title becomes **"Edit User"** when `mode === "edit"` (same indigo→violet→purple gradient bar, same close button).
+- Footer button:
+  - create mode → existing dark-red **Create** button
+  - edit mode → same dark-red button labelled **Update**
+- Password section in edit mode:
+  - Render both Password and Confirm Password fields prefilled with masked dots and **disabled** (greyed background, matches reference).
+  - Add a **"Change Password"** checkbox under the form grid (left-aligned, above the footer divider). When checked, enable both password inputs and clear them so the user can type a new password.
+  - In create mode the checkbox is hidden and the fields stay enabled as today.
+- Keep all other fields, layout, validations, styling, and required-asterisk treatment identical to the create popup.
 
-- Wrapper card containing:
-  - Header row: title "User Management" (left, indigo accent) + **"+ Create New User"** button (right, gradient indigo→purple to match the reference). Clicking opens the modal.
-  - Data table with sky→teal gradient header (matching the rest of the LE app) and these columns:
-    `User ID, First Name, Last Name, Email, Contact, Employee Code, In/Out, Category, Roles, Status, Plants, Divisions, Activities, Actions`.
-  - One seed row: `2424 / Admin / User / inturimounika@sharviinfotech.com / 7337283880 / 2424 / outward / Internal / ADMIN / Active(green pill) / Plants (10)(pill) / Divisions (10)(pill) / 🛡 Screens (23)(pill) / edit + delete icons`.
-- "Items per page: 1" footer line below the table.
+### 2. `src/routes/user-creation.tsx` — wire the Edit action
+- Track dialog state as `{ open: boolean; mode: "create" | "edit"; values?: UserFormValues }`.
+- "+ Create New User" button opens with `mode: "create"`, no initial values.
+- The row's pencil (edit) icon button opens with `mode: "edit"` and the seed row's values:
+  - userId `2424`, firstName `Admin`, lastName `User`, contact `7337283880`,
+    email `inturimounika@sharviinfotech.com`, category `Internal`,
+    employeeCode `2424`, inOutType `Outward`,
+    plants `1100, 1101, 1102, 1105, 1106, 1200, 1300, ...`,
+    divisions `NCPP, COMMON SERVICE, Corporate, ...`,
+    role `ADMIN`, screensCount `23`, status `Active`,
+    password/confirmPassword shown as 10 masked chars, disabled until Change Password is toggled.
+- Pass these through to `<CreateUserDialog mode={...} initialValues={...} />`.
 
-- `head()` keeps title "User Creation · HBL LE".
-
-State: `const [open, setOpen] = useState(false);` — `open` controls the modal.
-
-### 2. New component: `src/components/create-user-dialog.tsx`
-Modal popup using existing shadcn `Dialog` (`@/components/ui/dialog`). Receives `{ open, onOpenChange }` props.
-
-- Dialog header: gradient indigo→purple bar with title **"Create New User"** + close (×).
-- Body fields in a 3-column responsive grid:
-  - Row 1: User ID* (prefilled `2424`), First Name*, Last Name
-  - Row 2: Contact*, Email*, Category (select: Internal / External; default Internal)
-  - Row 3: Password* (type=password, eye toggle icon), Confirm Password* (type=password, eye toggle icon), Employee Code*
-  - Row 4: In/Out Type* (select), Plants (multi-select look — single text input "Select Plants"), Divisions ("Select Divisions")
-  - Row 5: Role (select), Activities (Screens) → a blue button labelled **"Select Screens (0)"**, Status → segmented `Inactive | toggle | Active` (toggle defaults Active green)
-- Footer: dark-red **Create** button right-aligned.
-- Inputs styled with the existing emerald GREEN_INPUT pattern? — No, the modal in the reference uses neutral white inputs with light borders. Use plain inputs: `h-9 w-full rounded-md border border-input bg-background px-3 text-[12.5px]` with red asterisks on required labels.
-- Local component state only (no submission wiring); on Create just calls `onOpenChange(false)`.
-
-### 3. Sidebar — no change
-`User Creation` entry already added; URL unchanged.
-
-### 4. Remove `src/components/user-creation-create.tsx`
-It is no longer referenced.
-
-No backend or schema changes.
+### 3. No other files touched
+No sidebar, route, schema, or backend changes. Pure UI work in the two files above.
