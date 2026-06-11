@@ -96,6 +96,7 @@ export function LeScreenShell({
   topFields,
   lineItems,
   children,
+  renderCreateBody,
 }: {
   title: string;
   description?: string;
@@ -107,6 +108,7 @@ export function LeScreenShell({
   lineItems?: { columns: string[]; rows: (string | number)[][] };
   extraTabs?: { label: string; active?: boolean }[];
   children?: ReactNode;
+  renderCreateBody?: (ctx: { sap: SapMode; direction: "outward" | "inward" }) => ReactNode;
 }) {
   const [tab, setTab] = useState<"create" | "search">("create");
   const [selectedId, setSelectedId] = useState<string>(rows[0]?.id ?? "");
@@ -230,6 +232,10 @@ export function LeScreenShell({
               </div>
             </div>
 
+            {renderCreateBody ? (
+              renderCreateBody({ sap, direction })
+            ) : (
+              <>
             {kpis && kpis.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {kpis.map((k) => (
@@ -311,6 +317,8 @@ export function LeScreenShell({
                   </table>
                 </div>
               </div>
+            )}
+              </>
             )}
 
             {children}
