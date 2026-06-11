@@ -50,8 +50,6 @@ import {
   TRANSPORTERS,
   VEHICLE_TYPES,
   emptyDispatchRow,
-  sampleDispatchRows,
-  sampleResultRows,
   type DispatchResultRow,
   type DispatchRow,
 } from "@/lib/dispatch-mock";
@@ -163,7 +161,7 @@ function CreateDispatch() {
   const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
   const [searchType, setSearchType] = useState<string>(SEARCH_TYPES[0]);
   const [searchValue, setSearchValue] = useState("");
-  const [rows, setRows] = useState<DispatchRow[]>(sampleDispatchRows);
+  const [rows, setRows] = useState<DispatchRow[]>([]);
 
   const addRow = () =>
     setRows((r) => [...r, emptyDispatchRow(r.length + 1)]);
@@ -766,11 +764,8 @@ function ResultsTable() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = q
-      ? sampleResultRows.filter((r) =>
-          Object.values(r).join(" ").toLowerCase().includes(q),
-        )
-      : sampleResultRows;
+    const base: DispatchResultRow[] = [];
+    void q;
     const sorted = [...base].sort((a, b) => {
       const av = a[sortKey];
       const bv = b[sortKey];
