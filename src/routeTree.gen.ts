@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VehicleInfoRouteImport } from './routes/vehicle-info'
+import { Route as UserCreationRouteImport } from './routes/user-creation'
 import { Route as TransitInfoRouteImport } from './routes/transit-info'
 import { Route as TransitDamageInfoRouteImport } from './routes/transit-damage-info'
 import { Route as ShipmentDetailsRouteImport } from './routes/shipment-details'
@@ -26,6 +27,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const VehicleInfoRoute = VehicleInfoRouteImport.update({
   id: '/vehicle-info',
   path: '/vehicle-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UserCreationRoute = UserCreationRouteImport.update({
+  id: '/user-creation',
+  path: '/user-creation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TransitInfoRoute = TransitInfoRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/shipment-details': typeof ShipmentDetailsRoute
   '/transit-damage-info': typeof TransitDamageInfoRoute
   '/transit-info': typeof TransitInfoRoute
+  '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
 }
 export interface FileRoutesByTo {
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/shipment-details': typeof ShipmentDetailsRoute
   '/transit-damage-info': typeof TransitDamageInfoRoute
   '/transit-info': typeof TransitInfoRoute
+  '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
 }
 export interface FileRoutesById {
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/shipment-details': typeof ShipmentDetailsRoute
   '/transit-damage-info': typeof TransitDamageInfoRoute
   '/transit-info': typeof TransitInfoRoute
+  '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
 }
 export interface FileRouteTypes {
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/shipment-details'
     | '/transit-damage-info'
     | '/transit-info'
+    | '/user-creation'
     | '/vehicle-info'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/shipment-details'
     | '/transit-damage-info'
     | '/transit-info'
+    | '/user-creation'
     | '/vehicle-info'
   id:
     | '__root__'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/shipment-details'
     | '/transit-damage-info'
     | '/transit-info'
+    | '/user-creation'
     | '/vehicle-info'
   fileRoutesById: FileRoutesById
 }
@@ -196,6 +208,7 @@ export interface RootRouteChildren {
   ShipmentDetailsRoute: typeof ShipmentDetailsRoute
   TransitDamageInfoRoute: typeof TransitDamageInfoRoute
   TransitInfoRoute: typeof TransitInfoRoute
+  UserCreationRoute: typeof UserCreationRoute
   VehicleInfoRoute: typeof VehicleInfoRoute
 }
 
@@ -206,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/vehicle-info'
       fullPath: '/vehicle-info'
       preLoaderRoute: typeof VehicleInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/user-creation': {
+      id: '/user-creation'
+      path: '/user-creation'
+      fullPath: '/user-creation'
+      preLoaderRoute: typeof UserCreationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/transit-info': {
@@ -308,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShipmentDetailsRoute: ShipmentDetailsRoute,
   TransitDamageInfoRoute: TransitDamageInfoRoute,
   TransitInfoRoute: TransitInfoRoute,
+  UserCreationRoute: UserCreationRoute,
   VehicleInfoRoute: VehicleInfoRoute,
 }
 export const routeTree = rootRouteImport
