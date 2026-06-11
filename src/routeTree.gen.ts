@@ -28,6 +28,7 @@ import { Route as ReportsTransitEwayBillRouteImport } from './routes/reports.tra
 import { Route as ReportsPendingPodsRouteImport } from './routes/reports.pending-pods'
 import { Route as ReportsLoadingFactorCostRouteImport } from './routes/reports.loading-factor-cost'
 import { Route as ReportsFreightBillsRouteImport } from './routes/reports.freight-bills'
+import { Route as ReportsBusinessShareMatrixRouteImport } from './routes/reports.business-share-matrix'
 
 const VehicleInfoRoute = VehicleInfoRouteImport.update({
   id: '/vehicle-info',
@@ -125,6 +126,12 @@ const ReportsFreightBillsRoute = ReportsFreightBillsRouteImport.update({
   path: '/reports/freight-bills',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsBusinessShareMatrixRoute =
+  ReportsBusinessShareMatrixRouteImport.update({
+    id: '/reports/business-share-matrix',
+    path: '/reports/business-share-matrix',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
@@ -162,6 +170,7 @@ export interface FileRoutesByTo {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
@@ -184,6 +193,7 @@ export interface FileRoutesById {
   '/transit-info': typeof TransitInfoRoute
   '/user-creation': typeof UserCreationRoute
   '/vehicle-info': typeof VehicleInfoRoute
+  '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/business-share-matrix'
     | '/reports/freight-bills'
     | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/business-share-matrix'
     | '/reports/freight-bills'
     | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
@@ -249,6 +261,7 @@ export interface FileRouteTypes {
     | '/transit-info'
     | '/user-creation'
     | '/vehicle-info'
+    | '/reports/business-share-matrix'
     | '/reports/freight-bills'
     | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
@@ -271,6 +284,7 @@ export interface RootRouteChildren {
   TransitInfoRoute: typeof TransitInfoRoute
   UserCreationRoute: typeof UserCreationRoute
   VehicleInfoRoute: typeof VehicleInfoRoute
+  ReportsBusinessShareMatrixRoute: typeof ReportsBusinessShareMatrixRoute
   ReportsFreightBillsRoute: typeof ReportsFreightBillsRoute
   ReportsLoadingFactorCostRoute: typeof ReportsLoadingFactorCostRoute
   ReportsPendingPodsRoute: typeof ReportsPendingPodsRoute
@@ -413,6 +427,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsFreightBillsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/business-share-matrix': {
+      id: '/reports/business-share-matrix'
+      path: '/reports/business-share-matrix'
+      fullPath: '/reports/business-share-matrix'
+      preLoaderRoute: typeof ReportsBusinessShareMatrixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -431,6 +452,7 @@ const rootRouteChildren: RootRouteChildren = {
   TransitInfoRoute: TransitInfoRoute,
   UserCreationRoute: UserCreationRoute,
   VehicleInfoRoute: VehicleInfoRoute,
+  ReportsBusinessShareMatrixRoute: ReportsBusinessShareMatrixRoute,
   ReportsFreightBillsRoute: ReportsFreightBillsRoute,
   ReportsLoadingFactorCostRoute: ReportsLoadingFactorCostRoute,
   ReportsPendingPodsRoute: ReportsPendingPodsRoute,
