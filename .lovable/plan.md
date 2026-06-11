@@ -1,23 +1,31 @@
-## Invoice Load Details — SAP-style Create with With/Without modes
+## Segment Info — SAP-style Create with With/Without modes
 
-Mirror Shipment Details' look-and-feel for Invoice Load Details, matching the reference screenshots.
+Mirror Order Info's look and feel for the Segment Info screen.
 
 ### Changes
 
-**New `src/components/invoice-load-details-sap-create.tsx`**
-Same layout as `shipment-details-sap-create.tsx`:
+**New `src/components/segment-info-sap-create.tsx`** (based on `order-info-sap-create.tsx`):
 - Status chips (Pending / Completed)
-- Selection table: Select / Sl.No / Map ID / Reference Number / Work Order Number / LR Number / Transporter / Action
+- Selection table: Select / Sl.No / Reference Number / Work Order Number / LR Number / Transporter / Action
 - Lookup bar
-- Second table ("Load details") with columns from the reference:
-  Select · Sl.No · Map ID · Truck Type · Passing Weight (Tons) · Actual Load (Tons) · Loading factor % (w.r.t weight) · Actual Volume Occupied · Loading Factor w.r.t Volume · Week Wise Shipment Flow · Eway Bill Number · Eway Bill Expiry Date · Action (+ / ×)
+- Field grid with these fields (from reference):
+  - Sales Person (select)
+  - Segment (select)
+  - Application Type (select)
+  - Customer Profile
+  - Branch (select)
+  - Branch Zone
+  - Destination State
+  - Destination Zone
+  - TAT Type (select)
+  - TAT (Days) (number)
+  - ETA (date)
 - Footer: Save / Save and Next / Save and Previous
 - `mode?: "with" | "without"` prop:
-  - `with`: show Invoice Number input + GET button; gated reveal of the load-details section
-  - `without`: hide Invoice Number + GET; always reveal; add a **DC Reference Number** field under the lookup bar
-- Dynamic row add/delete via + and × in the Action column (same pattern just added to shipment)
+  - `with`: show Invoice Number input + GET button; gated reveal of fields
+  - `without`: hide Invoice Number + GET; always reveal; add an **Invoice Number** field as the first field in the grid (before Sales Person)
 
-**`src/routes/invoice-load-details.tsx`**
-- Wire `LeScreenShell` to render the new component via `renderCreateBody` for outward direction, passing `mode={sap === "with" ? "with" : "without"}`. Keep existing `groups` for the read-only display.
+**`src/routes/segment-info.tsx`**:
+- Wire `LeScreenShell` to render the new component via `renderCreateBody` for outward direction, passing `mode={sap === "with" ? "with" : "without"}`. Keep existing read-only `groups`/`lineItems` intact.
 
 No business logic or other screens touched.
