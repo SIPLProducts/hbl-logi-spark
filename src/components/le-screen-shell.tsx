@@ -1,5 +1,17 @@
 import { useState, type ReactNode } from "react";
-import { Plus, Download, RefreshCw, Search, Trash2, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Download,
+  RefreshCw,
+  Search,
+  Trash2,
+  Save,
+  ChevronLeft,
+  ChevronRight,
+  SlidersHorizontal,
+  Eye,
+  Pencil,
+} from "lucide-react";
 import { sampleRows, counts, type WorklistRow } from "@/lib/le-mock-data";
 import { LeFooter } from "./le-footer";
 
@@ -23,10 +35,17 @@ export type WorklistColumn = {
   className?: string;
 };
 
+export type KpiTile = {
+  label: string;
+  value: string | number;
+  delta?: string;
+  tone?: "default" | "success" | "warning" | "danger" | "info";
+};
+
 const DEFAULT_COLUMNS: WorklistColumn[] = [
   { key: "slNo", header: "Sl.No", render: (r) => r.slNo },
-  { key: "reference", header: "Reference Number", render: (r) => <span className="font-mono">{r.reference}</span> },
-  { key: "workOrder", header: "Work Order Number", render: (r) => <span className="font-mono">{r.workOrder}</span> },
+  { key: "reference", header: "Reference", render: (r) => <span className="font-mono">{r.reference}</span> },
+  { key: "workOrder", header: "Work Order", render: (r) => <span className="font-mono">{r.workOrder}</span> },
   { key: "lrNumber", header: "LR Number", render: (r) => <span className="font-mono">{r.lrNumber}</span> },
   { key: "transporter", header: "Transporter", render: (r) => r.transporter },
 ];
@@ -34,6 +53,8 @@ const DEFAULT_COLUMNS: WorklistColumn[] = [
 export function LeScreenShell({
   screenNo,
   title,
+  description,
+  kpis,
   columns = DEFAULT_COLUMNS,
   rows = sampleRows,
   groups,
@@ -44,6 +65,8 @@ export function LeScreenShell({
 }: {
   screenNo: number;
   title: string;
+  description?: string;
+  kpis?: KpiTile[];
   columns?: WorklistColumn[];
   rows?: WorklistRow[];
   groups?: FieldGroup[];
@@ -55,75 +78,117 @@ export function LeScreenShell({
   const [mode, setMode] = useState<"with-sap" | "without-sap">("with-sap");
   const [selectedId, setSelectedId] = useState<string>(rows[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState<string>(extraTabs?.[0]?.label ?? "");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
 
   return (
     <div className="flex flex-col min-h-full">
       {/* Page header */}
-      <div className="bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-            LE Module · Screen {screenNo}
+      <div className="bg-surface border-b border-hairline px-6 py-5">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="inline-flex items-center justify-center min-w-[26px] h-[22px] px-1.5 rounded-md text-[11px] font-mono font-bold bg-accent/10 text-accent">
+                {String(screenNo).padStart(2, "0")}
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                Logistics Execution
+              </span>
+            </div>
+            <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
+              {title}
+            </h1>
+            {description && (
+              <p className="mt-1 text-[12.5px] text-muted-foreground max-w-2xl">{description}</p>
+            )}
           </div>
-          <h1 className="text-lg font-bold text-zinc-900 mt-0.5">{title}</h1>
+          <div className="flex items-center gap-2">
+            <span className="hidden md:inline text-[11px] font-mono text-muted-foreground">
+              Synced ·{" "}
+              {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted">
+              <RefreshCw className="size-3.5" /> Refresh
+            </button>
+            <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted">
+              <Download className="size-3.5" /> Export
+            </button>
+            <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm">
+              <Plus className="size-3.5" /> New
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-white bg-blue-600 rounded-sm hover:bg-blue-700">
-            <Plus className="size-3.5" /> New
-          </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-zinc-700 ring-1 ring-zinc-200 rounded-sm bg-white hover:bg-zinc-50">
-            <Download className="size-3.5" /> Export
-          </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-zinc-700 ring-1 ring-zinc-200 rounded-sm bg-white hover:bg-zinc-50">
-            <RefreshCw className="size-3.5" /> Refresh
-          </button>
-        </div>
+
+        {kpis && kpis.length > 0 && (
+          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {kpis.map((k) => (
+              <KpiCard key={k.label} {...k} />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="p-6 space-y-5 flex-1">
-        {/* Mode tabs + counts */}
-        <div className="flex items-center justify-between bg-white ring-1 ring-zinc-200 rounded-sm px-4 py-2.5">
-          <div className="flex items-center gap-5 text-[12.5px]">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" defaultChecked className="accent-blue-600" />
-              <span className="font-semibold">Outward</span>
-            </label>
-            <div className="h-4 w-px bg-zinc-200" />
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="mode"
-                checked={mode === "with-sap"}
-                onChange={() => setMode("with-sap")}
-                className="accent-blue-600"
-              />
-              <span>With SAP</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="mode"
-                checked={mode === "without-sap"}
-                onChange={() => setMode("without-sap")}
-                className="accent-blue-600"
-              />
-              <span>Without SAP</span>
-            </label>
+        {/* Mode + chips */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="inline-flex items-center p-0.5 rounded-md bg-muted border border-hairline text-[12px]">
+            {(["with-sap", "without-sap"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={
+                  "px-3 h-7 rounded-[5px] font-medium transition-colors " +
+                  (mode === m
+                    ? "bg-surface text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground")
+                }
+              >
+                {m === "with-sap" ? "With SAP" : "Without SAP"}
+              </button>
+            ))}
           </div>
-          <div className="flex items-center gap-3 text-[12px] font-mono">
-            <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-amber-500" />
-              Pending: <strong>{counts.pending}</strong>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-emerald-500" />
-              Completed: <strong>{counts.completed}</strong>
-            </span>
+
+          <div className="inline-flex items-center gap-1.5 flex-wrap">
+            {(
+              [
+                {
+                  key: "all",
+                  label: "All",
+                  count: counts.pending + counts.completed,
+                  dot: "bg-muted-foreground",
+                },
+                { key: "pending", label: "Pending", count: counts.pending, dot: "bg-warning" },
+                {
+                  key: "completed",
+                  label: "Completed",
+                  count: counts.completed,
+                  dot: "bg-success",
+                },
+              ] as const
+            ).map((chip) => (
+              <button
+                key={chip.key}
+                onClick={() => setStatusFilter(chip.key)}
+                className={
+                  "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[11.5px] transition-colors " +
+                  (statusFilter === chip.key
+                    ? "border-accent/40 bg-accent/10 text-accent"
+                    : "border-hairline bg-surface text-muted-foreground hover:text-foreground")
+                }
+              >
+                <span className={"size-1.5 rounded-full " + chip.dot} />
+                {chip.label}
+                <span className="font-mono font-semibold ml-0.5">{chip.count}</span>
+              </button>
+            ))}
+            <button className="ml-1 inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-hairline bg-surface text-[11.5px] text-muted-foreground hover:text-foreground">
+              <SlidersHorizontal className="size-3" /> Filters
+            </button>
           </div>
         </div>
 
-        {/* Optional sub-tabs */}
+        {/* Sub-tabs */}
         {extraTabs && (
-          <div className="flex items-center gap-1 border-b border-zinc-200">
+          <div className="flex items-center gap-1 border-b border-hairline">
             {extraTabs.map((t) => (
               <button
                 key={t.label}
@@ -131,8 +196,8 @@ export function LeScreenShell({
                 className={
                   "px-4 py-2 text-[12.5px] font-semibold border-b-2 -mb-px " +
                   (activeTab === t.label
-                    ? "border-blue-600 text-blue-700"
-                    : "border-transparent text-zinc-500 hover:text-zinc-900")
+                    ? "border-accent text-accent"
+                    : "border-transparent text-muted-foreground hover:text-foreground")
                 }
               >
                 {t.label}
@@ -141,28 +206,33 @@ export function LeScreenShell({
           </div>
         )}
 
-        {/* Worklist table */}
-        <div className="bg-white ring-1 ring-zinc-200 rounded-sm overflow-hidden">
+        {/* Worklist */}
+        <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-[12.5px]">
               <thead>
-                <tr className="bg-zinc-50 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-200">
-                  <th className="px-3 py-2.5 w-10 text-center">Select</th>
+                <tr className="bg-muted/60 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
+                  <th className="px-3 py-2.5 w-10 text-center">
+                    <input type="checkbox" className="accent-accent" />
+                  </th>
                   {columns.map((c) => (
-                    <th key={c.key as string} className={"px-3 py-2.5 " + (c.className ?? "")}>
+                    <th
+                      key={c.key as string}
+                      className={"px-3 py-2.5 whitespace-nowrap " + (c.className ?? "")}
+                    >
                       {c.header}
                     </th>
                   ))}
-                  <th className="px-3 py-2.5 w-16 text-right">Action</th>
+                  <th className="px-3 py-2.5 w-28 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
+              <tbody className="divide-y divide-hairline/70">
                 {rows.map((r) => (
                   <tr
                     key={r.id}
                     className={
-                      "hover:bg-blue-50/40 cursor-pointer " +
-                      (selectedId === r.id ? "bg-blue-50/60" : "")
+                      "group cursor-pointer transition-colors " +
+                      (selectedId === r.id ? "bg-accent/5" : "hover:bg-muted/50")
                     }
                     onClick={() => setSelectedId(r.id)}
                   >
@@ -171,18 +241,37 @@ export function LeScreenShell({
                         type="radio"
                         checked={selectedId === r.id}
                         onChange={() => setSelectedId(r.id)}
-                        className="accent-blue-600"
+                        className="accent-accent"
                       />
                     </td>
                     {columns.map((c) => (
-                      <td key={c.key as string} className="px-3 py-2.5">
-                        {c.render ? c.render(r) : (r as Record<string, unknown>)[c.key as string] as ReactNode}
+                      <td key={c.key as string} className="px-3 py-2.5 whitespace-nowrap">
+                        {c.render
+                          ? c.render(r)
+                          : ((r as Record<string, unknown>)[c.key as string] as ReactNode)}
                       </td>
                     ))}
                     <td className="px-3 py-2.5 text-right">
-                      <button className="text-zinc-400 hover:text-red-600">
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                          aria-label="View"
+                        >
+                          <Eye className="size-3.5" />
+                        </button>
+                        <button
+                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                          aria-label="Edit"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button
+                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          aria-label="Delete"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -190,52 +279,52 @@ export function LeScreenShell({
             </table>
           </div>
 
-          {/* Lookup bar */}
-          <div className="border-t border-zinc-200 bg-zinc-50/50 px-4 py-3 flex flex-wrap items-center gap-2">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+          <div className="border-t border-hairline bg-muted/40 px-4 py-3 flex flex-wrap items-center gap-2">
+            <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
               Invoice Number
             </label>
-            <select className="bg-white ring-1 ring-zinc-200 rounded-sm px-2 py-1 text-[12px] font-mono">
+            <select className="bg-surface border border-hairline rounded-md px-2 h-7 text-[12px] font-mono">
               <option>900215479</option>
               <option>900000088</option>
             </select>
-            <button className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-zinc-900 text-white rounded-sm hover:bg-zinc-800">
+            <button className="px-3 h-7 text-[11px] font-bold uppercase tracking-wider bg-primary text-primary-foreground rounded-md hover:bg-primary/90">
               GET
             </button>
-            <div className="h-4 w-px bg-zinc-200 mx-1" />
-            <select className="bg-white ring-1 ring-zinc-200 rounded-sm px-2 py-1 text-[12px]">
+            <div className="h-4 w-px bg-hairline mx-1" />
+            <select className="bg-surface border border-hairline rounded-md px-2 h-7 text-[12px]">
               <option>Reference</option>
               <option>Invoice</option>
               <option>ODN</option>
               <option>SO Number</option>
             </select>
             <div className="relative flex-1 min-w-[260px]">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-zinc-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
               <input
                 placeholder="Enter Reference / Invoice / ODN / SO Number"
-                className="w-full bg-white ring-1 ring-zinc-200 rounded-sm pl-8 pr-3 py-1 text-[12px] outline-none focus:ring-blue-500"
+                className="w-full h-7 bg-surface border border-hairline rounded-md pl-8 pr-3 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
             </div>
-            <button className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-blue-600 text-white rounded-sm hover:bg-blue-700">
+            <button className="px-3 h-7 text-[11px] font-bold uppercase tracking-wider bg-accent text-accent-foreground rounded-md hover:bg-accent/90">
               Search
             </button>
           </div>
         </div>
 
-        {/* Top fields row */}
         {topFields && topFields.length > 0 && (
-          <div className="bg-white ring-1 ring-zinc-200 rounded-sm p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-surface border border-hairline rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-4 shadow-xs">
             {topFields.map((f) => (
               <FieldInput key={f.label} field={f} />
             ))}
           </div>
         )}
 
-        {/* Detail field groups */}
         {groups?.map((g) => (
-          <div key={g.title} className="bg-white ring-1 ring-zinc-200 rounded-sm">
-            <div className="px-4 py-2.5 border-b border-zinc-200 bg-zinc-50/60">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-zinc-700">
+          <div
+            key={g.title}
+            className="bg-surface border border-hairline rounded-lg shadow-xs"
+          >
+            <div className="px-4 py-2.5 border-b border-hairline bg-muted/50">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
                 {g.title}
               </h3>
             </div>
@@ -249,30 +338,31 @@ export function LeScreenShell({
           </div>
         ))}
 
-        {/* Line items */}
         {lineItems && (
-          <div className="bg-white ring-1 ring-zinc-200 rounded-sm overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-zinc-200 bg-zinc-50/60 flex items-center justify-between">
-              <h3 className="text-[11px] font-bold uppercase tracking-widest text-zinc-700">
+          <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-xs">
+            <div className="px-4 py-2.5 border-b border-hairline bg-muted/50 flex items-center justify-between">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
                 Line Items
               </h3>
-              <button className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-blue-700 hover:bg-blue-50 rounded-sm">
+              <button className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent/10 rounded-md">
                 <Plus className="size-3" /> Add Row
               </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
                 <thead>
-                  <tr className="bg-zinc-50 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-200">
+                  <tr className="bg-muted/40 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
                     {lineItems.columns.map((c) => (
-                      <th key={c} className="px-3 py-2 text-left">{c}</th>
+                      <th key={c} className="px-3 py-2 text-left">
+                        {c}
+                      </th>
                     ))}
                     <th className="px-3 py-2 w-16 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-100">
+                <tbody className="divide-y divide-hairline/70">
                   {lineItems.rows.map((row, i) => (
-                    <tr key={i} className="hover:bg-zinc-50/60">
+                    <tr key={i} className="hover:bg-muted/40">
                       {row.map((cell, j) => (
                         <td key={j} className="px-3 py-2">
                           {typeof cell === "number" ? (
@@ -283,7 +373,7 @@ export function LeScreenShell({
                         </td>
                       ))}
                       <td className="px-3 py-2 text-right">
-                        <button className="text-zinc-400 hover:text-red-600">
+                        <button className="text-muted-foreground hover:text-destructive">
                           <Trash2 className="size-3.5" />
                         </button>
                       </td>
@@ -298,15 +388,14 @@ export function LeScreenShell({
         {children}
       </div>
 
-      {/* Sticky action bar */}
-      <div className="sticky bottom-0 bg-white border-t border-zinc-200 px-6 py-3 flex items-center justify-end gap-2">
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-zinc-700 ring-1 ring-zinc-200 rounded-sm bg-white hover:bg-zinc-50">
+      <div className="sticky bottom-0 bg-surface/95 backdrop-blur border-t border-hairline px-6 py-3 flex items-center justify-end gap-2 z-10">
+        <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted">
           <ChevronLeft className="size-3.5" /> Save and Previous
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-white bg-blue-600 rounded-sm hover:bg-blue-700">
+        <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-accent-foreground bg-accent rounded-md hover:bg-accent/90 shadow-sm">
           <Save className="size-3.5" /> Save
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-white bg-zinc-900 rounded-sm hover:bg-zinc-800">
+        <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90">
           Save and Next <ChevronRight className="size-3.5" />
         </button>
       </div>
@@ -333,13 +422,13 @@ function FieldInput({ field }: { field: FieldDef }) {
   const { label, value, type = "text", options } = field;
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+      <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </label>
       {type === "select" ? (
         <select
           defaultValue={value as string}
-          className="bg-white ring-1 ring-zinc-200 rounded-sm px-2 py-1.5 text-[12.5px] outline-none focus:ring-blue-500"
+          className="bg-surface border border-hairline rounded-md px-2 h-8 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         >
           {(options ?? [String(value ?? "Select")]).map((o) => (
             <option key={o}>{o}</option>
@@ -349,15 +438,46 @@ function FieldInput({ field }: { field: FieldDef }) {
         <textarea
           defaultValue={value as string}
           rows={2}
-          className="bg-white ring-1 ring-zinc-200 rounded-sm px-2 py-1.5 text-[12.5px] outline-none focus:ring-blue-500"
+          className="bg-surface border border-hairline rounded-md px-2 py-1.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         />
       ) : (
         <input
           type={type === "date" ? "datetime-local" : type}
           defaultValue={value as string | number}
-          className="bg-white ring-1 ring-zinc-200 rounded-sm px-2 py-1.5 text-[12.5px] outline-none focus:ring-blue-500 font-mono"
+          className="bg-surface border border-hairline rounded-md px-2 h-8 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 font-mono"
         />
       )}
+    </div>
+  );
+}
+
+function KpiCard({ label, value, delta, tone = "default" }: KpiTile) {
+  const toneClasses: Record<NonNullable<KpiTile["tone"]>, string> = {
+    default: "text-foreground",
+    success: "text-success",
+    warning: "text-warning",
+    danger: "text-destructive",
+    info: "text-info",
+  };
+  const dotClasses: Record<NonNullable<KpiTile["tone"]>, string> = {
+    default: "bg-muted-foreground",
+    success: "bg-success",
+    warning: "bg-warning",
+    danger: "bg-destructive",
+    info: "bg-info",
+  };
+  return (
+    <div className="bg-surface border border-hairline rounded-lg p-3 hover:border-accent/40 transition-colors">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        <span className={"size-1.5 rounded-full " + dotClasses[tone]} />
+        {label}
+      </div>
+      <div className="mt-1.5 flex items-baseline gap-2">
+        <div className={"font-display text-2xl font-semibold tabular-nums " + toneClasses[tone]}>
+          {value}
+        </div>
+        {delta && <div className="text-[11px] font-mono text-muted-foreground">{delta}</div>}
+      </div>
     </div>
   );
 }

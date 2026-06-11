@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LeScreenShell, type WorklistColumn } from "@/components/le-screen-shell";
+import { LeScreenShell, type WorklistColumn, type KpiTile } from "@/components/le-screen-shell";
 
 export const Route = createFileRoute("/dispatch-orders")({
   head: () => ({
@@ -33,6 +33,8 @@ function DispatchOrdersPage() {
     <LeScreenShell
       screenNo={1}
       title="Dispatch Orders"
+      description="Create, review, and release dispatch orders before they are converted into shipments."
+      kpis={KPIS}
       columns={columns}
       topFields={[
         { label: "Vehicle Type", value: "32 FT MXL", type: "select", options: ["32 FT MXL", "20 FT Container", "14 FT LCV"] },
@@ -52,3 +54,11 @@ function DispatchOrdersPage() {
     />
   );
 }
+
+const KPIS: KpiTile[] = [
+  { label: "Open Orders", value: 248, delta: "+12 today", tone: "info" },
+  { label: "Awaiting Approval", value: 34, delta: "5 SLA risk", tone: "warning" },
+  { label: "Released Today", value: 56, delta: "+8 vs yest", tone: "success" },
+  { label: "On Hold", value: 7, delta: "vendor issue", tone: "danger" },
+  { label: "Avg. TAT", value: "3.2h", delta: "-12m", tone: "default" },
+];
