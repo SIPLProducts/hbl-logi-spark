@@ -107,14 +107,16 @@ function DispatchPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => window.location.reload()}
+            >
               <RefreshCw className="size-3.5" /> Refresh
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5">
               <Download className="size-3.5" /> Export
-            </Button>
-            <Button size="sm" className="gap-1.5">
-              <Plus className="size-3.5" /> New Dispatch
             </Button>
           </div>
         </div>

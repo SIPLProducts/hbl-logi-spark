@@ -96,7 +96,10 @@ export function LeScreenShell({
               Synced ·{" "}
               {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             </span>
-            <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted">
+            <button
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted"
+            >
               <RefreshCw className="size-3.5" /> Refresh
             </button>
             <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted">

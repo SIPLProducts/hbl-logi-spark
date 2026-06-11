@@ -50,7 +50,7 @@ export const VEHICLE_TYPES = [
   "BY HAND",
   "FULL TRUCK LOAD",
 ];
-export const SEARCH_TYPES = ["Reference", "Invoice", "ODN", "SO Number", "Work Order"];
+export const SEARCH_TYPES = ["Reference Number", "LR Number", "Transporter", "Work Order"];
 
 export const emptyDispatchRow = (slNo: number): DispatchRow => ({
   id: `r-${slNo}-${Math.random().toString(36).slice(2, 8)}`,
