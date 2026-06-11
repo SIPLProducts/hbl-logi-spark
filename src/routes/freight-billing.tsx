@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LeScreenShell } from "@/components/le-screen-shell";
+import { FreightBillingSapCreate } from "@/components/freight-billing-sap-create";
 
 export const Route = createFileRoute("/freight-billing")({
   head: () => ({
@@ -15,6 +16,11 @@ function FreightBillingPage() {
   return (
     <LeScreenShell
       title="Freight Billing"
+      renderCreateBody={({ sap, direction }) =>
+        direction === "outward" ? (
+          <FreightBillingSapCreate mode={sap === "with" ? "with" : "without"} />
+        ) : null
+      }
       extraTabs={[
         { label: "Full Truck Load", active: true },
         { label: "Cargo" },

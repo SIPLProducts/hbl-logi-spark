@@ -1,27 +1,26 @@
-## Transit Info — SAP-style Create with With/Without modes
+## Freight Billing — SAP-style Create (with/without identical)
 
-Mirror Order Info's look and feel for the Transit Info screen. Both modes share the same layout (the without-SAP reference is identical to with-SAP).
+Mirror Order Info / Transit Info look & feel. Both modes share the same layout per reference.
 
 ### Changes
 
-**New `src/components/transit-info-sap-create.tsx`** (based on `order-info-sap-create.tsx`):
+**New `src/components/freight-billing-sap-create.tsx`** (based on `transit-info-sap-create.tsx`):
 
 - Status chips (Pending / Completed)
-- Top selection table: Select / Sl.No / Reference Number / Work Order Number / LR Number / Transporter / Action (single editable row with green inputs)
-- Lookup bar: Select dropdown + search input with search icon button (no Invoice Number + GET — per reference, the lookup row only shows the Select + search bar)
-- Field grid (always visible) with these fields rendered via `SapField`:
+- Top selection table: Select / Sl.No / Reference Number / Work Order Number / LR Number / Transporter / Action
+- Lookup bar: Select dropdown + search input + icon button (no Invoice Number + GET)
+- Field grid (3 cols, always visible):
   - Invoice Number (text)
-  - Physical arrived at destination date (datetime-local)
-  - Unloading date and time (datetime-local)
-  - POD scan received date (date)
-  - SIT/SALE (text — shown as plain input matching reference placeholder)
-  - POD Scan (file input)
-- `mode?: "with" | "without"` prop accepted for API parity with other screens; both modes render the same layout
-- Footer: Save / Save and Next / Save and Previous (emerald / teal / amber)
-- Emerald `GREEN_INPUT` styling, `LABEL` class, static demo data
+  - Transportation Type (text) — with two checkboxes **Provision** and **Account** rendered inline to the right of this field (same row, third column area)
+  - Freight Bill upload (file)
+  - Unloading Charges Approval (file)
+  - Detention Charges Uploading (file)
+  - Work Order Uploading (file)
+- Footer: Save / Save and Next / Save and Previous
+- Emerald `GREEN_INPUT` styling, `LABEL` class
+- `mode?: "with" | "without"` prop accepted for parity; both render identically
 
-**`src/routes/transit-info.tsx`**:
-- Import `TransitInfoSapCreate` and wire `renderCreateBody={({ sap, direction }) => direction === "outward" ? <TransitInfoSapCreate mode={sap === "with" ? "with" : "without"} /> : null}`
-- Keep existing read-only `groups` and `lineItems` intact for the non-create view
+**`src/routes/freight-billing.tsx`**:
+- Wire `renderCreateBody={({ sap, direction }) => direction === "outward" ? <FreightBillingSapCreate mode={sap === "with" ? "with" : "without"} /> : null}`. Keep existing groups intact.
 
 No business logic or other screens touched.
