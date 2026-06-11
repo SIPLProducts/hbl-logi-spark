@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { REPORTS_NAV } from "@/lib/reports-nav";
+import hblLogo from "@/assets/hbl-logo.png.asset.json";
 
 type NavItem = {
   title: string;
@@ -80,8 +81,8 @@ export function AppSidebar() {
     >
       <div className="px-3 py-5 border-b border-sidebar-border/70 flex items-center gap-2.5">
         <Link to="/" className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="size-9 rounded-xl bg-gradient-to-br from-accent to-primary grid place-items-center font-display font-bold text-white text-[11px] shadow-md ring-1 ring-white/10">
-            HBL
+          <div className="size-9 rounded-xl bg-white grid place-items-center shadow-md ring-1 ring-white/10 shrink-0 p-1">
+            <img src={hblLogo.url} alt="HBL" className="size-full object-contain" />
           </div>
           {!collapsed && (
             <div className="leading-tight min-w-0">
