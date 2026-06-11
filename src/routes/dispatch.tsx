@@ -74,7 +74,7 @@ function DispatchPage() {
   return (
     <div className="flex flex-col min-h-full bg-background">
       {/* Header */}
-      <div className="bg-surface border-b border-hairline px-4 sm:px-6 lg:px-8 pt-5 pb-4">
+      <div className="bg-surface/80 backdrop-blur border-b border-hairline px-4 sm:px-6 lg:px-8 pt-6 pb-5 shadow-soft">
         <Breadcrumb className="mb-3">
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -94,14 +94,14 @@ function DispatchPage() {
 
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="hidden sm:grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+            <div className="hidden sm:grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-primary text-white shadow-cta">
               <Truck className="size-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground truncate">
+              <h1 className="font-display text-[26px] leading-none font-bold tracking-tight text-foreground truncate">
                 Dispatch
               </h1>
-              <p className="text-[12.5px] text-muted-foreground mt-0.5 max-w-2xl">
+              <p className="text-[12.5px] text-muted-foreground mt-1.5 max-w-2xl">
                 Plan outbound shipments, allocate trucks against work orders, and search executed
                 dispatch records.
               </p>
@@ -111,12 +111,12 @@ function DispatchPage() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5"
+              className="gap-1.5 rounded-lg"
               onClick={() => window.location.reload()}
             >
               <RefreshCw className="size-3.5" /> Refresh
             </Button>
-            <Button variant="outline" size="sm" className="gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-lg">
               <Download className="size-3.5" /> Export
             </Button>
           </div>
