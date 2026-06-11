@@ -40,13 +40,7 @@ function TransitInfoPage() {
       ]}
       lineItems={{
         columns: ["Seq", "Stop", "Planned", "Actual", "Status"],
-        rows: [
-          [1, "Shameerpet WH (Origin)", "10-Jun 08:00", "10-Jun 08:25", "Departed"],
-          [2, "Hyderabad ORR Toll", "10-Jun 09:30", "10-Jun 09:58", "Passed"],
-          [3, "Solapur Hub", "11-Jun 06:00", "—", "Pending"],
-          [4, "Mumbai DC", "11-Jun 21:00", "—", "Pending"],
-          [5, "Jamnagar Refinery (Destination)", "13-Jun 04:00", "—", "Pending"],
-        ],
+        rows: [],
       }}
     />
   );
