@@ -78,17 +78,17 @@ export function AppSidebar() {
         (collapsed ? "w-[68px]" : "w-64")
       }
     >
-      <div className="px-3 py-5 border-b border-sidebar-border flex items-center gap-2.5">
+      <div className="px-3 py-5 border-b border-sidebar-border/70 flex items-center gap-2.5">
         <Link to="/" className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="size-9 rounded-xl bg-gradient-primary grid place-items-center font-display font-bold text-primary-foreground text-[11px] shadow-cta">
+          <div className="size-9 rounded-xl bg-gradient-to-br from-accent to-primary grid place-items-center font-display font-bold text-white text-[11px] shadow-md ring-1 ring-white/10">
             HBL
           </div>
           {!collapsed && (
             <div className="leading-tight min-w-0">
-              <div className="text-foreground font-display font-semibold text-[13.5px] tracking-tight truncate">
+              <div className="text-white font-display font-semibold text-[13.5px] tracking-tight truncate">
                 Logistics Execution
               </div>
-              <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground truncate">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-sidebar-foreground/55 truncate">
                 HBL Power Systems
               </div>
             </div>
@@ -96,7 +96,7 @@ export function AppSidebar() {
         </Link>
         <button
           onClick={() => setCollapsed((v) => !v)}
-          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors shrink-0"
+          className="p-1.5 rounded-lg text-sidebar-foreground/60 hover:text-white hover:bg-sidebar-accent/70 transition-colors shrink-0"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
@@ -108,16 +108,16 @@ export function AppSidebar() {
           <Link
             to="/"
             className={
-              "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-150 " +
+              "group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12.5px] font-medium transition-all duration-150 " +
               (pathname === "/"
-                ? "bg-sidebar-accent text-primary"
-                : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground")
+                ? "bg-sidebar-accent/70 text-white shadow-sm"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
             }
           >
             {pathname === "/" && (
-              <span className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r-full bg-primary" />
+              <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent shadow-[0_0_8px_var(--accent)]" />
             )}
-            <LayoutDashboard className={"size-4 shrink-0 " + (pathname === "/" ? "text-primary" : "")} />
+            <LayoutDashboard className={"size-4 shrink-0 " + (pathname === "/" ? "text-accent" : "")} />
             <span>Dashboard</span>
           </Link>
         )}
@@ -134,16 +134,16 @@ export function AppSidebar() {
                       to={item.to}
                       title={collapsed ? item.title : undefined}
                       className={
-                        "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-150 " +
+                        "group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12.5px] font-medium transition-all duration-150 " +
                         (active
-                          ? "bg-sidebar-accent text-primary"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground")
+                          ? "bg-sidebar-accent/70 text-white shadow-sm"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
                       }
                     >
                       {active && (
-                        <span className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r-full bg-primary" />
+                        <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent shadow-[0_0_8px_var(--accent)]" />
                       )}
-                      <Icon className={"size-4 shrink-0 transition-colors " + (active ? "text-primary" : "group-hover:text-foreground")} />
+                      <Icon className={"size-4 shrink-0 transition-colors " + (active ? "text-accent" : "group-hover:text-white")} />
                       {!collapsed && <span className="truncate">{item.title}</span>}
                     </Link>
                   </li>
@@ -162,17 +162,17 @@ export function AppSidebar() {
             }}
             title={collapsed ? "Reports" : undefined}
             className={
-              "group relative w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-150 " +
+              "group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12.5px] font-medium transition-all duration-150 " +
               (reportsHasActive
-                ? "bg-sidebar-accent text-primary"
-                : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground")
+                ? "bg-sidebar-accent/70 text-white shadow-sm"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
             }
           >
             {reportsHasActive && (
-              <span className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r-full bg-primary" />
+              <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent shadow-[0_0_8px_var(--accent)]" />
             )}
             <FileBarChart
-              className={"size-4 shrink-0 transition-colors " + (reportsHasActive ? "text-primary" : "group-hover:text-foreground")}
+              className={"size-4 shrink-0 transition-colors " + (reportsHasActive ? "text-accent" : "group-hover:text-white")}
             />
             {!collapsed && (
               <>
@@ -185,7 +185,7 @@ export function AppSidebar() {
           </button>
 
           {reportsOpen && !collapsed && (
-            <ul className="mt-1 ml-3 pl-3 border-l border-sidebar-border space-y-0.5">
+            <ul className="mt-1 ml-3 pl-3 border-l border-sidebar-border/60 space-y-0.5">
               {REPORTS_NAV.map((item) => {
                 const active = pathname === item.to;
                 const Icon = item.icon;
@@ -194,16 +194,16 @@ export function AppSidebar() {
                     <Link
                       to={item.to}
                       className={
-                        "group relative flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 " +
+                        "group relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all duration-150 " +
                         (active
-                          ? "bg-sidebar-accent text-primary"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-foreground")
+                          ? "bg-sidebar-accent/70 text-white shadow-sm"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
                       }
                     >
                       <Icon
                         className={
                           "size-3.5 shrink-0 transition-colors " +
-                          (active ? "text-primary" : "group-hover:text-foreground")
+                          (active ? "text-accent" : "group-hover:text-white")
                         }
                       />
                       <span className="truncate">{item.title}</span>
@@ -216,15 +216,15 @@ export function AppSidebar() {
         </div>
       </nav>
 
-      <div className="border-t border-sidebar-border p-3">
-        <div className={"flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent/60 transition-colors " + (collapsed ? "justify-center" : "")}>
-          <div className="size-9 rounded-full bg-gradient-primary grid place-items-center text-[11px] font-display font-semibold text-primary-foreground shrink-0">
+      <div className="border-t border-sidebar-border/70 p-3">
+        <div className={"flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent/40 transition-colors " + (collapsed ? "justify-center" : "")}>
+          <div className="size-9 rounded-full bg-gradient-to-br from-accent to-primary grid place-items-center text-[11px] font-display font-semibold text-white shrink-0 ring-2 ring-sidebar-accent/40">
             HL
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-[12.5px] text-foreground font-semibold tracking-tight truncate">Harshini Lingutla</div>
-              <div className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground truncate mt-0.5">LE Operator</div>
+              <div className="text-[12.5px] text-white font-semibold tracking-tight truncate">Harshini Lingutla</div>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-sidebar-foreground/55 truncate mt-0.5">LE Operator</div>
             </div>
           )}
         </div>

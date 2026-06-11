@@ -40,12 +40,12 @@ export function ReportPlaceholder({
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-5">
       {/* Page header */}
-      <div className="bg-surface border border-hairline rounded-2xl shadow-soft p-5 flex items-start gap-4">
-        <div className="size-11 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
-          <Icon className="size-5" />
+      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5 flex items-start gap-4">
+        <div className="size-12 rounded-xl bg-gradient-to-br from-sky-500 to-teal-500 grid place-items-center text-white shadow-cta shrink-0">
+          <Icon className="size-6" />
         </div>
         <div className="min-w-0">
-          <h1 className="font-display text-[18px] font-bold tracking-tight text-foreground">
+          <h1 className="font-display text-[18px] font-bold tracking-tight text-indigo-700 dark:text-indigo-300">
             {title}
           </h1>
           <p className="text-[12.5px] text-muted-foreground mt-1">{description}</p>
@@ -71,12 +71,12 @@ export function ReportPlaceholder({
           ))}
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
-          <button className="h-9 px-4 rounded-md border border-input bg-surface text-foreground text-[12.5px] font-semibold hover:bg-muted inline-flex items-center justify-center gap-2 transition-colors">
+        <div className="mt-5 flex justify-end gap-2.5">
+          <button className="h-9 px-4 rounded-md border border-input bg-background text-foreground text-[12.5px] font-semibold hover:bg-muted inline-flex items-center justify-center gap-2">
             <RotateCcw className="size-3.5" />
             Reset
           </button>
-          <button className="h-9 px-5 rounded-md bg-primary text-primary-foreground text-[12.5px] font-semibold shadow-cta hover:brightness-110 inline-flex items-center justify-center gap-2 transition-all">
+          <button className="h-9 px-5 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform inline-flex items-center justify-center gap-2">
             <FileSpreadsheet className="size-4" />
             Export XLS
           </button>

@@ -22,21 +22,21 @@ export function DataTable<T extends { id: string | number }>({
   emptyMessage?: string;
 }) {
   return (
-    <div className="bg-surface rounded-xl border border-hairline shadow-soft overflow-hidden">
+    <div className="bg-white rounded-sm ring-1 ring-zinc-200 overflow-hidden">
       {(title || toolbar) && (
-        <div className="px-4 py-3 border-b border-hairline bg-surface-2/50 flex items-center justify-between gap-4">
+        <div className="px-4 py-3 border-b border-zinc-200 flex items-center justify-between gap-4">
           {title && (
-            <h2 className="font-display text-[13px] font-semibold tracking-tight text-foreground">
+            <h2 className="text-[12px] font-bold uppercase tracking-wider text-zinc-900">
               {title}
             </h2>
           )}
           {toolbar && <div className="flex items-center gap-2">{toolbar}</div>}
         </div>
       )}
-      <div className="overflow-x-auto scrollbar-elegant">
+      <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
-          <thead className="sticky top-0 z-10">
-            <tr className="bg-surface-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
+          <thead>
+            <tr className="bg-zinc-50/60 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-200">
               {columns.map((c) => (
                 <th
                   key={c.key}
@@ -55,19 +55,19 @@ export function DataTable<T extends { id: string | number }>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-hairline/70 text-[12.5px]">
+          <tbody className="divide-y divide-zinc-100 text-[12.5px]">
             {rows.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-4 py-10 text-center text-muted-foreground text-[12px]"
+                  className="px-4 py-10 text-center text-zinc-400 text-[12px]"
                 >
                   {emptyMessage}
                 </td>
               </tr>
             ) : (
               rows.map((row) => (
-                <tr key={row.id} className="hover:bg-surface-2/70 transition-colors">
+                <tr key={row.id} className="hover:bg-zinc-50/60 transition-colors">
                   {columns.map((c) => (
                     <td
                       key={c.key}
