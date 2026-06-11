@@ -16,8 +16,11 @@ import {
   UserPlus,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
+  FileBarChart,
 } from "lucide-react";
 import { useState } from "react";
+import { REPORTS_NAV } from "@/lib/reports-nav";
 
 type NavItem = {
   title: string;
@@ -65,6 +68,8 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isActive = (to: string) => pathname === to || pathname.startsWith(to + "/");
   const [collapsed, setCollapsed] = useState(false);
+  const reportsHasActive = pathname.startsWith("/reports");
+  const [reportsOpen, setReportsOpen] = useState(reportsHasActive);
 
   return (
     <aside
@@ -147,6 +152,68 @@ export function AppSidebar() {
             </ul>
           </div>
         ))}
+
+        {/* Reports (collapsible) */}
+        <div>
+          <button
+            onClick={() => {
+              if (collapsed) setCollapsed(false);
+              setReportsOpen((v) => !v);
+            }}
+            title={collapsed ? "Reports" : undefined}
+            className={
+              "group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12.5px] font-medium transition-all duration-150 " +
+              (reportsHasActive
+                ? "bg-sidebar-accent/70 text-white shadow-sm"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
+            }
+          >
+            {reportsHasActive && (
+              <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent shadow-[0_0_8px_var(--accent)]" />
+            )}
+            <FileBarChart
+              className={"size-4 shrink-0 transition-colors " + (reportsHasActive ? "text-accent" : "group-hover:text-white")}
+            />
+            {!collapsed && (
+              <>
+                <span className="truncate flex-1 text-left">Reports</span>
+                <ChevronDown
+                  className={"size-3.5 shrink-0 transition-transform " + (reportsOpen ? "rotate-180" : "")}
+                />
+              </>
+            )}
+          </button>
+
+          {reportsOpen && !collapsed && (
+            <ul className="mt-1 ml-3 pl-3 border-l border-sidebar-border/60 space-y-0.5">
+              {REPORTS_NAV.map((item) => {
+                const active = pathname === item.to;
+                const Icon = item.icon;
+                return (
+                  <li key={item.to}>
+                    <Link
+                      to={item.to}
+                      className={
+                        "group relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all duration-150 " +
+                        (active
+                          ? "bg-sidebar-accent/70 text-white shadow-sm"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
+                      }
+                    >
+                      <Icon
+                        className={
+                          "size-3.5 shrink-0 transition-colors " +
+                          (active ? "text-accent" : "group-hover:text-white")
+                        }
+                      />
+                      <span className="truncate">{item.title}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </nav>
 
       <div className="border-t border-sidebar-border/70 p-3">
