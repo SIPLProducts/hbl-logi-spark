@@ -555,3 +555,66 @@ function KpiCard({ label, value, delta, tone = "default" }: KpiTile) {
     </div>
   );
 }
+
+function SapToggle({ value, onChange }: { value: SapMode; onChange: (v: SapMode) => void }) {
+  const idx = value === "with" ? 0 : 1;
+  return (
+    <div className="relative inline-flex items-center p-1 rounded-full bg-muted border border-hairline text-[12px] shadow-inner">
+      <span
+        className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface shadow-sm ring-1 ring-hairline transition-transform duration-300 ease-out"
+        style={{ transform: `translateX(${idx * 100}%)` }}
+        aria-hidden
+      />
+      {(["with", "without"] as const).map((m) => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          className={cn(
+            "relative z-10 px-4 h-8 rounded-full font-semibold transition-colors min-w-[96px]",
+            value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {m === "with" ? "With SAP" : "Without SAP"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PremiumRadio({
+  label,
+  checked,
+  onSelect,
+}: {
+  label: string;
+  checked: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      onClick={onSelect}
+      className={cn(
+        "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer rounded-full pl-1.5 pr-3 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+        checked ? "text-foreground bg-accent/10" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <span
+        className={cn(
+          "grid place-items-center size-4 rounded-full border-2 transition-all",
+          checked ? "border-accent" : "border-hairline",
+        )}
+      >
+        <span
+          className={cn(
+            "size-1.5 rounded-full transition-all",
+            checked ? "bg-accent scale-100" : "bg-transparent scale-0",
+          )}
+        />
+      </span>
+      {label}
+    </button>
+  );
+}
