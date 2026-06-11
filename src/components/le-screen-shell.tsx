@@ -1,8 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import {
   Plus,
-  Download,
   RefreshCw,
   Search,
   Trash2,
@@ -141,12 +140,6 @@ export function LeScreenShell({
     setApplied(false);
     setSearchSap(null);
   };
-
-  // Avoid SSR/CSR hydration mismatch on the live clock
-  const [syncedAt, setSyncedAt] = useState<string>("—");
-  useEffect(() => {
-    setSyncedAt(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-  }, []);
 
   const filteredRows = searchValue.trim()
     ? rows.filter((r) => {
