@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, MoreVertical } from "lucide-react";
+import { MoreVertical } from "lucide-react";
 
 const GREEN_INPUT =
   "h-9 w-full rounded-md bg-white dark:bg-surface border border-emerald-400/70 px-2.5 text-[12.5px] text-emerald-700 dark:text-emerald-300 font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/30";
@@ -61,10 +61,9 @@ function YesNo({
 
 export function ServiceLevelSapCreate(_: { mode?: "with" | "without" } = {}) {
   const [checked, setChecked] = useState(true);
-  const [searchType, setSearchType] = useState("");
-  const [searchValue, setSearchValue] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [revealed, setRevealed] = useState(false);
+  const [loadType, setLoadType] = useState<"ftl" | "cargo" | null>(null);
   const [answers, setAnswers] = useState<Record<Q, "yes" | "no" | null>>(
     () => QUESTIONS.reduce((a, q) => ({ ...a, [q]: null }), {} as Record<Q, "yes" | "no" | null>),
   );
@@ -82,6 +81,40 @@ export function ServiceLevelSapCreate(_: { mode?: "with" | "without" } = {}) {
         </span>
       </div>
 
+      {/* Load Type toggle */}
+      <div className="bg-surface border border-hairline rounded-xl p-3 shadow-elegant flex flex-wrap items-center gap-3">
+        <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          Load Type
+        </span>
+        {([
+          { id: "ftl", label: "Full Truck Load" },
+          { id: "cargo", label: "Cargo" },
+        ] as const).map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => setLoadType((cur) => (cur === o.id ? null : o.id))}
+            className={
+              "px-4 h-8 rounded-full text-[12px] font-semibold border transition-colors " +
+              (loadType === o.id
+                ? "bg-accent text-accent-foreground border-accent shadow-sm"
+                : "bg-muted text-muted-foreground border-hairline hover:bg-accent/10")
+            }
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      {!loadType && (
+        <p className="text-[12px] text-muted-foreground px-1">
+          Select <span className="font-semibold">Full Truck Load</span> or{" "}
+          <span className="font-semibold">Cargo</span> to continue.
+        </p>
+      )}
+
+      {loadType && (
+        <>
       {/* Selection table */}
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12.5px]">
@@ -149,31 +182,6 @@ export function ServiceLevelSapCreate(_: { mode?: "with" | "without" } = {}) {
           >
             GET
           </button>
-          <div className="min-w-[160px]">
-            <select
-              value={searchType}
-              onChange={(e) => setSearchType(e.target.value)}
-              className="h-9 w-full rounded-md border border-hairline bg-surface px-2 text-[12.5px] outline-none focus:border-accent"
-            >
-              <option value="">Select</option>
-              {["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"].map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-[2] min-w-[260px] flex items-stretch gap-0">
-            <input
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              placeholder="Enter Reference / Invoice / ODN / SO Number"
-              className="h-9 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12.5px] outline-none focus:border-accent"
-            />
-            <button className="h-9 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta">
-              <Search className="size-4" />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -246,6 +254,8 @@ export function ServiceLevelSapCreate(_: { mode?: "with" | "without" } = {}) {
               Submit
             </button>
           </div>
+        </>
+      )}
         </>
       )}
     </div>
