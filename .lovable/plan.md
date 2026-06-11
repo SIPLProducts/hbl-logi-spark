@@ -1,28 +1,24 @@
 ## Goal
-Give Transit Damage Info the same create-screen design as Order Info (status chips → reference table → invoice/DC lookup bar → GET-gated field grid → footer actions). With SAP uses "Invoice Number"; Without SAP swaps that label to "DC Reference Number". Match the fields shown in the two reference screenshots.
+Tighten the Transit Damage Info create screen:
+1. **With SAP** — keep the Invoice Number + GET lookup, but the field grid and bottom (secondary) table must stay hidden until the user types an Invoice Number and clicks GET. Today it renders revealed by default.
+2. **Without SAP** — drop the "DC Reference Number" lookup row and its GET button entirely. Instead, surface **DC Reference Number** as a regular field inside the emerald field grid, placed right next to **Invoice Date**. Without-SAP no longer has a GET gate, so its fields and secondary table render immediately.
+
+No other screens, no logic/data changes — UI-only edits inside `src/components/transit-damage-info-sap-create.tsx`.
 
 ## Files
 
-### 1. New: `src/components/transit-damage-info-sap-create.tsx`
-Clone the structure of `order-info-sap-create.tsx`:
-- Status chips: add a third chip "No. of Cases Reported: 0" (indigo/violet) before Pending and Completed.
-- Reference table columns: Select, Sl.No, **Map ID**, Reference Number, Work Order Number, LR Number, Transporter, Action. With-SAP seed row: Map ID `101`, Ref `1000000001`, LR `1234`, checkbox checked. Without-SAP: empty placeholders, unchecked.
+### `src/components/transit-damage-info-sap-create.tsx`
+- Initial state:
+  - `revealed` starts `true` for without-SAP, `false` for with-SAP (`useState(isWithout)`).
+  - `lookupValue` only meaningful for with-SAP; default `""` so GET is disabled until typed.
 - Lookup bar:
-  - With SAP: label "Invoice Number" + GET button (gates field reveal), then Select dropdown + search input with magnifier.
-  - Without SAP: label "DC Reference Number" + GET button (gates reveal), then Select dropdown + search input with magnifier.
-  - Same narrow-width treatment as recently applied (compact input).
-- Field grid (3-col, emerald inputs) — both modes show the same fields, matching screenshots:
-  - Invoice Date (date), FSR Report Date (date), Invoice Basic Value (text)
-  - Incident Date (date), Customer (text), C/nee Name (text)
-  - Damage Remarks (select: "Select Damage Remarks", options TBD basic list), Settlement (select: "Select Settlement"), Closing Date (date)
-  - Images (file), FSR Report (file), FIR Report (file)
-  - COF (file) — spans 1 col on its own row
-- Bottom secondary table: columns Select, Sl.No, Map ID (select default "101" with-sap / "Select" without-sap), Vehicle Number, LR Number, Transporter, Action (green + and red ×).
-- Footer: Save / Save and Next / Save and Previous (same gradient buttons as Order Info).
-
-### 2. Edit: `src/routes/transit-damage-info.tsx`
-- Add `renderCreateBody={({ sap, direction }) => direction === "outward" ? <TransitDamageInfoSapCreate mode={sap === "with" ? "with" : "without"} /> : null}` to the `LeScreenShell`.
-- Keep existing `groups` for the read view.
+  - With SAP: render the Invoice Number label + input + GET button (unchanged behaviour, but GET is the only way to reveal fields). Keep the Select + search input row.
+  - Without SAP: remove the lookup label/input/GET block entirely. Keep just the Select dropdown + search input row (so the search bar still exists for filtering refs).
+- Field grid `FIELDS` array:
+  - For without-SAP, insert a new entry `{ label: "DC Reference Number" }` immediately AFTER `Invoice Date` (so it sits beside it in the 3-col grid). With-SAP keeps the original 13-field list unchanged. Compute the field list at render time based on `isWithout`.
+- "Enter a … GET to load fields" helper text: only show for with-SAP when `!revealed`. Remove for without-SAP.
+- Secondary table + footer: continue to render together with the field grid (i.e. inside the `showFields` block), so with-SAP hides them until GET, without-SAP shows them immediately.
 
 ## Result
-Transit Damage Info create flow visually matches Order Info (chips, table, lookup, emerald field grid, footer) with the damage-specific fields and the with/without-SAP label swap (Invoice Number ↔ DC Reference Number).
+- With SAP: clean lookup-first flow — chips + reference table + Invoice Number/GET bar are visible; only after a valid Invoice Number + GET do the field grid, secondary table, and footer appear.
+- Without SAP: no extra lookup row; field grid (now including DC Reference Number beside Invoice Date), secondary table, and footer are always visible under the chips + reference table + search bar.
