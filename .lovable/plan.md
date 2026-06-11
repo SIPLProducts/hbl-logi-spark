@@ -1,47 +1,63 @@
 ## Goal
 
-On Order Info → **Without SAP** (outward), show the same SAP-style layout used for With SAP, but:
-- Remove the Invoice Number input and GET button (and the empty-state hint / reveal gating).
-- Rename the first field **Tax Invoice** → **DC Reference Number**.
-- Fields are visible immediately (no GET gate).
+Make **Shipment Details → With SAP (outward)** match the look-and-feel of the Order Info With SAP screen shown in the reference image:
 
-Selection table, search-type dropdown + search input remain (same as With SAP). All other fields stay identical and empty.
+- Status chips (Pending / Completed)
+- Selection table (Select, Sl.No, Map ID, Reference Number, Work Order Number, LR Number, Transporter, Action)
+- Invoice lookup bar: **Invoice Number** input + **GET** button + Select dropdown + Search input
+- After GET: reveal the **Incoterms / Insurance Scope / Kilometres** row and the **Line Items** table
+- Footer actions: Save / Save and Next / Save and Previous
+
+Without SAP and other tabs remain untouched.
 
 ## Scope
 
-- `src/components/order-info-sap-create.tsx` — refactor to accept a `mode: "with" | "without"` prop and conditionally render the Invoice Number + GET block and the reveal gating.
-- `src/routes/order-info.tsx` — wire the component for `sap === "without"` as well, passing the mode.
+- New component: `src/components/shipment-details-sap-create.tsx` — encapsulates the entire Shipment Details "With SAP" create body (mirrors `OrderInfoSapCreate`, but with shipment-specific columns + line items + Map ID column in the selection table).
+- `src/routes/shipment-details.tsx` — pass `renderCreateBody` to `LeScreenShell` that returns `<ShipmentDetailsSapCreate />` when `sap === "with"` and `direction === "outward"`; otherwise return `null` (fallback to existing default rendering using current `topFields` + `lineItems`).
 
-No other screens or routes are affected.
+No other screens, routes, or shared components change.
 
 ## Changes
 
-### 1. `src/components/order-info-sap-create.tsx`
+### 1. New: `src/components/shipment-details-sap-create.tsx`
 
-- Add prop: `export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" })`.
-- Compute `const isWithout = mode === "without"`.
-- `FIELDS[0].label` stays "Tax Invoice" in the array; when rendering, if `isWithout`, replace the first field's label with **"DC Reference Number"** (map over FIELDS and override label for index 0 when `isWithout`).
-- Invoice lookup bar block (the `<div>` containing Invoice Number input + GET button + Select + Search): wrap in `{!isWithout && (...) }`.
-- Empty-state hint paragraph: wrap in `{!isWithout && !revealed && ...}`.
-- Reveal gating: when `isWithout`, force fields + footer to always render. Implement via `const showFields = isWithout || revealed;` and use `{showFields && (<>...field grid + footer...</>)}`.
-- Keep the selection table and the (now-standalone for Without SAP) Search bar untouched. Note: for With SAP the Search dropdown + search input live inside the lookup bar; for Without SAP we still want them visible. Approach: split the lookup bar into two rows/blocks — (a) Invoice Number + GET (with-only), (b) Select dropdown + Search input (always shown). Both stay inside one card for visual consistency; if `isWithout`, the card only contains row (b).
+Adapted from `OrderInfoSapCreate`. Structure:
 
-### 2. `src/routes/order-info.tsx`
+1. Status chips (Pending: 0 / Completed: 1) — same as Order Info.
+2. **Selection table** with columns: Select | Sl.No | **Map ID** | Reference Number | Work Order Number | LR Number | Transporter | Action. One sample row (Map ID `101`, Reference `1000000001`, LR `1234`, empty Work Order / Transporter placeholders).
+3. **Invoice lookup bar** (single card): Invoice Number input + green GET button + Select dropdown (Reference / Invoice / ODN / SO Number / Work Order / LR Number) + search input with icon button. Identical styles to Order Info.
+4. State: `invoiceNumber`, `revealed`. GET disabled while empty; clicking sets `revealed = true`.
+5. Empty-state hint when `!revealed`: "Enter an Invoice Number and click GET to load fields."
+6. When `revealed`:
+   - **Top fields row** (3 cols on lg): Incoterms (select: FOR / FOB / CIF / EXW / DAP), Insurance Scope (select: Buyer / Transit Insurance / Open Policy / Self Insured), Kilometres (number).
+   - **Line Items table** card with header row + one empty row containing: checkbox, Sl.No (1), Map ID (select), Product (select), Type of Material (select), Material Description (text), No of Sets/No (Qty) (number), Ah Loaded (text), Shipment Weight (kg) (number, default 0), Battery Condition (select), Action (green + / red ×).
+   - Footer action bar: Save (green), Save and Next (teal), Save and Previous (amber) — same styling as Order Info footer.
 
-Change the `renderCreateBody` to:
+All inputs use the same `GREEN_INPUT` + `LABEL` classes used in `OrderInfoSapCreate`.
+
+### 2. `src/routes/shipment-details.tsx`
+
+Add import and wire renderer:
 
 ```tsx
-renderCreateBody={({ sap, direction }) =>
-  direction === "outward"
-    ? <OrderInfoSapCreate mode={sap === "with" ? "with" : "without"} />
-    : null
-}
+import { ShipmentDetailsSapCreate } from "@/components/shipment-details-sap-create";
+
+<LeScreenShell
+  title="Shipment Details"
+  columns={columns}
+  topFields={[...]}      // kept for Without SAP / Inward fallback
+  lineItems={{...}}      // kept for fallback
+  renderCreateBody={({ sap, direction }) =>
+    direction === "outward" && sap === "with"
+      ? <ShipmentDetailsSapCreate />
+      : null
+  }
+/>
 ```
 
-Inward behavior is unchanged (falls back to default group rendering).
+Inward and Without SAP keep existing `LeScreenShell` default rendering.
 
 ## Result
 
-- With SAP (outward): unchanged behavior — Invoice Number + GET gate fields, first field labeled "Tax Invoice".
-- Without SAP (outward): same visual layout, no Invoice Number / GET, fields visible immediately, first field labeled "DC Reference Number".
-- Inward and other screens unchanged.
+- Shipment Details → Outward → With SAP: identical visual language to Order Info With SAP — status chips, selection table (with Map ID), Invoice + GET lookup bar, gated reveal of Incoterms/Insurance/Kilometres + Line Items table, matching footer buttons.
+- Other modes/tabs unchanged.
