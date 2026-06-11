@@ -25,6 +25,7 @@ import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as ReportsTransitEwayBillRouteImport } from './routes/reports.transit-eway-bill'
+import { Route as ReportsServiceLevelReportRouteImport } from './routes/reports.service-level-report'
 import { Route as ReportsPendingPodsRouteImport } from './routes/reports.pending-pods'
 import { Route as ReportsLoadingFactorCostRouteImport } from './routes/reports.loading-factor-cost'
 import { Route as ReportsInsuranceRouteImport } from './routes/reports.insurance'
@@ -112,6 +113,12 @@ const ReportsTransitEwayBillRoute = ReportsTransitEwayBillRouteImport.update({
   path: '/reports/transit-eway-bill',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsServiceLevelReportRoute =
+  ReportsServiceLevelReportRouteImport.update({
+    id: '/reports/service-level-report',
+    path: '/reports/service-level-report',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ReportsPendingPodsRoute = ReportsPendingPodsRouteImport.update({
   id: '/reports/pending-pods',
   path: '/reports/pending-pods',
@@ -166,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/reports/insurance': typeof ReportsInsuranceRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/service-level-report': typeof ReportsServiceLevelReportRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports/': typeof ReportsIndexRoute
 }
@@ -190,6 +198,7 @@ export interface FileRoutesByTo {
   '/reports/insurance': typeof ReportsInsuranceRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/service-level-report': typeof ReportsServiceLevelReportRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports': typeof ReportsIndexRoute
 }
@@ -215,6 +224,7 @@ export interface FileRoutesById {
   '/reports/insurance': typeof ReportsInsuranceRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/service-level-report': typeof ReportsServiceLevelReportRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports/': typeof ReportsIndexRoute
 }
@@ -241,6 +251,7 @@ export interface FileRouteTypes {
     | '/reports/insurance'
     | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
+    | '/reports/service-level-report'
     | '/reports/transit-eway-bill'
     | '/reports/'
   fileRoutesByTo: FileRoutesByTo
@@ -265,6 +276,7 @@ export interface FileRouteTypes {
     | '/reports/insurance'
     | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
+    | '/reports/service-level-report'
     | '/reports/transit-eway-bill'
     | '/reports'
   id:
@@ -289,6 +301,7 @@ export interface FileRouteTypes {
     | '/reports/insurance'
     | '/reports/loading-factor-cost'
     | '/reports/pending-pods'
+    | '/reports/service-level-report'
     | '/reports/transit-eway-bill'
     | '/reports/'
   fileRoutesById: FileRoutesById
@@ -314,6 +327,7 @@ export interface RootRouteChildren {
   ReportsInsuranceRoute: typeof ReportsInsuranceRoute
   ReportsLoadingFactorCostRoute: typeof ReportsLoadingFactorCostRoute
   ReportsPendingPodsRoute: typeof ReportsPendingPodsRoute
+  ReportsServiceLevelReportRoute: typeof ReportsServiceLevelReportRoute
   ReportsTransitEwayBillRoute: typeof ReportsTransitEwayBillRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
 }
@@ -432,6 +446,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsTransitEwayBillRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/service-level-report': {
+      id: '/reports/service-level-report'
+      path: '/reports/service-level-report'
+      fullPath: '/reports/service-level-report'
+      preLoaderRoute: typeof ReportsServiceLevelReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports/pending-pods': {
       id: '/reports/pending-pods'
       path: '/reports/pending-pods'
@@ -498,6 +519,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsInsuranceRoute: ReportsInsuranceRoute,
   ReportsLoadingFactorCostRoute: ReportsLoadingFactorCostRoute,
   ReportsPendingPodsRoute: ReportsPendingPodsRoute,
+  ReportsServiceLevelReportRoute: ReportsServiceLevelReportRoute,
   ReportsTransitEwayBillRoute: ReportsTransitEwayBillRoute,
   ReportsIndexRoute: ReportsIndexRoute,
 }
