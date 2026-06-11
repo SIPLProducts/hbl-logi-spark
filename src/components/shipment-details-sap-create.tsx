@@ -22,13 +22,15 @@ const PRODUCTS = ["OPTIMUZ SMF BATTERY", "POWER BACKUP UPS", "DEFENCE BATTERY"];
 const MATERIAL_TYPES = ["Finished Goods", "Raw Material", "Semi-Finished"];
 const BATTERY_CONDITIONS = ["New", "Refurbished", "Used"];
 
-export function ShipmentDetailsSapCreate() {
+export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
+  const isWithout = mode === "without";
   const [checked, setChecked] = useState(true);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [lineChecked, setLineChecked] = useState(false);
+  const showFields = isWithout || revealed;
 
   return (
     <div className="space-y-4">
@@ -96,6 +98,8 @@ export function ShipmentDetailsSapCreate() {
       {/* Invoice lookup bar */}
       <div className="bg-surface border border-hairline rounded-xl p-3 shadow-elegant">
         <div className="flex flex-wrap items-end gap-3">
+          {!isWithout && (
+          <>
           <div className="flex-1 min-w-[220px]">
             <label className={LABEL}>Invoice Number</label>
             <input
@@ -113,6 +117,8 @@ export function ShipmentDetailsSapCreate() {
           >
             GET
           </button>
+          </>
+          )}
           <div className="min-w-[160px]">
             <select
               value={searchType}
@@ -141,13 +147,13 @@ export function ShipmentDetailsSapCreate() {
         </div>
       </div>
 
-      {!revealed && (
+      {!isWithout && !revealed && (
         <p className="text-[12px] text-muted-foreground px-1">
           Enter an Invoice Number and click <span className="font-semibold">GET</span> to load fields.
         </p>
       )}
 
-      {revealed && (
+      {showFields && (
         <>
           {/* Top fields */}
           <div className="bg-surface border border-hairline rounded-xl p-5 shadow-elegant">
@@ -170,6 +176,12 @@ export function ShipmentDetailsSapCreate() {
                 <label className={LABEL}>Kilometres</label>
                 <input type="number" placeholder="0" className={GREEN_INPUT} />
               </div>
+              {isWithout && (
+                <div>
+                  <label className={LABEL}>DC Reference Number</label>
+                  <input placeholder="Enter DC Reference Number" className={GREEN_INPUT} />
+                </div>
+              )}
             </div>
           </div>
 
