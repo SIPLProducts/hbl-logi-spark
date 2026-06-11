@@ -232,10 +232,11 @@ export function LeScreenShell({
               </div>
             </div>
 
-            {renderCreateBody ? (
-              renderCreateBody({ sap, direction })
-            ) : (
-              <>
+            {(() => {
+              const override = renderCreateBody?.({ sap, direction });
+              if (override) return override;
+              return (
+                <>
             {kpis && kpis.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {kpis.map((k) => (
@@ -318,13 +319,14 @@ export function LeScreenShell({
                 </div>
               </div>
             )}
-              </>
-            )}
+                </>
+              );
+            })()}
 
             {children}
 
             {/* Action bar */}
-            {!renderCreateBody && (
+            {!(renderCreateBody && renderCreateBody({ sap, direction })) && (
             <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/95 backdrop-blur border-t border-hairline px-6 py-3 flex items-center justify-end gap-2 z-10">
               <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
                 <ChevronLeft className="size-3.5" /> Save and Previous
