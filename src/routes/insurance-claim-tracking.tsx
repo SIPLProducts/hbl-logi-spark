@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LeScreenShell } from "@/components/le-screen-shell";
+import { InsuranceClaimTrackingSapCreate } from "@/components/insurance-claim-tracking-sap-create";
 
 export const Route = createFileRoute("/insurance-claim-tracking")({
   head: () => ({
@@ -15,6 +16,11 @@ function InsuranceClaimTrackingPage() {
   return (
     <LeScreenShell
       title="Insurance Claim Tracking"
+      renderCreateBody={({ sap, direction }) =>
+        direction === "outward" ? (
+          <InsuranceClaimTrackingSapCreate mode={sap === "with" ? "with" : "without"} />
+        ) : null
+      }
       groups={[
         {
           title: "Claim",
