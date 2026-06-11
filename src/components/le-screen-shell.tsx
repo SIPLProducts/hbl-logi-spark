@@ -170,17 +170,11 @@ export function LeScreenShell({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="hidden md:inline text-[11px] font-mono text-muted-foreground">
-              Synced · {syncedAt}
-            </span>
             <button
               onClick={() => window.location.reload()}
               className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted"
             >
               <RefreshCw className="size-3.5" /> Refresh
-            </button>
-            <button className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
-              <Download className="size-3.5" /> Export
             </button>
           </div>
         </div>
