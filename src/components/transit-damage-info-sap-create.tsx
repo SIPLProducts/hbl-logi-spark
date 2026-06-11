@@ -55,8 +55,8 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [lookupValue, setLookupValue] = useState("");
-  const [revealed, setRevealed] = useState(isWithout);
-  const showFields = revealed;
+  const [revealed, setRevealed] = useState(false);
+  const showFields = isWithout || revealed;
   const fields: FieldSpec[] = isWithout
     ? [
         BASE_FIELDS[0],
