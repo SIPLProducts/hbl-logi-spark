@@ -59,8 +59,8 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   const showFields = revealed;
   const fields: FieldSpec[] = isWithout
     ? [
-        BASE_FIELDS[0],
         { label: "DC Reference Number" },
+        BASE_FIELDS[0],
         ...BASE_FIELDS.slice(1),
       ]
     : BASE_FIELDS;
