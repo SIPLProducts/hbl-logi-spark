@@ -119,13 +119,6 @@ function DispatchPage() {
           </div>
         </div>
 
-        {/* KPIs */}
-        <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Kpi label="Total Dispatches" value="1,284" delta="+12.4% MoM" tone="info" />
-          <Kpi label="Pending" value="38" delta="14 awaiting LR" tone="warning" />
-          <Kpi label="In Transit" value="126" delta="9 ODC permits" tone="default" />
-          <Kpi label="Completed Today" value="47" delta="+6 vs yesterday" tone="success" />
-        </div>
       </div>
 
       {/* Body */}
@@ -156,40 +149,6 @@ function DispatchPage() {
       </div>
 
       <LeFooter />
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────── KPI ──────────────────────────────────────────── */
-
-function Kpi({
-  label,
-  value,
-  delta,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  delta?: string;
-  tone?: "default" | "success" | "warning" | "danger" | "info";
-}) {
-  const dot: Record<string, string> = {
-    default: "bg-muted-foreground",
-    success: "bg-success",
-    warning: "bg-warning",
-    danger: "bg-destructive",
-    info: "bg-info",
-  };
-  return (
-    <div className="bg-surface border border-hairline rounded-xl p-4 shadow-xs hover:shadow-sm hover:border-accent/40 transition-all">
-      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        <span className={"size-1.5 rounded-full " + dot[tone]} />
-        {label}
-      </div>
-      <div className="mt-2 font-display text-3xl font-semibold tabular-nums text-foreground">
-        {value}
-      </div>
-      {delta && <div className="mt-1 text-[11px] text-muted-foreground">{delta}</div>}
     </div>
   );
 }
@@ -714,7 +673,7 @@ type SortKey = keyof DispatchResultRow;
 
 function ResultsTable() {
   const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("invoiceDate");
+  const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -752,18 +711,23 @@ function ResultsTable() {
   };
 
   const cols: { key: SortKey; label: string; align?: "right"; mono?: boolean }[] = [
-    { key: "invoiceNo", label: "Invoice No", mono: true },
-    { key: "invoiceDate", label: "Invoice Date", mono: true },
-    { key: "billingTransactionType", label: "Billing Type" },
-    { key: "material", label: "Material", mono: true },
-    { key: "description", label: "Description" },
-    { key: "plant", label: "Plant", mono: true },
-    { key: "plantName", label: "Plant Name" },
-    { key: "division", label: "Division", mono: true },
-    { key: "divisionText", label: "Division Text" },
-    { key: "basicShipmentValue", label: "Basic Shipment Value", align: "right", mono: true },
-    { key: "invoiceValueWithGst", label: "Invoice Value (GST)", align: "right", mono: true },
-    { key: "incoterms", label: "Incoterms" },
+    { key: "slNo", label: "Sl.No", align: "right", mono: true },
+    { key: "referenceNo", label: "Reference No", mono: true },
+    { key: "lineNo", label: "Line No", align: "right", mono: true },
+    { key: "date", label: "Date", mono: true },
+    { key: "plant", label: "Plant" },
+    { key: "division", label: "Division" },
+    { key: "vehicleType", label: "Vehicle Type" },
+    { key: "noOfTrucks", label: "No. of Trucks", align: "right", mono: true },
+    { key: "workOrder", label: "Work Order", mono: true },
+    { key: "vendorCode", label: "Vendor Code", mono: true },
+    { key: "transporter", label: "Transporter" },
+    { key: "noOfLRs", label: "No. of LRs", align: "right", mono: true },
+    { key: "lrNumber", label: "LR Number", mono: true },
+    { key: "loadingPoint", label: "Loading Point" },
+    { key: "unloadingPoint", label: "Unloading Point" },
+    { key: "noOfInvoices", label: "No of Invoices", align: "right", mono: true },
+    { key: "createdDate", label: "Created Date", mono: true },
   ];
 
   return (
@@ -831,29 +795,12 @@ function ResultsTable() {
               >
                 {cols.map((c) => {
                   const v = r[c.key];
-                  const display =
-                    typeof v === "number" && (c.key === "basicShipmentValue" || c.key === "invoiceValueWithGst")
-                      ? "₹ " + v.toLocaleString("en-IN")
-                      : c.key === "billingTransactionType"
-                      ? null
-                      : c.key === "incoterms"
-                      ? null
-                      : String(v);
-                  if (c.key === "billingTransactionType") {
+                  if (c.key === "vehicleType") {
                     return (
                       <td key={c.key} className="px-3 py-2.5 whitespace-nowrap">
                         <Badge variant="secondary" className="font-mono text-[10.5px]">
                           {String(v)}
                         </Badge>
-                      </td>
-                    );
-                  }
-                  if (c.key === "incoterms") {
-                    return (
-                      <td key={c.key} className="px-3 py-2.5 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-info/10 text-info ring-1 ring-info/20">
-                          {String(v)}
-                        </span>
                       </td>
                     );
                   }
@@ -866,7 +813,7 @@ function ResultsTable() {
                         c.mono && "font-mono",
                       )}
                     >
-                      {display}
+                      {String(v)}
                     </td>
                   );
                 })}

@@ -18,24 +18,38 @@ export type DispatchRow = {
 
 export type DispatchResultRow = {
   id: string;
-  invoiceNo: string;
-  invoiceDate: string;
-  billingTransactionType: string;
-  material: string;
-  description: string;
+  slNo: number;
+  referenceNo: string;
+  lineNo: number;
+  date: string;
   plant: string;
-  plantName: string;
   division: string;
-  divisionText: string;
-  basicShipmentValue: number;
-  invoiceValueWithGst: number;
-  incoterms: string;
+  vehicleType: string;
+  noOfTrucks: number;
+  workOrder: string;
+  vendorCode: string;
+  transporter: string;
+  noOfLRs: number;
+  lrNumber: string;
+  loadingPoint: string;
+  unloadingPoint: string;
+  noOfInvoices: number;
+  createdDate: string;
 };
 
 export const PLANTS = ["1100 - Shamirpet", "1200 - Vizag", "1300 - Bhopal", "1400 - Nandigaon"];
 export const DIVISIONS = ["10 - Industrial", "20 - Telecom", "30 - Defence", "40 - Solar"];
 export const TRANSPORTERS = ["TCI Express", "Safexpress", "VRL Logistics", "Gati KWE", "Delhivery"];
-export const VEHICLE_TYPES = ["Tata 407", "Eicher 14ft", "Ashok Leyland 20ft", "Container 32ft", "Trailer 40ft"];
+export const VEHICLE_TYPES = [
+  "CARGO",
+  "RATE CONTRACT",
+  "LOCAL TRANSPORTATION",
+  "CUSTOMER TRANSPORTER",
+  "COMPANY VEHICLE",
+  "COURIER",
+  "BY HAND",
+  "FULL TRUCK LOAD",
+];
 export const SEARCH_TYPES = ["Reference", "Invoice", "ODN", "SO Number", "Work Order"];
 
 export const emptyDispatchRow = (slNo: number): DispatchRow => ({
@@ -60,7 +74,7 @@ export const sampleDispatchRows: DispatchRow[] = [
   {
     id: "r-1",
     slNo: 1,
-    vehicleType: "Container 32ft",
+    vehicleType: "FULL TRUCK LOAD",
     workOrder: "WO-2026-00412",
     noOfTrucks: 2,
     noOfInvoices: 4,
@@ -77,7 +91,7 @@ export const sampleDispatchRows: DispatchRow[] = [
   {
     id: "r-2",
     slNo: 2,
-    vehicleType: "Trailer 40ft",
+    vehicleType: "CARGO",
     workOrder: "WO-2026-00418",
     noOfTrucks: 1,
     noOfInvoices: 2,
@@ -94,23 +108,29 @@ export const sampleDispatchRows: DispatchRow[] = [
 ];
 
 export const sampleResultRows: DispatchResultRow[] = Array.from({ length: 26 }).map((_, i) => {
-  const plants = PLANTS;
-  const divs = DIVISIONS;
-  const p = plants[i % plants.length];
-  const d = divs[i % divs.length];
+  const p = PLANTS[i % PLANTS.length];
+  const d = DIVISIONS[i % DIVISIONS.length];
+  const v = VEHICLE_TYPES[i % VEHICLE_TYPES.length];
+  const t = TRANSPORTERS[i % TRANSPORTERS.length];
+  const day = ((i % 28) + 1).toString().padStart(2, "0");
   return {
-    id: `inv-${i + 1}`,
-    invoiceNo: `90021${(5479 + i).toString().padStart(4, "0")}`,
-    invoiceDate: `2026-06-${((i % 28) + 1).toString().padStart(2, "0")}`,
-    billingTransactionType: i % 3 === 0 ? "ZDOM" : i % 3 === 1 ? "ZEXP" : "ZSTO",
-    material: `MAT-${(100200 + i).toString()}`,
-    description: ["VRLA Battery 12V/100Ah", "Tubular Battery 2V/1000Ah", "Lithium Pack 48V", "NiCd Pack 24V"][i % 4],
-    plant: p.split(" - ")[0],
-    plantName: p.split(" - ")[1],
-    division: d.split(" - ")[0],
-    divisionText: d.split(" - ")[1],
-    basicShipmentValue: 125000 + i * 3120,
-    invoiceValueWithGst: 147500 + i * 3680,
-    incoterms: ["FOR", "EXW", "CIF", "DAP"][i % 4],
+    id: `disp-${i + 1}`,
+    slNo: i + 1,
+    referenceNo: `REF-2026-${(10045 + i).toString().padStart(5, "0")}`,
+    lineNo: (i % 5) + 1,
+    date: `2026-06-${day}`,
+    plant: p,
+    division: d,
+    vehicleType: v,
+    noOfTrucks: (i % 3) + 1,
+    workOrder: `WO-2026-${(412 + i).toString().padStart(5, "0")}`,
+    vendorCode: `V-${(1000 + i * 7).toString()}`,
+    transporter: t,
+    noOfLRs: (i % 4) + 1,
+    lrNumber: `LR-${(784512 + i).toString()}`,
+    loadingPoint: `${p.split(" - ")[1]} · Bay ${(i % 5) + 1}`,
+    unloadingPoint: ["Pune · DC-2", "Chennai · Port", "Delhi · Hub", "Bengaluru · Yard"][i % 4],
+    noOfInvoices: (i % 6) + 1,
+    createdDate: `2026-05-${day}`,
   };
 });
