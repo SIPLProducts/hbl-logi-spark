@@ -14,6 +14,18 @@ import {
 } from "lucide-react";
 import { sampleRows, counts, type WorklistRow } from "@/lib/le-mock-data";
 import { LeFooter } from "./le-footer";
+import { cn } from "@/lib/utils";
+
+type SapMode = "with" | "without";
+const SEARCH_TYPES = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"] as const;
+const SEARCH_TYPE_TO_KEY: Record<(typeof SEARCH_TYPES)[number], keyof WorklistRow> = {
+  Reference: "reference",
+  Invoice: "reference",
+  ODN: "reference",
+  "SO Number": "reference",
+  "Work Order": "workOrder",
+  "LR Number": "lrNumber",
+};
 
 export type FieldDef = {
   label: string;
@@ -77,6 +89,18 @@ export function LeScreenShell({
   const [selectedId, setSelectedId] = useState<string>(rows[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState<string>(extraTabs?.[0]?.label ?? "");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
+  const [direction, setDirection] = useState<"outward" | "inward">("outward");
+  const [sap, setSap] = useState<SapMode>("with");
+  const [searchType, setSearchType] = useState<(typeof SEARCH_TYPES)[number]>("Reference");
+  const [searchValue, setSearchValue] = useState("");
+
+  const filteredRows = searchValue.trim()
+    ? rows.filter((r) => {
+        const key = SEARCH_TYPE_TO_KEY[searchType];
+        const v = String((r as Record<string, unknown>)[key] ?? "").toLowerCase();
+        return v.includes(searchValue.trim().toLowerCase());
+      })
+    : rows;
 
   return (
     <div className="flex flex-col min-h-full">
@@ -121,6 +145,63 @@ export function LeScreenShell({
       </div>
 
       <div className="p-6 space-y-5 flex-1">
+        {/* Direction + SAP + Filter toolbar */}
+        <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Direction
+            </span>
+            <PremiumRadio
+              label="Outward"
+              checked={direction === "outward"}
+              onSelect={() => setDirection("outward")}
+            />
+            {/* <PremiumRadio
+              label="Inward"
+              checked={direction === "inward"}
+              onSelect={() => setDirection("inward")}
+            /> */}
+
+            <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
+            <SapToggle value={sap} onChange={setSap} />
+
+            <div className="h-6 w-px bg-hairline mx-1 hidden lg:block" />
+            <div className="flex flex-wrap items-center gap-2 ml-auto w-full lg:w-auto">
+              <select
+                value={searchType}
+                onChange={(e) => setSearchType(e.target.value as (typeof SEARCH_TYPES)[number])}
+                className="bg-surface border border-hairline rounded-md px-2 h-9 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                {SEARCH_TYPES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <input
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  placeholder={`Enter ${searchType}…`}
+                  className="w-full h-9 bg-surface border border-hairline rounded-md pl-8 pr-3 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+              </div>
+              <button className="inline-flex items-center gap-1.5 h-9 px-4 rounded-md text-[12px] font-semibold text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm">
+                <Search className="size-3.5" /> Search
+              </button>
+              {searchValue && (
+                <button
+                  onClick={() => setSearchValue("")}
+                  className="h-9 px-3 rounded-md text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Mode + chips */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="inline-flex items-center p-0.5 rounded-md bg-muted border border-hairline text-[12px]">
@@ -220,7 +301,7 @@ export function LeScreenShell({
                 </tr>
               </thead>
               <tbody className="divide-y divide-hairline/70">
-                {rows.map((r) => (
+                {filteredRows.map((r) => (
                   <tr
                     key={r.id}
                     className={
@@ -472,5 +553,68 @@ function KpiCard({ label, value, delta, tone = "default" }: KpiTile) {
         {delta && <div className="text-[11px] font-mono text-muted-foreground">{delta}</div>}
       </div>
     </div>
+  );
+}
+
+function SapToggle({ value, onChange }: { value: SapMode; onChange: (v: SapMode) => void }) {
+  const idx = value === "with" ? 0 : 1;
+  return (
+    <div className="relative inline-flex items-center p-1 rounded-full bg-muted border border-hairline text-[12px] shadow-inner">
+      <span
+        className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface shadow-sm ring-1 ring-hairline transition-transform duration-300 ease-out"
+        style={{ transform: `translateX(${idx * 100}%)` }}
+        aria-hidden
+      />
+      {(["with", "without"] as const).map((m) => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          className={cn(
+            "relative z-10 px-4 h-8 rounded-full font-semibold transition-colors min-w-[96px]",
+            value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {m === "with" ? "With SAP" : "Without SAP"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PremiumRadio({
+  label,
+  checked,
+  onSelect,
+}: {
+  label: string;
+  checked: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      onClick={onSelect}
+      className={cn(
+        "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer rounded-full pl-1.5 pr-3 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+        checked ? "text-foreground bg-accent/10" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <span
+        className={cn(
+          "grid place-items-center size-4 rounded-full border-2 transition-all",
+          checked ? "border-accent" : "border-hairline",
+        )}
+      >
+        <span
+          className={cn(
+            "size-1.5 rounded-full transition-all",
+            checked ? "bg-accent scale-100" : "bg-transparent scale-0",
+          )}
+        />
+      </span>
+      {label}
+    </button>
   );
 }

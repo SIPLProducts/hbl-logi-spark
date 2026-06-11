@@ -1,74 +1,65 @@
 ## Goal
-Refresh the Dispatch screen (and shared shell) to a Linear / Stripe / Tailwind UI level of polish — softer surfaces, larger radii, refined sidebar, premium controls, and an elegant data grid — without changing any data, routing, or business logic.
 
-## Scope
-Visual-only changes. No edits to mock data, server functions, or route structure.
+Replicate the Dispatch screen's top controls — **Direction** (Outward active, Inward commented out), **With SAP / Without SAP** segmented toggle, and a **Search filter row** (search-type select + value input + Search button) — on every LE screen from Order Info through Insurance Claim Tracking, while keeping each screen's existing fields/groups intact.
 
-Files touched:
-- `src/styles.css` — design tokens (page bg, radii, sidebar palette, hairlines, shadows, segmented-control + status-dot utilities)
-- `src/components/app-sidebar.tsx` — sidebar polish (spacing, icons, active indicator, profile block)
-- `src/components/top-bar.tsx` — header typography + search/select refinement
-- `src/components/le-screen-shell.tsx` — page title, "+ Create Dispatch" button, footer connection pill
-- `src/components/le-footer.tsx` — premium Previous / Save / Save & Next buttons
-- `src/routes/dispatch.tsx` — segmented SAP toggle, polished radios, table styling, in-row selects with chevrons, scrollbar refinement
+## Affected screens (10)
 
-No new dependencies.
+All render via `LeScreenShell`:
+1. `/order-info`
+2. `/shipment-details`
+3. `/invoice-load-details`
+4. `/segment-info`
+5. `/vehicle-info`
+6. `/transit-info`
+7. `/freight-billing`
+8. `/service-level`
+9. `/transit-damage-info`
+10. `/insurance-claim-tracking`
 
-## Design direction
-- Background: soft slate `#F8FAFC` (oklch ≈ 0.985 0.005 240)
-- Sidebar: deep midnight slate (oklch ≈ 0.20 0.035 260) with a vibrant accent rail
-- Radius scale bumped: base `--radius` 0.5rem → 0.75rem (12px), inputs/buttons land at 10–12px
-- Hairlines lightened; cards get a soft elevation shadow (`--shadow-elegant`)
-- Active nav: 3px left accent bar + soft tinted pill background + accent-colored icon
-- Primary CTA: subtle gradient `linear-gradient(135deg, primary → accent)` with soft shadow + hover lift
-- Status dot: small green disc with an animated `ping` halo
+`/dispatch-orders` and `/dispatch` already have their own logic and are NOT touched.
 
-## Detailed changes
+## Approach
 
-### 1. Tokens (`src/styles.css`)
-- `--background` → softer near-white slate (`#F8FAFC` equivalent)
-- `--radius` → 0.75rem; ensure derived sm/md/lg cascade
-- `--hairline` / `--border` slightly lighter for airier separators
-- Add: `--shadow-elegant`, `--shadow-soft`, `--gradient-primary`
-- Sidebar tokens → deeper midnight slate, accent stays vibrant
-- Add `@utility status-dot` (pulsing green) and `@utility segmented-thumb` (smooth slide bg)
+Add the controls **once** inside `LeScreenShell` (above the existing worklist) so all 10 screens get them automatically. No per-route edits required.
 
-### 2. Sidebar (`src/components/app-sidebar.tsx`)
-- Increase vertical padding between items; group label gets uppercase tracking
-- Each item: icon (lucide) + label; active state = left 3px accent bar + soft `bg-sidebar-accent/60` pill + accent icon color
-- Smooth `transition-colors` on hover
-- Bottom profile block: avatar circle, name in semibold, role in muted xs, divider hairline above
+### Changes to `src/components/le-screen-shell.tsx`
 
-### 3. Top bar (`src/components/top-bar.tsx`)
-- Title uses `font-display` (Space Grotesk), bigger + tighter tracking
-- Search input: thin 1px border, rounded-xl, leading search icon, refined placeholder
-- Selects: same minimalist treatment + chevron icon
+1. **Add local state**
+   - `direction: "outward" | "inward" | null` (default `"outward"`)
+   - `sap: "with" | "without" | null` (default `"with"`)
+   - `searchType: string` (default `"Reference"`)
+   - `searchValue: string`
 
-### 4. Screen shell (`src/components/le-screen-shell.tsx`)
-- "+ Create Dispatch": gradient bg, white text, `shadow-soft`, hover translate-y/scale
-- Page title styled as premium display heading
-- Footer "SAP S/4HANA Connected" → pill with `status-dot` (animated)
+2. **New "Direction + SAP" toolbar card** (rendered just under the page header, before the existing mode/chips row):
+   - Label `DIRECTION` + `PremiumRadio`-style Outward button (active).
+   - Inward radio wrapped in `{/* ... */}` JSX comment (kept for future re-enable), matching the Dispatch pattern.
+   - Pill-shaped segmented `With SAP / Without SAP` toggle with sliding thumb (reuse the same Tailwind classes used on `/dispatch`).
 
-### 5. SAP toggle + radios (`src/routes/dispatch.tsx`)
-- "With SAP / Without SAP" → pill-shaped segmented control: rounded-full track, sliding white thumb with shadow, animated via `transition-transform`
-- Direction radios restyled: custom circle with accent-colored inner dot, focus ring
+3. **New "Filter" row** inside the same card:
+   - `Select` for search type: `Reference | Invoice | ODN | SO Number | Work Order | LR Number`.
+   - Text `Input` with placeholder reflecting the chosen type.
+   - Primary `Search` button (gradient, matches existing CTA style).
+   - Ghost `Reset` button to clear `searchValue`.
 
-### 6. Dispatch lines table
-- Remove vertical borders; keep soft horizontal hairlines
-- Header row: uppercase, tracking-wider, text-xs, muted-foreground
-- Row hover: `bg-surface-2/60`; zebra optional via even rows
-- In-row selects wrapped in a styled container with chevron icon (lucide `ChevronDown`), thin border, rounded-lg
-- Horizontal scrollbar: thin custom scrollbar (webkit) — slim track, rounded thumb
+4. **Wire filter to the existing worklist**
+   - Filter `rows` by `searchValue` against the chosen `searchType` field (case-insensitive `includes`).
+   - When `searchValue` is empty, show all rows unchanged.
 
-### 7. Footer buttons (`src/components/le-footer.tsx`)
-- Previous: ghost / outline, muted text
-- Save: outline with accent text
-- Save & Next: primary gradient CTA with shadow + hover lift
+5. **No changes** to: KPIs, sub-tabs, existing mode/chips row, field groups, line items, footer, or the bottom action bar.
+
+### Visual style
+
+Match Dispatch toolbar exactly:
+- `bg-surface border border-hairline rounded-2xl p-5 shadow-elegant`
+- Uppercase tracked `DIRECTION` / `MODE` / `FILTER` labels (`text-[10.5px] font-bold tracking-[0.14em] text-muted-foreground`).
+- Segmented toggle: pill `rounded-full bg-muted p-1` with sliding `bg-surface shadow-sm` thumb.
 
 ## Out of scope
-- No layout restructuring or new sections
-- No copy changes
-- No changes to data flow, routes, or table data shape
-- Dark mode kept consistent but not redesigned in detail
 
-Ready to switch to build mode to apply these changes.
+- No new routes, no data model changes, no backend.
+- Inward radio stays commented out (per existing Dispatch convention).
+- Dispatch / Dispatch Orders screens unchanged.
+
+## Files to edit
+
+- `src/components/le-screen-shell.tsx` (only file)
