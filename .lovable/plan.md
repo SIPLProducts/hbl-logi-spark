@@ -1,23 +1,18 @@
-# Plan: Sticky Top Bar + Page Header
+# Plan: Make Only the Page Body Scroll
 
-## Current state
-- `TopBar` is already `sticky top-0 z-20` inside the flex column, so it stays fixed when the page body scrolls (scroll container is `<main className="overflow-y-auto">`).
-- Each screen's page header (title, description, Refresh button) scrolls away with the body.
+## Root cause
+`AppShell` uses `min-h-screen` on the outer flex container. That lets the document grow taller than the viewport, so the **window** scrolls — `<main className="flex-1 overflow-y-auto">` never activates, and the sticky page header (and TopBar) scroll away with the page.
 
-## Change
-Make the per-screen page header `sticky top-0 z-10` so it pins to the top of the scroll area (directly below the TopBar). Body content scrolls underneath.
+## Fix (single file)
+In `src/components/app-shell.tsx`:
+- Change the outer `<div>` from `flex min-h-screen` to `flex h-screen overflow-hidden`.
 
-Apply to every page that renders its own header bar:
-
-1. **`src/components/le-screen-shell.tsx`** (line ~155) — shared header used by Order Info → Insurance Claim Tracking. Add `sticky top-0 z-10`.
-2. **`src/routes/dispatch.tsx`** (line ~75) — same header pattern. Add `sticky top-0 z-10`.
-3. **`src/routes/dispatch-orders.tsx`** (line ~169) — add `sticky top-0 z-10` and ensure background is opaque (`bg-surface` already is).
-4. **`src/routes/index.tsx`** (line ~88) — dashboard header. Add `sticky top-0 z-10`.
-
-## Notes
-- TopBar already uses `bg-surface/90 backdrop-blur` so it remains opaque while content scrolls under it. The page-header div in le-screen-shell/dispatch uses `bg-surface/80 backdrop-blur` — fine. The dispatch-orders and index headers use solid `bg-surface` — also fine.
-- Existing internal `sticky top-0` thead/footer elements inside scroll regions are scoped to their own table containers and unaffected.
+Effect:
+- The shell now exactly fills the viewport.
+- `<main className="flex-1 overflow-y-auto">` becomes the only scroll container.
+- `TopBar` (already `sticky top-0`) and the per-screen sticky page header (already `sticky top-0 z-10`) stay pinned because the inner column no longer scrolls.
+- Sidebar already uses `sticky top-0 h-screen` and is unaffected.
 
 ## Out of scope
-- No layout, sidebar, or visual restyling beyond adding sticky positioning.
-- No changes to the login page (no scroll there).
+- Login page (renders without AppShell — unaffected).
+- No changes to individual route files; the previous sticky-header edits remain correct and now actually work.

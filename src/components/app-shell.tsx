@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="flex min-h-screen bg-background font-sans text-foreground text-[13px] antialiased">
+      <div className="flex h-screen overflow-hidden bg-background font-sans text-foreground text-[13px] antialiased">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar />
