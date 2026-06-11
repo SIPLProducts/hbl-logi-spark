@@ -23,7 +23,7 @@ type FieldSpec = {
   placeholder?: string;
 };
 
-const FIELDS: FieldSpec[] = [
+const BASE_FIELDS: FieldSpec[] = [
   { label: "Invoice Date", type: "date" },
   { label: "FSR Report Date", type: "date" },
   { label: "Invoice Basic Value" },
@@ -54,10 +54,16 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   const [checked, setChecked] = useState(!isWithout);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
-  const [lookupValue, setLookupValue] = useState(isWithout ? "" : "900000088");
-  const [revealed, setRevealed] = useState(!isWithout);
+  const [lookupValue, setLookupValue] = useState("");
+  const [revealed, setRevealed] = useState(isWithout);
   const showFields = revealed;
-  const lookupLabel = isWithout ? "DC Reference Number" : "Invoice Number";
+  const fields: FieldSpec[] = isWithout
+    ? [
+        BASE_FIELDS[0],
+        { label: "DC Reference Number" },
+        ...BASE_FIELDS.slice(1),
+      ]
+    : BASE_FIELDS;
 
   return (
     <div className="space-y-4">
@@ -128,25 +134,27 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       {/* Lookup bar */}
       <div className="bg-surface border border-hairline rounded-xl p-3 shadow-elegant">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex items-end gap-2 max-w-md">
-            <div className="w-full max-w-xs">
-              <label className={LABEL}>{lookupLabel}</label>
-              <input
-                value={lookupValue}
-                onChange={(e) => setLookupValue(e.target.value)}
-                className={GREEN_INPUT}
-              />
+          {!isWithout && (
+            <div className="flex items-end gap-2 max-w-md">
+              <div className="w-full max-w-xs">
+                <label className={LABEL}>Invoice Number</label>
+                <input
+                  value={lookupValue}
+                  onChange={(e) => setLookupValue(e.target.value)}
+                  className={GREEN_INPUT}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  if (lookupValue.trim()) setRevealed(true);
+                }}
+                disabled={!lookupValue.trim()}
+                className="h-9 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
+              >
+                GET
+              </button>
             </div>
-            <button
-              onClick={() => {
-                if (lookupValue.trim()) setRevealed(true);
-              }}
-              disabled={!lookupValue.trim()}
-              className="h-9 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
-            >
-              GET
-            </button>
-          </div>
+          )}
           <div className="min-w-[160px]">
             <select
               value={searchType}
@@ -175,9 +183,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
         </div>
       </div>
 
-      {!revealed && (
+      {!isWithout && !revealed && (
         <p className="text-[12px] text-muted-foreground px-1">
-          Enter a {lookupLabel} and click <span className="font-semibold">GET</span> to load fields.
+          Enter an Invoice Number and click <span className="font-semibold">GET</span> to load fields.
         </p>
       )}
 
@@ -186,7 +194,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
           {/* Field grid */}
           <div className="bg-surface border border-hairline rounded-xl p-5 shadow-elegant">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4">
-              {FIELDS.map((f) => (
+              {fields.map((f) => (
                 <SapField key={f.label} field={f} />
               ))}
             </div>
