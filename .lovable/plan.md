@@ -1,24 +1,28 @@
-## Problem
-On the Service Level screen, the Full Truck Load / Cargo selection currently appears inside the child component after status chips. The user wants it moved so it appears immediately after the With/Without SAP toggle in the shell's Direction+SAP card. They also want the Invoice Number input card made narrower.
+## Goal
+Give Transit Damage Info the same create-screen design as Order Info (status chips → reference table → invoice/DC lookup bar → GET-gated field grid → footer actions). With SAP uses "Invoice Number"; Without SAP swaps that label to "DC Reference Number". Match the fields shown in the two reference screenshots.
 
-## Files to change
+## Files
 
-### 1. `src/components/le-screen-shell.tsx`
-- Add new optional prop `renderDirectionExtras?: (ctx: { sap: SapMode; direction: "outward" | "inward" }) => ReactNode`
-- Render it inside the Direction+SAP card, right after `<SapToggle />`
+### 1. New: `src/components/transit-damage-info-sap-create.tsx`
+Clone the structure of `order-info-sap-create.tsx`:
+- Status chips: add a third chip "No. of Cases Reported: 0" (indigo/violet) before Pending and Completed.
+- Reference table columns: Select, Sl.No, **Map ID**, Reference Number, Work Order Number, LR Number, Transporter, Action. With-SAP seed row: Map ID `101`, Ref `1000000001`, LR `1234`, checkbox checked. Without-SAP: empty placeholders, unchecked.
+- Lookup bar:
+  - With SAP: label "Invoice Number" + GET button (gates field reveal), then Select dropdown + search input with magnifier.
+  - Without SAP: label "DC Reference Number" + GET button (gates reveal), then Select dropdown + search input with magnifier.
+  - Same narrow-width treatment as recently applied (compact input).
+- Field grid (3-col, emerald inputs) — both modes show the same fields, matching screenshots:
+  - Invoice Date (date), FSR Report Date (date), Invoice Basic Value (text)
+  - Incident Date (date), Customer (text), C/nee Name (text)
+  - Damage Remarks (select: "Select Damage Remarks", options TBD basic list), Settlement (select: "Select Settlement"), Closing Date (date)
+  - Images (file), FSR Report (file), FIR Report (file)
+  - COF (file) — spans 1 col on its own row
+- Bottom secondary table: columns Select, Sl.No, Map ID (select default "101" with-sap / "Select" without-sap), Vehicle Number, LR Number, Transporter, Action (green + and red ×).
+- Footer: Save / Save and Next / Save and Previous (same gradient buttons as Order Info).
 
-### 2. `src/routes/service-level.tsx`
-- Lift `loadType` state (`"ftl" | "cargo" | null`) from `ServiceLevelSapCreate` up to the page component
-- Pass the FTL/Cargo toggle pills via the new `renderDirectionExtras` prop
-- Pass the current `loadType` value into `ServiceLevelSapCreate` as a prop
-
-### 3. `src/components/service-level-sap-create.tsx`
-- Accept `loadType?: "ftl" | "cargo" | null` as a prop instead of local state
-- Remove the Load Type toggle UI block and the "Select Full Truck Load or Cargo" hint (the shell now renders the toggle)
-- Keep the existing gating logic: table, invoice card, and feedback form only render when `loadType != null`
-- Decrease the Invoice Number card width: change the input wrapper from `flex-1 min-w-[220px]` to `w-full max-w-xs` (or similar narrow constraint) so the card is compact
+### 2. Edit: `src/routes/transit-damage-info.tsx`
+- Add `renderCreateBody={({ sap, direction }) => direction === "outward" ? <TransitDamageInfoSapCreate mode={sap === "with" ? "with" : "without"} /> : null}` to the `LeScreenShell`.
+- Keep existing `groups` for the read view.
 
 ## Result
-- Direction → SAP → FTL/Cargo shown in a single sequential row/card
-- Table and invoice section appear only after a load type is chosen
-- Invoice Number input sits in a noticeably narrower container
+Transit Damage Info create flow visually matches Order Info (chips, table, lookup, emerald field grid, footer) with the damage-specific fields and the with/without-SAP label swap (Invoice Number ↔ DC Reference Number).

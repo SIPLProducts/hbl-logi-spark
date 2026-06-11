@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LeScreenShell } from "@/components/le-screen-shell";
+import { TransitDamageInfoSapCreate } from "@/components/transit-damage-info-sap-create";
 
 export const Route = createFileRoute("/transit-damage-info")({
   head: () => ({
@@ -15,6 +16,11 @@ function TransitDamageInfoPage() {
   return (
     <LeScreenShell
       title="Transit Damage Info"
+      renderCreateBody={({ sap, direction }) =>
+        direction === "outward" ? (
+          <TransitDamageInfoSapCreate mode={sap === "with" ? "with" : "without"} />
+        ) : null
+      }
       groups={[
         {
           title: "Damage",
