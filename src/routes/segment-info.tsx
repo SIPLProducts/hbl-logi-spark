@@ -48,11 +48,7 @@ function SegmentInfoPage() {
       ]}
       lineItems={{
         columns: ["Sl.No", "Origin", "Destination", "Mode", "Distance (km)", "Planned Dep.", "Planned Arr.", "Status"],
-        rows: [
-          [1, "Shameerpet WH", "Solapur Hub", "Road", 525, "10-Jun 08:00", "11-Jun 06:00", "In Transit"],
-          [2, "Solapur Hub", "Mumbai DC", "Road", 410, "11-Jun 09:00", "11-Jun 21:00", "Planned"],
-          [3, "Mumbai DC", "Jamnagar Refinery", "Road", 720, "12-Jun 06:00", "13-Jun 04:00", "Planned"],
-        ],
+        rows: [],
       }}
     />
   );

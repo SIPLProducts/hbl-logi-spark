@@ -49,11 +49,7 @@ function ShipmentDetailsPage() {
           "Shipment Weight (kg)",
           "Battery Condition",
         ],
-        rows: [
-          [1, "200", "OPTIMUZ SMF BATTERY", "Finished Goods", "OPTIMUZ SMF BATTERY_OI", 1, 100, 28.5, "New"],
-          [2, "200", "POWER BACKUP UPS", "Finished Goods", "UPS-2KVA-LION", 4, 120, 96, "New"],
-          [3, "200", "DEFENCE BATTERY", "Finished Goods", "AIRCRAFT-BATT-24V", 2, 65, 42, "Refurbished"],
-        ],
+        rows: [],
       }}
     />
   );
