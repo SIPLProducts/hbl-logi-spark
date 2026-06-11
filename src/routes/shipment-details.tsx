@@ -23,7 +23,6 @@ const columns: WorklistColumn[] = [
 function ShipmentDetailsPage() {
   return (
     <LeScreenShell
-      screenNo={4}
       title="Shipment Details"
       columns={columns}
       topFields={[

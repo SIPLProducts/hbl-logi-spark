@@ -14,7 +14,6 @@ export const Route = createFileRoute("/segment-info")({
 function SegmentInfoPage() {
   return (
     <LeScreenShell
-      screenNo={6}
       title="Segment Info"
       groups={[
         {

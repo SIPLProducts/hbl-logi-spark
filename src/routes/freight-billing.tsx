@@ -14,7 +14,6 @@ export const Route = createFileRoute("/freight-billing")({
 function FreightBillingPage() {
   return (
     <LeScreenShell
-      screenNo={9}
       title="Freight Billing"
       extraTabs={[
         { label: "Full Truck Load", active: true },

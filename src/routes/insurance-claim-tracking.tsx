@@ -14,7 +14,6 @@ export const Route = createFileRoute("/insurance-claim-tracking")({
 function InsuranceClaimTrackingPage() {
   return (
     <LeScreenShell
-      screenNo={12}
       title="Insurance Claim Tracking"
       groups={[
         {

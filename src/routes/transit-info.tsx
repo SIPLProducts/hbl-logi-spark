@@ -14,7 +14,6 @@ export const Route = createFileRoute("/transit-info")({
 function TransitInfoPage() {
   return (
     <LeScreenShell
-      screenNo={8}
       title="Transit Info"
       groups={[
         {

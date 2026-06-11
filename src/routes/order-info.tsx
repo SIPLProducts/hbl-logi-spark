@@ -14,7 +14,6 @@ export const Route = createFileRoute("/order-info")({
 function OrderInfoPage() {
   return (
     <LeScreenShell
-      screenNo={3}
       title="Order Info"
       groups={[
         {
