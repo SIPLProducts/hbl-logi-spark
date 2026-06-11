@@ -1,5 +1,32 @@
 import type { LucideIcon } from "lucide-react";
-import { FileSpreadsheet, Calendar, Factory, Layers } from "lucide-react";
+import { FileSpreadsheet, Calendar, RotateCcw } from "lucide-react";
+
+const INPUT =
+  "h-9 w-full rounded-md border border-input bg-background px-3 text-[12.5px] text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20";
+const LABEL = "block text-[11px] font-semibold text-foreground mb-1.5";
+
+const SELECTS: { label: string }[] = [
+  { label: "Inward/Outward" },
+  { label: "Sap/Nonsap" },
+];
+const SELECTS_ROW2: { label: string }[] = [
+  { label: "Transporter Group" },
+  { label: "Transporter" },
+  { label: "Plant" },
+  { label: "Product" },
+];
+const SELECTS_ROW3: { label: string }[] = [
+  { label: "Division" },
+  { label: "Customer Name" },
+  { label: "Branch" },
+  { label: "Branch Zone" },
+];
+const SELECTS_ROW4: { label: string }[] = [
+  { label: "Destination Location" },
+  { label: "Destination State" },
+  { label: "Destination Zone" },
+  { label: "Incoterms" },
+];
 
 export function ReportPlaceholder({
   title,
@@ -27,16 +54,32 @@ export function ReportPlaceholder({
 
       {/* Filters */}
       <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Filter label="Date Range" icon={Calendar} placeholder="DD-MM-YYYY → DD-MM-YYYY" />
-          <Filter label="Plant" icon={Factory} placeholder="All Plants" />
-          <Filter label="Division" icon={Layers} placeholder="All Divisions" />
-          <div className="flex items-end">
-            <button className="h-9 w-full px-4 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform inline-flex items-center justify-center gap-2">
-              <FileSpreadsheet className="size-4" />
-              Export XLS
-            </button>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3.5">
+          {SELECTS.map((f) => (
+            <SelectField key={f.label} label={f.label} />
+          ))}
+          <DateField label="From Date" />
+          <DateField label="To Date" />
+          {SELECTS_ROW2.map((f) => (
+            <SelectField key={f.label} label={f.label} />
+          ))}
+          {SELECTS_ROW3.map((f) => (
+            <SelectField key={f.label} label={f.label} />
+          ))}
+          {SELECTS_ROW4.map((f) => (
+            <SelectField key={f.label} label={f.label} />
+          ))}
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2.5">
+          <button className="h-9 px-4 rounded-md border border-input bg-background text-foreground text-[12.5px] font-semibold hover:bg-muted inline-flex items-center justify-center gap-2">
+            <RotateCcw className="size-3.5" />
+            Reset
+          </button>
+          <button className="h-9 px-5 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform inline-flex items-center justify-center gap-2">
+            <FileSpreadsheet className="size-4" />
+            Export XLS
+          </button>
         </div>
       </div>
 
@@ -55,24 +98,24 @@ export function ReportPlaceholder({
   );
 }
 
-function Filter({
-  label,
-  icon: Icon,
-  placeholder,
-}: {
-  label: string;
-  icon: LucideIcon;
-  placeholder: string;
-}) {
+function SelectField({ label }: { label: string }) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-foreground mb-1.5">{label}</label>
+      <label className={LABEL}>{label}</label>
+      <select defaultValue="" className={INPUT}>
+        <option value="" disabled>{label}</option>
+      </select>
+    </div>
+  );
+}
+
+function DateField({ label }: { label: string }) {
+  return (
+    <div>
+      <label className={LABEL}>{label}</label>
       <div className="relative">
-        <Icon className="size-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input
-          placeholder={placeholder}
-          className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-[12.5px] text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-        />
+        <input type="text" placeholder="dd-mm-yyyy" className={INPUT + " pr-9"} />
+        <Calendar className="size-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
       </div>
     </div>
   );
