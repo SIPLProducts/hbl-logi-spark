@@ -1,14 +1,20 @@
-# Plan: Replace HBL Text Logo with Uploaded HBL Image
+# Plan: Add Profile + Logout to Top-Right of App
 
-## Change
-In `src/components/app-sidebar.tsx`, replace the gradient box containing the "HBL" text (lines 83-85) with the uploaded HBL logo image.
+## Approach
+Restore the empty `TopBar` with a minimal right-aligned area containing a Profile avatar dropdown and a Logout button. UI-only — no real auth backend.
 
-## Steps
-1. Upload `/mnt/user-uploads/hbl.png` via `lovable-assets` CLI → `src/assets/hbl-logo.png.asset.json`
-2. Import the pointer JSON in `app-sidebar.tsx`
-3. Replace the gradient `<div>HBL</div>` with an `<img>` using the asset URL, sized `size-9`, with a white rounded background so the dark maroon logo stays legible on the dark sidebar (e.g. `bg-white rounded-xl p-1 object-contain`)
-4. Keep the "Logistics Execution" / "HBL Power Systems" text block unchanged
+## Change in `src/components/top-bar.tsx`
+- Render a thin `<header>` (h-12, surface bg, bottom hairline border, sticky) with `justify-end`
+- Right side:
+  - Avatar dropdown (shadcn `DropdownMenu`) showing initials "AD" / "Admin User · admin@hbl.com"
+    - Menu items: **Profile** (navigates to `/profile`), Divider, **Logout** (navigates to `/login`)
+  - Standalone **Logout** icon button next to it (`LogOut` lucide icon) for one-click sign out
+- Use TanStack `useNavigate` for navigation; both `/profile` and `/login` are placeholder routes that don't exist yet — clicking will hit the root 404 boundary. Since user picked "Just UI buttons", that's acceptable; no new route files are created.
 
 ## Files
-- `src/assets/hbl-logo.png.asset.json` (new)
-- `src/components/app-sidebar.tsx` (edited)
+- `src/components/top-bar.tsx` — rewritten with the dropdown + logout button
+
+## Out of scope
+- No `/profile` or `/login` page implementation
+- No auth state, no Lovable Cloud
+- Sidebar untouched
