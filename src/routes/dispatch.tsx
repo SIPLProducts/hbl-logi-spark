@@ -119,13 +119,6 @@ function DispatchPage() {
           </div>
         </div>
 
-        {/* KPIs */}
-        <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Kpi label="Total Dispatches" value="1,284" delta="+12.4% MoM" tone="info" />
-          <Kpi label="Pending" value="38" delta="14 awaiting LR" tone="warning" />
-          <Kpi label="In Transit" value="126" delta="9 ODC permits" tone="default" />
-          <Kpi label="Completed Today" value="47" delta="+6 vs yesterday" tone="success" />
-        </div>
       </div>
 
       {/* Body */}
