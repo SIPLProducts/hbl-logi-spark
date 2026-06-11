@@ -2,20 +2,20 @@ import { Bell, Search, ChevronDown, Command, HelpCircle } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
 import { ThemeToggle } from "./theme-toggle";
 
-const ROUTE_LABELS: Record<string, { no?: number; label: string }> = {
+const ROUTE_LABELS: Record<string, { label: string }> = {
   "/": { label: "Dashboard" },
-  "/dispatch-orders": { no: 1, label: "Dispatch Orders" },
-  "/dispatch": { no: 2, label: "Dispatch" },
-  "/order-info": { no: 3, label: "Order Info" },
-  "/shipment-details": { no: 4, label: "Shipment Details" },
-  "/invoice-load-details": { no: 5, label: "Invoice Load Details" },
-  "/segment-info": { no: 6, label: "Segment Info" },
-  "/vehicle-info": { no: 7, label: "Vehicle Info" },
-  "/transit-info": { no: 8, label: "Transit Info" },
-  "/freight-billing": { no: 9, label: "Freight Billing" },
-  "/service-level": { no: 10, label: "Service Level" },
-  "/transit-damage-info": { no: 11, label: "Transit Damage Info" },
-  "/insurance-claim-tracking": { no: 12, label: "Insurance Claim Tracking" },
+  "/dispatch-orders": { label: "Dispatch Orders" },
+  "/dispatch": { label: "Dispatch" },
+  "/order-info": { label: "Order Info" },
+  "/shipment-details": { label: "Shipment Details" },
+  "/invoice-load-details": { label: "Invoice Load Details" },
+  "/segment-info": { label: "Segment Info" },
+  "/vehicle-info": { label: "Vehicle Info" },
+  "/transit-info": { label: "Transit Info" },
+  "/freight-billing": { label: "Freight Billing" },
+  "/service-level": { label: "Service Level" },
+  "/transit-damage-info": { label: "Transit Damage Info" },
+  "/insurance-claim-tracking": { label: "Insurance Claim Tracking" },
 };
 
 export function TopBar() {
@@ -28,11 +28,6 @@ export function TopBar() {
         <nav className="flex items-center gap-1.5 text-[12px] min-w-0">
           <span className="text-muted-foreground">LE Module</span>
           <span className="text-muted-foreground/50">/</span>
-          {current.no !== undefined && (
-            <span className="inline-flex items-center justify-center min-w-[22px] h-[18px] px-1 rounded text-[10px] font-mono font-semibold bg-accent/10 text-accent">
-              {String(current.no).padStart(2, "0")}
-            </span>
-          )}
           <span className="font-display font-semibold text-foreground truncate">{current.label}</span>
         </nav>
       </div>
