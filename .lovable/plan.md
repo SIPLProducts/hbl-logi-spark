@@ -1,45 +1,27 @@
 ## Goal
-Add a collapsible **Reports** group to the sidebar with 8 sub-items matching the reference image, and create a route + landing page for each so navigation works end-to-end.
+Replace the current 3-filter placeholder strip in every Reports screen with the full 16-field filter grid from the reference image. Because all 8 report sub-screens share `src/components/report-placeholder.tsx`, this is a single-file change.
 
-## Sub-screens
-1. Transit & E-way bill Report → `/reports/transit-eway-bill`
-2. Pending PODs → `/reports/pending-pods`
-3. Freight Bills → `/reports/freight-bills`
-4. Loading Factor & Cost → `/reports/loading-factor-cost`
-5. Business Share Matrix → `/reports/business-share-matrix`
-6. Damage List → `/reports/damage-list`
-7. Insurance → `/reports/insurance`
-8. Service Level → `/reports/service-level-report` (suffix `-report` to avoid clashing with the existing `/service-level` operational screen)
+## Filter fields (4 columns × 4 rows)
+
+| Row | Field 1 | Field 2 | Field 3 | Field 4 |
+|---|---|---|---|---|
+| 1 | Inward/Outward (select) | Sap/Nonsap (select) | From Date (`dd-mm-yyyy`) | To Date (`dd-mm-yyyy`) |
+| 2 | Transporter Group (select) | Transporter (select) | Plant (select) | Product (select) |
+| 3 | Division (select) | Customer Name (select) | Branch (select) | Branch Zone (select) |
+| 4 | Destination Location (select) | Destination State (select) | Destination Zone (select) | Incoterms (select) |
 
 ## Changes
 
-### 1. `src/components/app-sidebar.tsx` — collapsible Reports section
-- Import `ChevronDown`, `FileBarChart`, `Layers`, `Clock`, `FileSpreadsheet`, `BarChart3`, `Grid3x3`, `ListChecks`, `Shield`, `Settings` from `lucide-react` (reusing existing icons where possible).
-- Below the User Creation group, add a new "Reports" parent entry with a chevron toggle. Local state `const [reportsOpen, setReportsOpen] = useState(false);`. Header row renders an icon (FileBarChart) + label + chevron, styled like the existing nav items. When `collapsed`, render only the icon (clicking expands the sidebar then opens the group).
-- When `reportsOpen && !collapsed`, render the 8 sub-items as an indented `<ul className="mt-1 ml-3 pl-3 border-l border-sidebar-border/60 space-y-1">` using the same Link styling pattern. Each sub-item gets its own icon from the list above.
+### `src/components/report-placeholder.tsx`
+- Remove the current 3-filter row (Date Range / Plant / Division) and the right-column Export button slot.
+- Render a 4-column responsive grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3.5`) inside the filters card with all 16 fields above. Use the existing `border border-input bg-background h-9 rounded-md text-[12.5px]` styling already used elsewhere in the app.
+- Field types:
+  - 14 dropdowns rendered as `<select>` with one disabled placeholder option (the field label). Down-chevron arrow matches existing selects.
+  - From Date and To Date as `<input type="text" placeholder="dd-mm-yyyy">` with a trailing calendar icon. Plain text inputs keep the look matching the reference; no date-picker wiring (still visual-only).
+- Move the **Export XLS** button out of the grid into a footer row below the filters card, right-aligned, alongside a secondary **Reset** button (visual only). Same gradient styling as today.
+- Field labels stay as `block text-[11px] font-semibold text-foreground mb-1.5`.
+- Helper component `Filter` is removed; replaced by a tiny `Field({ label, children })` wrapper for consistent label + control spacing.
+- No prop changes — every existing report page (`/reports/*`) inherits the new filter set automatically. The empty-state card below the filters is unchanged.
 
-### 2. New route files (one per sub-screen)
-Create flat-named files under `src/routes/`:
-- `reports.transit-eway-bill.tsx`
-- `reports.pending-pods.tsx`
-- `reports.freight-bills.tsx`
-- `reports.loading-factor-cost.tsx`
-- `reports.business-share-matrix.tsx`
-- `reports.damage-list.tsx`
-- `reports.insurance.tsx`
-- `reports.service-level-report.tsx`
-
-Plus an index route `reports.index.tsx` at `/reports` that shows a tile grid linking to all 8 sub-reports (acts as a hub when the user clicks the parent label).
-
-Each route exports `Route = createFileRoute("/reports/...")({ head: () => ({ meta: [{ title: "... · HBL LE" }, { name: "description", content: "..." }] }), component: PageComponent })`.
-
-### 3. New shared component `src/components/report-placeholder.tsx`
-A reusable wrapper used by all 8 sub-screens so they look consistent and finished without duplicating layout:
-- Props: `{ title: string; description: string; icon: LucideIcon }`
-- Renders a page header with the icon in a gradient tile, title, description, then a filters row (Date Range, Plant, Division, "Export XLS" button — visual only, no logic) and an empty-state card: "Run the report to see data — connect Lovable Cloud to wire live data."
-- Pure presentational; no backend.
-
-Each `reports.<name>.tsx` simply imports `ReportPlaceholder` and passes its own title/description/icon. The index hub renders 8 large clickable tiles using `<Link>` with the same icons used in the sidebar.
-
-### 4. No other files touched
-No edits to `routeTree.gen.ts` (auto-generated), no backend, no schema. The existing `/service-level` operational screen is untouched; the report variant lives at `/reports/service-level-report`.
+### Not touched
+No edits to the 8 report route files, the sidebar, the reports hub, or `routeTree.gen.ts`. No backend.
