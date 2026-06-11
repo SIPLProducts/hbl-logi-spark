@@ -158,8 +158,8 @@ function DispatchPage() {
 /* ──────────────────────────────────── Mode 1 — Create ──────────────────────────────────── */
 
 function CreateDispatch() {
-  const [sap, setSap] = useState<SapMode>("with");
-  const [outward, setOutward] = useState(true);
+  const [sap, setSap] = useState<SapMode | null>(null);
+  const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
   const [searchType, setSearchType] = useState<string>(SEARCH_TYPES[0]);
   const [searchValue, setSearchValue] = useState("");
   const [rows, setRows] = useState<DispatchRow[]>(sampleDispatchRows);
@@ -176,32 +176,47 @@ function CreateDispatch() {
       {/* Toolbar */}
       <div className="bg-surface border border-hairline rounded-xl p-4 shadow-xs">
         <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            Direction
+          </span>
+          <label className={cn(
+            "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer",
+            direction === "outward" ? "text-foreground" : "text-muted-foreground",
+          )}>
             <input
               type="radio"
-              checked={outward}
-              onChange={() => setOutward(true)}
+              checked={direction === "outward"}
+              onChange={() => setDirection("outward")}
               className="accent-accent"
             />
             Outward
           </label>
-          <label className="inline-flex items-center gap-2 text-[12.5px] font-medium text-muted-foreground">
+          <label className={cn(
+            "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer",
+            direction === "inward" ? "text-foreground" : "text-muted-foreground",
+          )}>
             <input
               type="radio"
-              checked={!outward}
-              onChange={() => setOutward(false)}
+              checked={direction === "inward"}
+              onChange={() => setDirection("inward")}
               className="accent-accent"
             />
             Inward
           </label>
 
-          <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
+          {direction && (
+            <>
+              <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
+              <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                <SapToggle value={sap} onChange={setSap} />
+              </div>
+            </>
+          )}
 
-          <SapToggle value={sap} onChange={setSap} />
-
-          <div className="h-6 w-px bg-hairline mx-1 hidden lg:block" />
-
-          <div className="flex flex-wrap items-center gap-2 ml-auto w-full lg:w-auto">
+          {sap && (
+            <>
+              <div className="h-6 w-px bg-hairline mx-1 hidden lg:block" />
+              <div className="flex flex-wrap items-center gap-2 ml-auto w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-200">
             <Select value={searchType} onValueChange={setSearchType}>
               <SelectTrigger className="w-[160px] h-9">
                 <SelectValue />
@@ -226,12 +241,26 @@ function CreateDispatch() {
             <Button size="sm" className="h-9 gap-1.5">
               <Search className="size-3.5" /> Search
             </Button>
-          </div>
+              </div>
+            </>
+          )}
         </div>
+        {!direction && (
+          <p className="mt-3 text-[11.5px] text-muted-foreground">
+            Select a direction to continue.
+          </p>
+        )}
+        {direction && !sap && (
+          <p className="mt-3 text-[11.5px] text-muted-foreground">
+            Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span> to continue.
+          </p>
+        )}
       </div>
 
+      {sap && (
+      <>
       {/* Editable table card */}
-      <div className="bg-surface border border-hairline rounded-xl shadow-xs overflow-hidden">
+      <div className="bg-surface border border-hairline rounded-xl shadow-xs overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
         <div className="px-4 py-3 border-b border-hairline flex items-center justify-between bg-muted/40">
           <div>
             <h3 className="text-[13px] font-semibold text-foreground">Dispatch Lines</h3>
@@ -389,11 +418,13 @@ function CreateDispatch() {
           Save &amp; Next <ChevronRight className="size-3.5" />
         </Button>
       </div>
+      </>
+      )}
     </div>
   );
 }
 
-function SapToggle({ value, onChange }: { value: SapMode; onChange: (v: SapMode) => void }) {
+function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: SapMode) => void }) {
   return (
     <div className="inline-flex items-center p-0.5 rounded-lg bg-muted border border-hairline text-[12px]">
       {(["with", "without"] as const).map((m) => (
