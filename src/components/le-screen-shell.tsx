@@ -515,6 +515,7 @@ export function LeScreenShell({
                 </table>
               </div>
             </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
