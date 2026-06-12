@@ -89,7 +89,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
-            <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
+            <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
               <th className="px-3 py-0.5 text-center w-16">Select</th>
               <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
               <th className="px-3 py-0.5 text-center">Reference Number</th>
