@@ -582,7 +582,7 @@ function FieldInput({ field }: { field: FieldDef }) {
       {type === "select" ? (
         <select
           defaultValue={value as string}
-          className="bg-surface border border-hairline rounded-md px-2 h-9 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+          className="bg-surface border border-input rounded-md px-2 h-9 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         >
           {(options ?? [String(value ?? "Select")]).map((o) => (
             <option key={o}>{o}</option>
@@ -592,13 +592,13 @@ function FieldInput({ field }: { field: FieldDef }) {
         <textarea
           defaultValue={value as string}
           rows={2}
-          className="bg-surface border border-hairline rounded-md px-2 py-1.5 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+          className="bg-surface border border-input rounded-md px-2 py-1.5 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         />
       ) : (
         <input
           type={type === "date" ? "datetime-local" : type}
           defaultValue={value as string | number}
-          className="bg-surface border border-hairline rounded-md px-2 h-9 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 font-mono"
+          className="bg-surface border border-input rounded-md px-2 h-9 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 font-mono"
         />
       )}
     </div>

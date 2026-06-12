@@ -1,38 +1,26 @@
-# Replace green field styling with gray
+## Summary
+Darken the gray borders on all input fields, dropdowns, and search bars across the application for a cleaner, more professional appearance. Text colors remain unchanged.
 
-The green borders and text in inputs/dropdowns/search bars come from two shared constants (`INPUT_BASE`/`INPUT` and `LABEL`) duplicated at the top of every `*-sap-create.tsx` file, plus a couple of related field accents. Action buttons (GET = `#8f1e42`, Save = emerald) and status badges/KPIs stay as they are — this change is scoped to field chrome only.
+## Changes
 
-## Changes (10 files)
+### 1. Update the --input design token in src/styles.css
+The `--input` variable drives `border-input` used by shadcn/ui components and every `*-sap-create.tsx` form. It is currently very light (`oklch(0.93 ...)`) in light mode, making borders nearly invisible.
+- **Light mode:** change `--input` from `oklch(0.93 0.008 240)` to `oklch(0.75 0.01 240)` — a clearly visible but still clean medium gray.
+- **Dark mode:** change `--input` from `oklch(0.3 0.04 260)` to `oklch(0.38 0.04 260)` — slightly lighter against the dark surface for better definition without looking washed out.
 
-In each of:
-- `src/components/order-info-sap-create.tsx`
-- `src/components/shipment-details-sap-create.tsx`
-- `src/components/invoice-load-details-sap-create.tsx`
-- `src/components/segment-info-sap-create.tsx`
-- `src/components/vehicle-info-sap-create.tsx`
-- `src/components/transit-info-sap-create.tsx`
-- `src/components/freight-billing-sap-create.tsx`
-- `src/components/service-level-sap-create.tsx`
-- `src/components/transit-damage-info-sap-create.tsx`
-- `src/components/insurance-claim-tracking-sap-create.tsx`
+### 2. Align filter/search inputs in le-screen-shell.tsx
+Three custom filter fields in the shell currently use `border-hairline` instead of the shared `border-input` token:
+- Search input (line ~585)
+- Status select trigger (line ~595)
+- Reference/Invoice input (line ~601)
+Replace `border-hairline` with `border-input` on these elements so they inherit the updated darker gray and stay consistent with the rest of the app.
 
-Replace the field-chrome classes:
+## Out of scope
+- Text colors inside inputs (kept as-is).
+- Focus ring colors (`focus:border-ring`, `focus:ring-ring/30`).
+- Buttons, KPI tiles, status badges, pills, toasts, and card borders (`border-hairline`).
+- `service-level-sap-create.tsx` load-type toggle pills.
+- `freight-billing-sap-create.tsx` checkbox decorations.
 
-- `border-emerald-400/70` → `border-input`
-- `text-emerald-700 dark:text-emerald-300` (inside INPUT and LABEL) → `text-foreground` for input value, `text-muted-foreground` for LABEL
-- `focus:border-emerald-500` → `focus:border-ring`
-- `focus:ring-emerald-400/30` → `focus:ring-ring/30`
-
-This covers every text input, select/dropdown, textarea, and the "Enter Reference / Invoice / ODN / SO Number" search input that uses `INPUT_BASE`.
-
-Also fix small green accents tied to fields:
-- `invoice-load-details-sap-create.tsx` line 351: calendar icon `text-emerald-600` → `text-muted-foreground`.
-
-## Out of scope (intentionally unchanged)
-
-- GET button (`#8f1e42`)
-- Save / Save and Next buttons (green)
-- KPI tiles, status badges, "Completed" pill, success toasts
-- `le-screen-shell.tsx` SAP-mode pill (line 230) and Download Excel icon (line 426)
-- `service-level-sap-create.tsx` selected-state pill colors for the load-type toggles
-- `freight-billing-sap-create.tsx` checkbox accent and label colors for the "Freight calculated by" radios (these are label decorations, not field chrome)
+## Verification
+After the change, all form inputs, shadcn Select triggers, and the shell filter bar should show a noticeably darker border in both light and dark themes, while text and focus states remain exactly as they are now.
