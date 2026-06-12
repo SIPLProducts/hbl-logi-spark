@@ -159,6 +159,7 @@
   --border: oklch(0.3 0.04 260);
   --input: oklch(0.38 0.04 260);
   --ring: oklch(0.6 0.12 252);
+  --focus-ring: oklch(0.7 0.01 240);
   --chart-1: oklch(0.6 0.12 252);
   --chart-2: oklch(0.68 0.14 155);
   --chart-3: oklch(0.82 0.14 75);
