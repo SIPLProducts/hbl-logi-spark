@@ -3,12 +3,6 @@ import { LeScreenShell } from "@/components/le-screen-shell";
 import { TransitInfoSapCreate } from "@/components/transit-info-sap-create";
 
 export const Route = createFileRoute("/transit-info")({
-  head: () => ({
-    meta: [
-      { title: "Transit Info · HBL LE" },
-      { name: "description", content: "Live transit status, geofence, and stop timeline." },
-    ],
-  }),
   component: TransitInfoPage,
 });
 

@@ -20,16 +20,6 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Dashboard · HBL Logistics Execution" },
-      {
-        name: "description",
-        content:
-          "Operational overview of HBL Power Systems logistics — dispatches, shipments, transit, freight, and claims.",
-      },
-    ],
-  }),
   component: DashboardPage,
 });
 

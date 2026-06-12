@@ -3,12 +3,6 @@ import { LeScreenShell } from "@/components/le-screen-shell";
 import { FreightBillingSapCreate } from "@/components/freight-billing-sap-create";
 
 export const Route = createFileRoute("/freight-billing")({
-  head: () => ({
-    meta: [
-      { title: "Freight Billing · HBL LE" },
-      { name: "description", content: "Freight billing for Full Truck Load and Cargo modes." },
-    ],
-  }),
   component: FreightBillingPage,
 });
 

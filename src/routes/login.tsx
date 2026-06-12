@@ -21,21 +21,6 @@ const slides = [
 ];
 
 export const Route = createFileRoute("/login")({
-  head: () => ({
-    meta: [
-      { title: "Login · HBL Logistics Execution" },
-      {
-        name: "description",
-        content:
-          "Sign in to HBL Power Systems' Logistics Execution module to manage dispatch, shipment, and freight operations.",
-      },
-      { property: "og:title", content: "Login · HBL Logistics Execution" },
-      {
-        property: "og:description",
-        content: "Secure sign in to the HBL Logistics Execution module.",
-      },
-    ],
-  }),
   component: LoginPage,
 });
 

@@ -3,12 +3,6 @@ import { LeScreenShell } from "@/components/le-screen-shell";
 import { TransitDamageInfoSapCreate } from "@/components/transit-damage-info-sap-create";
 
 export const Route = createFileRoute("/transit-damage-info")({
-  head: () => ({
-    meta: [
-      { title: "Transit Damage Info · HBL LE" },
-      { name: "description", content: "Capture damage observed during transit for downstream claims." },
-    ],
-  }),
   component: TransitDamageInfoPage,
 });
 

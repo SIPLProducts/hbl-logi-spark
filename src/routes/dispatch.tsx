@@ -47,12 +47,6 @@ import {
 } from "@/lib/dispatch-mock";
 
 export const Route = createFileRoute("/dispatch")({
-  head: () => ({
-    meta: [
-      { title: "Dispatch · HBL LE" },
-      { name: "description", content: "Create, search, and export HBL dispatch records." },
-    ],
-  }),
   component: DispatchPage,
 });
 

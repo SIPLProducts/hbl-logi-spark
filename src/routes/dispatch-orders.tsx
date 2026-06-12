@@ -22,12 +22,6 @@ import {
 } from "@/lib/dispatch-orders-mock";
 
 export const Route = createFileRoute("/dispatch-orders")({
-  head: () => ({
-    meta: [
-      { title: "Dispatch Orders · HBL LE" },
-      { name: "description", content: "Create and manage HBL Logistics Execution dispatch orders." },
-    ],
-  }),
   component: DispatchOrdersPage,
 });
 

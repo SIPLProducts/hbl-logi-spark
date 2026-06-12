@@ -3,12 +3,6 @@ import { LeScreenShell } from "@/components/le-screen-shell";
 import { OrderInfoSapCreate } from "@/components/order-info-sap-create";
 
 export const Route = createFileRoute("/order-info")({
-  head: () => ({
-    meta: [
-      { title: "Order Info · HBL LE" },
-      { name: "description", content: "Order information and invoice header details for HBL LE." },
-    ],
-  }),
   component: OrderInfoPage,
 });
 

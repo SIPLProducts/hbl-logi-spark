@@ -4,12 +4,6 @@ import { Plus } from "lucide-react";
 import { CreateUserDialog, type UserFormValues } from "@/components/create-user-dialog";
 
 export const Route = createFileRoute("/user-creation")({
-  head: () => ({
-    meta: [
-      { title: "User Creation · HBL LE" },
-      { name: "description", content: "Create and manage HBL LE application users, roles, and permissions." },
-    ],
-  }),
   component: UserCreationPage,
 });
 

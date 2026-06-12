@@ -3,12 +3,6 @@ import { LeScreenShell } from "@/components/le-screen-shell";
 import { InsuranceClaimTrackingSapCreate } from "@/components/insurance-claim-tracking-sap-create";
 
 export const Route = createFileRoute("/insurance-claim-tracking")({
-  head: () => ({
-    meta: [
-      { title: "Insurance Claim Tracking · HBL LE" },
-      { name: "description", content: "Track transit-damage insurance claims end-to-end." },
-    ],
-  }),
   component: InsuranceClaimTrackingPage,
 });
 

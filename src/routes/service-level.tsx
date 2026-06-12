@@ -4,12 +4,6 @@ import { LeScreenShell } from "@/components/le-screen-shell";
 import { ServiceLevelSapCreate } from "@/components/service-level-sap-create";
 
 export const Route = createFileRoute("/service-level")({
-  head: () => ({
-    meta: [
-      { title: "Service Level · HBL LE" },
-      { name: "description", content: "Customer-facing shipment feedback and OTIF rating." },
-    ],
-  }),
   component: ServiceLevelPage,
 });
 

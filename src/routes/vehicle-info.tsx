@@ -3,12 +3,6 @@ import { LeScreenShell } from "@/components/le-screen-shell";
 import { VehicleInfoSapCreate } from "@/components/vehicle-info-sap-create";
 
 export const Route = createFileRoute("/vehicle-info")({
-  head: () => ({
-    meta: [
-      { title: "Vehicle Info · HBL LE" },
-      { name: "description", content: "Vehicle, driver, and document validity master for HBL LE." },
-    ],
-  }),
   component: VehicleInfoPage,
 });
 
