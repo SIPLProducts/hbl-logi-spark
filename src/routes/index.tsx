@@ -62,7 +62,14 @@ const SCREENS = [
   { no: 9, title: "Freight Billing", to: "/freight-billing", icon: IndianRupee, count: 37, group: "Billing" },
   { no: 10, title: "Service Level", to: "/service-level", icon: Gauge, count: 8, group: "Billing" },
   { no: 11, title: "Transit Damage Info", to: "/transit-damage-info", icon: AlertTriangle, count: 5, group: "Claims" },
-  { no: 12, title: "Insurance Claim Tracking", to: "/insurance-claim-tracking", icon: ShieldCheck, count: 3, group: "Claims" },
+  {
+    no: 12,
+    title: "Insurance Claim Tracking",
+    to: "/insurance-claim-tracking",
+    icon: ShieldCheck,
+    count: 3,
+    group: "Claims",
+  },
 ];
 
 const ACTIVITY = [
@@ -96,12 +103,8 @@ function DashboardPage() {
                 Operations Overview
               </span>
             </div>
-            <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
-              Good day, Harshini
-            </h1>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">
-              Here's what's moving across HBL Power Systems today.
-            </p>
+            <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">Welocome Back</h1>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">Here's what's moving across Logistics today.</p>
           </div>
           <div className="flex items-center gap-2">
             <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted">
@@ -122,23 +125,15 @@ function DashboardPage() {
               key={k.label}
               className="bg-surface border border-hairline rounded-lg p-4 hover:border-accent/40 transition-colors"
             >
-              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                {k.label}
-              </div>
-              <div className="mt-1.5 font-display text-3xl font-semibold tabular-nums tracking-tight">
-                {k.value}
-              </div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{k.label}</div>
+              <div className="mt-1.5 font-display text-3xl font-semibold tabular-nums tracking-tight">{k.value}</div>
               <div
                 className={
                   "mt-1 inline-flex items-center gap-1 text-[11px] font-mono " +
                   (k.trend === "up" ? "text-success" : "text-destructive")
                 }
               >
-                {k.trend === "up" ? (
-                  <TrendingUp className="size-3" />
-                ) : (
-                  <TrendingDown className="size-3" />
-                )}
+                {k.trend === "up" ? <TrendingUp className="size-3" /> : <TrendingDown className="size-3" />}
                 {k.delta}
               </div>
             </div>
@@ -152,9 +147,7 @@ function DashboardPage() {
           <div className="px-4 py-3 border-b border-hairline flex items-center justify-between">
             <div>
               <h3 className="font-display text-[15px] font-semibold">Shipment Lifecycle</h3>
-              <p className="text-[11.5px] text-muted-foreground">
-                Volume across the 12-step LE pipeline · today
-              </p>
+              <p className="text-[11.5px] text-muted-foreground">Volume across the 12-step LE pipeline · today</p>
             </div>
             <button className="text-[11px] font-semibold text-accent hover:underline">View details</button>
           </div>
@@ -166,14 +159,9 @@ function DashboardPage() {
                 <div key={p.label} className="flex items-center gap-3">
                   <div className="w-24 text-[12px] font-medium text-foreground">{p.label}</div>
                   <div className="flex-1 h-7 rounded-md bg-muted overflow-hidden">
-                    <div
-                      className={"h-full " + p.tone + " transition-[width]"}
-                      style={{ width: `${pct}%` }}
-                    />
+                    <div className={"h-full " + p.tone + " transition-[width]"} style={{ width: `${pct}%` }} />
                   </div>
-                  <div className="w-12 text-right font-mono text-[12.5px] font-semibold tabular-nums">
-                    {p.value}
-                  </div>
+                  <div className="w-12 text-right font-mono text-[12.5px] font-semibold tabular-nums">{p.value}</div>
                 </div>
               );
             })}
@@ -195,17 +183,15 @@ function DashboardPage() {
                     (a.tone === "success"
                       ? "bg-success"
                       : a.tone === "danger"
-                      ? "bg-destructive"
-                      : a.tone === "warning"
-                      ? "bg-warning"
-                      : "bg-accent")
+                        ? "bg-destructive"
+                        : a.tone === "warning"
+                          ? "bg-warning"
+                          : "bg-accent")
                   }
                 />
                 <div className="min-w-0 flex-1">
                   <div className="text-[12.5px] text-foreground">{a.text}</div>
-                  <div className="text-[10.5px] font-mono text-muted-foreground mt-0.5">
-                    {a.time}
-                  </div>
+                  <div className="text-[10.5px] font-mono text-muted-foreground mt-0.5">{a.time}</div>
                 </div>
               </li>
             ))}
@@ -242,16 +228,12 @@ function DashboardPage() {
                       {String(s.no).padStart(2, "0")}
                     </span>
                   </div>
-                  <div className="mt-2.5 text-[12.5px] font-semibold text-foreground leading-tight">
-                    {s.title}
-                  </div>
+                  <div className="mt-2.5 text-[12.5px] font-semibold text-foreground leading-tight">{s.title}</div>
                   <div className="mt-0.5 text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
                     {s.group}
                   </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="font-mono text-[13px] font-semibold tabular-nums">
-                      {s.count}
-                    </span>
+                    <span className="font-mono text-[13px] font-semibold tabular-nums">{s.count}</span>
                     <ArrowUpRight className="size-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
                   </div>
                 </Link>
