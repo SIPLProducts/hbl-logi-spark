@@ -93,7 +93,7 @@ export function VehicleInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           </thead>
           <tbody>
             <tr>
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 py-1 text-center">
                 <input
                   type="checkbox"
                   checked={checked}
@@ -101,7 +101,7 @@ export function VehicleInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                   className="size-4 accent-sky-600"
                 />
               </td>
-              <td className="px-3 py-2 text-center">1</td>
+              <td className="px-3 py-1 text-center">1</td>
               <td className="px-3 py-1">
                 <input
                   defaultValue={isWithout ? "" : ""}
@@ -129,7 +129,7 @@ export function VehicleInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               <td className="px-3 py-1">
                 <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 py-1 text-center">
                 <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
                   <MoreVertical className="size-4" />
                 </button>
@@ -248,7 +248,7 @@ export function VehicleInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                 <tbody>
                   {rows.map((row, idx) => (
                     <tr key={row.id}>
-                      <td className="px-2 py-2 text-center">
+                      <td className="px-2 py-1 text-center">
                         <input
                           type="checkbox"
                           checked={row.checked}
@@ -256,7 +256,7 @@ export function VehicleInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                           className="size-4 accent-sky-600"
                         />
                       </td>
-                      <td className="px-2 py-2 text-center">{idx + 1}</td>
+                      <td className="px-2 py-1 text-center">{idx + 1}</td>
                       <td className="px-2 py-1">
                         <select
                           value={row.mapId}

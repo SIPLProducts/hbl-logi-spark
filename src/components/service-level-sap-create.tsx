@@ -94,7 +94,7 @@ export function ServiceLevelSapCreate({
               </thead>
               <tbody>
                 <tr>
-                  <td className="px-3 py-2 text-center">
+                  <td className="px-3 py-1 text-center">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -102,7 +102,7 @@ export function ServiceLevelSapCreate({
                       className="size-4 accent-sky-600"
                     />
                   </td>
-                  <td className="px-3 py-2 text-center">1</td>
+                  <td className="px-3 py-1 text-center">1</td>
                   <td className="px-3 py-1">
                     <input defaultValue="" className={GREEN_INPUT + " text-center"} />
                   </td>
@@ -115,7 +115,7 @@ export function ServiceLevelSapCreate({
                   <td className="px-3 py-1">
                     <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-2 text-center">
+                  <td className="px-3 py-1 text-center">
                     <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
                       <MoreVertical className="size-4" />
                     </button>

@@ -156,7 +156,7 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
           </thead>
           <tbody>
             <tr>
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 py-1 text-center">
                 <input
                   type="checkbox"
                   checked={checked}
@@ -164,7 +164,7 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
                   className="size-4 accent-sky-600"
                 />
               </td>
-              <td className="px-3 py-2 text-center">1</td>
+              <td className="px-3 py-1 text-center">1</td>
               <td className="px-3 py-1">
                 <input placeholder="Enter Ref. No." className={GREEN_INPUT + " text-center"} />
               </td>
@@ -177,7 +177,7 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
               <td className="px-3 py-1">
                 <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 py-1 text-center">
                 <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
                   <MoreVertical className="size-4" />
                 </button>

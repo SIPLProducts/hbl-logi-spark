@@ -96,7 +96,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
           </thead>
           <tbody>
             <tr>
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 py-1 text-center">
                 <input
                   type="checkbox"
                   checked={checked}
@@ -104,7 +104,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                   className="size-4 accent-sky-600"
                 />
               </td>
-              <td className="px-3 py-2 text-center">1</td>
+              <td className="px-3 py-1 text-center">1</td>
               <td className="px-3 py-1">
                 <input
                   defaultValue={isWithout ? "" : ""}
@@ -132,7 +132,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
               <td className="px-3 py-1">
                 <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 py-1 text-center">
                 <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
                   <MoreVertical className="size-4" />
                 </button>
@@ -229,10 +229,10 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
               </thead>
               <tbody>
                 <tr>
-                  <td className="px-3 py-2 text-center">
+                  <td className="px-3 py-1 text-center">
                     <input type="checkbox" className="size-4 accent-sky-600" />
                   </td>
-                  <td className="px-3 py-2 text-center">1</td>
+                  <td className="px-3 py-1 text-center">1</td>
                   <td className="px-3 py-1">
                     <select defaultValue={isWithout ? "" : "101"} className={GREEN_INPUT}>
                       <option value="" disabled>
@@ -267,7 +267,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                   <td className="px-3 py-1">
                     <input placeholder="" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-2 text-center">
+                  <td className="px-3 py-1 text-center">
                     <div className="inline-flex items-center gap-1.5">
                       <button className="inline-grid place-items-center size-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm">
                         <Plus className="size-3.5" />
