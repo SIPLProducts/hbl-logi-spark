@@ -218,7 +218,7 @@ function LoginPage() {
             alt={s.alt}
             loading={i === 0 ? "eager" : "lazy"}
             className={
-              "absolute inset-0 size-full object-contain transition-opacity duration-700 ease-in-out " +
+              "absolute inset-0 size-full object-cover object-center transition-opacity duration-700 ease-in-out " +
               (i === slideIndex ? "opacity-100" : "opacity-0")
             }
           />
