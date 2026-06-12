@@ -83,13 +83,13 @@ export function ServiceLevelSapCreate({
             <table className="w-full text-[12.5px]">
               <thead>
                 <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
-                  <th className="px-3 py-2.5 text-center w-16">Select</th>
-                  <th className="px-3 py-2.5 text-center w-16">Sl.No</th>
-                  <th className="px-3 py-2.5 text-center">Reference Number</th>
-                  <th className="px-3 py-2.5 text-center">Work Order Number</th>
-                  <th className="px-3 py-2.5 text-center">LR Number</th>
-                  <th className="px-3 py-2.5 text-center">Transporter</th>
-                  <th className="px-3 py-2.5 text-center w-20">Action</th>
+                  <th className="px-3 py-1.5 text-center w-16">Select</th>
+                  <th className="px-3 py-1.5 text-center w-16">Sl.No</th>
+                  <th className="px-3 py-1.5 text-center">Reference Number</th>
+                  <th className="px-3 py-1.5 text-center">Work Order Number</th>
+                  <th className="px-3 py-1.5 text-center">LR Number</th>
+                  <th className="px-3 py-1.5 text-center">Transporter</th>
+                  <th className="px-3 py-1.5 text-center w-20">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -103,16 +103,16 @@ export function ServiceLevelSapCreate({
                     />
                   </td>
                   <td className="px-3 py-2 text-center">1</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input defaultValue="" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input defaultValue="" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
                   </td>
                   <td className="px-3 py-2 text-center">

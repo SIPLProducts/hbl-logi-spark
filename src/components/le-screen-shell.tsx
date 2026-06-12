@@ -252,7 +252,7 @@ export function LeScreenShell({
             )}
 
             {topFields && topFields.length > 0 && (
-              <div className="bg-surface border border-hairline rounded-xl p-2.5 grid grid-cols-2 md:grid-cols-4 gap-2.5 shadow-elegant">
+              <div className="bg-surface border border-hairline rounded-xl p-2.5 grid grid-cols-2 md:grid-cols-4 gap-2 shadow-elegant">
                 {topFields.map((f) => (
                   <FieldInput key={f.label} field={f} />
                 ))}

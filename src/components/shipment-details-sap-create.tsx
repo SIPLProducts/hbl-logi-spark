@@ -67,14 +67,14 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
         <table className="w-full text-[12.5px]">
           <thead>
             <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
-              <th className="px-3 py-2.5 text-center w-16">Select</th>
-              <th className="px-3 py-2.5 text-center w-16">Sl.No</th>
-              <th className="px-3 py-2.5 text-center">Map ID</th>
-              <th className="px-3 py-2.5 text-center">Reference Number</th>
-              <th className="px-3 py-2.5 text-center">Work Order Number</th>
-              <th className="px-3 py-2.5 text-center">LR Number</th>
-              <th className="px-3 py-2.5 text-center">Transporter</th>
-              <th className="px-3 py-2.5 text-center w-20">Action</th>
+              <th className="px-3 py-1.5 text-center w-16">Select</th>
+              <th className="px-3 py-1.5 text-center w-16">Sl.No</th>
+              <th className="px-3 py-1.5 text-center">Map ID</th>
+              <th className="px-3 py-1.5 text-center">Reference Number</th>
+              <th className="px-3 py-1.5 text-center">Work Order Number</th>
+              <th className="px-3 py-1.5 text-center">LR Number</th>
+              <th className="px-3 py-1.5 text-center">Transporter</th>
+              <th className="px-3 py-1.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -88,19 +88,19 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                 />
               </td>
               <td className="px-3 py-2 text-center">1</td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input defaultValue="" className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input defaultValue="" className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input defaultValue="" className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
               </td>
               <td className="px-3 py-2 text-center">
@@ -175,7 +175,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
         <>
           {/* Top fields */}
           <div className="bg-surface border border-hairline rounded-xl p-5 shadow-elegant">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
               <div>
                 <label className={LABEL}>Incoterms</label>
                 <select defaultValue="" className={GREEN_INPUT}>
@@ -220,19 +220,19 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
             <table className="w-full text-[12.5px]">
               <thead>
                 <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
-                  <th className="px-2 py-2.5 text-center w-10">
+                  <th className="px-2 py-1.5 text-center w-10">
                     <input type="checkbox" className="size-4 accent-white" />
                   </th>
-                  <th className="px-2 py-2.5 text-center w-14">Sl.No</th>
-                  <th className="px-2 py-2.5 text-center">Map ID</th>
-                  <th className="px-2 py-2.5 text-center">Product</th>
-                  <th className="px-2 py-2.5 text-center">Type of Material</th>
-                  <th className="px-2 py-2.5 text-center">Material Description</th>
-                  <th className="px-2 py-2.5 text-center">No of Sets/No (Qty)</th>
-                  <th className="px-2 py-2.5 text-center">Ah Loaded</th>
-                  <th className="px-2 py-2.5 text-center">Shipment Weight (kg)</th>
-                  <th className="px-2 py-2.5 text-center">Battery Condition</th>
-                  <th className="px-2 py-2.5 text-center w-24">Action</th>
+                  <th className="px-2 py-1.5 text-center w-14">Sl.No</th>
+                  <th className="px-2 py-1.5 text-center">Map ID</th>
+                  <th className="px-2 py-1.5 text-center">Product</th>
+                  <th className="px-2 py-1.5 text-center">Type of Material</th>
+                  <th className="px-2 py-1.5 text-center">Material Description</th>
+                  <th className="px-2 py-1.5 text-center">No of Sets/No (Qty)</th>
+                  <th className="px-2 py-1.5 text-center">Ah Loaded</th>
+                  <th className="px-2 py-1.5 text-center">Shipment Weight (kg)</th>
+                  <th className="px-2 py-1.5 text-center">Battery Condition</th>
+                  <th className="px-2 py-1.5 text-center w-24">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -247,7 +247,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                       />
                     </td>
                     <td className="px-2 py-2 text-center">{idx + 1}</td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-1">
                       <select
                         value={row.mapId}
                         onChange={(e) => updateLineItem(row.id, { mapId: e.target.value })}
@@ -263,7 +263,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         ))}
                       </select>
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-1">
                       <select
                         value={row.product}
                         onChange={(e) => updateLineItem(row.id, { product: e.target.value })}
@@ -279,7 +279,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         ))}
                       </select>
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-1">
                       <select
                         value={row.materialType}
                         onChange={(e) => updateLineItem(row.id, { materialType: e.target.value })}
@@ -295,7 +295,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         ))}
                       </select>
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-1">
                       <input
                         value={row.description}
                         onChange={(e) => updateLineItem(row.id, { description: e.target.value })}
@@ -303,7 +303,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         className={GREEN_INPUT}
                       />
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-1">
                       <input
                         type="number"
                         value={row.qty}
@@ -312,7 +312,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         className={GREEN_INPUT + " text-center"}
                       />
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-1">
                       <input
                         value={row.ahLoaded}
                         onChange={(e) => updateLineItem(row.id, { ahLoaded: e.target.value })}
@@ -320,7 +320,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         className={GREEN_INPUT + " text-center"}
                       />
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-1">
                       <input
                         type="number"
                         value={row.weight}
@@ -328,7 +328,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         className={GREEN_INPUT + " text-center"}
                       />
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-1">
                       <select
                         value={row.batteryCondition}
                         onChange={(e) => updateLineItem(row.id, { batteryCondition: e.target.value })}
@@ -344,7 +344,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         ))}
                       </select>
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-1">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           type="button"

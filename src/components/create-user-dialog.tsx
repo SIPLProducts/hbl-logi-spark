@@ -93,7 +93,7 @@ export function CreateUserDialog({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-4 bg-surface">
+        <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2 bg-surface">
           <Field label={<>User ID{REQ}</>}>
             <input value={values.userId} onChange={(e) => set("userId", e.target.value)} className={INPUT} />
           </Field>

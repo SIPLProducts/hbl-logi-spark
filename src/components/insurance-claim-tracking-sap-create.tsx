@@ -84,14 +84,14 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         <table className="w-full text-[12.5px]">
           <thead>
             <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
-              <th className="px-3 py-2.5 text-center w-16">Select</th>
-              <th className="px-3 py-2.5 text-center w-16">Sl.No</th>
-              <th className="px-3 py-2.5 text-center">Map ID</th>
-              <th className="px-3 py-2.5 text-center">Reference Number</th>
-              <th className="px-3 py-2.5 text-center">Work Order Number</th>
-              <th className="px-3 py-2.5 text-center">LR Number</th>
-              <th className="px-3 py-2.5 text-center">Transporter</th>
-              <th className="px-3 py-2.5 text-center w-20">Action</th>
+              <th className="px-3 py-1.5 text-center w-16">Select</th>
+              <th className="px-3 py-1.5 text-center w-16">Sl.No</th>
+              <th className="px-3 py-1.5 text-center">Map ID</th>
+              <th className="px-3 py-1.5 text-center">Reference Number</th>
+              <th className="px-3 py-1.5 text-center">Work Order Number</th>
+              <th className="px-3 py-1.5 text-center">LR Number</th>
+              <th className="px-3 py-1.5 text-center">Transporter</th>
+              <th className="px-3 py-1.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -105,31 +105,31 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                 />
               </td>
               <td className="px-3 py-2 text-center">1</td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input
                   defaultValue={isWithout ? "" : ""}
                   placeholder="Enter Map ID"
                   className={GREEN_INPUT + " text-center"}
                 />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input
                   defaultValue={isWithout ? "" : ""}
                   placeholder="Enter Ref. No."
                   className={GREEN_INPUT + " text-center"}
                 />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input
                   defaultValue={isWithout ? "" : ""}
                   placeholder="Enter LR No."
                   className={GREEN_INPUT + " text-center"}
                 />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
               </td>
               <td className="px-3 py-2 text-center">
@@ -200,7 +200,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         <>
           {/* Field grid */}
           <div className="bg-surface border border-hairline rounded-xl p-5 shadow-elegant">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
               {fields.map((f) => (
                 <SapField key={f.label} field={f} />
               ))}
@@ -212,19 +212,19 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
             <table className="w-full text-[12.5px]">
               <thead>
                 <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
-                  <th className="px-3 py-2.5 text-center w-12">
+                  <th className="px-3 py-1.5 text-center w-12">
                     <input type="checkbox" className="size-4 accent-white" />
                   </th>
-                  <th className="px-3 py-2.5 text-center w-16">Sl.No</th>
-                  <th className="px-3 py-2.5 text-center">Map ID</th>
-                  <th className="px-3 py-2.5 text-center">Vehicle Line</th>
-                  <th className="px-3 py-2.5 text-center">Vehicle Type</th>
-                  <th className="px-3 py-2.5 text-center">Truck Number</th>
-                  <th className="px-3 py-2.5 text-center">LR Number</th>
-                  <th className="px-3 py-2.5 text-center">AH</th>
-                  <th className="px-3 py-2.5 text-center">No. of Sets</th>
-                  <th className="px-3 py-2.5 text-center">Transporter</th>
-                  <th className="px-3 py-2.5 text-center w-24">Action</th>
+                  <th className="px-3 py-1.5 text-center w-16">Sl.No</th>
+                  <th className="px-3 py-1.5 text-center">Map ID</th>
+                  <th className="px-3 py-1.5 text-center">Vehicle Line</th>
+                  <th className="px-3 py-1.5 text-center">Vehicle Type</th>
+                  <th className="px-3 py-1.5 text-center">Truck Number</th>
+                  <th className="px-3 py-1.5 text-center">LR Number</th>
+                  <th className="px-3 py-1.5 text-center">AH</th>
+                  <th className="px-3 py-1.5 text-center">No. of Sets</th>
+                  <th className="px-3 py-1.5 text-center">Transporter</th>
+                  <th className="px-3 py-1.5 text-center w-24">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -233,7 +233,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                     <input type="checkbox" className="size-4 accent-sky-600" />
                   </td>
                   <td className="px-3 py-2 text-center">1</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <select defaultValue={isWithout ? "" : "101"} className={GREEN_INPUT}>
                       <option value="" disabled>
                         Select
@@ -242,29 +242,29 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       <option value="102">102</option>
                     </select>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input placeholder="" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input placeholder="" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input placeholder="" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input placeholder="" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input placeholder="" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input
                       defaultValue={isWithout ? "" : "0"}
                       placeholder=""
                       className={GREEN_INPUT + " text-center"}
                     />
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-1">
                     <input placeholder="" className={GREEN_INPUT + " text-center"} />
                   </td>
                   <td className="px-3 py-2 text-center">
