@@ -83,10 +83,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Logistics Execution console for HBL Power Systems — inbound, outbound, and transportation operations." },
       { name: "author", content: "HBL Power Systems" },
       { property: "og:title", content: "HBL Logistics Execution" },
-      { property: "og:description", content: "Logistics Execution console for HBL Power Systems." },
+      { property: "og:description", content: "Logistics Execution console for HBL Power Systems — inbound, outbound, and transportation operations." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@HBLPower" },
+      { name: "twitter:title", content: "HBL Logistics Execution" },
+      { name: "twitter:description", content: "Logistics Execution console for HBL Power Systems — inbound, outbound, and transportation operations." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/lMuNufL1WVQqWEBzmwb74CIjyID3/social-images/social-1781261104787-Sharvi_Infotech_logo.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/lMuNufL1WVQqWEBzmwb74CIjyID3/social-images/social-1781261104787-Sharvi_Infotech_logo.webp" },
     ],
     links: [
       {
