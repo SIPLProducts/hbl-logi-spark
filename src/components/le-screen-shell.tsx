@@ -151,8 +151,13 @@ export function LeScreenShell({
 
   return (
     <div className="flex flex-col min-h-full">
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab(v as "create" | "search")}
+        className="w-full"
+      >
       {/* Page header */}
-      <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-3 pb-2.5 shadow-soft">
+      <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <div className="hidden sm:grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white shadow-cta">
@@ -170,6 +175,21 @@ export function LeScreenShell({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-7 shadow-soft">
+              <TabsTrigger
+                value="create"
+                className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
+              >
+                <Plus className="size-3" /> Create
+              </TabsTrigger>
+              <TabsTrigger
+                value="search"
+                className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
+              >
+                <Filter className="size-3" /> Search &amp; Reports
+              </TabsTrigger>
+            </TabsList>
+            <div className="h-5 w-px bg-hairline" />
             <button
               onClick={() => window.location.reload()}
               className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted"
@@ -180,28 +200,12 @@ export function LeScreenShell({
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex-1 px-3 sm:px-4 lg:px-6 py-3">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
-          <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-auto shadow-soft">
-            <TabsTrigger
-              value="create"
-              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-3 py-1 text-[11.5px] font-semibold gap-1.5 transition-all"
-            >
-              <Plus className="size-3.5" /> Create
-            </TabsTrigger>
-            <TabsTrigger
-              value="search"
-              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-3 py-1 text-[11.5px] font-semibold gap-1.5 transition-all"
-            >
-              <Filter className="size-3.5" /> Search &amp; Reports
-            </TabsTrigger>
-          </TabsList>
-
+      {/* Tab content */}
+      <div className="flex-1 px-3 sm:px-4 lg:px-6 py-2">
           {/* ───────── Create tab ───────── */}
-          <TabsContent value="create" className="mt-3 space-y-3">
+          <TabsContent value="create" className="mt-0 space-y-2">
             {/* Direction + SAP */}
-            <div className="bg-surface border border-hairline rounded-xl p-3 shadow-elegant">
+            <div className="bg-surface border border-hairline rounded-lg px-2.5 py-1.5 shadow-soft">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   Direction
@@ -219,6 +223,18 @@ export function LeScreenShell({
                 <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
                 <SapToggle value={sap} onChange={setSap} />
                 {renderDirectionExtras?.({ sap, direction })}
+                <div className="ml-auto flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-hairline bg-surface-2/60 text-[11px] font-semibold text-muted-foreground">
+                    <span className="size-1.5 rounded-full bg-warning" />
+                    Pending
+                    <span className="font-mono text-foreground">{counts.pending}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-hairline bg-surface-2/60 text-[11px] font-semibold text-muted-foreground">
+                    <span className="size-1.5 rounded-full bg-success" />
+                    Completed
+                    <span className="font-mono text-foreground">{counts.completed}</span>
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -519,9 +535,9 @@ export function LeScreenShell({
             </div>
             )}
           </TabsContent>
-        </Tabs>
       </div>
 
+      </Tabs>
       <LeFooter />
     </div>
   );
