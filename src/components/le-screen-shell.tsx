@@ -298,7 +298,7 @@ export function LeScreenShell({
                 <div className="overflow-x-auto scrollbar-elegant">
                   <table className="w-full text-[11.5px]">
                     <thead>
-                      <tr className="bg-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
                         {lineItems.columns.map((c) => (
                           <th key={c} className="px-2 py-1 text-left">
                             {c}
@@ -461,7 +461,7 @@ export function LeScreenShell({
               <div className="overflow-x-auto scrollbar-elegant">
                 <table className="w-full text-left border-collapse text-[12px]">
                   <thead>
-                    <tr className="bg-primary text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
+                    <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
                       <th className="px-2 py-1.5 w-10 text-center">
                         <input type="checkbox" className="accent-accent" />
                       </th>
@@ -582,7 +582,7 @@ function FieldInput({ field }: { field: FieldDef }) {
       {type === "select" ? (
         <select
           defaultValue={value as string}
-          className="bg-surface border border-input rounded-md px-2 h-9 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+          className="bg-surface border border-input rounded-md px-2 h-9 text-[12px] outline-none focus:border-focus-ring focus:ring-2 focus:ring-focus-ring/30"
         >
           {(options ?? [String(value ?? "Select")]).map((o) => (
             <option key={o}>{o}</option>
@@ -592,13 +592,13 @@ function FieldInput({ field }: { field: FieldDef }) {
         <textarea
           defaultValue={value as string}
           rows={2}
-          className="bg-surface border border-input rounded-md px-2 py-1.5 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+          className="bg-surface border border-input rounded-md px-2 py-1.5 text-[12px] outline-none focus:border-focus-ring focus:ring-2 focus:ring-focus-ring/30"
         />
       ) : (
         <input
           type={type === "date" ? "datetime-local" : type}
           defaultValue={value as string | number}
-          className="bg-surface border border-input rounded-md px-2 h-9 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 font-mono"
+          className="bg-surface border border-input rounded-md px-2 h-9 text-[12px] outline-none focus:border-focus-ring focus:ring-2 focus:ring-focus-ring/30 font-mono"
         />
       )}
     </div>
