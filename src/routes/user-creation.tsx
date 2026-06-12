@@ -22,7 +22,7 @@ function UserCreationPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden">
+      <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
         {/* Header */}
         <div className="px-5 py-4 flex items-center justify-between border-b border-hairline">
           <h1 className="font-display text-[18px] font-bold tracking-tight text-indigo-700 dark:text-indigo-300">

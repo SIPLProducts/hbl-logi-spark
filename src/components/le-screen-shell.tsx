@@ -447,7 +447,7 @@ export function LeScreenShell({
                 </p>
               </div>
             ) : (
-            <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden">
+            <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
               <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
                 <div>
                   <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
