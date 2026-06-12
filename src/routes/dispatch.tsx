@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Download,
   FileDown,
   FileText,
   Filter,
@@ -64,78 +63,73 @@ function DispatchPage() {
 
   return (
     <div className="flex flex-col min-h-full bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-4 sm:px-6 lg:px-8 pt-6 pb-5 shadow-soft">
-        <Breadcrumb className="mb-3">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to="/" className="inline-flex items-center gap-1.5">
-                  <Home className="size-3.5" />
-                  Logistics Execution
-                </Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Dispatch</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
+          <Breadcrumb className="mb-1.5">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/" className="inline-flex items-center gap-1.5">
+                    <Home className="size-3.5" />
+                    Logistics Execution
+                  </Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Dispatch</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="hidden sm:grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-primary text-white shadow-cta">
-              <Truck className="size-5" />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="hidden sm:grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white shadow-cta">
+                <Truck className="size-4" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="font-display text-[18px] leading-none font-bold tracking-tight text-foreground truncate">
+                  Dispatch
+                </h1>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h1 className="font-display text-[26px] leading-none font-bold tracking-tight text-foreground truncate">
-                Dispatch
-              </h1>
-              {/* <p className="text-[12.5px] text-muted-foreground mt-1.5 max-w-2xl">
-                Plan outbound shipments, allocate trucks against work orders, and search executed
-                dispatch records.
-              </p> */}
+            <div className="flex items-center gap-2 shrink-0">
+              <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-7 shadow-soft">
+                <TabsTrigger
+                  value="create"
+                  className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
+                >
+                  <Plus className="size-3" /> Create
+                </TabsTrigger>
+                <TabsTrigger
+                  value="search"
+                  className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
+                >
+                  <Filter className="size-3" /> Search &amp; Reports
+                </TabsTrigger>
+              </TabsList>
+              <div className="h-5 w-px bg-hairline" />
+              <button
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted"
+              >
+                <RefreshCw className="size-3.5" /> Refresh
+              </button>
             </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" className="gap-1.5 rounded-lg" onClick={() => window.location.reload()}>
-              <RefreshCw className="size-3.5" /> Refresh
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 rounded-lg">
-              <Download className="size-3.5" /> Export
-            </Button>
           </div>
         </div>
-      </div>
 
-      {/* Body */}
-      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-7">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
-          <TabsList className="bg-surface border border-hairline rounded-xl p-1 h-auto shadow-soft">
-            <TabsTrigger
-              value="create"
-              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-lg px-4 py-2 text-[12.5px] font-semibold gap-1.5 transition-all"
-            >
-              <Plus className="size-3.5" /> Create Dispatch
-            </TabsTrigger>
-            <TabsTrigger
-              value="search"
-              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-lg px-4 py-2 text-[12.5px] font-semibold gap-1.5 transition-all"
-            >
-              <Filter className="size-3.5" /> Search &amp; Reports
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="create" className="mt-5">
+        {/* Body */}
+        <div className="flex-1 px-3 sm:px-4 lg:px-6 py-2">
+          <TabsContent value="create" className="mt-0">
             <CreateDispatch />
           </TabsContent>
-          <TabsContent value="search" className="mt-5">
+          <TabsContent value="search" className="mt-0">
             <SearchDispatch />
           </TabsContent>
-        </Tabs>
-      </div>
-
+        </div>
+      </Tabs>
     </div>
   );
 }
@@ -155,10 +149,10 @@ function CreateDispatch() {
     setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-2">
       {/* Toolbar */}
-      <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="bg-surface border border-hairline rounded-lg px-2.5 py-1.5 shadow-soft">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Direction</span>
           <PremiumRadio label="Outward" checked={direction === "outward"} onSelect={() => setDirection("outward")} />
           {/* <label className={cn(
@@ -177,18 +171,16 @@ function CreateDispatch() {
           {direction && (
             <>
               <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
-              <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                <SapToggle value={sap} onChange={setSap} />
-              </div>
+              <SapToggle value={sap} onChange={setSap} />
             </>
           )}
 
           {sap && (
             <>
               <div className="h-6 w-px bg-hairline mx-1 hidden lg:block" />
-              <div className="flex flex-wrap items-center gap-2 ml-auto w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex flex-wrap items-center gap-1.5 ml-auto w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-200">
                 <Select value={searchType} onValueChange={setSearchType}>
-                  <SelectTrigger className="w-[160px] h-9">
+                  <SelectTrigger className="w-[150px] h-7 text-[11px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -199,25 +191,25 @@ function CreateDispatch() {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <div className="relative flex-1 min-w-[180px]">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
                   <Input
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
                     placeholder={`Enter ${searchType}…`}
-                    className="pl-8 h-9"
+                    className="pl-7 h-7 text-[11px]"
                   />
                 </div>
-                <Button size="sm" className="h-9 gap-1.5">
-                  <Search className="size-3.5" /> Search
+                <Button size="sm" className="h-7 gap-1 text-[11px] px-2.5">
+                  <Search className="size-3" /> Search
                 </Button>
               </div>
             </>
           )}
         </div>
-        {!direction && <p className="mt-3 text-[11.5px] text-muted-foreground">Select a direction to continue.</p>}
+        {!direction && <p className="mt-1.5 text-[11px] text-muted-foreground">Select a direction to continue.</p>}
         {direction && !sap && (
-          <p className="mt-3 text-[11.5px] text-muted-foreground">
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
             Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span>{" "}
             to continue.
           </p>
@@ -244,8 +236,8 @@ function CreateDispatch() {
 
             <div className="overflow-x-auto scrollbar-elegant">
               <table className="w-full text-[12.5px] border-collapse">
-                <thead className="bg-surface-2/80 sticky top-0 z-10 backdrop-blur">
-                  <tr className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground border-b border-hairline">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
                     {[
                       "Sl.No",
                       "Vehicle Type",
@@ -784,16 +776,13 @@ function ResultsTable() {
               className="pl-8 h-9 w-[260px]"
             />
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Download className="size-3.5" /> Export
-          </Button>
         </div>
       </div>
 
       <div className="overflow-x-auto max-h-[560px]">
         <table className="w-full text-[12.5px] border-collapse">
-          <thead className="bg-muted/70 sticky top-0 z-10">
-            <tr className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
               {cols.map((c) => (
                 <th
                   key={c.key}
@@ -805,8 +794,8 @@ function ResultsTable() {
                   <button
                     onClick={() => toggleSort(c.key)}
                     className={cn(
-                      "inline-flex items-center gap-1 hover:text-foreground transition",
-                      sortKey === c.key && "text-accent",
+                      "inline-flex items-center gap-1 hover:text-primary-foreground/80 transition",
+                      sortKey === c.key && "underline underline-offset-2",
                     )}
                   >
                     {c.label}
