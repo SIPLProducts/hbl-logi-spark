@@ -106,7 +106,7 @@ function DashboardPage() {
             <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">Welocome Back</h1>
             <p className="mt-1 text-[12.5px] text-muted-foreground">Here's what's moving across Logistics today.</p>
           </div>
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             <button className="flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted">
               Configure widgets
             </button>
@@ -116,7 +116,7 @@ function DashboardPage() {
             >
               New Dispatch Order <ArrowUpRight className="size-3.5" />
             </Link>
-          </div>
+          </div> */}
         </div>
 
         <div className="mt-5 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
