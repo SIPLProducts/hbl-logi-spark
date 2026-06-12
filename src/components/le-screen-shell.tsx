@@ -152,18 +152,18 @@ export function LeScreenShell({
   return (
     <div className="flex flex-col min-h-full">
       {/* Page header */}
-      <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-4 sm:px-6 lg:px-8 pt-6 pb-5 shadow-soft">
+      <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-3 pb-2.5 shadow-soft">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="hidden sm:grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-primary text-white shadow-cta">
-              <FileText className="size-5" />
+            <div className="hidden sm:grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white shadow-cta">
+              <FileText className="size-4" />
             </div>
             <div className="min-w-0">
-              <h1 className="font-display text-[26px] leading-none font-bold tracking-tight text-foreground truncate">
+              <h1 className="font-display text-[18px] leading-none font-bold tracking-tight text-foreground truncate">
                 {title}
               </h1>
               {description && (
-                <p className="text-[12.5px] text-muted-foreground mt-1.5 max-w-2xl">
+                <p className="text-[11.5px] text-muted-foreground mt-1 max-w-2xl">
                   {description}
                 </p>
               )}
@@ -181,28 +181,28 @@ export function LeScreenShell({
       </div>
 
       {/* Tabs */}
-      <div className="flex-1 px-4 sm:px-6 lg:px-8 py-7">
+      <div className="flex-1 px-3 sm:px-4 lg:px-6 py-3">
         <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
-          <TabsList className="bg-surface border border-hairline rounded-xl p-1 h-auto shadow-soft">
+          <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-auto shadow-soft">
             <TabsTrigger
               value="create"
-              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-lg px-4 py-2 text-[12.5px] font-semibold gap-1.5 transition-all"
+              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-3 py-1 text-[11.5px] font-semibold gap-1.5 transition-all"
             >
               <Plus className="size-3.5" /> Create
             </TabsTrigger>
             <TabsTrigger
               value="search"
-              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-lg px-4 py-2 text-[12.5px] font-semibold gap-1.5 transition-all"
+              className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-3 py-1 text-[11.5px] font-semibold gap-1.5 transition-all"
             >
               <Filter className="size-3.5" /> Search &amp; Reports
             </TabsTrigger>
           </TabsList>
 
           {/* ───────── Create tab ───────── */}
-          <TabsContent value="create" className="mt-5 space-y-5">
+          <TabsContent value="create" className="mt-3 space-y-3">
             {/* Direction + SAP */}
-            <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="bg-surface border border-hairline rounded-xl p-3 shadow-elegant">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   Direction
                 </span>
@@ -236,7 +236,7 @@ export function LeScreenShell({
             )}
 
             {topFields && topFields.length > 0 && (
-              <div className="bg-surface border border-hairline rounded-2xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4 shadow-elegant">
+              <div className="bg-surface border border-hairline rounded-xl p-2.5 grid grid-cols-2 md:grid-cols-4 gap-2.5 shadow-elegant">
                 {topFields.map((f) => (
                   <FieldInput key={f.label} field={f} />
                 ))}
@@ -246,14 +246,14 @@ export function LeScreenShell({
             {groups?.map((g) => (
               <div
                 key={g.title}
-                className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden"
+                className="bg-surface border border-hairline rounded-xl shadow-elegant overflow-hidden"
               >
-                <div className="px-5 py-3 border-b border-hairline bg-surface-2/60">
+                <div className="px-3 py-2 border-b border-hairline bg-surface-2/60">
                   <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
                     {g.title}
                   </h3>
                 </div>
-                <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
                   {g.fields.map((f) => (
                     <div key={f.label} className={spanClass(f.span)}>
                       <FieldInput field={f} />
@@ -264,8 +264,8 @@ export function LeScreenShell({
             ))}
 
             {lineItems && (
-              <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden">
-                <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+              <div className="bg-surface border border-hairline rounded-xl shadow-elegant overflow-hidden">
+                <div className="px-3 py-2 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
                   <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
                     Line Items
                   </h3>
@@ -274,22 +274,22 @@ export function LeScreenShell({
                   </button>
                 </div>
                 <div className="overflow-x-auto scrollbar-elegant">
-                  <table className="w-full text-[12.5px]">
+                  <table className="w-full text-[11.5px]">
                     <thead>
                       <tr className="bg-surface-2/80 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
                         {lineItems.columns.map((c) => (
-                          <th key={c} className="px-3 py-2 text-left">
+                          <th key={c} className="px-2 py-1 text-left">
                             {c}
                           </th>
                         ))}
-                        <th className="px-3 py-2 w-16 text-right">Action</th>
+                        <th className="px-2 py-1 w-12 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-hairline/60">
                       {lineItems.rows.map((row, i) => (
                         <tr key={i} className="hover:bg-accent/[0.04]">
                           {row.map((cell, j) => (
-                            <td key={j} className="px-3 py-2">
+                            <td key={j} className="px-2 py-1">
                               {typeof cell === "number" ? (
                                 <span className="font-mono">{cell}</span>
                               ) : (
@@ -297,7 +297,7 @@ export function LeScreenShell({
                               )}
                             </td>
                           ))}
-                          <td className="px-3 py-2 text-right">
+                          <td className="px-2 py-1 text-right">
                             <button className="text-muted-foreground hover:text-destructive">
                               <Trash2 className="size-3.5" />
                             </button>

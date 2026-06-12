@@ -79,9 +79,9 @@ export function AppSidebar() {
         (collapsed ? "w-[68px]" : "w-64")
       }
     >
-      <div className="px-3 py-5 border-b border-sidebar-border/70 flex items-center gap-2.5">
+      <div className="px-3 py-3 border-b border-sidebar-border/70 flex items-center gap-2.5">
         <Link to="/" className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="size-9 rounded-xl bg-white grid place-items-center shadow-md ring-1 ring-white/10 shrink-0 p-1">
+          <div className="size-8 rounded-lg bg-white grid place-items-center shadow-md ring-1 ring-white/10 shrink-0 p-1">
             <img src={hblLogo.url} alt="HBL" className="size-full object-contain" />
           </div>
           {!collapsed && (
@@ -104,12 +104,12 @@ export function AppSidebar() {
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto scrollbar-elegant py-4 px-2.5 space-y-0">
+      <nav className="flex-1 overflow-y-auto scrollbar-elegant py-2 px-2 space-y-0">
         {!collapsed && (
           <Link
             to="/"
             className={
-              "group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12.5px] font-medium transition-all duration-150 " +
+              "group relative flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
               (pathname === "/"
                 ? "bg-sidebar-accent/70 text-white shadow-sm"
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
@@ -135,7 +135,7 @@ export function AppSidebar() {
                       to={item.to}
                       title={collapsed ? item.title : undefined}
                       className={
-                        "group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12.5px] font-medium transition-all duration-150 " +
+                        "group relative flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
                         (active
                           ? "bg-sidebar-accent/70 text-white shadow-sm"
                           : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
@@ -163,7 +163,7 @@ export function AppSidebar() {
             }}
             title={collapsed ? "Reports" : undefined}
             className={
-              "group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12.5px] font-medium transition-all duration-150 " +
+              "group relative w-full flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
               (reportsHasActive
                 ? "bg-sidebar-accent/70 text-white shadow-sm"
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
