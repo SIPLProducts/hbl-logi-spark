@@ -22,7 +22,7 @@ function UserCreationPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden">
+      <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
         {/* Header */}
         <div className="px-5 py-4 flex items-center justify-between border-b border-hairline">
           <h1 className="font-display text-[18px] font-bold tracking-tight text-indigo-700 dark:text-indigo-300">
@@ -40,7 +40,7 @@ function UserCreationPage() {
         <div className="overflow-x-auto scrollbar-elegant">
           <table className="w-full text-[12.5px]">
             <thead>
-              <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
+              <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
                 <th className="px-3 py-2.5 text-center">User ID</th>
                 <th className="px-3 py-2.5 text-center">First Name</th>
                 <th className="px-3 py-2.5 text-center">Last Name</th>
