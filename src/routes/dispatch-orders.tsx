@@ -325,7 +325,7 @@ function DispatchOrdersPage() {
               <div className="max-h-[560px] overflow-auto">
                 <table className="w-full text-left border-collapse text-[12.5px]">
                   <thead className="sticky top-0 z-10">
-                    <tr className="bg-surface-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
+                    <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
                       {COLUMNS.map((c) => {
                         const active = sortKey === c.key;
                         const Icon = active ? (sortDir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;

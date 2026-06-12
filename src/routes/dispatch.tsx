@@ -237,7 +237,7 @@ function CreateDispatch() {
             <div className="overflow-x-auto scrollbar-elegant">
               <table className="w-full text-[12.5px] border-collapse">
                 <thead className="sticky top-0 z-10">
-                  <tr className="bg-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
+                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
                     {[
                       "Sl.No",
                       "Vehicle Type",
@@ -782,7 +782,7 @@ function ResultsTable() {
       <div className="overflow-x-auto max-h-[560px]">
         <table className="w-full text-[12.5px] border-collapse">
           <thead className="sticky top-0 z-10">
-            <tr className="bg-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
+            <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
               {cols.map((c) => (
                 <th
                   key={c.key}
