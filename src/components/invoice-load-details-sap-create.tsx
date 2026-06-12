@@ -67,15 +67,6 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
 
   return (
     <div className="space-y-4">
-      {/* Status chips */}
-      <div className="flex items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[12px] font-semibold border border-amber-200">
-          <span className="size-1.5 rounded-full bg-amber-500" /> Pending: {isWithout ? 2 : 1}
-        </span>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-semibold border border-emerald-200">
-          <span className="size-1.5 rounded-full bg-emerald-500" /> Completed: 0
-        </span>
-      </div>
 
       {/* Selection table */}
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">

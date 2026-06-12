@@ -68,15 +68,6 @@ export function ServiceLevelSapCreate({
 
   return (
     <div className="space-y-4">
-      {/* Status chips */}
-      <div className="flex items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[12px] font-semibold border border-amber-200">
-          <span className="size-1.5 rounded-full bg-amber-500" /> Pending: 0
-        </span>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-semibold border border-emerald-200">
-          <span className="size-1.5 rounded-full bg-emerald-500" /> Completed: 1
-        </span>
-      </div>
 
       {!loadType && (
         <p className="text-[12px] text-muted-foreground px-1">
