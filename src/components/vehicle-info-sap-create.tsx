@@ -113,7 +113,7 @@ export function VehicleInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               <td className="px-3 py-2 text-center">1</td>
               <td className="px-3 py-2">
                 <input
-                  defaultValue={isWithout ? "" : "101"}
+                  defaultValue={isWithout ? "" : ""}
                   placeholder="Enter Map ID"
                   className={GREEN_INPUT + " text-center"}
                 />
