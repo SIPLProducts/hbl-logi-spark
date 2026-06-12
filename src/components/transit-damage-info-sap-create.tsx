@@ -247,13 +247,13 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
           {/* Footer */}
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <button className="inline-flex items-center gap-1.5 px-4 h-9 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm">
+            <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm">
               <Save className="size-3.5" /> Save
             </button>
-            <button className="inline-flex items-center gap-1.5 px-4 h-9 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-[12px] font-semibold shadow-sm">
+            <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-[12px] font-semibold shadow-sm">
               Save and Next <ChevronRight className="size-3.5" />
             </button>
-            <button className="inline-flex items-center gap-1.5 px-4 h-9 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold shadow-sm">
+            <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold shadow-sm">
               <ChevronLeft className="size-3.5" /> Save and Previous
             </button>
           </div>
