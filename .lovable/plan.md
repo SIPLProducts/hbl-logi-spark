@@ -1,32 +1,16 @@
-## Plan: Login page right-side slideshow
+## Plan: Show full slideshow images without cropping
 
-Replace the static 3-image collage on the right panel of `src/routes/login.tsx` with an auto-advancing slideshow cycling through the 6 uploaded images in the order provided.
+The right-panel slideshow on `/login` currently uses `object-cover`, which crops the images to fill the panel. The uploaded images have varying aspect ratios (a tall triangle, wide collages, a square-ish photo), so cropping cuts off important content.
 
-### Steps
+### Change
 
-1. **Upload images as Lovable assets** (so they're CDN-served, not bundled):
-   - `1.png` → `src/assets/hbl-vision.png.asset.json`
-   - `2.jpeg` → `src/assets/hbl-values.jpeg.asset.json`
-   - `loginggimage_3.png` → `src/assets/le-collage-1.png.asset.json`
-   - `loginbgimage_4.jpg` → `src/assets/le-collage-2.jpg.asset.json`
-   - `loginbgimage_5.jpg` → `src/assets/le-truck.jpg.asset.json`
-   - `Le1_image_6.png` → `src/assets/le-fleet.png.asset.json`
+In `src/routes/login.tsx`, in the `<aside>` slideshow:
 
-   Using `lovable-assets create --file /mnt/user-uploads/<name> ...`.
+1. **Switch `<img>` sizing from `object-cover` to `object-contain`** so every image fits fully inside the panel regardless of aspect ratio.
+2. **Add a neutral backdrop** (`bg-slate-100`) behind the images so the letterbox bars on contained images look intentional, not broken. Remove the dark `bg-slate-900` from the aside.
+3. **Remove the dark gradient overlay** (`from-black/10 ... to-black/40`) — it was tuned for full-bleed photos and muddies contained images.
+4. **Add padding** around the image area (`p-6`) and reserve space at the bottom for the existing branding band (`pb-[140px]`) so images never sit under the white "Logistic Execution Module" band.
+5. **Keep dot indicators** but reposition them just above the branding band and darken them (`bg-slate-800` active, `bg-slate-400` inactive) so they remain visible on the light backdrop.
+6. **Keep the 4s auto-advance and click-to-jump** behavior unchanged.
 
-2. **Update `src/routes/login.tsx`**:
-   - Import the 6 asset JSON pointers.
-   - Replace the 3-column collage `<div>` inside `<aside>` with a single slideshow container:
-     - Stack of `<img>` elements, absolutely positioned, full-size, `object-cover`.
-     - Active slide `opacity-100`, others `opacity-0`, with `transition-opacity duration-700`.
-     - `useState` + `useEffect` interval advancing index every ~4s, cycling 0→5→0.
-     - Cleanup interval on unmount.
-   - Keep the existing bottom branding band (Logistic Execution Module + HBL logo) unchanged on top of the slideshow.
-   - Add small dot indicators (clickable) above the bottom band for manual navigation.
-   - Add `alt` text per image; first image `loading="eager"`, rest `loading="lazy"`.
-
-### Notes
-
-- Form panel on the left is untouched.
-- No new dependencies needed (pure React + Tailwind transitions).
-- Slideshow only renders on `md:` and up (matches existing `hidden md:block` aside).
+No changes to the left form panel, no new dependencies, images stay the existing CDN assets.
