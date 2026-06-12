@@ -1,11 +1,7 @@
-## Plan: Clean slideshow — no padding, no backdrop
+## Plan: Remove bottom branding band from slideshow
 
-In `src/routes/login.tsx`, on the right `<aside>`:
+In `src/routes/login.tsx`, inside the right `<aside>`, remove the entire "Bottom branding band" block — the white panel containing "LOGISTIC EXECUTION MODULE" headline and the HBL logo / "HBL Engineering Limited" caption.
 
-1. Remove `bg-slate-100` from the `<aside>` (transparent, inherits page bg).
-2. Remove the wrapper `<div className="absolute inset-0 p-6 pb-[140px]">` — render `<img>` elements directly inside `<aside>`.
-3. On each `<img>`, drop `p-6 pb-[140px]` and keep `absolute inset-0 size-full object-contain` so the image fits the full slider area, preserving aspect ratio (no cropping, no distortion).
-4. Keep the bottom branding band as-is; it sits above the images via z-order.
-5. Keep dot indicators where they are (just above the branding band).
+Also move the dot indicators from `bottom-[120px]` to `bottom-6` so they sit nicely above the bottom edge now that the branding band is gone.
 
-Result: images render at their native aspect ratio, filling the slider area as much as possible without cropping or stretching, and with no surrounding padding or colored backdrop.
+Nothing else changes — left form panel, slides, auto-advance, and click-to-jump all stay as-is.
