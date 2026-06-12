@@ -78,7 +78,7 @@
 }
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
   /* Navy Trust palette: #0f1b3d primary · #1e3a5f surface-2 · #3b6fa0 accent · #e8edf3 page bg */
   --background: oklch(0.985 0.005 240);          /* soft slate #F8FAFC */
   --foreground: oklch(0.22 0.04 256);            /* near #0f1b3d */
@@ -191,7 +191,7 @@
 
 /* Thin, premium scrollbar */
 @utility scrollbar-elegant {
-  &::-webkit-scrollbar { height: 8px; width: 8px; }
+  &::-webkit-scrollbar { height: 6px; width: 6px; }
   &::-webkit-scrollbar-track { background: transparent; }
   &::-webkit-scrollbar-thumb {
     background: color-mix(in oklab, var(--foreground) 14%, transparent);
@@ -203,6 +203,18 @@
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklab, var(--foreground) 14%, transparent) transparent;
 }
+
+/* Global slim scrollbars across the app */
+*::-webkit-scrollbar { height: 6px; width: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--foreground) 14%, transparent);
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--foreground) 22%, transparent);
+}
+html { scrollbar-width: thin; scrollbar-color: color-mix(in oklab, var(--foreground) 14%, transparent) transparent; }
 
 @utility shadow-elegant {
   box-shadow: var(--shadow-elegant);
