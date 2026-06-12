@@ -1,9 +1,24 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import hblLogo from "@/assets/hbl-logo.png.asset.json";
+import slide1 from "@/assets/hbl-vision.png.asset.json";
+import slide2 from "@/assets/hbl-values.jpeg.asset.json";
+import slide3 from "@/assets/le-collage-1.png.asset.json";
+import slide4 from "@/assets/le-collage-2.jpg.asset.json";
+import slide5 from "@/assets/le-truck.jpg.asset.json";
+import slide6 from "@/assets/le-fleet.png.asset.json";
+
+const slides = [
+  { url: slide1.url, alt: "HBL Vision" },
+  { url: slide2.url, alt: "HBL Our Values" },
+  { url: slide3.url, alt: "Logistic Execution — port, road, sea" },
+  { url: slide4.url, alt: "Containers and truck transport" },
+  { url: slide5.url, alt: "Decorated freight truck on highway" },
+  { url: slide6.url, alt: "HBL fleet operations" },
+];
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -43,6 +58,14 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ username?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setSlideIndex((i) => (i + 1) % slides.length);
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -188,34 +211,38 @@ function LoginPage() {
 
       {/* Right panel — collage */}
       <aside className="relative hidden md:block overflow-hidden bg-slate-900">
-        <div className="absolute inset-0 grid grid-cols-3">
-          <div className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          {slides.map((s, i) => (
             <img
-              src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=1200&q=80"
-              alt="Containers at port"
-              className="absolute inset-0 size-full object-cover"
-              loading="lazy"
+              key={s.url}
+              src={s.url}
+              alt={s.alt}
+              loading={i === 0 ? "eager" : "lazy"}
+              className={
+                "absolute inset-0 size-full object-cover transition-opacity duration-700 ease-in-out " +
+                (i === slideIndex ? "opacity-100" : "opacity-0")
+              }
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
-          </div>
-          <div className="relative overflow-hidden -mx-px">
-            <img
-              src="https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=1200&q=80"
-              alt="Truck on highway"
-              className="absolute inset-0 size-full object-cover"
-              loading="lazy"
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40 pointer-events-none" />
+        </div>
+
+        {/* Dot indicators */}
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-[140px] z-10 flex items-center gap-2">
+          {slides.map((s, i) => (
+            <button
+              key={s.url}
+              type="button"
+              onClick={() => setSlideIndex(i)}
+              aria-label={`Show slide ${i + 1}`}
+              className={
+                "h-2 rounded-full transition-all " +
+                (i === slideIndex
+                  ? "w-6 bg-white"
+                  : "w-2 bg-white/50 hover:bg-white/80")
+              }
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
-          </div>
-          <div className="relative overflow-hidden">
-            <img
-              src="https://images.unsplash.com/photo-1577712283696-3eaff03fd54e?auto=format&fit=crop&w=1200&q=80"
-              alt="Container ship at sea"
-              className="absolute inset-0 size-full object-cover"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40" />
-          </div>
+          ))}
         </div>
 
         {/* Bottom branding band */}
