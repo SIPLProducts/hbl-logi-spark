@@ -1,5 +1,6 @@
 import { LogOut, User, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,8 +11,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function TopBar() {
+  const navigate = useNavigate();
   const handleProfile = () => toast.info("Profile coming soon");
-  const handleLogout = () => toast.success("Signed out");
+  const handleLogout = () => {
+    toast.success("Signed out");
+    navigate({ to: "/login" });
+  };
 
   return (
     <header className="h-12 bg-surface/90 backdrop-blur border-b border-hairline flex items-center justify-end px-4 sticky top-0 z-20 gap-2">
