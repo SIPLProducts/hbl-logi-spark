@@ -117,7 +117,7 @@ export function LeScreenShell({
   const [searchType, setSearchType] = useState<(typeof SEARCH_TYPES)[number]>("Reference");
   const [searchValue, setSearchValue] = useState("");
 
-  // Search & Reports filter state (Dispatch-style)
+  // Filter & Download filter state (Dispatch-style)
   const [searchSap, setSearchSap] = useState<SapMode | null>(null);
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
@@ -185,7 +185,7 @@ export function LeScreenShell({
                 value="search"
                 className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
               >
-                <Filter className="size-3" /> Search &amp; Reports
+                <Filter className="size-3" /> Filter &amp; Download
               </TabsTrigger>
             </TabsList>
             <div className="h-5 w-px bg-hairline" />
@@ -346,7 +346,7 @@ export function LeScreenShell({
             )}
           </TabsContent>
 
-          {/* ───────── Search & Reports tab ───────── */}
+          {/* ───────── Filter & Download tab ───────── */}
           <TabsContent value="search" className="mt-5 space-y-5">
             <div className="bg-surface border border-hairline rounded-2xl shadow-elegant">
               <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">

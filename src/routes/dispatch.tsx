@@ -106,7 +106,7 @@ function DispatchPage() {
                   value="search"
                   className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
                 >
-                  <Filter className="size-3" /> Search &amp; Reports
+                  <Filter className="size-3" /> Filter &amp; Download
                 </TabsTrigger>
               </TabsList>
               <div className="h-5 w-px bg-hairline" />
