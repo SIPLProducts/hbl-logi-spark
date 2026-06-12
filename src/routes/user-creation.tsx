@@ -40,7 +40,7 @@ function UserCreationPage() {
         <div className="overflow-x-auto scrollbar-elegant">
           <table className="w-full text-[12.5px]">
             <thead>
-              <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+              <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
                 <th className="px-3 py-2.5 text-center">User ID</th>
                 <th className="px-3 py-2.5 text-center">First Name</th>
                 <th className="px-3 py-2.5 text-center">Last Name</th>
