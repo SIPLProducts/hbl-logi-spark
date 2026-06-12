@@ -224,15 +224,15 @@ export function LeScreenShell({
                 <SapToggle value={sap} onChange={setSap} />
                 {renderDirectionExtras?.({ sap, direction })}
                 <div className="ml-auto flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-hairline bg-surface-2/60 text-[11px] font-semibold text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-amber-300/60 bg-amber-100 dark:bg-amber-500/15 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
                     <span className="size-1.5 rounded-full bg-warning" />
                     Pending
-                    <span className="font-mono text-foreground">{counts.pending}</span>
+                    <span className="font-mono">{counts.pending}</span>
                   </span>
-                  <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-hairline bg-surface-2/60 text-[11px] font-semibold text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-emerald-300/60 bg-emerald-100 dark:bg-emerald-500/15 text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">
                     <span className="size-1.5 rounded-full bg-success" />
                     Completed
-                    <span className="font-mono text-foreground">{counts.completed}</span>
+                    <span className="font-mono">{counts.completed}</span>
                   </span>
                 </div>
               </div>
@@ -252,7 +252,7 @@ export function LeScreenShell({
             )}
 
             {topFields && topFields.length > 0 && (
-              <div className="bg-surface border border-hairline rounded-xl p-2.5 grid grid-cols-2 md:grid-cols-4 gap-2.5 shadow-elegant">
+              <div className="bg-surface border border-hairline rounded-xl p-2.5 grid grid-cols-2 md:grid-cols-4 gap-2 shadow-elegant">
                 {topFields.map((f) => (
                   <FieldInput key={f.label} field={f} />
                 ))}

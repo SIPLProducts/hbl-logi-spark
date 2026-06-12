@@ -90,18 +90,18 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
         <table className="w-full text-[12.5px]">
           <thead>
             <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
-              <th className="px-3 py-2.5 text-center w-16">Select</th>
-              <th className="px-3 py-2.5 text-center w-16">Sl.No</th>
-              <th className="px-3 py-2.5 text-center">Reference Number</th>
-              <th className="px-3 py-2.5 text-center">Work Order Number</th>
-              <th className="px-3 py-2.5 text-center">LR Number</th>
-              <th className="px-3 py-2.5 text-center">Transporter</th>
-              <th className="px-3 py-2.5 text-center w-20">Action</th>
+              <th className="px-3 py-1.5 text-center w-16">Select</th>
+              <th className="px-3 py-1.5 text-center w-16">Sl.No</th>
+              <th className="px-3 py-1.5 text-center">Reference Number</th>
+              <th className="px-3 py-1.5 text-center">Work Order Number</th>
+              <th className="px-3 py-1.5 text-center">LR Number</th>
+              <th className="px-3 py-1.5 text-center">Transporter</th>
+              <th className="px-3 py-1.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 py-1 text-center">
                 <input
                   type="checkbox"
                   checked={checked}
@@ -109,20 +109,20 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                   className="size-4 accent-sky-600"
                 />
               </td>
-              <td className="px-3 py-2 text-center">1</td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1 text-center">1</td>
+              <td className="px-3 py-1">
                 <input defaultValue="" className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input defaultValue="" className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 py-1 text-center">
                 <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
                   <MoreVertical className="size-4" />
                 </button>
@@ -194,7 +194,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
         <>
           {/* Field grid */}
           <div className="bg-surface border border-hairline rounded-xl p-5 shadow-elegant">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
               {fields.map((f) => (
                 <SapField key={f.label} field={f} />
               ))}

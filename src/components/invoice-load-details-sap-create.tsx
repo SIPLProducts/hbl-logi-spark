@@ -73,19 +73,19 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
         <table className="w-full text-[12.5px]">
           <thead>
             <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
-              <th className="px-3 py-2.5 text-center w-16">Select</th>
-              <th className="px-3 py-2.5 text-center w-16">Sl.No</th>
-              <th className="px-3 py-2.5 text-center">Map ID</th>
-              <th className="px-3 py-2.5 text-center">Reference Number</th>
-              <th className="px-3 py-2.5 text-center">Work Order Number</th>
-              <th className="px-3 py-2.5 text-center">LR Number</th>
-              <th className="px-3 py-2.5 text-center">Transporter</th>
-              <th className="px-3 py-2.5 text-center w-20">Action</th>
+              <th className="px-3 py-1.5 text-center w-16">Select</th>
+              <th className="px-3 py-1.5 text-center w-16">Sl.No</th>
+              <th className="px-3 py-1.5 text-center">Map ID</th>
+              <th className="px-3 py-1.5 text-center">Reference Number</th>
+              <th className="px-3 py-1.5 text-center">Work Order Number</th>
+              <th className="px-3 py-1.5 text-center">LR Number</th>
+              <th className="px-3 py-1.5 text-center">Transporter</th>
+              <th className="px-3 py-1.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 py-1 text-center">
                 <input
                   type="checkbox"
                   checked={checked}
@@ -93,35 +93,35 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                   className="size-4 accent-sky-600"
                 />
               </td>
-              <td className="px-3 py-2 text-center">1</td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1 text-center">1</td>
+              <td className="px-3 py-1">
                 <input
                   defaultValue={isWithout ? "" : ""}
                   placeholder="Enter Map ID"
                   className={GREEN_INPUT + " text-center"}
                 />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input
                   defaultValue={isWithout ? "" : ""}
                   placeholder="Enter Ref. No."
                   className={GREEN_INPUT + " text-center"}
                 />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input
                   defaultValue={isWithout ? "" : "1234"}
                   placeholder="Enter LR No."
                   className={GREEN_INPUT + " text-center"}
                 />
               </td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-1">
                 <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
               </td>
-              <td className="px-3 py-2 text-center">
+              <td className="px-3 py-1 text-center">
                 <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
                   <MoreVertical className="size-4" />
                 </button>
@@ -212,39 +212,39 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
               <table className="w-full text-[12.5px] min-w-[1400px]">
                 <thead>
                   <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
-                    <th className="px-2 py-2.5 text-center w-10">
+                    <th className="px-2 py-1.5 text-center w-10">
                       <input type="checkbox" className="size-4 accent-white" />
                     </th>
-                    <th className="px-2 py-2.5 text-center w-14">Sl.No</th>
-                    <th className="px-2 py-2.5 text-center">Map ID</th>
-                    <th className="px-2 py-2.5 text-center">Truck Type</th>
-                    <th className="px-2 py-2.5 text-center">
+                    <th className="px-2 py-1.5 text-center w-14">Sl.No</th>
+                    <th className="px-2 py-1.5 text-center">Map ID</th>
+                    <th className="px-2 py-1.5 text-center">Truck Type</th>
+                    <th className="px-2 py-1.5 text-center">
                       Passing Weight
                       <br />
                       (Tons)
                     </th>
-                    <th className="px-2 py-2.5 text-center">
+                    <th className="px-2 py-1.5 text-center">
                       Actual Load
                       <br />
                       (Tons)
                     </th>
-                    <th className="px-2 py-2.5 text-center">
+                    <th className="px-2 py-1.5 text-center">
                       Loading factor%
                       <br />
                       (w.r.t weight)
                     </th>
-                    <th className="px-2 py-2.5 text-center">Actual Volume Occupied</th>
-                    <th className="px-2 py-2.5 text-center">Loading Factor w.r.t Volume</th>
-                    <th className="px-2 py-2.5 text-center">Week Wise Shipment Flow</th>
-                    <th className="px-2 py-2.5 text-center">Eway Bill Number</th>
-                    <th className="px-2 py-2.5 text-center">Eway Bill Expiry Date</th>
-                    <th className="px-2 py-2.5 text-center w-24">Action</th>
+                    <th className="px-2 py-1.5 text-center">Actual Volume Occupied</th>
+                    <th className="px-2 py-1.5 text-center">Loading Factor w.r.t Volume</th>
+                    <th className="px-2 py-1.5 text-center">Week Wise Shipment Flow</th>
+                    <th className="px-2 py-1.5 text-center">Eway Bill Number</th>
+                    <th className="px-2 py-1.5 text-center">Eway Bill Expiry Date</th>
+                    <th className="px-2 py-1.5 text-center w-24">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row, idx) => (
                     <tr key={row.id}>
-                      <td className="px-2 py-2 text-center">
+                      <td className="px-2 py-1 text-center">
                         <input
                           type="checkbox"
                           checked={row.checked}
@@ -252,8 +252,8 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                           className="size-4 accent-sky-600"
                         />
                       </td>
-                      <td className="px-2 py-2 text-center">{idx + 1}</td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1 text-center">{idx + 1}</td>
+                      <td className="px-2 py-1">
                         <select
                           value={row.mapId}
                           onChange={(e) => updateRow(row.id, { mapId: e.target.value })}
@@ -269,7 +269,7 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                           ))}
                         </select>
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1">
                         <select
                           value={row.truckType}
                           onChange={(e) => updateRow(row.id, { truckType: e.target.value })}
@@ -283,7 +283,7 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                           ))}
                         </select>
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1">
                         <input
                           type="number"
                           value={row.passingWeight}
@@ -291,7 +291,7 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                           className={GREEN_INPUT + " text-center"}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1">
                         <input
                           type="number"
                           value={row.actualLoad}
@@ -299,28 +299,28 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                           className={GREEN_INPUT + " text-center"}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1">
                         <input
                           value={row.loadingFactorWeight}
                           onChange={(e) => updateRow(row.id, { loadingFactorWeight: e.target.value })}
                           className={GREEN_INPUT + " text-center"}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1">
                         <input
                           value={row.actualVolume}
                           onChange={(e) => updateRow(row.id, { actualVolume: e.target.value })}
                           className={GREEN_INPUT + " text-center"}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1">
                         <input
                           value={row.loadingFactorVolume}
                           onChange={(e) => updateRow(row.id, { loadingFactorVolume: e.target.value })}
                           className={GREEN_INPUT + " text-center"}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1">
                         <select
                           value={row.week}
                           onChange={(e) => updateRow(row.id, { week: e.target.value })}
@@ -333,14 +333,14 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                           ))}
                         </select>
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1">
                         <input
                           value={row.ewayBillNo}
                           onChange={(e) => updateRow(row.id, { ewayBillNo: e.target.value })}
                           className={GREEN_INPUT + " text-center"}
                         />
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1">
                         <div className="relative">
                           <input
                             type="date"
@@ -351,7 +351,7 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                           <Calendar className="size-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-emerald-600 pointer-events-none" />
                         </div>
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-2 py-1">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
