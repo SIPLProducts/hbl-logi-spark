@@ -368,13 +368,13 @@ function CreateDispatch() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent"
+              className="gap-1.5 h-7 px-3 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent"
             >
               <Save className="size-3.5" /> Save
             </Button>
             <Button
               size="sm"
-              className="gap-1.5 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0"
+              className="gap-1.5 h-7 px-3 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0"
             >
               Save &amp; Next <ChevronRight className="size-3.5" />
             </Button>
