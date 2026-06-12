@@ -794,8 +794,8 @@ function ResultsTable() {
                   <button
                     onClick={() => toggleSort(c.key)}
                     className={cn(
-                      "inline-flex items-center gap-1 hover:text-foreground transition",
-                      sortKey === c.key && "text-accent",
+                      "inline-flex items-center gap-1 hover:text-primary-foreground/80 transition",
+                      sortKey === c.key && "underline underline-offset-2",
                     )}
                   >
                     {c.label}
