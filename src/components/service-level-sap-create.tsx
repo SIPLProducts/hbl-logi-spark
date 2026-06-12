@@ -2,8 +2,8 @@ import { useState } from "react";
 import { MoreVertical } from "lucide-react";
 
 const GREEN_INPUT =
-  "h-9 w-full rounded-md bg-white dark:bg-surface border border-emerald-400/70 px-2.5 text-[12.5px] text-emerald-700 dark:text-emerald-300 font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/30";
-const LABEL = "block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mb-1";
+  "h-7 w-full rounded-md bg-white dark:bg-surface border border-emerald-400/70 px-2 text-[12px] text-emerald-700 dark:text-emerald-300 font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/30";
+const LABEL = "block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mb-0.5";
 
 const QUESTIONS = [
   "On time delivery",
@@ -67,7 +67,7 @@ export function ServiceLevelSapCreate({
   const [overall, setOverall] = useState<Rating | null>(null);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
 
       {!loadType && (
         <p className="text-[12px] text-muted-foreground px-1">
@@ -80,21 +80,21 @@ export function ServiceLevelSapCreate({
         <>
           {/* Selection table */}
           <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
-            <table className="w-full text-[12.5px]">
+            <table className="w-full text-[12px]">
               <thead>
                 <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
-                  <th className="px-3 py-1.5 text-center w-16">Select</th>
-                  <th className="px-3 py-1.5 text-center w-16">Sl.No</th>
-                  <th className="px-3 py-1.5 text-center">Reference Number</th>
-                  <th className="px-3 py-1.5 text-center">Work Order Number</th>
-                  <th className="px-3 py-1.5 text-center">LR Number</th>
-                  <th className="px-3 py-1.5 text-center">Transporter</th>
-                  <th className="px-3 py-1.5 text-center w-20">Action</th>
+                  <th className="px-3 py-0.5 text-center w-16">Select</th>
+                  <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
+                  <th className="px-3 py-0.5 text-center">Reference Number</th>
+                  <th className="px-3 py-0.5 text-center">Work Order Number</th>
+                  <th className="px-3 py-0.5 text-center">LR Number</th>
+                  <th className="px-3 py-0.5 text-center">Transporter</th>
+                  <th className="px-3 py-0.5 text-center w-20">Action</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td className="px-3 py-1 text-center">
+                  <td className="px-3 py-0.5 text-center">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -102,20 +102,20 @@ export function ServiceLevelSapCreate({
                       className="size-4 accent-sky-600"
                     />
                   </td>
-                  <td className="px-3 py-1 text-center">1</td>
-                  <td className="px-3 py-1">
+                  <td className="px-3 py-0.5 text-center">1</td>
+                  <td className="px-3 py-0.5">
                     <input defaultValue="" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-1">
+                  <td className="px-3 py-0.5">
                     <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-1">
+                  <td className="px-3 py-0.5">
                     <input defaultValue="" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-1">
+                  <td className="px-3 py-0.5">
                     <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
                   </td>
-                  <td className="px-3 py-1 text-center">
+                  <td className="px-3 py-0.5 text-center">
                     <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
                       <MoreVertical className="size-4" />
                     </button>
@@ -126,7 +126,7 @@ export function ServiceLevelSapCreate({
           </div>
 
           {/* Invoice lookup bar */}
-          <div className="bg-surface border border-hairline rounded-xl p-3 shadow-elegant max-w-md">
+          <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant max-w-md">
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex-1 min-w-[160px]">
                 <label className={LABEL}>Invoice Number</label>
@@ -141,7 +141,7 @@ export function ServiceLevelSapCreate({
                   if (invoiceNumber.trim()) setRevealed(true);
                 }}
                 disabled={!invoiceNumber.trim()}
-                className="h-9 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
+                className="h-7 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
               >
                 GET
               </button>
