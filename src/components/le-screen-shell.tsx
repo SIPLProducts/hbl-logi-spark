@@ -286,7 +286,7 @@ export function LeScreenShell({
             ))}
 
             {lineItems && (
-              <div className="bg-surface border border-hairline rounded-xl shadow-elegant overflow-hidden">
+              <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
                 <div className="px-3 py-2 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
                   <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
                     Line Items
