@@ -35,7 +35,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Badge } from "@/components/ui/badge";
-import { LeFooter } from "@/components/le-footer";
 import { cn } from "@/lib/utils";
 import {
   DIVISIONS,
@@ -137,7 +136,6 @@ function DispatchPage() {
         </Tabs>
       </div>
 
-      <LeFooter />
     </div>
   );
 }

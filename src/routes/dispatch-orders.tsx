@@ -15,7 +15,6 @@ import {
   Inbox,
   ListFilter,
 } from "lucide-react";
-import { LeFooter } from "@/components/le-footer";
 import { exportRowsToXls } from "@/lib/export-xls";
 import {
   queryDispatchOrders,
@@ -418,7 +417,6 @@ function DispatchOrdersPage() {
         </section>
       </div>
 
-      <LeFooter />
     </div>
   );
 }

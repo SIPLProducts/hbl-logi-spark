@@ -18,7 +18,6 @@ import {
   Activity,
   CheckCircle2,
 } from "lucide-react";
-import { LeFooter } from "@/components/le-footer";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -243,7 +242,6 @@ function DashboardPage() {
         </div>
       </div>
 
-      <LeFooter />
     </div>
   );
 }

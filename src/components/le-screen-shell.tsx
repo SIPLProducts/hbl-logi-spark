@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/select";
 import { PLANTS, DIVISIONS, TRANSPORTERS, VEHICLE_TYPES } from "@/lib/dispatch-mock";
 import { counts, type WorklistRow } from "@/lib/le-mock-data";
-import { LeFooter } from "./le-footer";
 import { cn } from "@/lib/utils";
 
 type SapMode = "with" | "without";
@@ -538,7 +537,6 @@ export function LeScreenShell({
       </div>
 
       </Tabs>
-      <LeFooter />
     </div>
   );
 }
