@@ -70,7 +70,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12.5px]">
           <thead>
-            <tr className="bg-gradient-to-r from-sky-500 to-teal-500 text-white text-[11px] font-semibold">
+            <tr className="bg-primary text-primary-foreground text-[11px] font-semibold">
               <th className="px-3 py-2.5 text-center w-16">Select</th>
               <th className="px-3 py-2.5 text-center w-16">Sl.No</th>
               <th className="px-3 py-2.5 text-center">Reference Number</th>
