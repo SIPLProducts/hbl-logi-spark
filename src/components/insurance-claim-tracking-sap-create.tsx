@@ -77,12 +77,6 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-[12px] font-semibold border border-indigo-200">
           <ClipboardList className="size-3.5" /> No. of Cases Reported: 0
         </span>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[12px] font-semibold border border-amber-200">
-          <span className="size-1.5 rounded-full bg-amber-500" /> Pending: 0
-        </span>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-semibold border border-emerald-200">
-          <span className="size-1.5 rounded-full bg-emerald-500" /> Completed: 0
-        </span>
       </div>
 
       {/* Reference table */}
