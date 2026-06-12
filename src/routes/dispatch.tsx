@@ -22,13 +22,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -99,19 +93,14 @@ function DispatchPage() {
               <h1 className="font-display text-[26px] leading-none font-bold tracking-tight text-foreground truncate">
                 Dispatch
               </h1>
-              <p className="text-[12.5px] text-muted-foreground mt-1.5 max-w-2xl">
+              {/* <p className="text-[12.5px] text-muted-foreground mt-1.5 max-w-2xl">
                 Plan outbound shipments, allocate trucks against work orders, and search executed
                 dispatch records.
-              </p>
+              </p> */}
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 rounded-lg"
-              onClick={() => window.location.reload()}
-            >
+            <Button variant="outline" size="sm" className="gap-1.5 rounded-lg" onClick={() => window.location.reload()}>
               <RefreshCw className="size-3.5" /> Refresh
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5 rounded-lg">
@@ -119,7 +108,6 @@ function DispatchPage() {
             </Button>
           </div>
         </div>
-
       </div>
 
       {/* Body */}
@@ -163,10 +151,8 @@ function CreateDispatch() {
   const [searchValue, setSearchValue] = useState("");
   const [rows, setRows] = useState<DispatchRow[]>([]);
 
-  const addRow = () =>
-    setRows((r) => [...r, emptyDispatchRow(r.length + 1)]);
-  const deleteRow = (id: string) =>
-    setRows((r) => r.filter((x) => x.id !== id).map((x, i) => ({ ...x, slNo: i + 1 })));
+  const addRow = () => setRows((r) => [...r, emptyDispatchRow(r.length + 1)]);
+  const deleteRow = (id: string) => setRows((r) => r.filter((x) => x.id !== id).map((x, i) => ({ ...x, slNo: i + 1 })));
   const updateRow = (id: string, patch: Partial<DispatchRow>) =>
     setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
@@ -175,14 +161,8 @@ function CreateDispatch() {
       {/* Toolbar */}
       <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-            Direction
-          </span>
-          <PremiumRadio
-            label="Outward"
-            checked={direction === "outward"}
-            onSelect={() => setDirection("outward")}
-          />
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Direction</span>
+          <PremiumRadio label="Outward" checked={direction === "outward"} onSelect={() => setDirection("outward")} />
           {/* <label className={cn(
             "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer",
             direction === "inward" ? "text-foreground" : "text-muted-foreground",
@@ -209,208 +189,207 @@ function CreateDispatch() {
             <>
               <div className="h-6 w-px bg-hairline mx-1 hidden lg:block" />
               <div className="flex flex-wrap items-center gap-2 ml-auto w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-200">
-            <Select value={searchType} onValueChange={setSearchType}>
-              <SelectTrigger className="w-[160px] h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SEARCH_TYPES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-              <Input
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                placeholder={`Enter ${searchType}…`}
-                className="pl-8 h-9"
-              />
-            </div>
-            <Button size="sm" className="h-9 gap-1.5">
-              <Search className="size-3.5" /> Search
-            </Button>
+                <Select value={searchType} onValueChange={setSearchType}>
+                  <SelectTrigger className="w-[160px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEARCH_TYPES.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                  <Input
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    placeholder={`Enter ${searchType}…`}
+                    className="pl-8 h-9"
+                  />
+                </div>
+                <Button size="sm" className="h-9 gap-1.5">
+                  <Search className="size-3.5" /> Search
+                </Button>
               </div>
             </>
           )}
         </div>
-        {!direction && (
-          <p className="mt-3 text-[11.5px] text-muted-foreground">
-            Select a direction to continue.
-          </p>
-        )}
+        {!direction && <p className="mt-3 text-[11.5px] text-muted-foreground">Select a direction to continue.</p>}
         {direction && !sap && (
           <p className="mt-3 text-[11.5px] text-muted-foreground">
-            Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span> to continue.
+            Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span>{" "}
+            to continue.
           </p>
         )}
       </div>
 
       {sap && (
-      <>
-      {/* Editable table card */}
-      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-        <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
-          <div>
-            <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Dispatch Lines</h3>
-            <p className="text-[11.5px] text-muted-foreground mt-0.5">
-              {rows.length} row{rows.length === 1 ? "" : "s"} · auto-numbered
-            </p>
+        <>
+          {/* Editable table card */}
+          <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
+              <div>
+                <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+                  Dispatch Lines
+                </h3>
+                <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                  {rows.length} row{rows.length === 1 ? "" : "s"} · auto-numbered
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={addRow} className="gap-1.5 rounded-lg">
+                <Plus className="size-3.5" /> Add Row
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto scrollbar-elegant">
+              <table className="w-full text-[12.5px] border-collapse">
+                <thead className="bg-surface-2/80 sticky top-0 z-10 backdrop-blur">
+                  <tr className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground border-b border-hairline">
+                    {[
+                      "Sl.No",
+                      "Vehicle Type",
+                      "Work Order",
+                      "No Of Trucks",
+                      "No Of Invoices",
+                      "Vendor Code",
+                      "Transporter",
+                      "Plant",
+                      "Division",
+                      "No Of LRs",
+                      "LR Number",
+                      "Loading Points",
+                      "Unloading Points",
+                      "Remarks",
+                      "",
+                    ].map((h, i) => (
+                      <th
+                        key={i}
+                        className={cn(
+                          "px-3 py-3 text-left whitespace-nowrap",
+                          i === 0 && "w-14 text-center",
+                          i === 14 && "w-14 text-right",
+                        )}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline/60">
+                  {rows.map((row) => (
+                    <tr key={row.id} className="hover:bg-accent/[0.04] transition-colors group">
+                      <td className="px-3 py-1.5 text-center font-mono text-muted-foreground">{row.slNo}</td>
+                      <CellSelect
+                        value={row.vehicleType}
+                        options={VEHICLE_TYPES}
+                        onChange={(v) => updateRow(row.id, { vehicleType: v })}
+                        placeholder="Select"
+                        minWidth={160}
+                      />
+                      <CellInput
+                        value={row.workOrder}
+                        onChange={(v) => updateRow(row.id, { workOrder: v })}
+                        placeholder="WO-…"
+                        mono
+                      />
+                      <CellNumber value={row.noOfTrucks} onChange={(v) => updateRow(row.id, { noOfTrucks: v })} />
+                      <CellNumber value={row.noOfInvoices} onChange={(v) => updateRow(row.id, { noOfInvoices: v })} />
+                      <CellInput
+                        value={row.vendorCode}
+                        onChange={(v) => updateRow(row.id, { vendorCode: v })}
+                        placeholder="V-…"
+                        mono
+                      />
+                      <CellSelect
+                        value={row.transporter}
+                        options={TRANSPORTERS}
+                        onChange={(v) => updateRow(row.id, { transporter: v })}
+                        minWidth={160}
+                      />
+                      <CellSelect
+                        value={row.plant}
+                        options={PLANTS}
+                        onChange={(v) => updateRow(row.id, { plant: v })}
+                        minWidth={170}
+                      />
+                      <CellSelect
+                        value={row.division}
+                        options={DIVISIONS}
+                        onChange={(v) => updateRow(row.id, { division: v })}
+                        minWidth={150}
+                      />
+                      <CellNumber value={row.noOfLRs} onChange={(v) => updateRow(row.id, { noOfLRs: v })} />
+                      <CellInput
+                        value={row.lrNumber}
+                        onChange={(v) => updateRow(row.id, { lrNumber: v })}
+                        placeholder="LR-…"
+                        mono
+                      />
+                      <CellInput
+                        value={row.loadingPoints}
+                        onChange={(v) => updateRow(row.id, { loadingPoints: v })}
+                        placeholder="Loading"
+                      />
+                      <CellInput
+                        value={row.unloadingPoints}
+                        onChange={(v) => updateRow(row.id, { unloadingPoints: v })}
+                        placeholder="Unloading"
+                      />
+                      <CellInput
+                        value={row.remarks}
+                        onChange={(v) => updateRow(row.id, { remarks: v })}
+                        placeholder="Remarks"
+                      />
+                      <td className="px-3 py-1.5 text-right">
+                        <button
+                          onClick={() => deleteRow(row.id)}
+                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition"
+                          aria-label="Delete row"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td colSpan={15} className="px-6 py-10 text-center text-muted-foreground text-[12.5px]">
+                        No dispatch lines. Click <span className="font-semibold">Add Row</span> to begin.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <Button size="sm" variant="outline" onClick={addRow} className="gap-1.5 rounded-lg">
-            <Plus className="size-3.5" /> Add Row
-          </Button>
-        </div>
 
-        <div className="overflow-x-auto scrollbar-elegant">
-          <table className="w-full text-[12.5px] border-collapse">
-            <thead className="bg-surface-2/80 sticky top-0 z-10 backdrop-blur">
-              <tr className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground border-b border-hairline">
-                {[
-                  "Sl.No",
-                  "Vehicle Type",
-                  "Work Order",
-                  "No Of Trucks",
-                  "No Of Invoices",
-                  "Vendor Code",
-                  "Transporter",
-                  "Plant",
-                  "Division",
-                  "No Of LRs",
-                  "LR Number",
-                  "Loading Points",
-                  "Unloading Points",
-                  "Remarks",
-                  "",
-                ].map((h, i) => (
-                  <th
-                    key={i}
-                    className={cn(
-                      "px-3 py-3 text-left whitespace-nowrap",
-                      i === 0 && "w-14 text-center",
-                      i === 14 && "w-14 text-right",
-                    )}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-hairline/60">
-              {rows.map((row) => (
-                <tr key={row.id} className="hover:bg-accent/[0.04] transition-colors group">
-                  <td className="px-3 py-1.5 text-center font-mono text-muted-foreground">
-                    {row.slNo}
-                  </td>
-                  <CellSelect
-                    value={row.vehicleType}
-                    options={VEHICLE_TYPES}
-                    onChange={(v) => updateRow(row.id, { vehicleType: v })}
-                    placeholder="Select"
-                    minWidth={160}
-                  />
-                  <CellInput
-                    value={row.workOrder}
-                    onChange={(v) => updateRow(row.id, { workOrder: v })}
-                    placeholder="WO-…"
-                    mono
-                  />
-                  <CellNumber
-                    value={row.noOfTrucks}
-                    onChange={(v) => updateRow(row.id, { noOfTrucks: v })}
-                  />
-                  <CellNumber
-                    value={row.noOfInvoices}
-                    onChange={(v) => updateRow(row.id, { noOfInvoices: v })}
-                  />
-                  <CellInput
-                    value={row.vendorCode}
-                    onChange={(v) => updateRow(row.id, { vendorCode: v })}
-                    placeholder="V-…"
-                    mono
-                  />
-                  <CellSelect
-                    value={row.transporter}
-                    options={TRANSPORTERS}
-                    onChange={(v) => updateRow(row.id, { transporter: v })}
-                    minWidth={160}
-                  />
-                  <CellSelect
-                    value={row.plant}
-                    options={PLANTS}
-                    onChange={(v) => updateRow(row.id, { plant: v })}
-                    minWidth={170}
-                  />
-                  <CellSelect
-                    value={row.division}
-                    options={DIVISIONS}
-                    onChange={(v) => updateRow(row.id, { division: v })}
-                    minWidth={150}
-                  />
-                  <CellNumber
-                    value={row.noOfLRs}
-                    onChange={(v) => updateRow(row.id, { noOfLRs: v })}
-                  />
-                  <CellInput
-                    value={row.lrNumber}
-                    onChange={(v) => updateRow(row.id, { lrNumber: v })}
-                    placeholder="LR-…"
-                    mono
-                  />
-                  <CellInput
-                    value={row.loadingPoints}
-                    onChange={(v) => updateRow(row.id, { loadingPoints: v })}
-                    placeholder="Loading"
-                  />
-                  <CellInput
-                    value={row.unloadingPoints}
-                    onChange={(v) => updateRow(row.id, { unloadingPoints: v })}
-                    placeholder="Unloading"
-                  />
-                  <CellInput
-                    value={row.remarks}
-                    onChange={(v) => updateRow(row.id, { remarks: v })}
-                    placeholder="Remarks"
-                  />
-                  <td className="px-3 py-1.5 text-right">
-                    <button
-                      onClick={() => deleteRow(row.id)}
-                      className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition"
-                      aria-label="Delete row"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={15} className="px-6 py-10 text-center text-muted-foreground text-[12.5px]">
-                    No dispatch lines. Click <span className="font-semibold">Add Row</span> to begin.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Sticky footer actions */}
-      <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/90 backdrop-blur border-t border-hairline px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-end gap-2.5 z-10">
-        <Button variant="ghost" size="sm" className="gap-1.5 rounded-lg text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="size-3.5" /> Previous
-        </Button>
-        <Button variant="outline" size="sm" className="gap-1.5 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent">
-          <Save className="size-3.5" /> Save
-        </Button>
-        <Button size="sm" className="gap-1.5 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0">
-          Save &amp; Next <ChevronRight className="size-3.5" />
-        </Button>
-      </div>
-      </>
+          {/* Sticky footer actions */}
+          <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/90 backdrop-blur border-t border-hairline px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-end gap-2.5 z-10">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+            >
+              <ChevronLeft className="size-3.5" /> Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent"
+            >
+              <Save className="size-3.5" /> Save
+            </Button>
+            <Button
+              size="sm"
+              className="gap-1.5 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0"
+            >
+              Save &amp; Next <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );
@@ -433,9 +412,7 @@ function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: S
           onClick={() => onChange(m)}
           className={cn(
             "relative z-10 px-4 h-8 rounded-full font-semibold transition-colors min-w-[96px]",
-            value === m
-              ? "text-foreground"
-              : "text-muted-foreground hover:text-foreground",
+            value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
           {m === "with" ? "With SAP" : "Without SAP"}
@@ -445,15 +422,7 @@ function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: S
   );
 }
 
-function PremiumRadio({
-  label,
-  checked,
-  onSelect,
-}: {
-  label: string;
-  checked: boolean;
-  onSelect: () => void;
-}) {
+function PremiumRadio({ label, checked, onSelect }: { label: string; checked: boolean; onSelect: () => void }) {
   return (
     <button
       type="button"
@@ -509,13 +478,7 @@ function CellInput({
   );
 }
 
-function CellNumber({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-}) {
+function CellNumber({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
     <td className="px-2 py-1.5">
       <input
@@ -599,60 +562,61 @@ function SearchDispatch() {
 
         {!sap && (
           <div className="p-6 text-center text-[12.5px] text-muted-foreground">
-            Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span> to view filters.
+            Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span>{" "}
+            to view filters.
           </div>
         )}
 
         {sap && (
-        <>
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
-          <DateField label="From Date" value={fromDate} onChange={setFromDate} />
-          <DateField label="To Date" value={toDate} onChange={setToDate} />
-          <SelectField
-            label="Plant"
-            value={plant}
-            onChange={setPlant}
-            options={PLANTS}
-            placeholder="Select Plant"
-          />
-          <SelectField
-            label="Division"
-            value={division}
-            onChange={setDivision}
-            options={DIVISIONS}
-            placeholder="Select Division"
-          />
-          <SelectField
-            label="Transporter"
-            value={transporter}
-            onChange={setTransporter}
-            options={TRANSPORTERS}
-            placeholder="Select Transporter"
-          />
-          <SelectField
-            label="Vehicle Type"
-            value={vehicleType}
-            onChange={setVehicleType}
-            options={VEHICLE_TYPES}
-            placeholder="Select Vehicle Type"
-          />
-        </div>
+          <>
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+              <DateField label="From Date" value={fromDate} onChange={setFromDate} />
+              <DateField label="To Date" value={toDate} onChange={setToDate} />
+              <SelectField
+                label="Plant"
+                value={plant}
+                onChange={setPlant}
+                options={PLANTS}
+                placeholder="Select Plant"
+              />
+              <SelectField
+                label="Division"
+                value={division}
+                onChange={setDivision}
+                options={DIVISIONS}
+                placeholder="Select Division"
+              />
+              <SelectField
+                label="Transporter"
+                value={transporter}
+                onChange={setTransporter}
+                options={TRANSPORTERS}
+                placeholder="Select Transporter"
+              />
+              <SelectField
+                label="Vehicle Type"
+                value={vehicleType}
+                onChange={setVehicleType}
+                options={VEHICLE_TYPES}
+                placeholder="Select Vehicle Type"
+              />
+            </div>
 
-        <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
-          <Button variant="ghost" size="sm" onClick={onReset}>
-            Reset
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <FileText className="size-3.5" /> Download PDF
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <FileDown className="size-3.5 text-emerald-600" /> Download Excel
-          </Button>
-          <Button size="sm" onClick={onApply} className="gap-1.5">
-            <Filter className="size-3.5" /> Apply Filter
-          </Button>
-        </div>
-        </>
+            <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
+              <Button variant="ghost" size="sm" onClick={onReset}>
+                Reset
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <FileText className="size-3.5" /> Download PDF
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <FileDown className="size-3.5 text-emerald-600" /> Download Excel
+              </Button>
+              <Button size="sm" onClick={onApply} className="gap-1.5">
+                <Filter className="size-3.5" /> Apply Filter
+              </Button>
+            </div>
+          </>
         )}
       </div>
 
@@ -663,12 +627,10 @@ function SearchDispatch() {
           <div className="mx-auto size-12 grid place-items-center rounded-full bg-muted text-muted-foreground">
             <Filter className="size-5" />
           </div>
-          <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
-            No results yet
-          </h3>
+          <h3 className="mt-4 font-display text-lg font-semibold text-foreground">No results yet</h3>
           <p className="mt-1 text-[12.5px] text-muted-foreground max-w-md mx-auto">
-            Choose your filters above and click <span className="font-semibold">Apply Filter</span>{" "}
-            to load dispatch records.
+            Choose your filters above and click <span className="font-semibold">Apply Filter</span> to load dispatch
+            records.
           </p>
         </div>
       )}
@@ -687,17 +649,12 @@ function DateField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </label>
+      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</label>
       <Popover>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={cn(
-              "h-10 justify-start text-left font-normal",
-              !value && "text-muted-foreground",
-            )}
+            className={cn("h-10 justify-start text-left font-normal", !value && "text-muted-foreground")}
           >
             <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
             {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
@@ -732,9 +689,7 @@ function SelectField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </label>
+      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="h-10">
           <SelectValue placeholder={placeholder} />
@@ -772,9 +727,7 @@ function ResultsTable() {
       if (typeof av === "number" && typeof bv === "number") {
         return sortDir === "asc" ? av - bv : bv - av;
       }
-      return sortDir === "asc"
-        ? String(av).localeCompare(String(bv))
-        : String(bv).localeCompare(String(av));
+      return sortDir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
     });
     return sorted;
   }, [query, sortKey, sortDir]);
@@ -867,13 +820,7 @@ function ResultsTable() {
           </thead>
           <tbody className="divide-y divide-hairline/70">
             {paged.map((r, idx) => (
-              <tr
-                key={r.id}
-                className={cn(
-                  "hover:bg-accent/5 transition-colors",
-                  idx % 2 === 1 && "bg-muted/20",
-                )}
-              >
+              <tr key={r.id} className={cn("hover:bg-accent/5 transition-colors", idx % 2 === 1 && "bg-muted/20")}>
                 {cols.map((c) => {
                   const v = r[c.key];
                   if (c.key === "vehicleType") {
