@@ -3,17 +3,9 @@ import { Search, MoreVertical, Save, ChevronLeft, ChevronRight } from "lucide-re
 
 const GREEN_INPUT =
   "h-9 w-full rounded-md bg-white dark:bg-surface border border-emerald-400/70 px-2.5 text-[12.5px] text-emerald-700 dark:text-emerald-300 font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/30";
-const LABEL =
-  "block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mb-1";
+const LABEL = "block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mb-1";
 
-const SEARCH_OPTIONS = [
-  "Reference",
-  "Invoice",
-  "ODN",
-  "SO Number",
-  "Work Order",
-  "LR Number",
-];
+const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
 
 type FieldSpec = {
   label: string;
@@ -69,9 +61,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [revealed, setRevealed] = useState(false);
   const showFields = isWithout || revealed;
-  const fields = isWithout
-    ? ([{ label: "Invoice Number", value: "" }, ...BASE_FIELDS] as FieldSpec[])
-    : BASE_FIELDS;
+  const fields = isWithout ? ([{ label: "Invoice Number", value: "" }, ...BASE_FIELDS] as FieldSpec[]) : BASE_FIELDS;
 
   return (
     <div className="space-y-4">
@@ -111,13 +101,21 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               </td>
               <td className="px-3 py-2 text-center">1</td>
               <td className="px-3 py-2">
-                <input defaultValue={isWithout ? "" : "1000000001"} placeholder="Enter Ref. No." className={GREEN_INPUT + " text-center"} />
+                <input
+                  defaultValue={isWithout ? "" : ""}
+                  placeholder="Enter Ref. No."
+                  className={GREEN_INPUT + " text-center"}
+                />
               </td>
               <td className="px-3 py-2">
                 <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
               </td>
               <td className="px-3 py-2">
-                <input defaultValue={isWithout ? "" : "1234"} placeholder="Enter LR No." className={GREEN_INPUT + " text-center"} />
+                <input
+                  defaultValue={isWithout ? "" : ""}
+                  placeholder="Enter LR No."
+                  className={GREEN_INPUT + " text-center"}
+                />
               </td>
               <td className="px-3 py-2">
                 <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />

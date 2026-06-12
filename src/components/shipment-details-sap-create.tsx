@@ -3,17 +3,9 @@ import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, Plus, X } from "
 
 const GREEN_INPUT =
   "h-9 w-full rounded-md bg-white dark:bg-surface border border-emerald-400/70 px-2.5 text-[12.5px] text-emerald-700 dark:text-emerald-300 font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/30";
-const LABEL =
-  "block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mb-1";
+const LABEL = "block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mb-1";
 
-const SEARCH_OPTIONS = [
-  "Reference",
-  "Invoice",
-  "ODN",
-  "SO Number",
-  "Work Order",
-  "LR Number",
-];
+const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
 
 const INCOTERMS = ["FOR", "FOB", "CIF", "EXW", "DAP"];
 const INSURANCE_SCOPE = ["Buyer", "Transit Insurance", "Open Policy", "Self Insured"];
@@ -106,16 +98,16 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
               </td>
               <td className="px-3 py-2 text-center">1</td>
               <td className="px-3 py-2">
-                <input defaultValue="101" className={GREEN_INPUT + " text-center"} />
+                <input defaultValue="" className={GREEN_INPUT + " text-center"} />
               </td>
               <td className="px-3 py-2">
-                <input defaultValue="1000000001" className={GREEN_INPUT + " text-center"} />
+                <input defaultValue="" className={GREEN_INPUT + " text-center"} />
               </td>
               <td className="px-3 py-2">
                 <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
               </td>
               <td className="px-3 py-2">
-                <input defaultValue="1234" className={GREEN_INPUT + " text-center"} />
+                <input defaultValue="" className={GREEN_INPUT + " text-center"} />
               </td>
               <td className="px-3 py-2">
                 <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
@@ -134,25 +126,25 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
       <div className="bg-surface border border-hairline rounded-xl p-3 shadow-elegant">
         <div className="flex flex-wrap items-end gap-3">
           {!isWithout && (
-          <>
-          <div className="flex-1 min-w-[220px]">
-            <label className={LABEL}>Invoice Number</label>
-            <input
-              value={invoiceNumber}
-              onChange={(e) => setInvoiceNumber(e.target.value)}
-              className={GREEN_INPUT}
-            />
-          </div>
-          <button
-            onClick={() => {
-              if (invoiceNumber.trim()) setRevealed(true);
-            }}
-            disabled={!invoiceNumber.trim()}
-            className="h-9 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
-          >
-            GET
-          </button>
-          </>
+            <>
+              <div className="flex-1 min-w-[220px]">
+                <label className={LABEL}>Invoice Number</label>
+                <input
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  className={GREEN_INPUT}
+                />
+              </div>
+              <button
+                onClick={() => {
+                  if (invoiceNumber.trim()) setRevealed(true);
+                }}
+                disabled={!invoiceNumber.trim()}
+                className="h-9 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
+              >
+                GET
+              </button>
+            </>
           )}
           <div className="min-w-[160px]">
             <select
@@ -196,15 +188,27 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
               <div>
                 <label className={LABEL}>Incoterms</label>
                 <select defaultValue="" className={GREEN_INPUT}>
-                  <option value="" disabled>Select</option>
-                  {INCOTERMS.map((o) => <option key={o} value={o}>{o}</option>)}
+                  <option value="" disabled>
+                    Select
+                  </option>
+                  {INCOTERMS.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className={LABEL}>Insurance Scope</label>
                 <select defaultValue="" className={GREEN_INPUT}>
-                  <option value="" disabled>Select</option>
-                  {INSURANCE_SCOPE.map((o) => <option key={o} value={o}>{o}</option>)}
+                  <option value="" disabled>
+                    Select
+                  </option>
+                  {INSURANCE_SCOPE.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -258,8 +262,14 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         onChange={(e) => updateLineItem(row.id, { mapId: e.target.value })}
                         className={GREEN_INPUT}
                       >
-                        <option value="" disabled>Select</option>
-                        {MAP_IDS.map((o) => <option key={o} value={o}>{o}</option>)}
+                        <option value="" disabled>
+                          Select
+                        </option>
+                        {MAP_IDS.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td className="px-2 py-2">
@@ -268,8 +278,14 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         onChange={(e) => updateLineItem(row.id, { product: e.target.value })}
                         className={GREEN_INPUT}
                       >
-                        <option value="" disabled>Select Product</option>
-                        {PRODUCTS.map((o) => <option key={o} value={o}>{o}</option>)}
+                        <option value="" disabled>
+                          Select Product
+                        </option>
+                        {PRODUCTS.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td className="px-2 py-2">
@@ -278,8 +294,14 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         onChange={(e) => updateLineItem(row.id, { materialType: e.target.value })}
                         className={GREEN_INPUT}
                       >
-                        <option value="" disabled>Select Type</option>
-                        {MATERIAL_TYPES.map((o) => <option key={o} value={o}>{o}</option>)}
+                        <option value="" disabled>
+                          Select Type
+                        </option>
+                        {MATERIAL_TYPES.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td className="px-2 py-2">
@@ -321,8 +343,14 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         onChange={(e) => updateLineItem(row.id, { batteryCondition: e.target.value })}
                         className={GREEN_INPUT}
                       >
-                        <option value="" disabled>Select</option>
-                        {BATTERY_CONDITIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                        <option value="" disabled>
+                          Select
+                        </option>
+                        {BATTERY_CONDITIONS.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td className="px-2 py-2">
