@@ -1,37 +1,16 @@
 ## Goal
-Make the UI denser across the app: shorter inputs, tighter table rows, and less space between cards/sections.
+Make header and footer fixed; only the page content scrolls. Remove the "SAP S/4HANA · Connected" pill and show only "2026 © Sharviinfotech · All Rights Reserved" in a single app-level footer.
 
 ## Changes
 
-### 1. Input height (h-9 → h-7)
-In all SAP-create components and shared inputs, drop input/select/button-in-row height from `h-9` to `h-7`, font from `text-[12.5px]` to `text-[12px]`, padding `px-2.5` → `px-2`, label margin `mb-1` → `mb-0.5`.
+1. **`src/components/le-footer.tsx`** — Remove the SAP S/4HANA connected chip. Keep only the copyright text, centered (or right-aligned, matching current style). Simplify to one line.
 
-Files:
-- `src/components/order-info-sap-create.tsx`
-- `src/components/segment-info-sap-create.tsx`
-- `src/components/transit-info-sap-create.tsx`
-- `src/components/transit-damage-info-sap-create.tsx`
-- `src/components/insurance-claim-tracking-sap-create.tsx`
-- `src/components/freight-billing-sap-create.tsx`
-- `src/components/shipment-details-sap-create.tsx`
-- `src/components/invoice-load-details-sap-create.tsx`
-- `src/components/service-level-sap-create.tsx`
-- `src/components/vehicle-info-sap-create.tsx`
-- `src/components/le-screen-shell.tsx` (any inline h-9 inputs/search bars)
-- `src/components/ui/input.tsx` already h-7 — leave.
+2. **`src/components/app-shell.tsx`** — Add `<LeFooter />` below `<main>` so it's app-wide and fixed at the bottom of the viewport. Layout already uses `h-screen overflow-hidden` with `<main className="flex-1 overflow-y-auto">`, so adding the footer as a sibling of `<main>` (non-shrinking) keeps TopBar fixed at top, footer fixed at bottom, and only main scrolls.
 
-### 2. Table spacing
-- `src/components/data-table.tsx`: header `py-1` → `py-0.5`, cells already `py-0.5` (leave).
-- `src/components/ui/table.tsx`: `TableHead` `h-7` → `h-6`, `TableCell` `py-0.5` → `py-0` (keep `leading-tight`).
-- In all `*-sap-create.tsx` selection tables: `py-1.5` header → `py-1`, `py-1` cell → `py-0.5`.
-
-### 3. Card / section spacing
-- Reduce vertical rhythm: `space-y-4` → `space-y-2` on the root wrappers of all SAP-create components and `le-screen-shell.tsx` main column.
-- Card padding: `p-5` → `p-3` and `p-3` → `p-2` on the field-grid and lookup-bar containers across the same files.
-- `pt-2` footer action bars unchanged.
+3. **`src/components/le-screen-shell.tsx`** — Remove the per-page `<LeFooter />` render (and its import) so the footer isn't duplicated. Any other places rendering `<LeFooter />` get the same treatment.
 
 ## Out of scope
-- No color changes, no grid-column changes, no logic changes.
+No changes to colors, header, sidebar, or page content.
 
 ## Verification
-Screenshot `/order-info`, `/transit-info`, `/shipment-details` at current viewport — confirm shorter inputs, tighter rows, and smaller gaps between the selection table, lookup bar, and field grid cards.
+Screenshot `/order-info` — confirm fixed top bar, fixed footer with only the copyright line, and scrollable middle content.
