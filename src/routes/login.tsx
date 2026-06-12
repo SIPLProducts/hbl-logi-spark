@@ -225,7 +225,7 @@ function LoginPage() {
         ))}
 
         {/* Dot indicators */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-[120px] z-10 flex items-center gap-2">
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-6 z-10 flex items-center gap-2">
           {slides.map((s, i) => (
             <button
               key={s.url}
@@ -240,29 +240,6 @@ function LoginPage() {
               }
             />
           ))}
-        </div>
-
-        {/* Bottom branding band */}
-        <div className="absolute inset-x-0 bottom-0 bg-white/95 backdrop-blur-sm border-t border-slate-200">
-          <div className="px-10 py-6 flex items-end justify-between gap-6">
-            <div>
-              <h2 className="font-display text-[clamp(28px,3.2vw,44px)] font-bold leading-[1.05] tracking-tight text-slate-900 uppercase">
-                Logistic
-                <br />
-                Execution Module
-              </h2>
-            </div>
-            <div className="flex flex-col items-end shrink-0">
-              <img
-                src={hblLogo.url}
-                alt="HBL"
-                className="h-12 w-auto object-contain"
-              />
-              <span className="mt-1 text-[10.5px] uppercase tracking-[0.18em] text-slate-500">
-                HBL Engineering Limited
-              </span>
-            </div>
-          </div>
         </div>
       </aside>
     </main>
