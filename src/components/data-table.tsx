@@ -36,7 +36,7 @@ export function DataTable<T extends { id: string | number }>({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground">
+            <tr className="bg-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground">
               {columns.map((c) => (
                 <th
                   key={c.key}

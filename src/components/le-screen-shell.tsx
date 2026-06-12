@@ -292,7 +292,7 @@ export function LeScreenShell({
                 <div className="overflow-x-auto scrollbar-elegant">
                   <table className="w-full text-[11.5px]">
                     <thead>
-                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                      <tr className="bg-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
                         {lineItems.columns.map((c) => (
                           <th key={c} className="px-2 py-1 text-left">
                             {c}
@@ -455,7 +455,7 @@ export function LeScreenShell({
               <div className="overflow-x-auto scrollbar-elegant">
                 <table className="w-full text-left border-collapse text-[12.5px]">
                   <thead>
-                    <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
+                    <tr className="bg-primary text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
                       <th className="px-2 py-1.5 w-10 text-center">
                         <input type="checkbox" className="accent-accent" />
                       </th>
