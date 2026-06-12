@@ -210,21 +210,19 @@ function LoginPage() {
       </section>
 
       {/* Right panel — slideshow */}
-      <aside className="relative hidden md:block overflow-hidden bg-slate-100">
-        <div className="absolute inset-0 p-6 pb-[140px]">
-          {slides.map((s, i) => (
-            <img
-              key={s.url}
-              src={s.url}
-              alt={s.alt}
-              loading={i === 0 ? "eager" : "lazy"}
-              className={
-                "absolute inset-0 size-full object-contain p-6 pb-[140px] transition-opacity duration-700 ease-in-out " +
-                (i === slideIndex ? "opacity-100" : "opacity-0")
-              }
-            />
-          ))}
-        </div>
+      <aside className="relative hidden md:block overflow-hidden">
+        {slides.map((s, i) => (
+          <img
+            key={s.url}
+            src={s.url}
+            alt={s.alt}
+            loading={i === 0 ? "eager" : "lazy"}
+            className={
+              "absolute inset-0 size-full object-contain transition-opacity duration-700 ease-in-out " +
+              (i === slideIndex ? "opacity-100" : "opacity-0")
+            }
+          />
+        ))}
 
         {/* Dot indicators */}
         <div className="absolute left-1/2 -translate-x-1/2 bottom-[120px] z-10 flex items-center gap-2">
