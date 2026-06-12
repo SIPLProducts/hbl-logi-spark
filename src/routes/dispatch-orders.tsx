@@ -184,7 +184,7 @@ function DispatchOrdersPage() {
             </h2>
           </header>
           <div className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   From Date <span className="text-destructive">*</span>
@@ -218,21 +218,21 @@ function DispatchOrdersPage() {
                   Completed: <span className="font-mono font-bold">{counts.completed}</span>
                 </span>
               </div>
+            </div>
 
-              <div className="flex items-center justify-end gap-2 flex-wrap">
-                <button
-                  onClick={onClear}
-                  className="inline-flex items-center gap-1.5 px-3 h-9 text-[12.5px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted"
-                >
-                  <RotateCcw className="size-3.5" /> Clear Filters
-                </button>
-                <button
-                  onClick={onExecute}
-                  className="inline-flex items-center gap-1.5 px-4 h-9 text-[12.5px] font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm"
-                >
-                  <Play className="size-3.5" /> Execute Report
-                </button>
-              </div>
+            <div className="mt-4 flex items-center justify-end gap-2 flex-wrap">
+              <button
+                onClick={onClear}
+                className="inline-flex items-center gap-1.5 px-3 h-9 text-[12.5px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted"
+              >
+                <RotateCcw className="size-3.5" /> Clear Filters
+              </button>
+              <button
+                onClick={onExecute}
+                className="inline-flex items-center gap-1.5 px-4 h-9 text-[12.5px] font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm"
+              >
+                <Play className="size-3.5" /> Execute Report
+              </button>
             </div>
 
             {error && (
