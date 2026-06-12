@@ -112,8 +112,8 @@ export function LeScreenShell({
 }) {
   const [tab, setTab] = useState<"create" | "search">("create");
   const [selectedId, setSelectedId] = useState<string>(rows[0]?.id ?? "");
-  const [direction, setDirection] = useState<"outward" | "inward">("outward");
-  const [sap, setSap] = useState<SapMode>("with");
+  const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
+  const [sap, setSap] = useState<SapMode | null>(null);
   const [searchType, setSearchType] = useState<(typeof SEARCH_TYPES)[number]>("Reference");
   const [searchValue, setSearchValue] = useState("");
 
@@ -203,26 +203,25 @@ export function LeScreenShell({
       <div className="flex-1 px-3 sm:px-4 lg:px-6 py-2">
           {/* ───────── Create tab ───────── */}
           <TabsContent value="create" className="mt-0 space-y-2">
-            {/* Direction + SAP */}
-            <div className="bg-surface border border-hairline rounded-lg px-2.5 py-1.5 shadow-soft">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                  Direction
-                </span>
-                <PremiumRadio
-                  label="Outward"
-                  checked={direction === "outward"}
-                  onSelect={() => setDirection("outward")}
-                />
-                {/* <PremiumRadio
-                  label="Inward"
-                  checked={direction === "inward"}
-                  onSelect={() => setDirection("inward")}
-                /> */}
-                <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
-                <SapToggle value={sap} onChange={setSap} />
-                {renderDirectionExtras?.({ sap, direction })}
-                <div className="ml-auto flex items-center gap-1.5">
+             {/* Direction + SAP */}
+             <div className="bg-surface border border-hairline rounded-lg px-2.5 py-1.5 shadow-soft">
+               <div className="flex flex-wrap items-center gap-2">
+                 <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                   Direction
+                 </span>
+                 <PremiumRadio
+                   label="Outward"
+                   checked={direction === "outward"}
+                   onSelect={() => setDirection("outward")}
+                 />
+                 {direction && (
+                   <>
+                     <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
+                     <SapToggle value={sap} onChange={setSap} />
+                   </>
+                 )}
+                 {direction && sap && renderDirectionExtras?.({ sap, direction })}
+                 <div className="ml-auto flex items-center gap-1.5">
                   <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-amber-300/60 bg-amber-100 dark:bg-amber-500/15 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
                     <span className="size-1.5 rounded-full bg-warning" />
                     Pending
@@ -233,11 +232,19 @@ export function LeScreenShell({
                     Completed
                     <span className="font-mono">{counts.completed}</span>
                   </span>
-                </div>
-              </div>
-            </div>
+                 </div>
+               </div>
+               {!direction && (
+                 <p className="mt-1.5 text-[11px] text-muted-foreground">Select a direction to continue.</p>
+               )}
+               {direction && !sap && (
+                 <p className="mt-1.5 text-[11px] text-muted-foreground">
+                   Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span> to continue.
+                 </p>
+               )}
+             </div>
 
-            {(() => {
+            {direction && sap && (() => {
               const override = renderCreateBody?.({ sap, direction });
               if (override) return override;
               return (
@@ -331,7 +338,7 @@ export function LeScreenShell({
             {children}
 
             {/* Action bar */}
-            {!(renderCreateBody && renderCreateBody({ sap, direction })) && (
+            {direction && sap && !(renderCreateBody && renderCreateBody({ sap, direction })) && (
             <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/95 backdrop-blur border-t border-hairline px-6 py-3 flex items-center justify-end gap-2 z-10">
               <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
                 <ChevronLeft className="size-3.5" /> Save and Previous
