@@ -150,7 +150,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                   if (invoiceNumber.trim()) setRevealed(true);
                 }}
                 disabled={!invoiceNumber.trim()}
-                className="h-7 px-4 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
+                className="h-7 px-4 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
               >
                 GET
               </button>
