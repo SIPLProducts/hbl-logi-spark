@@ -209,9 +209,9 @@ function LoginPage() {
         </p>
       </section>
 
-      {/* Right panel — collage */}
-      <aside className="relative hidden md:block overflow-hidden bg-slate-900">
-        <div className="absolute inset-0">
+      {/* Right panel — slideshow */}
+      <aside className="relative hidden md:block overflow-hidden bg-slate-100">
+        <div className="absolute inset-0 p-6 pb-[140px]">
           {slides.map((s, i) => (
             <img
               key={s.url}
@@ -219,16 +219,15 @@ function LoginPage() {
               alt={s.alt}
               loading={i === 0 ? "eager" : "lazy"}
               className={
-                "absolute inset-0 size-full object-cover transition-opacity duration-700 ease-in-out " +
+                "absolute inset-0 size-full object-contain p-6 pb-[140px] transition-opacity duration-700 ease-in-out " +
                 (i === slideIndex ? "opacity-100" : "opacity-0")
               }
             />
           ))}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/40 pointer-events-none" />
         </div>
 
         {/* Dot indicators */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-[140px] z-10 flex items-center gap-2">
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-[120px] z-10 flex items-center gap-2">
           {slides.map((s, i) => (
             <button
               key={s.url}
@@ -238,8 +237,8 @@ function LoginPage() {
               className={
                 "h-2 rounded-full transition-all " +
                 (i === slideIndex
-                  ? "w-6 bg-white"
-                  : "w-2 bg-white/50 hover:bg-white/80")
+                  ? "w-6 bg-slate-800"
+                  : "w-2 bg-slate-400 hover:bg-slate-600")
               }
             />
           ))}
