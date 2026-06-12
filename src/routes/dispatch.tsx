@@ -149,10 +149,10 @@ function CreateDispatch() {
     setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-2">
       {/* Toolbar */}
-      <div className="bg-surface border border-hairline rounded-2xl p-5 shadow-elegant">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="bg-surface border border-hairline rounded-lg px-2.5 py-1.5 shadow-soft">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Direction</span>
           <PremiumRadio label="Outward" checked={direction === "outward"} onSelect={() => setDirection("outward")} />
           {/* <label className={cn(
@@ -171,18 +171,16 @@ function CreateDispatch() {
           {direction && (
             <>
               <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
-              <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-                <SapToggle value={sap} onChange={setSap} />
-              </div>
+              <SapToggle value={sap} onChange={setSap} />
             </>
           )}
 
           {sap && (
             <>
               <div className="h-6 w-px bg-hairline mx-1 hidden lg:block" />
-              <div className="flex flex-wrap items-center gap-2 ml-auto w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex flex-wrap items-center gap-1.5 ml-auto w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-200">
                 <Select value={searchType} onValueChange={setSearchType}>
-                  <SelectTrigger className="w-[160px] h-9">
+                  <SelectTrigger className="w-[150px] h-7 text-[11px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -193,25 +191,25 @@ function CreateDispatch() {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <div className="relative flex-1 min-w-[180px]">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
                   <Input
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
                     placeholder={`Enter ${searchType}…`}
-                    className="pl-8 h-9"
+                    className="pl-7 h-7 text-[11px]"
                   />
                 </div>
-                <Button size="sm" className="h-9 gap-1.5">
-                  <Search className="size-3.5" /> Search
+                <Button size="sm" className="h-7 gap-1 text-[11px] px-2.5">
+                  <Search className="size-3" /> Search
                 </Button>
               </div>
             </>
           )}
         </div>
-        {!direction && <p className="mt-3 text-[11.5px] text-muted-foreground">Select a direction to continue.</p>}
+        {!direction && <p className="mt-1.5 text-[11px] text-muted-foreground">Select a direction to continue.</p>}
         {direction && !sap && (
-          <p className="mt-3 text-[11.5px] text-muted-foreground">
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
             Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span>{" "}
             to continue.
           </p>
