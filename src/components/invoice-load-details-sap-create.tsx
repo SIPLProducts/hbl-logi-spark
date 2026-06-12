@@ -3,17 +3,9 @@ import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, Plus, X, Calenda
 
 const GREEN_INPUT =
   "h-9 w-full rounded-md bg-white dark:bg-surface border border-emerald-400/70 px-2.5 text-[12.5px] text-emerald-700 dark:text-emerald-300 font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/30";
-const LABEL =
-  "block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mb-1";
+const LABEL = "block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mb-1";
 
-const SEARCH_OPTIONS = [
-  "Reference",
-  "Invoice",
-  "ODN",
-  "SO Number",
-  "Work Order",
-  "LR Number",
-];
+const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
 
 const MAP_IDS = ["101", "102", "200"];
 const TRUCK_TYPES = ["Open Body", "Container", "Trailer", "Mini Truck"];
@@ -113,14 +105,14 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
               <td className="px-3 py-2 text-center">1</td>
               <td className="px-3 py-2">
                 <input
-                  defaultValue={isWithout ? "" : "101"}
+                  defaultValue={isWithout ? "" : ""}
                   placeholder="Enter Map ID"
                   className={GREEN_INPUT + " text-center"}
                 />
               </td>
               <td className="px-3 py-2">
                 <input
-                  defaultValue={isWithout ? "" : "1000000001"}
+                  defaultValue={isWithout ? "" : ""}
                   placeholder="Enter Ref. No."
                   className={GREEN_INPUT + " text-center"}
                 />
@@ -180,7 +172,9 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
             >
               <option value="">Select</option>
               {SEARCH_OPTIONS.map((o) => (
-                <option key={o} value={o}>{o}</option>
+                <option key={o} value={o}>
+                  {o}
+                </option>
               ))}
             </select>
           </div>
@@ -233,9 +227,21 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                     <th className="px-2 py-2.5 text-center w-14">Sl.No</th>
                     <th className="px-2 py-2.5 text-center">Map ID</th>
                     <th className="px-2 py-2.5 text-center">Truck Type</th>
-                    <th className="px-2 py-2.5 text-center">Passing Weight<br/>(Tons)</th>
-                    <th className="px-2 py-2.5 text-center">Actual Load<br/>(Tons)</th>
-                    <th className="px-2 py-2.5 text-center">Loading factor%<br/>(w.r.t weight)</th>
+                    <th className="px-2 py-2.5 text-center">
+                      Passing Weight
+                      <br />
+                      (Tons)
+                    </th>
+                    <th className="px-2 py-2.5 text-center">
+                      Actual Load
+                      <br />
+                      (Tons)
+                    </th>
+                    <th className="px-2 py-2.5 text-center">
+                      Loading factor%
+                      <br />
+                      (w.r.t weight)
+                    </th>
                     <th className="px-2 py-2.5 text-center">Actual Volume Occupied</th>
                     <th className="px-2 py-2.5 text-center">Loading Factor w.r.t Volume</th>
                     <th className="px-2 py-2.5 text-center">Week Wise Shipment Flow</th>
@@ -262,8 +268,14 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                           onChange={(e) => updateRow(row.id, { mapId: e.target.value })}
                           className={GREEN_INPUT}
                         >
-                          <option value="" disabled>Select</option>
-                          {MAP_IDS.map((o) => <option key={o} value={o}>{o}</option>)}
+                          <option value="" disabled>
+                            Select
+                          </option>
+                          {MAP_IDS.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
                         </select>
                       </td>
                       <td className="px-2 py-2">
@@ -273,7 +285,11 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                           className={GREEN_INPUT}
                         >
                           <option value="">-- Select Vehicle Type</option>
-                          {TRUCK_TYPES.map((o) => <option key={o} value={o}>{o}</option>)}
+                          {TRUCK_TYPES.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
                         </select>
                       </td>
                       <td className="px-2 py-2">
@@ -319,7 +335,11 @@ export function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" |
                           onChange={(e) => updateRow(row.id, { week: e.target.value })}
                           className={GREEN_INPUT}
                         >
-                          {WEEKS.map((o) => <option key={o} value={o}>{o}</option>)}
+                          {WEEKS.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
                         </select>
                       </td>
                       <td className="px-2 py-2">
