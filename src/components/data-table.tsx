@@ -36,12 +36,12 @@ export function DataTable<T extends { id: string | number }>({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-zinc-50/60 text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-zinc-200">
+            <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground">
               {columns.map((c) => (
                 <th
                   key={c.key}
                   className={
-                    "px-4 py-3 " +
+                    "px-2 py-1.5 " +
                     (c.align === "right"
                       ? "text-right"
                       : c.align === "center"
@@ -55,7 +55,7 @@ export function DataTable<T extends { id: string | number }>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-100 text-[12.5px]">
+          <tbody className="divide-y divide-zinc-100 text-[12px]">
             {rows.length === 0 ? (
               <tr>
                 <td
@@ -72,7 +72,7 @@ export function DataTable<T extends { id: string | number }>({
                     <td
                       key={c.key}
                       className={
-                        "px-4 py-3 align-middle " +
+                        "px-2 py-1 align-middle " +
                         (c.align === "right"
                           ? "text-right"
                           : c.align === "center"

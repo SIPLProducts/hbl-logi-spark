@@ -292,7 +292,7 @@ export function LeScreenShell({
                 <div className="overflow-x-auto scrollbar-elegant">
                   <table className="w-full text-[11.5px]">
                     <thead>
-                      <tr className="bg-surface-2/80 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
+                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
                         {lineItems.columns.map((c) => (
                           <th key={c} className="px-2 py-1 text-left">
                             {c}
@@ -305,7 +305,7 @@ export function LeScreenShell({
                       {lineItems.rows.map((row, i) => (
                         <tr key={i} className="hover:bg-accent/[0.04]">
                           {row.map((cell, j) => (
-                            <td key={j} className="px-2 py-1">
+                            <td key={j} className="px-2 py-0.5">
                               {typeof cell === "number" ? (
                                 <span className="font-mono">{cell}</span>
                               ) : (
@@ -313,7 +313,7 @@ export function LeScreenShell({
                               )}
                             </td>
                           ))}
-                          <td className="px-2 py-1 text-right">
+                          <td className="px-2 py-0.5 text-right">
                             <button className="text-muted-foreground hover:text-destructive">
                               <Trash2 className="size-3.5" />
                             </button>
@@ -455,19 +455,19 @@ export function LeScreenShell({
               <div className="overflow-x-auto scrollbar-elegant">
                 <table className="w-full text-left border-collapse text-[12.5px]">
                   <thead>
-                    <tr className="bg-surface-2/80 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground border-b border-hairline">
-                      <th className="px-3 py-3 w-10 text-center">
+                    <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
+                      <th className="px-2 py-1.5 w-10 text-center">
                         <input type="checkbox" className="accent-accent" />
                       </th>
                       {columns.map((c) => (
                         <th
                           key={c.key as string}
-                          className={"px-3 py-3 whitespace-nowrap " + (c.className ?? "")}
+                          className={"px-2 py-1.5 whitespace-nowrap " + (c.className ?? "")}
                         >
                           {c.header}
                         </th>
                       ))}
-                      <th className="px-3 py-3 w-28 text-right">Actions</th>
+                      <th className="px-2 py-1.5 w-28 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-hairline/60">
@@ -480,7 +480,7 @@ export function LeScreenShell({
                         }
                         onClick={() => setSelectedId(r.id)}
                       >
-                        <td className="px-3 py-2.5 text-center">
+                        <td className="px-2 py-1 text-center">
                           <input
                             type="radio"
                             checked={selectedId === r.id}
@@ -489,28 +489,28 @@ export function LeScreenShell({
                           />
                         </td>
                         {columns.map((c) => (
-                          <td key={c.key as string} className="px-3 py-2.5 whitespace-nowrap">
+                          <td key={c.key as string} className="px-2 py-1 whitespace-nowrap">
                             {c.render
                               ? c.render(r)
                               : ((r as Record<string, unknown>)[c.key as string] as ReactNode)}
                           </td>
                         ))}
-                        <td className="px-3 py-2.5 text-right">
+                        <td className="px-2 py-1 text-right">
                           <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
-                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                              className="size-6 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
                               aria-label="View"
                             >
                               <Eye className="size-3.5" />
                             </button>
                             <button
-                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                              className="size-6 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
                               aria-label="Edit"
                             >
                               <Pencil className="size-3.5" />
                             </button>
                             <button
-                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              className="size-6 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                               aria-label="Delete"
                             >
                               <Trash2 className="size-3.5" />
