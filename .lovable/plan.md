@@ -1,14 +1,15 @@
-# Make All Slideshow Images Uniform Size
+# Fix Slideshow Image Visibility
 
-Currently the slides use `object-contain`, which keeps each image at its native aspect ratio — so images with different shapes appear at different sizes with empty space around them.
+`object-cover` is cropping slides 1–4 (the vision/values/collage images) because they have important content near the edges. Switching back to `object-contain` brings back letterboxing. The fix is to give the slideshow panel a neutral backdrop and let each image display fully at a consistent framed size.
 
-## Change
+## Change (only `src/routes/login.tsx`, right `<aside>`)
 
-In `src/routes/login.tsx`, update the slide images on the right panel:
-
-1. **Switch from `object-contain` to `object-cover object-center`** — every image will fill the entire slideshow panel edge-to-edge at the exact same size, with no padding, gaps, or background showing.
-2. **No other adjustments** — no padding, no background color, no changes to the form panel, auto-advance, or dot indicators.
+1. **Add a soft neutral background** to the `<aside>` (`bg-slate-100`) so letterboxed areas look intentional, not broken.
+2. **Switch images back to `object-contain object-center`** so every image is fully visible with nothing cropped.
+3. **Add a subtle inner frame**: wrap the images in a centered container with `inset-6` padding so all slides render inside the same bounded box — uniform framing across all 6 images, no edge bleed.
+4. **Keep dot indicators** at `bottom-6`, auto-advance, and crossfade unchanged.
+5. **Left form panel untouched.**
 
 ## Result
 
-All 6 slides display at an identical, full-panel size with clean alignment and smooth crossfade. Note: because the images have different aspect ratios, uniform sizing means the edges of some images may be trimmed slightly to fill the frame — this is the standard way sliders achieve a consistent look.
+All 6 images (including 1–4) display in full with neat, identical framing inside a clean neutral panel — no cropping, no distortion, consistent size.
