@@ -1,31 +1,38 @@
-# Progressive disclosure for Create tab — Order Info → Insurance Claim Tracking
+# Replace green field styling with gray
 
-All 10 affected screens (Order Info, Shipment Details, Invoice Load Details, Segment Info, Vehicle Info, Transit Info, Freight Billing, Service Level, Transit Damage Info, Insurance Claim Tracking) render through the shared `LeScreenShell` Create tab. The Reference Table + Invoice Number + GET button is already implemented inside each `*-sap-create.tsx` component for `mode="with"`. Today the shell defaults `direction="outward"` and `sap="with"`, so everything appears immediately and there's no step-by-step reveal like the Dispatch screen.
+The green borders and text in inputs/dropdowns/search bars come from two shared constants (`INPUT_BASE`/`INPUT` and `LABEL`) duplicated at the top of every `*-sap-create.tsx` file, plus a couple of related field accents. Action buttons (GET = `#8f1e42`, Save = emerald) and status badges/KPIs stay as they are — this change is scoped to field chrome only.
 
-## Single file to change: `src/components/le-screen-shell.tsx`
+## Changes (10 files)
 
-1. **State init**
-   - `direction` — change type to `"outward" | "inward" | null`, initial `null`.
-   - `sap` — change type to `SapMode | null`, initial `null`.
+In each of:
+- `src/components/order-info-sap-create.tsx`
+- `src/components/shipment-details-sap-create.tsx`
+- `src/components/invoice-load-details-sap-create.tsx`
+- `src/components/segment-info-sap-create.tsx`
+- `src/components/vehicle-info-sap-create.tsx`
+- `src/components/transit-info-sap-create.tsx`
+- `src/components/freight-billing-sap-create.tsx`
+- `src/components/service-level-sap-create.tsx`
+- `src/components/transit-damage-info-sap-create.tsx`
+- `src/components/insurance-claim-tracking-sap-create.tsx`
 
-2. **Direction + SAP toolbar** (currently around lines 207–238)
-   - Always show the `Outward` PremiumRadio.
-   - Show `SapToggle` only when `direction` is set (mirror Dispatch's `{direction && (...)}` block).
-   - Keep status pills (`Pending` / `Completed`) and `renderDirectionExtras` aligned to the right as today.
-   - Add small muted hints (same wording as Dispatch):
-     - `!direction` → "Select a direction to continue."
-     - `direction && !sap` → "Select **With SAP** or **Without SAP** to continue."
+Replace the field-chrome classes:
 
-3. **Body rendering**
-   - Wrap the `renderCreateBody` IIFE (around line 240) so it only runs when both `direction` and `sap` are set. When either is null, render nothing in the body area.
-   - The default `kpis`/`topFields`/`groups`/`lineItems` fallback block should also be gated the same way (only when both are set), so screens without a custom `renderCreateBody` behave consistently.
-   - The sticky action bar (Save / Save and Next) stays gated on the same condition.
+- `border-emerald-400/70` → `border-input`
+- `text-emerald-700 dark:text-emerald-300` (inside INPUT and LABEL) → `text-foreground` for input value, `text-muted-foreground` for LABEL
+- `focus:border-emerald-500` → `focus:border-ring`
+- `focus:ring-emerald-400/30` → `focus:ring-ring/30`
 
-4. **Callback types**
-   - Update `renderCreateBody` and `renderDirectionExtras` prop signatures so `sap` and `direction` are the non-null narrowed types at call time (we only invoke them inside the `direction && sap` branch, so the existing `SapMode` / `"outward" | "inward"` types stay correct — no caller changes needed).
+This covers every text input, select/dropdown, textarea, and the "Enter Reference / Invoice / ODN / SO Number" search input that uses `INPUT_BASE`.
 
-## Out of scope
+Also fix small green accents tied to fields:
+- `invoice-load-details-sap-create.tsx` line 351: calendar icon `text-emerald-600` → `text-muted-foreground`.
 
-- No changes to the 10 route files or the 10 `*-sap-create.tsx` components — the With-SAP screens already render the Reference Table + Invoice Number + GET internally.
-- No changes to the Filter & Download (search) tab.
-- No change to Dispatch screen — it already does this and is the reference.
+## Out of scope (intentionally unchanged)
+
+- GET button (`#8f1e42`)
+- Save / Save and Next buttons (green)
+- KPI tiles, status badges, "Completed" pill, success toasts
+- `le-screen-shell.tsx` SAP-mode pill (line 230) and Download Excel icon (line 426)
+- `service-level-sap-create.tsx` selected-state pill colors for the load-type toggles
+- `freight-billing-sap-create.tsx` checkbox accent and label colors for the "Freight calculated by" radios (these are label decorations, not field chrome)

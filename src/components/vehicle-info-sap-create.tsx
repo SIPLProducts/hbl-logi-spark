@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 
 const GREEN_INPUT =
-  "h-7 w-full rounded-md bg-white dark:bg-surface border border-emerald-400/70 px-2 text-[12px] text-emerald-700 dark:text-emerald-300 font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/30";
-const LABEL = "block text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 mb-0.5";
+  "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
 const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
 const MAP_IDS = ["101", "102", "200"];
