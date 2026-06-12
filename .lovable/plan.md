@@ -1,11 +1,13 @@
-## Changes
+Make the browser tab title fixed as "HBL - LOGISTICS EXECUTION" on every screen, removing all per-route overrides.
 
-1. **Upload the HBL "H" logo** (from the attached image) as a Lovable Asset → `src/assets/hbl-favicon.png.asset.json`.
+### Files to change
 
-2. **Update `src/routes/__root.tsx`**:
-   - Change root `title` meta to `"HBL LOGISTICS EXECUTION"` (also update `og:title` and `twitter:title` for consistency).
-   - Add favicon `link` entries in `links[]` pointing to the uploaded asset URL (rel `icon` and `apple-touch-icon`).
+1. **`src/routes/__root.tsx`**
+   - Update the root `title` meta entry from `"HBL LOGISTICS EXECUTION"` to `"HBL - LOGISTICS EXECUTION"`.
+   - Update `og:title` and `twitter:title` to the same fixed text for consistency.
 
-3. **Per-route title overrides** — child routes currently append their own suffix (e.g. `"Dispatch Orders · HBL LE"`). Leaving these as-is means non-root pages keep their existing titles. No changes to child route `head()` definitions.
+2. **All child route files with `head:` overrides** (~22 files)
+   - Remove the entire `head: () => ({ ... })` block from each child route so the root title is inherited and never overridden.
+   - Affected files include: `src/routes/index.tsx`, `src/routes/dispatch.tsx`, `src/routes/dispatch-orders.tsx`, `src/routes/login.tsx`, `src/routes/vehicle-info.tsx`, `src/routes/transit-info.tsx`, `src/routes/freight-billing.tsx`, `src/routes/order-info.tsx`, `src/routes/shipment-details.tsx`, `src/routes/segment-info.tsx`, `src/routes/transit-damage-info.tsx`, `src/routes/insurance-claim-tracking.tsx`, `src/routes/service-level.tsx`, `src/routes/invoice-load-details.tsx`, `src/routes/user-creation.tsx`, `src/routes/reports.index.tsx`, `src/routes/reports.freight-bills.tsx`, `src/routes/reports.damage-list.tsx`, `src/routes/reports.business-share-matrix.tsx`, `src/routes/reports.service-level-report.tsx`, `src/routes/reports.pending-pods.tsx`, `src/routes/reports.insurance.tsx`, `src/routes/reports.transit-eway-bill.tsx`, `src/routes/reports.loading-factor-cost.tsx`.
 
-No other files or behavior change.
+No other behavior changes.

@@ -3,12 +3,6 @@ import { LeScreenShell } from "@/components/le-screen-shell";
 import { SegmentInfoSapCreate } from "@/components/segment-info-sap-create";
 
 export const Route = createFileRoute("/segment-info")({
-  head: () => ({
-    meta: [
-      { title: "Segment Info · HBL LE" },
-      { name: "description", content: "Multi-segment leg planning for HBL shipments." },
-    ],
-  }),
   component: SegmentInfoPage,
 });
 

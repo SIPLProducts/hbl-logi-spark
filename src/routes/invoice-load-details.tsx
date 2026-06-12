@@ -3,12 +3,6 @@ import { LeScreenShell } from "@/components/le-screen-shell";
 import { InvoiceLoadDetailsSapCreate } from "@/components/invoice-load-details-sap-create";
 
 export const Route = createFileRoute("/invoice-load-details")({
-  head: () => ({
-    meta: [
-      { title: "Invoice Load Details · HBL LE" },
-      { name: "description", content: "Invoice-wise load details, taxes, and e-way bill information." },
-    ],
-  }),
   component: InvoiceLoadDetailsPage,
 });
 

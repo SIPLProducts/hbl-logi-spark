@@ -3,12 +3,6 @@ import { FileBarChart } from "lucide-react";
 import { REPORTS_NAV } from "@/lib/reports-nav";
 
 export const Route = createFileRoute("/reports/")({
-  head: () => ({
-    meta: [
-      { title: "Reports · HBL LE" },
-      { name: "description", content: "All operational and financial reports for HBL Logistics Execution." },
-    ],
-  }),
   component: ReportsHubPage,
 });
 

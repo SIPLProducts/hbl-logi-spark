@@ -3,12 +3,6 @@ import { LeScreenShell, type WorklistColumn } from "@/components/le-screen-shell
 import { ShipmentDetailsSapCreate } from "@/components/shipment-details-sap-create";
 
 export const Route = createFileRoute("/shipment-details")({
-  head: () => ({
-    meta: [
-      { title: "Shipment Details · HBL LE" },
-      { name: "description", content: "Shipment details with line items and incoterms for HBL LE." },
-    ],
-  }),
   component: ShipmentDetailsPage,
 });
 
