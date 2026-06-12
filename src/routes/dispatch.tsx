@@ -236,8 +236,8 @@ function CreateDispatch() {
 
             <div className="overflow-x-auto scrollbar-elegant">
               <table className="w-full text-[12.5px] border-collapse">
-                <thead className="bg-surface-2/80 sticky top-0 z-10 backdrop-blur">
-                  <tr className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground border-b border-hairline">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
                     {[
                       "Sl.No",
                       "Vehicle Type",
