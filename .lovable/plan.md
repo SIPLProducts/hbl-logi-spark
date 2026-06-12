@@ -1,38 +1,37 @@
-## Scope
+## Goal
+Make the UI denser across the app: shorter inputs, tighter table rows, and less space between cards/sections.
 
-Four UI tweaks across the app — presentation only, no logic changes.
+## Changes
 
-### 1. Background colors on Pending / Completed chips
-File: `src/components/le-screen-shell.tsx` (lines ~227–236, inside the Direction card — the only remaining location after the earlier dedupe).
+### 1. Input height (h-9 → h-7)
+In all SAP-create components and shared inputs, drop input/select/button-in-row height from `h-9` to `h-7`, font from `text-[12.5px]` to `text-[12px]`, padding `px-2.5` → `px-2`, label margin `mb-1` → `mb-0.5`.
 
-- Pending chip: replace `bg-surface-2/60` with amber background (`bg-amber-100 dark:bg-amber-500/15`), border `border-amber-300/60`, text `text-amber-800 dark:text-amber-200`.
-- Completed chip: replace `bg-surface-2/60` with emerald background (`bg-emerald-100 dark:bg-emerald-500/15`), border `border-emerald-300/60`, text `text-emerald-800 dark:text-emerald-200`.
-- Keep the existing dot, count, size, and layout intact.
+Files:
+- `src/components/order-info-sap-create.tsx`
+- `src/components/segment-info-sap-create.tsx`
+- `src/components/transit-info-sap-create.tsx`
+- `src/components/transit-damage-info-sap-create.tsx`
+- `src/components/insurance-claim-tracking-sap-create.tsx`
+- `src/components/freight-billing-sap-create.tsx`
+- `src/components/shipment-details-sap-create.tsx`
+- `src/components/invoice-load-details-sap-create.tsx`
+- `src/components/service-level-sap-create.tsx`
+- `src/components/vehicle-info-sap-create.tsx`
+- `src/components/le-screen-shell.tsx` (any inline h-9 inputs/search bars)
+- `src/components/ui/input.tsx` already h-7 — leave.
 
-### 2. Reduce table row spacing
-Tighten vertical padding on data-row cells everywhere.
+### 2. Table spacing
+- `src/components/data-table.tsx`: header `py-1` → `py-0.5`, cells already `py-0.5` (leave).
+- `src/components/ui/table.tsx`: `TableHead` `h-7` → `h-6`, `TableCell` `py-0.5` → `py-0` (keep `leading-tight`).
+- In all `*-sap-create.tsx` selection tables: `py-1.5` header → `py-1`, `py-1` cell → `py-0.5`.
 
-- `src/components/data-table.tsx`: change body `td` padding `px-2 py-1` → `px-2 py-0.5`; header `px-2 py-1.5` → `px-2 py-1`.
-- `src/components/ui/table.tsx`: reduce `<TableRow>` / `<TableCell>` vertical padding by one step (e.g. `py-2` → `py-1`, `h-12` → `h-9`) — exact tokens confirmed when editing.
-- All 10 `*-sap-create.tsx` table bodies: change row `<td className="px-N py-2 …">` → `px-N py-1` (header rows `py-2.5` → `py-1.5`). Applied with a single `sed` pass across the matching files.
-
-### 3. Four input fields per row
-Update the SAP-create form grids so md+ breakpoints render 4 columns instead of 2/3.
-
-Files & current → new className on the form grid wrapper:
-- `order-info-sap-create.tsx` (L197), `segment-info-sap-create.tsx` (L186), `transit-info-sap-create.tsx` (L123), `transit-damage-info-sap-create.tsx` (L186), `insurance-claim-tracking-sap-create.tsx` (L203), `freight-billing-sap-create.tsx` (L223): `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4` → `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2`.
-- `shipment-details-sap-create.tsx` (L178), `freight-billing-sap-create.tsx` (L79): `grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-4` → `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2`.
-- `le-screen-shell.tsx` topFields grid (L255): `grid-cols-2 md:grid-cols-4 gap-2.5` → `grid-cols-2 md:grid-cols-4 gap-2`.
-
-### 4. Minimize spacing between input fields
-Handled by the same grid edits in step 3 (`gap-x-2 gap-y-2` instead of `gap-x-5 gap-y-4`). No changes to the inputs themselves — heights, borders, and label spacing stay as is.
+### 3. Card / section spacing
+- Reduce vertical rhythm: `space-y-4` → `space-y-2` on the root wrappers of all SAP-create components and `le-screen-shell.tsx` main column.
+- Card padding: `p-5` → `p-3` and `p-3` → `p-2` on the field-grid and lookup-bar containers across the same files.
+- `pt-2` footer action bars unchanged.
 
 ## Out of scope
-
-- No changes to table header colors (already navy from prior turn).
-- No changes to colors, fonts, or any other layout.
-- No edits to inline tables inside `vehicle-info-sap-create.tsx` column widths — only row padding.
+- No color changes, no grid-column changes, no logic changes.
 
 ## Verification
-
-Screenshot `/order-info`, `/shipment-details`, `/invoice-load-details`, and `/freight-billing` to confirm: chips are colored, tables are denser, forms render 4 fields per row with tight gaps.
+Screenshot `/order-info`, `/transit-info`, `/shipment-details` at current viewport — confirm shorter inputs, tighter rows, and smaller gaps between the selection table, lookup bar, and field grid cards.

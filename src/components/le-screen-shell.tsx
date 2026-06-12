@@ -361,7 +361,7 @@ export function LeScreenShell({
               </div>
 
               {!searchSap && (
-                <div className="p-6 text-center text-[12.5px] text-muted-foreground">
+                <div className="p-6 text-center text-[12px] text-muted-foreground">
                   Select <span className="font-semibold">With SAP</span> or{" "}
                   <span className="font-semibold">Without SAP</span> to view filters.
                 </div>
@@ -435,7 +435,7 @@ export function LeScreenShell({
                 <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
                   No results yet
                 </h3>
-                <p className="mt-1 text-[12.5px] text-muted-foreground max-w-md mx-auto">
+                <p className="mt-1 text-[12px] text-muted-foreground max-w-md mx-auto">
                   Choose your filters above and click{" "}
                   <span className="font-semibold">Apply Filter</span> to load records.
                 </p>
@@ -453,7 +453,7 @@ export function LeScreenShell({
                 </div>
               </div>
               <div className="overflow-x-auto scrollbar-elegant">
-                <table className="w-full text-left border-collapse text-[12.5px]">
+                <table className="w-full text-left border-collapse text-[12px]">
                   <thead>
                     <tr className="bg-primary text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
                       <th className="px-2 py-1.5 w-10 text-center">
@@ -523,7 +523,7 @@ export function LeScreenShell({
                       <tr>
                         <td
                           colSpan={columns.length + 2}
-                          className="px-3 py-10 text-center text-[12.5px] text-muted-foreground"
+                          className="px-3 py-10 text-center text-[12px] text-muted-foreground"
                         >
                           No records match your filters.
                         </td>
@@ -577,7 +577,7 @@ function FieldInput({ field }: { field: FieldDef }) {
       {type === "select" ? (
         <select
           defaultValue={value as string}
-          className="bg-surface border border-hairline rounded-md px-2 h-9 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+          className="bg-surface border border-hairline rounded-md px-2 h-9 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         >
           {(options ?? [String(value ?? "Select")]).map((o) => (
             <option key={o}>{o}</option>
@@ -587,13 +587,13 @@ function FieldInput({ field }: { field: FieldDef }) {
         <textarea
           defaultValue={value as string}
           rows={2}
-          className="bg-surface border border-hairline rounded-md px-2 py-1.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+          className="bg-surface border border-hairline rounded-md px-2 py-1.5 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
         />
       ) : (
         <input
           type={type === "date" ? "datetime-local" : type}
           defaultValue={value as string | number}
-          className="bg-surface border border-hairline rounded-md px-2 h-9 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 font-mono"
+          className="bg-surface border border-hairline rounded-md px-2 h-9 text-[12px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 font-mono"
         />
       )}
     </div>
@@ -672,7 +672,7 @@ function PremiumRadio({
       aria-checked={checked}
       onClick={onSelect}
       className={cn(
-        "inline-flex items-center gap-2 text-[12.5px] font-medium cursor-pointer rounded-full pl-1.5 pr-3 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+        "inline-flex items-center gap-2 text-[12px] font-medium cursor-pointer rounded-full pl-1.5 pr-3 py-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
         checked ? "text-foreground bg-accent/10" : "text-muted-foreground hover:text-foreground",
       )}
     >
