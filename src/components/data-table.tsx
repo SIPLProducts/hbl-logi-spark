@@ -41,7 +41,7 @@ export function DataTable<T extends { id: string | number }>({
                 <th
                   key={c.key}
                   className={
-                    "px-2 py-1.5 " +
+                    "px-2 py-1 " +
                     (c.align === "right"
                       ? "text-right"
                       : c.align === "center"
@@ -72,7 +72,7 @@ export function DataTable<T extends { id: string | number }>({
                     <td
                       key={c.key}
                       className={
-                        "px-2 py-1 align-middle " +
+                        "px-2 py-0.5 align-middle " +
                         (c.align === "right"
                           ? "text-right"
                           : c.align === "center"
