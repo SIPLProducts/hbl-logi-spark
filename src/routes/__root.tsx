@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "../components/app-shell";
+import faviconAsset from "../assets/hbl-favicon.png.asset.json";
 
 function NotFoundComponent() {
   return (
@@ -79,15 +80,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "HBL Logistics Execution" },
+      { title: "HBL LOGISTICS EXECUTION" },
       { name: "description", content: "Logistics Execution console for HBL Power Systems — inbound, outbound, and transportation operations." },
       { name: "author", content: "HBL Power Systems" },
-      { property: "og:title", content: "HBL Logistics Execution" },
+      { property: "og:title", content: "HBL LOGISTICS EXECUTION" },
       { property: "og:description", content: "Logistics Execution console for HBL Power Systems — inbound, outbound, and transportation operations." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@HBLPower" },
-      { name: "twitter:title", content: "HBL Logistics Execution" },
+      { name: "twitter:title", content: "HBL LOGISTICS EXECUTION" },
       { name: "twitter:description", content: "Logistics Execution console for HBL Power Systems — inbound, outbound, and transportation operations." },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/lMuNufL1WVQqWEBzmwb74CIjyID3/social-images/social-1781261104787-Sharvi_Infotech_logo.webp" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/lMuNufL1WVQqWEBzmwb74CIjyID3/social-images/social-1781261104787-Sharvi_Infotech_logo.webp" },
@@ -97,6 +98,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "icon", type: "image/png", href: faviconAsset.url },
+      { rel: "apple-touch-icon", href: faviconAsset.url },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "" },
       {
