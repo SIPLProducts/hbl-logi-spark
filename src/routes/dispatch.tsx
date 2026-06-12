@@ -776,16 +776,13 @@ function ResultsTable() {
               className="pl-8 h-9 w-[260px]"
             />
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Download className="size-3.5" /> Export
-          </Button>
         </div>
       </div>
 
       <div className="overflow-x-auto max-h-[560px]">
         <table className="w-full text-[12.5px] border-collapse">
-          <thead className="bg-muted/70 sticky top-0 z-10">
-            <tr className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground border-b border-hairline">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
               {cols.map((c) => (
                 <th
                   key={c.key}
