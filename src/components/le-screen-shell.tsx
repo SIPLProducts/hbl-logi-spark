@@ -636,15 +636,17 @@ function KpiCard({ label, value, delta, tone = "default" }: KpiTile) {
   );
 }
 
-function SapToggle({ value, onChange }: { value: SapMode; onChange: (v: SapMode) => void }) {
-  const idx = value === "with" ? 0 : 1;
+function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: SapMode) => void }) {
+  const idx = value === "without" ? 1 : 0;
   return (
     <div className="relative inline-flex items-center p-1 rounded-full bg-muted border border-hairline text-[12px] shadow-inner">
-      <span
-        className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface shadow-sm ring-1 ring-hairline transition-transform duration-300 ease-out"
-        style={{ transform: `translateX(${idx * 100}%)` }}
-        aria-hidden
-      />
+      {value && (
+        <span
+          className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface shadow-sm ring-1 ring-hairline transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(${idx * 100}%)` }}
+          aria-hidden
+        />
+      )}
       {(["with", "without"] as const).map((m) => (
         <button
           key={m}
