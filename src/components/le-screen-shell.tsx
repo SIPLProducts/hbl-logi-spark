@@ -159,7 +159,7 @@ export function LeScreenShell({
       <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="hidden sm:grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-white shadow-cta">
+            <div className="hidden sm:grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white shadow-cta">
               <FileText className="size-4" />
             </div>
             <div className="min-w-0">
@@ -177,13 +177,13 @@ export function LeScreenShell({
             <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-7 shadow-soft">
               <TabsTrigger
                 value="create"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
+                className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
               >
                 <Plus className="size-3" /> Create
               </TabsTrigger>
               <TabsTrigger
                 value="search"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
+                className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
               >
                 <Filter className="size-3" /> Filter &amp; Download
               </TabsTrigger>
@@ -298,7 +298,7 @@ export function LeScreenShell({
                 <div className="overflow-x-auto scrollbar-elegant">
                   <table className="w-full text-[11.5px]">
                     <thead>
-                      <tr className="bg-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
                         {lineItems.columns.map((c) => (
                           <th key={c} className="px-2 py-1 text-left">
                             {c}
@@ -346,7 +346,7 @@ export function LeScreenShell({
               <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
                 <Save className="size-3.5" /> Save
               </button>
-              <button className="inline-flex items-center gap-1.5 px-4 h-9 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg shadow-cta hover:-translate-y-0.5 transition-transform">
+              <button className="inline-flex items-center gap-1.5 px-4 h-9 text-[12px] font-semibold text-primary-foreground bg-gradient-primary rounded-lg shadow-cta hover:-translate-y-0.5 transition-transform">
                 Save and Next <ChevronRight className="size-3.5" />
               </button>
             </div>
@@ -461,7 +461,7 @@ export function LeScreenShell({
               <div className="overflow-x-auto scrollbar-elegant">
                 <table className="w-full text-left border-collapse text-[12px]">
                   <thead>
-                    <tr className="bg-primary text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
+                    <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
                       <th className="px-2 py-1.5 w-10 text-center">
                         <input type="checkbox" className="accent-accent" />
                       </th>
