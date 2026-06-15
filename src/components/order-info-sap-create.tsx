@@ -65,11 +65,26 @@ const FIELDS: FieldSpec[] = [
   },
 
   {
-    label: "Sub Division",
-    value: "",
-    type: "select",
-    options: ["FUZE", "BATTERY", "POWER"],
-  },
+{
+  label: "Sub Division",
+  value: "",
+  type: "select",
+  options: [
+    "FUZE",
+    "IPS SYSTEM",
+    "LITHIUM",
+    "NCFP",
+    "NCPP",
+    "NCPP-VSEZ",
+    "NCPP/ETP",
+    "NCSP",
+    "PE",
+    "SILVER ZINC",
+    "SYSTEM ORDERS",
+    "THERMAL",
+    "THERMAL,FUZE,SZ"
+  ],
+},
   { label: "SO / Ref. Number", value: "" },
   { label: "Customer Name", value: "" },
 
