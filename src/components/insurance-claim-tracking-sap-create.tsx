@@ -40,12 +40,12 @@ const BASE_FIELDS: FieldSpec[] = [
     options: ["Under preparation", "Submitted", "Not submitted"],
     placeholder: "Select Claim Status",
   },
-  // {
-  //   label: "Claim Document Status",
-  //   type: "select",
-  //   options: ["Pending", "Submitted", "Verified"],
-  //   placeholder: "Select Claim Document Status",
-  // },
+  {
+    label: "Claim Document Status",
+    // type: "select",
+    // options: ["Pending", "Submitted", "Verified"],
+    // placeholder: "Select Claim Document Status",
+  },
   { label: "Courier Details" },
   {
     label: "Payment Status",
