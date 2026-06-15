@@ -1,13 +1,21 @@
-Move the "No. of Cases Reported: 0" chip from inside the Transit Damage Info and Insurance Claim Tracking create-body components to the shared `LeScreenShell` direction bar, placing it before the "Pending" count.
+## Objective
+Move the "No. of Cases Reported: 0" chip so it sits directly beside the Pending count badge on the Transit Damage Info and Insurance Claim Tracking screens, instead of appearing separately before the badge group.
 
-### Changes
-1. **Remove** the "No. of Cases Reported: 0" status chip block from:
-   - `src/components/transit-damage-info-sap-create.tsx`
-   - `src/components/insurance-claim-tracking-sap-create.tsx`
-2. **Add** `renderDirectionExtras` prop to both route files so the chip renders inside the `LeScreenShell` direction bar, immediately before the `Pending` / `Completed` badges.
+## Current Layout
+In `LeScreenShell`, `renderDirectionExtras` is rendered before the `ml-auto` flex container that holds the Pending and Completed badges:
 
-### Files affected
-- `src/components/transit-damage-info-sap-create.tsx`
-- `src/components/insurance-claim-tracking-sap-create.tsx`
-- `src/routes/transit-damage-info.tsx`
-- `src/routes/insurance-claim-tracking.tsx`
+```
+renderDirectionExtras   |   [Pending] [Completed]
+```
+
+## Desired Layout
+```
+[Pending] [No. of Cases Reported: 0] [Completed]
+```
+
+## Changes
+**File: `src/components/le-screen-shell.tsx`**
+
+Move the `renderDirectionExtras?.({ sap, direction })` call from line 223 (before the `ml-auto` div) into the `ml-auto` div, positioned right before the Pending badge span. This places the extra chip within the same flex group as the status badges, making it visually adjacent to the Pending count.
+
+No other files need changes — both `transit-damage-info.tsx` and `insurance-claim-tracking.tsx` already pass the chip via `renderDirectionExtras`.
