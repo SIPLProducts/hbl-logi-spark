@@ -37,7 +37,7 @@ const BASE_FIELDS: FieldSpec[] = [
   {
     label: "Claim Status",
     type: "select",
-    options: ["Open", "In Review", "Approved", "Rejected", "Settled"],
+    options: ["Under preparation", "Submitted", "Not submitted"],
     placeholder: "Select Claim Status",
   },
   {
