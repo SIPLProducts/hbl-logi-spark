@@ -220,8 +220,8 @@ export function LeScreenShell({
                      <SapToggle value={sap} onChange={setSap} />
                    </>
                  )}
-                 {direction && sap && renderDirectionExtras?.({ sap, direction })}
                  <div className="ml-auto flex items-center gap-1.5">
+                  {direction && sap && renderDirectionExtras?.({ sap, direction })}
                   <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-amber-300/60 bg-amber-100 dark:bg-amber-500/15 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
                     <span className="size-1.5 rounded-full bg-warning" />
                     Pending
