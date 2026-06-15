@@ -114,7 +114,7 @@ function DateField({ label }: { label: string }) {
     <div>
       <label className={LABEL}>{label}</label>
       <div className="relative">
-        <input type="text" placeholder="dd-mm-yyyy" className={INPUT + " pr-9"} />
+        <input type="date" className={INPUT + " pr-9"} />
         <Calendar className="size-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
       </div>
     </div>
