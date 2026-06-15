@@ -7,9 +7,6 @@ const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
 const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
 const MAP_IDS: string[] = [];
-const SHIPMENT_TYPES: string[] = [];
-const TRANSPORTER_TYPES: string[] = [];
-const VEHICLE_TYPES: string[] = [];
 
 type VRow = {
   id: number;
@@ -273,32 +270,18 @@ export function VehicleInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         </select>
                       </td>
                       <td className="px-2 py-1">
-                        <select
+                        <input
                           value={row.shipmentType}
                           onChange={(e) => updateRow(row.id, { shipmentType: e.target.value })}
-                          className={GREEN_INPUT}
-                        >
-                          <option value="">Select</option>
-                          {SHIPMENT_TYPES.map((o) => (
-                            <option key={o} value={o}>
-                              {o}
-                            </option>
-                          ))}
-                        </select>
+                          className={GREEN_INPUT + " text-center"}
+                        />
                       </td>
                       <td className="px-2 py-1">
-                        <select
+                        <input
                           value={row.transporterType}
                           onChange={(e) => updateRow(row.id, { transporterType: e.target.value })}
-                          className={GREEN_INPUT}
-                        >
-                          <option value="">Select</option>
-                          {TRANSPORTER_TYPES.map((o) => (
-                            <option key={o} value={o}>
-                              {o}
-                            </option>
-                          ))}
-                        </select>
+                          className={GREEN_INPUT + " text-center"}
+                        />
                       </td>
                       <td className="px-2 py-1">
                         <input
@@ -308,18 +291,11 @@ export function VehicleInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         />
                       </td>
                       <td className="px-2 py-1">
-                        <select
+                        <input
                           value={row.vehicleType}
                           onChange={(e) => updateRow(row.id, { vehicleType: e.target.value })}
-                          className={GREEN_INPUT}
-                        >
-                          <option value="">Select</option>
-                          {VEHICLE_TYPES.map((o) => (
-                            <option key={o} value={o}>
-                              {o}
-                            </option>
-                          ))}
-                        </select>
+                          className={GREEN_INPUT + " text-center"}
+                        />
                       </td>
                       <td className="px-2 py-1">
                         <input
