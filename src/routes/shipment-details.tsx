@@ -21,13 +21,11 @@ function ShipmentDetailsPage() {
       title="Shipment Details"
       columns={columns}
       renderCreateBody={({ sap, direction }) =>
-        direction === "outward"
-          ? <ShipmentDetailsSapCreate mode={sap === "with" ? "with" : "without"} />
-          : null
+        direction === "outward" ? <ShipmentDetailsSapCreate mode={sap === "with" ? "with" : "without"} /> : null
       }
       topFields={[
         { label: "Incoterms", value: "FOR", type: "select", options: ["FOR", "FOB", "CIF", "EXW", "DAP"] },
-        { label: "Insurance Scope", value: "Select Insurance Scope", type: "select", options: ["Transit Insurance", "Open Policy", "Self Insured"] },
+        { label: "Insurance Scope", value: "Select Insurance Scope", type: "select", options: ["Buyer", "Supplier"] },
         { label: "Kilometres", value: 0, type: "number" },
         { label: "DC Reference Number", value: "DC-2026-001142" },
       ]}
