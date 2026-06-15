@@ -8,7 +8,7 @@ const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
 
 const INCOTERMS = ["FOR", "FOB", "CIF", "EXW", "DAP"];
-const INSURANCE_SCOPE = ["Buyer", "Transit Insurance", "Open Policy", "Self Insured"];
+const INSURANCE_SCOPE = ["Buyer", "Supplier"];
 const MAP_IDS = ["101", "102", "200"];
 const PRODUCTS = ["OPTIMUZ SMF BATTERY", "POWER BACKUP UPS", "DEFENCE BATTERY"];
 const MATERIAL_TYPES = ["Finished Goods", "Raw Material", "Semi-Finished"];
@@ -61,7 +61,6 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
   return (
     <div className="space-y-2">
-
       {/* Selection table */}
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
