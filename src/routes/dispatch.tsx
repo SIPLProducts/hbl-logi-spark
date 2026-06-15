@@ -244,7 +244,7 @@ function CreateDispatch() {
                       "Division",
                       "No Of LRs",
                       "LR Number",
-                      "Loading Points",
+                      "Load Points",
                       "Unload Points",
                       "Remarks",
                       "",
