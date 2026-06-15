@@ -245,7 +245,7 @@ function CreateDispatch() {
                       "No Of LRs",
                       "LR Number",
                       "Loading Points",
-                      "Unloading Points",
+                      "Unload Points",
                       "Remarks",
                       "",
                     ].map((h, i) => (
