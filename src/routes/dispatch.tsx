@@ -141,6 +141,26 @@ function CreateDispatch() {
   const updateRow = (id: string, patch: Partial<DispatchRow>) =>
     setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
+  const countParts = (s: string) =>
+    s.split(",").map((p) => p.trim()).filter(Boolean).length;
+
+  const maxAllowed = useMemo(() => {
+    const r = rows[0];
+    if (!r) return 0;
+    return Math.max(
+      r.noOfTrucks || 0,
+      r.noOfInvoices || 0,
+      r.noOfLRs || 0,
+      countParts(r.loadingPoints),
+      countParts(r.unloadingPoints),
+    );
+  }, [rows]);
+
+  const showActionCol = maxAllowed > 1 || rows.length > 1;
+
+  const addRow = () =>
+    setRows((r) => (r.length >= maxAllowed ? r : [...r, emptyDispatchRow(r.length + 1)]));
+
   return (
     <div className="space-y-2">
       {/* Toolbar */}
@@ -241,14 +261,14 @@ function CreateDispatch() {
                       "Load Pts",
                       "Unload Pts",
                       "Remarks",
-                      "",
-                    ].map((h, i) => (
+                      ...(showActionCol ? ["Action"] : []),
+                    ].map((h, i, arr) => (
                       <th
                         key={i}
                         className={cn(
                           "px-2 py-2 text-left",
                           i === 0 && "w-10 text-center",
-                          i === 14 && "w-10 text-right",
+                          i === 14 && i === arr.length - 1 && "w-20 text-right",
                         )}
                       >
                         {h}
@@ -326,15 +346,28 @@ function CreateDispatch() {
                           placeholder="Remarks"
                         />
                       )}
-                      <td className="px-2 py-1 text-right">
-                        <button
-                          onClick={() => deleteRow(row.id)}
-                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition"
-                          aria-label="Delete row"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </td>
+                      {showActionCol && (
+                        <td className="px-2 py-1 text-right">
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              onClick={addRow}
+                              disabled={rows.length >= maxAllowed}
+                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-accent hover:bg-accent/10 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+                              aria-label="Add row"
+                            >
+                              <Plus className="size-3.5" />
+                            </button>
+                            <button
+                              onClick={() => deleteRow(row.id)}
+                              disabled={rows.length === 1}
+                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+                              aria-label="Delete row"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
