@@ -33,7 +33,15 @@ const MATERIAL_TYPES = [
   "Raw material",
   "Contrate Product",
 ];
-const BATTERY_CONDITIONS = ["New", "Refurbished", "Used"];
+const BATTERY_CONDITIONS = [
+  "Dry and discharge with solid electrolyte",
+  "Dry and discharge with Liquid electrolyte",
+  "Filled and discharged",
+  "Filled and charged",
+  "Filled and formed no free Acid",
+  "Lead acid batteries (Dry)",
+  "Lead acid batteries (Filled)",
+];
 
 export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
   const isWithout = mode === "without";
