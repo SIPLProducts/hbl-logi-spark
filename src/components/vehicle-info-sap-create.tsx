@@ -6,10 +6,10 @@ const GREEN_INPUT =
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
 const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
-const MAP_IDS = ["101", "102", "200"];
-const SHIPMENT_TYPES = ["FTL", "PTL", "Courier"];
-const TRANSPORTER_TYPES = ["Own", "Hired", "Market"];
-const VEHICLE_TYPES = ["32 FT MXL", "20 FT Container", "14 FT LCV", "Trailer"];
+const MAP_IDS = [];
+const SHIPMENT_TYPES = [];
+const TRANSPORTER_TYPES = [];
+const VEHICLE_TYPES = [];
 
 type VRow = {
   id: number;
@@ -75,7 +75,6 @@ export function VehicleInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
   return (
     <div className="space-y-2">
-
       {/* Selection table */}
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
