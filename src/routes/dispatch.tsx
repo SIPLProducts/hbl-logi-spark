@@ -278,6 +278,7 @@ function CreateDispatch() {
                         onChange={(v) => updateRow(row.id, { workOrder: v })}
                         placeholder="WO-…"
                         mono
+                        disabled={row.vehicleType !== "FULL TRUCK LOAD"}
                       />
                       <CellNumber value={row.noOfTrucks} onChange={(v) => updateRow(row.id, { noOfTrucks: v })} />
                       <CellNumber value={row.noOfInvoices} onChange={(v) => updateRow(row.id, { noOfInvoices: v })} />
@@ -322,11 +323,15 @@ function CreateDispatch() {
                         onChange={(v) => updateRow(row.id, { unloadingPoints: v })}
                         placeholder="Unloading"
                       />
-                      <CellInput
-                        value={row.remarks}
-                        onChange={(v) => updateRow(row.id, { remarks: v })}
-                        placeholder="Remarks"
-                      />
+                      {row.vehicleType === "FULL TRUCK LOAD" || row.vehicleType === "CARGO" ? (
+                        <td className="px-1.5 py-1" />
+                      ) : (
+                        <CellInput
+                          value={row.remarks}
+                          onChange={(v) => updateRow(row.id, { remarks: v })}
+                          placeholder="Remarks"
+                        />
+                      )}
                       <td className="px-2 py-1 text-right">
                         <button
                           onClick={() => deleteRow(row.id)}
@@ -441,11 +446,13 @@ function CellInput({
   onChange,
   placeholder,
   mono,
+  disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   mono?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <td className="px-1.5 py-1">
@@ -453,8 +460,9 @@ function CellInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
         className={cn(
-          "w-full min-w-[80px] h-7 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-1.5 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition",
+          "w-full min-w-[80px] h-7 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-1.5 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-transparent",
           mono && "font-mono",
         )}
       />
