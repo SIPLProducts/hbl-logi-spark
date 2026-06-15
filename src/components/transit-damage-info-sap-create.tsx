@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, Plus, X, ClipboardList } from "lucide-react";
+import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -55,13 +55,6 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
   return (
     <div className="space-y-2">
-      {/* Status chips */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-[12px] font-semibold border border-indigo-200">
-          <ClipboardList className="size-3.5" /> No. of Cases Reported: 0
-        </span>
-      </div>
-
       {/* Reference table */}
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
