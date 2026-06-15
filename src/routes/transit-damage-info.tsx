@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ClipboardList } from "lucide-react";
 import { LeScreenShell } from "@/components/le-screen-shell";
 import { TransitDamageInfoSapCreate } from "@/components/transit-damage-info-sap-create";
 
@@ -10,6 +11,13 @@ function TransitDamageInfoPage() {
   return (
     <LeScreenShell
       title="Transit Damage Info"
+      renderDirectionExtras={() => (
+        <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-indigo-300/60 bg-indigo-100 dark:bg-indigo-500/15 text-[11px] font-semibold text-indigo-800 dark:text-indigo-200">
+          <ClipboardList className="size-3" />
+          No. of Cases Reported
+          <span className="font-mono">0</span>
+        </span>
+      )}
       renderCreateBody={({ sap, direction }) =>
         direction === "outward" ? (
           <TransitDamageInfoSapCreate mode={sap === "with" ? "with" : "without"} />
