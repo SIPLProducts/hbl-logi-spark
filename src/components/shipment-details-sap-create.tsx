@@ -12,16 +12,13 @@ const INSURANCE_SCOPE = ["Buyer", "Supplier"];
 const MAP_IDS = ["101", "102", "200"];
 const PRODUCTS = [
   "Batteries",
-  "Acid",
-  "Electronic Goods",
-  "Scrap",
-  "Rack",
-  "Stack Box",
-  "Packing material",
-  "T-CAS",
-  "PC Wire",
-  "Raw material",
-  "Contrate Product",
+  "Electronics",
+  "Fuze",
+  "Cement Poles and Piles",
+  "Raw Materials",
+  "Job Work Material",
+  "Machinery",
+  "Others",
 ];
 const MATERIAL_TYPES = [
   "Batteries",
