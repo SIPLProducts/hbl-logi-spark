@@ -10,7 +10,19 @@ const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order"
 const INCOTERMS = ["FOR", "FOB", "CIF", "EXW", "DAP"];
 const INSURANCE_SCOPE = ["Buyer", "Supplier"];
 const MAP_IDS = ["101", "102", "200"];
-const PRODUCTS = ["OPTIMUZ SMF BATTERY", "POWER BACKUP UPS", "DEFENCE BATTERY"];
+const PRODUCTS = [
+  "Batteries",
+  "Acid",
+  "Electronic Goods",
+  "Scrap",
+  "Rack",
+  "Stack Box",
+  "Packing material",
+  "T-CAS",
+  "PC Wire",
+  "Raw material",
+  "Contrate Product",
+];
 const MATERIAL_TYPES = ["Finished Goods", "Raw Material", "Semi-Finished"];
 const BATTERY_CONDITIONS = ["New", "Refurbished", "Used"];
 
