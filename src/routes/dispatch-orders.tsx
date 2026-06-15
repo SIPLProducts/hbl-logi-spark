@@ -187,6 +187,7 @@ function DispatchOrdersPage() {
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
+                  required
                   className="h-9 bg-surface border border-hairline rounded-md px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                 />
               </div>
@@ -198,6 +199,7 @@ function DispatchOrdersPage() {
                   type="date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
+                  required
                   className="h-9 bg-surface border border-hairline rounded-md px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                 />
               </div>
