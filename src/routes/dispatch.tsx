@@ -135,9 +135,8 @@ function CreateDispatch() {
   const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
   const [searchType, setSearchType] = useState<string>(SEARCH_TYPES[0]);
   const [searchValue, setSearchValue] = useState("");
-  const [rows, setRows] = useState<DispatchRow[]>([]);
+  const [rows, setRows] = useState<DispatchRow[]>([emptyDispatchRow(1)]);
 
-  const addRow = () => setRows((r) => [...r, emptyDispatchRow(r.length + 1)]);
   const deleteRow = (id: string) => setRows((r) => r.filter((x) => x.id !== id).map((x, i) => ({ ...x, slNo: i + 1 })));
   const updateRow = (id: string, patch: Partial<DispatchRow>) =>
     setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
@@ -214,18 +213,13 @@ function CreateDispatch() {
         <>
           {/* Editable table card */}
           <div className="bg-surface border border-hairline rounded-xl shadow-elegant overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="px-3 py-2 border-b border-hairline flex items-center justify-between bg-surface-2/60">
-              <div>
-                <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
-                  Dispatch Lines
-                </h3>
-                <p className="text-[11.5px] text-muted-foreground mt-0.5">
-                  {rows.length} row{rows.length === 1 ? "" : "s"} · auto-numbered
-                </p>
-              </div>
-              <Button size="sm" variant="outline" onClick={addRow} className="gap-1.5 rounded-lg">
-                <Plus className="size-3.5" /> Add Row
-              </Button>
+            <div className="px-3 py-2 border-b border-hairline bg-surface-2/60">
+              <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+                Dispatch Lines
+              </h3>
+              <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                {rows.length} row{rows.length === 1 ? "" : "s"} · auto-numbered
+              </p>
             </div>
 
             <div className="overflow-x-auto scrollbar-elegant">
@@ -343,13 +337,6 @@ function CreateDispatch() {
                       </td>
                     </tr>
                   ))}
-                  {rows.length === 0 && (
-                    <tr>
-                      <td colSpan={15} className="px-6 py-10 text-center text-muted-foreground text-[12.5px]">
-                        No dispatch lines. Click <span className="font-semibold">Add Row</span> to begin.
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
