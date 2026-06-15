@@ -65,7 +65,6 @@ const FIELDS: FieldSpec[] = [
   },
 
   {
-{
   label: "Sub Division",
   value: "",
   type: "select",
