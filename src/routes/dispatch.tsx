@@ -242,7 +242,7 @@ function CreateDispatch() {
                       "Transporter",
                       "Plant",
                       "Division",
-                      "No Of LRs",
+                      "LRs QTY",
                       "LR Number",
                       "Load Points",
                       "Unload Points",
