@@ -47,7 +47,14 @@ const BASE_FIELDS: FieldSpec[] = [
     label: "TAT Type",
     value: "",
     type: "select",
-    options: ["Standard", "Express", "Same Day"],
+    options: [
+      "Direct Truck TAT(Vizag)",
+      "Direct Truck TAT(Hyd)",
+      "Revised TAT",
+      "Safe Express TAT",
+      "Delivery TAT",
+      "GATI TAT",
+    ],
   },
   { label: "TAT (Days)", value: "0", type: "number" },
   { label: "ETA", value: "", type: "date" },
@@ -65,7 +72,6 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
   return (
     <div className="space-y-2">
-
       {/* Selection table */}
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
