@@ -6,10 +6,10 @@ const GREEN_INPUT =
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
 const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
-const MAP_IDS = [];
-const SHIPMENT_TYPES = [];
-const TRANSPORTER_TYPES = [];
-const VEHICLE_TYPES = [];
+const MAP_IDS: string[] = [];
+const SHIPMENT_TYPES: string[] = [];
+const TRANSPORTER_TYPES: string[] = [];
+const VEHICLE_TYPES: string[] = [];
 
 type VRow = {
   id: number;
