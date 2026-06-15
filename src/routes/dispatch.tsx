@@ -213,8 +213,8 @@ function CreateDispatch() {
       {sap && (
         <>
           {/* Editable table card */}
-          <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
+          <div className="bg-surface border border-hairline rounded-xl shadow-elegant overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="px-3 py-2 border-b border-hairline flex items-center justify-between bg-surface-2/60">
               <div>
                 <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
                   Dispatch Lines
@@ -236,25 +236,25 @@ function CreateDispatch() {
                       "Sl.No",
                       "Vehicle Type",
                       "Work Order",
-                      "No Of Trucks",
-                      "No Of Invoices",
-                      "Vendor Code",
+                      "Trucks",
+                      "Invoices",
+                      "Vendor",
                       "Transporter",
                       "Plant",
                       "Division",
                       "LRs QTY",
-                      "LR Number",
-                      "Load Points",
-                      "Unload Points",
+                      "LR No",
+                      "Load Pts",
+                      "Unload Pts",
                       "Remarks",
                       "",
                     ].map((h, i) => (
                       <th
                         key={i}
                         className={cn(
-                          "px-3 py-3 text-left whitespace-nowrap",
-                          i === 0 && "w-14 text-center",
-                          i === 14 && "w-14 text-right",
+                          "px-2 py-2 text-left",
+                          i === 0 && "w-10 text-center",
+                          i === 14 && "w-10 text-right",
                         )}
                       >
                         {h}
@@ -265,13 +265,13 @@ function CreateDispatch() {
                 <tbody className="divide-y divide-hairline/60">
                   {rows.map((row) => (
                     <tr key={row.id} className="hover:bg-accent/[0.04] transition-colors group">
-                      <td className="px-3 py-1.5 text-center font-mono text-muted-foreground">{row.slNo}</td>
+                      <td className="px-2 py-1 text-center font-mono text-muted-foreground">{row.slNo}</td>
                       <CellSelect
                         value={row.vehicleType}
                         options={VEHICLE_TYPES}
                         onChange={(v) => updateRow(row.id, { vehicleType: v })}
                         placeholder="Select"
-                        minWidth={160}
+                        minWidth={130}
                       />
                       <CellInput
                         value={row.workOrder}
@@ -291,19 +291,19 @@ function CreateDispatch() {
                         value={row.transporter}
                         options={TRANSPORTERS}
                         onChange={(v) => updateRow(row.id, { transporter: v })}
-                        minWidth={160}
+                        minWidth={130}
                       />
                       <CellSelect
                         value={row.plant}
                         options={PLANTS}
                         onChange={(v) => updateRow(row.id, { plant: v })}
-                        minWidth={170}
+                        minWidth={140}
                       />
                       <CellSelect
                         value={row.division}
                         options={DIVISIONS}
                         onChange={(v) => updateRow(row.id, { division: v })}
-                        minWidth={150}
+                        minWidth={125}
                       />
                       <CellNumber value={row.noOfLRs} onChange={(v) => updateRow(row.id, { noOfLRs: v })} />
                       <CellInput
@@ -327,7 +327,7 @@ function CreateDispatch() {
                         onChange={(v) => updateRow(row.id, { remarks: v })}
                         placeholder="Remarks"
                       />
-                      <td className="px-3 py-1.5 text-right">
+                      <td className="px-2 py-1 text-right">
                         <button
                           onClick={() => deleteRow(row.id)}
                           className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition"
@@ -448,13 +448,13 @@ function CellInput({
   mono?: boolean;
 }) {
   return (
-    <td className="px-2 py-1.5">
+    <td className="px-1.5 py-1">
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          "w-full min-w-[120px] h-8 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-2 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition",
+          "w-full min-w-[80px] h-7 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-1.5 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition",
           mono && "font-mono",
         )}
       />
@@ -464,12 +464,12 @@ function CellInput({
 
 function CellNumber({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
-    <td className="px-2 py-1.5">
+    <td className="px-1.5 py-1">
       <input
         type="number"
         value={value}
         onChange={(e) => onChange(Number(e.target.value) || 0)}
-        className="w-full min-w-[80px] h-8 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-2 text-[12.5px] font-mono tabular-nums outline-none focus:ring-2 focus:ring-accent/20 transition"
+        className="w-16 min-w-[56px] h-7 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-1.5 text-[12.5px] font-mono tabular-nums outline-none focus:ring-2 focus:ring-accent/20 transition"
       />
     </td>
   );
@@ -480,7 +480,7 @@ function CellSelect({
   options,
   onChange,
   placeholder = "Select",
-  minWidth = 140,
+  minWidth = 110,
 }: {
   value: string;
   options: string[];
@@ -489,12 +489,12 @@ function CellSelect({
   minWidth?: number;
 }) {
   return (
-    <td className="px-2 py-1.5">
+    <td className="px-1.5 py-1">
       <div className="relative" style={{ minWidth }}>
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full h-8 appearance-none bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-lg pl-2.5 pr-7 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition cursor-pointer"
+          className="w-full h-7 appearance-none bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md pl-2 pr-6 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition cursor-pointer"
         >
           <option value="">{placeholder}</option>
           {options.map((o) => (
