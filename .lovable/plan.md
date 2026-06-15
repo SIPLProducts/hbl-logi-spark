@@ -1,26 +1,31 @@
-## Remove Add Row button and auto-initialize first row in Dispatch Create screen
+## Conditional Action column in Dispatch → Create
 
-### Problem
-In the Dispatch → Create screen, users currently see an empty table with an "Add Row" button. They must click the button before entering any dispatch data. We want to remove the button and show one empty row by default so data entry can begin immediately.
-
-### Changes (all in `src/routes/dispatch.tsx`)
-
-1. **Auto-initialize rows state with one empty row**  
-   Change `useState<DispatchRow[]>([])` to `useState<DispatchRow[]>([emptyDispatchRow(1)])` so the table always renders a single blank row on load.
-
-2. **Remove the "Add Row" button**  
-   Delete the `<Button size="sm" variant="outline" onClick={addRow} …>` block in the card header (next to the "Dispatch Lines" title).
-
-3. **Remove the empty-state fallback row**  
-   Delete the `rows.length === 0` conditional block inside `<tbody>` that shows the "No dispatch lines. Click Add Row to begin." message, since rows will never be empty now.
-
-4. **Clean up unused `addRow` function**  
-   Remove the `addRow` helper function declaration (optional — harmless to keep, but cleaner to remove since there is no UI that triggers it).
-
-### Behavior notes
-- The table will show one blank row with slNo = 1 as soon as the user selects Direction + SAP mode.
-- The delete-row button per row will still work; if the user deletes the only row, the table becomes empty until the screen is reloaded or the tab is switched. No "Add Row" button will be present to restore it.
-- Existing conditional logic for Work Order (enabled only for FTL) and Remarks (hidden for FTL/CARGO) remains unchanged and will apply to the auto-created row once a Vehicle Type is selected.
+### Behavior
+- The table starts with **one row** (no auto-added rows).
+- A new **Action** column (header "Action") is rendered **only when** the maximum count among row 1's five trigger fields is greater than 1. Until then, no Action column header and no per-row Add/Delete buttons are shown.
+- The five trigger fields and how each contributes a "count":
+  - **No. of Trucks** → numeric value
+  - **No. of Invoices** → numeric value
+  - **No. of LRs** → numeric value
+  - **Load Points** → number of comma-separated entries (trimmed, non-empty)
+  - **Unload Points** → number of comma-separated entries (trimmed, non-empty)
+- `maxAllowed = max(trucks, invoices, lrs, loadPtsCount, unloadPtsCount)` computed from **row 1**.
+- When `maxAllowed > 1`:
+  - Action column appears.
+  - Each row gets an **Add** button (enabled while `rows.length < maxAllowed`) and a **Delete** button (disabled on row 1 when it is the only row, otherwise enabled).
+  - Clicking Add appends a new blank row (slNo auto-incremented) up to `maxAllowed`.
+  - Clicking Delete removes that row; slNos are renumbered.
+- When `maxAllowed <= 1`: column is hidden entirely and the existing on-hover trash icon is removed so there is no delete control either.
+- If the user reduces row 1 values back to ≤1 while extra rows exist, the Action column stays visible (rows.length > 1 keeps it on); Add becomes disabled because `rows.length >= maxAllowed`.
 
 ### Files touched
 - `src/routes/dispatch.tsx` only.
+
+### Technical notes
+1. Derive `maxAllowed` via `useMemo` from `rows[0]`. Helper `countParts(str)` splits on `,`, trims, filters empty.
+2. `showActionCol = maxAllowed > 1 || rows.length > 1`.
+3. Header row: conditionally render the trailing `""` column header as "Action" only when `showActionCol`.
+4. Body: replace the existing always-rendered trailing `<td>` (currently holding the hover-only trash) with a conditional `<td>` that, when `showActionCol`, renders both an Add (`Plus` icon) and Delete (`Trash2` icon) button side-by-side. Add is `disabled` when `rows.length >= maxAllowed`; Delete is `disabled` when `rows.length === 1`.
+5. `addRow()` helper: append `emptyDispatchRow(rows.length + 1)` to state; cap at `maxAllowed`.
+6. Keep existing `deleteRow` logic (already renumbers slNos).
+7. No changes to data model, mock data, or other screens.
