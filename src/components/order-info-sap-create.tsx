@@ -41,7 +41,6 @@ const FIELDS: FieldSpec[] = [
     value: "",
     type: "select",
     options: [
-      "Select Mode of Transport",
       "FULL TRUCK LOAD",
       "CARGO",
       "RATE CONTRACT",
