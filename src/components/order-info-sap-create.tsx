@@ -40,7 +40,17 @@ const FIELDS: FieldSpec[] = [
     label: "Transaction Type",
     value: "",
     type: "select",
-    options: ["FULL TRUCK LOAD", "PART LOAD", "COURIER"],
+    options: [
+      "Select Mode of Transport",
+      "FULL TRUCK LOAD",
+      "CARGO",
+      "RATE CONTRACT",
+      "LOCAL TRANSPORTATION",
+      "CUSTOMER TRANSPORTER",
+      "COMPANY VEHICLE",
+      "COURIER",
+      "BY HAND",
+    ],
   },
   {
     label: "Billing Transaction Type",
@@ -84,7 +94,6 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
 
   return (
     <div className="space-y-2">
-
       {/* Selection table */}
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
