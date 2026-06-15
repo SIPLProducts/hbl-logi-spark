@@ -23,7 +23,19 @@ const PRODUCTS = [
   "Raw material",
   "Contrate Product",
 ];
-const MATERIAL_TYPES = ["Finished Goods", "Raw Material", "Semi-Finished"];
+const MATERIAL_TYPES = [
+  "Batteries",
+  "Acid",
+  "Electronic Goods",
+  "Scrap",
+  "Rack",
+  "Stack Box",
+  "Packing material",
+  "T-CAS",
+  "PC Wire",
+  "Raw material",
+  "Contrate Product",
+];
 const BATTERY_CONDITIONS = ["New", "Refurbished", "Used"];
 
 export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
