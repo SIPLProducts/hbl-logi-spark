@@ -50,7 +50,7 @@ const BASE_FIELDS: FieldSpec[] = [
   {
     label: "Payment Status",
     type: "select",
-    options: ["Pending", "Partial", "Paid"],
+    options: ["Pending", "Settled"],
     placeholder: "Select Payment Status",
   },
   { label: "Payment Info" },
