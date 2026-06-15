@@ -23,11 +23,23 @@ const BASE_FIELDS: FieldSpec[] = [
   { label: "Customer" },
   { label: "C/nee Name" },
   {
-    label: "Damage Remarks",
-    type: "select",
-    options: ["Wet", "Crushed", "Broken", "Leak", "Other"],
-    placeholder: "Select Damage Remarks",
-  },
+{
+  label: "Damage Remarks",
+  type: "select",
+  options: [
+    "Packing material damage",
+    "Pallet damage",
+    "Cells damage",
+    "Cell Bank damage",
+    "Can damage",
+    "Accident",
+    "Prohibited material loading and seized by Police",
+    "Damage during unloading",
+    "Material in wet condition",
+    "Damage due to other materials loaded"
+  ],
+  placeholder: "Select Damage Remarks",
+},
   {
     label: "Settlement",
     type: "select",
