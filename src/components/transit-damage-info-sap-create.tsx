@@ -42,7 +42,13 @@ const BASE_FIELDS: FieldSpec[] = [
   {
     label: "Settlement",
     type: "select",
-    options: ["Transporter", "Insurance", "HBL", "Pending"],
+    options: [
+      "Claim Settlement",
+      "Direct Deduction",
+      "Insurance claim",
+      "Repair Locally with cost",
+      "Repair Locally without cost",
+    ],
     placeholder: "Select Settlement",
   },
   { label: "Closing Date", type: "date" },
