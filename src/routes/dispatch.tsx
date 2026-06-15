@@ -56,11 +56,11 @@ function DispatchPage() {
   const [tab, setTab] = useState<"create" | "search">("create");
 
   return (
-    <div className="flex flex-col min-h-full bg-background">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
+    <div className="flex flex-col h-full overflow-hidden bg-background">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full flex flex-col flex-1 min-h-0">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
-          <Breadcrumb className="mb-1.5">
+        <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-1.5 pb-1.5 shadow-soft">
+          <Breadcrumb className="mb-1">
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
@@ -115,11 +115,11 @@ function DispatchPage() {
         </div>
 
         {/* Body */}
-        <div className="flex-1 px-3 sm:px-4 lg:px-6 py-2">
-          <TabsContent value="create" className="mt-0">
+        <div className="flex-1 min-h-0 overflow-hidden px-3 sm:px-4 lg:px-6 py-2">
+          <TabsContent value="create" className="mt-0 h-full">
             <CreateDispatch />
           </TabsContent>
-          <TabsContent value="search" className="mt-0">
+          <TabsContent value="search" className="mt-0 h-full overflow-auto">
             <SearchDispatch />
           </TabsContent>
         </div>
@@ -143,9 +143,9 @@ function CreateDispatch() {
     setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col h-full min-h-0 gap-2">
       {/* Toolbar */}
-      <div className="bg-surface border border-hairline rounded-lg px-2.5 py-1.5 shadow-soft">
+      <div className="bg-surface border border-hairline rounded-lg px-2 py-1 shadow-soft shrink-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Direction</span>
           <PremiumRadio label="Outward" checked={direction === "outward"} onSelect={() => setDirection("outward")} />
@@ -213,22 +213,22 @@ function CreateDispatch() {
       {sap && (
         <>
           {/* Editable table card */}
-          <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
-              <div>
-                <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+          <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200 flex-1 min-h-0 flex flex-col">
+            <div className="px-3 py-2 border-b border-hairline flex items-center justify-between bg-surface-2/60 shrink-0">
+              <div className="flex items-baseline gap-2">
+                <h3 className="font-display text-[13px] font-semibold text-foreground tracking-tight">
                   Dispatch Lines
                 </h3>
-                <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                <span className="text-[11px] text-muted-foreground">
                   {rows.length} row{rows.length === 1 ? "" : "s"} · auto-numbered
-                </p>
+                </span>
               </div>
               <Button size="sm" variant="outline" onClick={addRow} className="gap-1.5 rounded-lg">
                 <Plus className="size-3.5" /> Add Row
               </Button>
             </div>
 
-            <div className="overflow-x-auto scrollbar-elegant">
+            <div className="flex-1 min-h-0 overflow-auto scrollbar-elegant">
               <table className="w-full text-[12.5px] border-collapse">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
@@ -252,7 +252,7 @@ function CreateDispatch() {
                       <th
                         key={i}
                         className={cn(
-                          "px-3 py-3 text-left whitespace-nowrap",
+                          "px-2 py-1.5 text-left whitespace-nowrap",
                           i === 0 && "w-14 text-center",
                           i === 14 && "w-14 text-right",
                         )}
@@ -265,7 +265,7 @@ function CreateDispatch() {
                 <tbody className="divide-y divide-hairline/60">
                   {rows.map((row) => (
                     <tr key={row.id} className="hover:bg-accent/[0.04] transition-colors group">
-                      <td className="px-3 py-1.5 text-center font-mono text-muted-foreground">{row.slNo}</td>
+                      <td className="px-3 py-1 text-center font-mono text-muted-foreground">{row.slNo}</td>
                       <CellSelect
                         value={row.vehicleType}
                         options={VEHICLE_TYPES}
@@ -327,7 +327,7 @@ function CreateDispatch() {
                         onChange={(v) => updateRow(row.id, { remarks: v })}
                         placeholder="Remarks"
                       />
-                      <td className="px-3 py-1.5 text-right">
+                      <td className="px-3 py-1 text-right">
                         <button
                           onClick={() => deleteRow(row.id)}
                           className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition"
@@ -340,7 +340,7 @@ function CreateDispatch() {
                   ))}
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={15} className="px-6 py-10 text-center text-muted-foreground text-[12.5px]">
+                      <td colSpan={15} className="px-6 py-6 text-center text-muted-foreground text-[12.5px]">
                         No dispatch lines. Click <span className="font-semibold">Add Row</span> to begin.
                       </td>
                     </tr>
@@ -350,8 +350,8 @@ function CreateDispatch() {
             </div>
           </div>
 
-          {/* Sticky footer actions */}
-          <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/90 backdrop-blur border-t border-hairline px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-end gap-2.5 z-10">
+          {/* Footer actions */}
+          <div className="shrink-0 bg-surface/90 backdrop-blur border-t border-hairline px-4 py-2 flex items-center justify-end gap-2.5 rounded-lg">
             <Button
               variant="ghost"
               size="sm"
