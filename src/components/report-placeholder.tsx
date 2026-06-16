@@ -5,9 +5,9 @@ const INPUT =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-[12.5px] text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20";
 const LABEL = "block text-[11px] font-semibold text-foreground mb-1.5";
 
-const SELECTS: { label: string }[] = [
-  { label: "Inward/Outward" },
-  { label: "Sap/Nonsap" },
+const SELECTS: { label: string; options?: string[] }[] = [
+  { label: "Inward/Outward", options: ["Inward", "Outward"] },
+  { label: "Sap/Nonsap", options: ["SAP", "Non-SAP"] },
 ];
 const SELECTS_ROW2: { label: string }[] = [
   { label: "Transporter Group" },
@@ -56,7 +56,7 @@ export function ReportPlaceholder({
       <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3.5">
           {SELECTS.map((f) => (
-            <SelectField key={f.label} label={f.label} />
+            <SelectField key={f.label} label={f.label} options={f.options} />
           ))}
           <DateField label="From Date" />
           <DateField label="To Date" />
@@ -98,12 +98,15 @@ export function ReportPlaceholder({
   );
 }
 
-function SelectField({ label }: { label: string }) {
+function SelectField({ label, options }: { label: string; options?: string[] }) {
   return (
     <div>
       <label className={LABEL}>{label}</label>
       <select defaultValue="" className={INPUT}>
         <option value="" disabled>{label}</option>
+        {options?.map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
       </select>
     </div>
   );

@@ -1,20 +1,21 @@
-All Reports screens render through the single `ReportPlaceholder` component. In its `DateField` sub-component, the input currently uses `type="text"` with a placeholder mask. The fix is to switch the input to `type="date"` so the browser renders a native date picker.
+## Update Inward/Outward and SAP/Non-SAP dropdowns in Reports screens
 
-**Scope**
-- File: `src/components/report-placeholder.tsx`
-- Change: `DateField` input `type="text"` → `type="date"`
-- Remove the placeholder text (native date inputs ignore placeholders) and adjust padding/classes if needed.
+### What
+All Reports screens render through `ReportPlaceholder`. Two filter dropdowns currently show only a disabled placeholder with no selectable values:
+- Inward/Outward
+- Sap/Nonsap
 
-**Before**
-```tsx
-<input type="text" placeholder="dd-mm-yyyy" className={INPUT + " pr-9"} />
-<Calendar className="size-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-```
+Update these to show actual dropdown options. All other filter dropdowns remain unchanged.
 
-**After**
-```tsx
-<input type="date" className={INPUT + " pr-9"} />
-<Calendar className="size-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-```
+### How
+File: `src/components/report-placeholder.tsx`
 
-No other files are affected — all report routes import `ReportPlaceholder`.
+1. Change the `SELECTS` array from `{ label: string }[]` to `{ label: string; options?: string[] }[]`.
+2. Populate the two entries with options:
+   - `Inward/Outward` → options: `["Inward", "Outward"]`
+   - `Sap/Nonsap` → options: `["SAP", "Non-SAP"]`
+3. Update `SelectField` props to accept optional `options: string[]`.
+4. In `SelectField`, when `options` are provided, render a disabled placeholder plus one `<option>` per value. When no options are provided, keep the existing behavior (disabled placeholder only).
+5. Leave `SELECTS_ROW2`, `SELECTS_ROW3`, `SELECTS_ROW4` untouched — they continue passing only `label` to `SelectField`.
+
+No other files are affected.
