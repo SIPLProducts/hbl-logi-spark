@@ -6,8 +6,8 @@ const INPUT =
 const LABEL = "block text-[11px] font-semibold text-foreground mb-1.5";
 
 const SELECTS: { label: string; options?: string[] }[] = [
-  { label: "Inward/Outward", options: ["Inward", "Outward"] },
-  { label: "Sap/Nonsap", options: ["SAP", "Non-SAP"] },
+  { label: "Select", options: ["Inward", "Outward"] },
+  { label: "Select", options: ["SAP", "Non-SAP"] },
 ];
 const SELECTS_ROW2: { label: string }[] = [
   { label: "Transporter Group" },
@@ -90,8 +90,8 @@ export function ReportPlaceholder({
         </div>
         <h3 className="font-display text-[15px] font-semibold text-foreground">No data to display</h3>
         <p className="text-[12.5px] text-muted-foreground mt-1.5 max-w-md">
-          Apply filters and click <span className="font-semibold text-foreground">Export XLS</span> to generate the report.
-          Connect Lovable Cloud to wire live data.
+          Apply filters and click <span className="font-semibold text-foreground">Export XLS</span> to generate the
+          report. Connect Lovable Cloud to wire live data.
         </p>
       </div>
     </div>
@@ -103,9 +103,13 @@ function SelectField({ label, options }: { label: string; options?: string[] }) 
     <div>
       <label className={LABEL}>{label}</label>
       <select defaultValue="" className={INPUT}>
-        <option value="" disabled>{label}</option>
+        <option value="" disabled>
+          {label}
+        </option>
         {options?.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
         ))}
       </select>
     </div>
