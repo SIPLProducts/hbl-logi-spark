@@ -6,8 +6,8 @@ const INPUT =
 const LABEL = "block text-[11px] font-semibold text-foreground mb-1.5";
 
 const SELECTS: { label: string; options?: string[] }[] = [
-  { label: "Select", options: ["Inward", "Outward"] },
-  { label: "Select", options: ["SAP", "Non-SAP"] },
+  { label: "Inward/Outward", options: ["Inward", "Outward"] },
+  { label: "SAP/Non-SAP", options: ["SAP", "Non-SAP"] },
 ];
 const SELECTS_ROW2: { label: string }[] = [
   { label: "Transporter Group" },
