@@ -1,5 +1,9 @@
-import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState, useEffect } from "react";
+// @ts-ignore
+import service from "../services/generalservice_service.js";
+import { Link } from "@tanstack/react-router";
+import Swal from "sweetalert2";
 import { format } from "date-fns";
 import {
   ArrowUpDown,
@@ -42,10 +46,10 @@ import {
   TRANSPORTERS,
   VEHICLE_TYPES,
   emptyDispatchRow,
-  sampleDispatchRows,
   type DispatchResultRow,
   type DispatchRow,
 } from "@/lib/dispatch-mock";
+
 
 export const Route = createFileRoute("/dispatch")({
   component: DispatchPage,
@@ -89,12 +93,31 @@ function getMissingFields(row: DispatchRow) {
   return MANDATORY_KEYS.filter((k) => isFieldEmpty(row, k));
 }
 
+function getLoggedInUser() {
+  try {
+    const raw = localStorage.getItem("userData");
+    if (!raw) return "";
+    const user = JSON.parse(raw) as Record<string, unknown>;
+    return String(
+      user?.USER ??
+      user?.USERNAME ??
+      user?.USER_ID ??
+      user?.EMP_ID ??
+      user?.EMAIL ??
+      `${user?.FIRST_NAME ?? ""} ${user?.LAST_NAME ?? ""}`.trim() ??
+      "",
+    );
+  } catch {
+    return "";
+  }
+}
+
 function DispatchPage() {
   const [tab, setTab] = useState<"create" | "search">("create");
 
   return (
     <div className="flex flex-col min-h-full bg-background">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
+      <Tabs value={tab} onValueChange={(v: string) => setTab(v as "create" | "search")} className="w-full">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
           <Breadcrumb className="mb-1.5">
@@ -165,66 +188,445 @@ function DispatchPage() {
   );
 }
 
+type VendorData = {
+  VENDOR_CODE: number;
+  TRANSPORTER: string;
+};
+
+type PlantData = {
+  PLANT: string;
+  PLANT_DESC: string;
+  DIVISION: string;
+  PLANT_TEXT: string;
+  DIV_TEXT: string;
+};
+
 /* ──────────────────────────────────── Mode 1 — Create ──────────────────────────────────── */
 
 function CreateDispatch() {
   const [sap, setSap] = useState<SapMode | null>(null);
+  const [fetchedVendors, setFetchedVendors] = useState<{ vendorCode: string; transporter: string }[]>([]);
+  const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
+  const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
+  const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
   const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
-  const [searchType, setSearchType] = useState<string>(SEARCH_TYPES[0]);
+  const [searchType, setSearchType] = useState<string>(SEARCH_TYPES[1]);
   const [searchValue, setSearchValue] = useState("");
   const [rows, setRows] = useState<DispatchRow[]>([emptyDispatchRow(1)]);
   const [showErrors, setShowErrors] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [searchNotice, setSearchNotice] = useState<string | null>(null);
+  const isLockedRow = (index: number) => index !== 0;
+  const [originalTotals, setOriginalTotals] = useState({
+    trucks: 0,
+    invoices: 0,
+    lrs: 0,
+    loadPts: 0,
+    unloadPts: 0,
+  });
+  const deleteRow = (id: string) => {
+    setRows((prev) => {
+      const filtered = prev.filter((r) => r.id !== id);
 
-  const deleteRow = (id: string) => setRows((r) => r.filter((x) => x.id !== id).map((x, i) => ({ ...x, slNo: i + 1 })));
-  const updateRow = (id: string, patch: Partial<DispatchRow>) =>
-    setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+      if (filtered.length === 0) {
+        return [emptyDispatchRow(1)];
+      }
+
+      return redistributeRows(filtered.length, filtered);
+    });
+  };
+  const updateRow = (id: string, patch: Partial<DispatchRow>) => {
+    setRows((prev) => {
+      const updated = prev.map((row) =>
+        row.id === id ? { ...row, ...patch } : row
+      );
+
+      if (updated[0]?.id === id) {
+        setOriginalTotals({
+          trucks: updated[0].noOfTrucks || 0,
+          invoices: updated[0].noOfInvoices || 0,
+          lrs: updated[0].noOfLRs || 0,
+          loadPts: Number(updated[0].loadingPoints || 0),
+          unloadPts: Number(updated[0].unloadingPoints || 0),
+        });
+      }
+
+      return updated;
+    });
+  };
+
+  const redistributeRows = (
+    rowCount: number,
+    existingRows: DispatchRow[]
+  ) => {
+    const firstRow = existingRows[0];
+
+    return Array.from({ length: rowCount }, (_, index) => ({
+      ...(existingRows[index] ??
+        emptyDispatchRow(index + 1)),
+
+      slNo: index + 1,
+
+      vehicleType: firstRow.vehicleType,
+      workOrder: firstRow.workOrder,
+      vendorCode: firstRow.vendorCode,
+      transporter: firstRow.transporter,
+      plant: firstRow.plant,
+      division: firstRow.division,
+      lrNumber: firstRow.lrNumber,
+      remarks: firstRow.remarks,
+
+      noOfTrucks: splitValue(
+        originalTotals.trucks,
+        rowCount,
+        index
+      ),
+
+      noOfInvoices: splitValue(
+        originalTotals.invoices,
+        rowCount,
+        index
+      ),
+
+      noOfLRs: splitValue(
+        originalTotals.lrs,
+        rowCount,
+        index
+      ),
+
+      loadingPoints: String(
+        splitValue(
+          originalTotals.loadPts,
+          rowCount,
+          index
+        )
+      ),
+
+      unloadingPoints: String(
+        splitValue(
+          originalTotals.unloadPts,
+          rowCount,
+          index
+        )
+      ),
+    }));
+  };
 
   const countParts = (s: string) =>
     s.split(",").map((p) => p.trim()).filter(Boolean).length;
 
   const maxAllowed = useMemo(() => {
-    const r = rows[0];
-    if (!r) return 0;
-    return Math.max(
-      r.noOfTrucks || 0,
-      r.noOfInvoices || 0,
-      r.noOfLRs || 0,
-      countParts(r.loadingPoints),
-      countParts(r.unloadingPoints),
-    );
+    const totalTrucks = rows.reduce((sum, row) => sum + (row.noOfTrucks || 0), 0);
+    const totalInvoices = rows.reduce((sum, row) => sum + (row.noOfInvoices || 0), 0);
+    const totalLrs = rows.reduce((sum, row) => sum + (row.noOfLRs || 0), 0);
+    const totalLoadPoints = rows.reduce((sum, row) => sum + countParts(row.loadingPoints), 0);
+    const totalUnloadPoints = rows.reduce((sum, row) => sum + countParts(row.unloadingPoints), 0);
+
+    const positiveTotals = [totalTrucks, totalInvoices, totalLrs, totalLoadPoints, totalUnloadPoints].filter((value) => value > 0);
+    return positiveTotals.length > 0 ? Math.max(...positiveTotals) : 1;
   }, [rows]);
 
   const showActionCol = maxAllowed > 1 || rows.length > 1;
 
-  const addRow = () =>
-    setRows((r) => (r.length >= maxAllowed ? r : [...r, emptyDispatchRow(r.length + 1)]));
+  const distributeNumber = (total: number, count: number) => {
+    const base = Math.floor(total / count);
+    const remainder = total - base * count;
+    return Array.from({ length: count }, (_, index) => base + (index < remainder ? 1 : 0));
+  };
+
+  // const collectParts = (field: keyof Pick<DispatchRow, "loadingPoints" | "unloadingPoints">) =>
+  //   rows.flatMap((row) => row[field].split(",").map((part) => part.trim()).filter(Boolean));
+
+  const distributeParts = (parts: string[], count: number) => {
+    const counts = distributeNumber(parts.length, count);
+    const distributed: string[] = [];
+    let offset = 0;
+    for (let i = 0; i < count; i += 1) {
+      distributed.push(parts.slice(offset, offset + counts[i]).join(", "));
+      offset += counts[i];
+    }
+    return distributed;
+  };
+
+  const splitValue = (total: number, totalRows: number, index: number) => {
+    const perRow = Math.floor(total / totalRows);
+    const remainder = total % totalRows;
+
+    return perRow + (index < remainder ? 1 : 0);
+  };
+
+  const addRow = () => {
+    setRows((prev) => {
+      const rowCount = prev.length + 1;
+      return redistributeRows(rowCount, prev);
+    });
+  };
 
   // Looks up an existing dispatch entry (mock data for now — swap for the real F4/search
   // API later) and loads it straight into the same Dispatch Lines table below, which also
   // switches the footer buttons into "Update" mode.
-  const handleSearch = () => {
-    const q = searchValue.trim().toLowerCase();
-    if (!q) return;
-    const matches = sampleDispatchRows.filter((r) =>
-      [r.workOrder, r.lrNumber, r.transporter, r.vendorCode].some((f) => f.toLowerCase().includes(q)),
-    );
-    if (matches.length > 0) {
-      setRows(matches.map((r, i) => ({ ...r, slNo: i + 1 })));
-      setIsEditMode(true);
-      setShowErrors(false);
-      setSearchNotice(null);
-    } else {
-      setSearchNotice("No matching records found.");
+const SEARCH_TYPE_TO_API_KEY: Record<string, keyof Omit<Record<string, string>, "zuser">> = {
+  "Reference Number": "RNO",
+  "LR Number": "LR_NO",
+  Transporter: "TRANSPORTER",
+  "Work Order": "WORK_ORDER",
+};
+
+const handleSearch = async () => {
+  try {
+    if (!searchValue.trim()) {
+      Swal.fire({
+        text: "Please enter a search value.",
+        icon: "warning",
+      });
+      return;
     }
-  };
+
+    const field = SEARCH_TYPE_TO_API_KEY[searchType];
+    if (!field) {
+      Swal.fire({
+        text: "Please select a valid search type before searching.",
+        icon: "warning",
+      });
+      return;
+    }
+
+    const trimmedValue = searchValue.trim();
+
+    const payload: any = {
+      RNO: "",
+      LR_NO: "",
+      TRANSPORTER: "",
+      WORK_ORDER: "",
+      zuser: getLoggedInUser(),
+    };
+    payload[field] = trimmedValue;
+
+    console.log("Search payload:", payload); // For debugging
+
+    const res =
+      sap === "with"
+        ? await service.fetchReferencenumber(payload)
+        : await service.fetchReferencenumberWithoutSap(payload);
+
+    // Check if the API returned an error status
+    if (res?.STATUS === "FALSE" || res?.NUMBER === "100") {
+      Swal.fire({
+        text: res?.MSG || "Search failed. No records found.",
+        icon: "error",
+      });
+      return;
+    }
+
+    const data = Array.isArray(res) ? res : res?.data || [];
+
+    if (data.length === 0) {
+      Swal.fire({
+        text: "No records found for the search criteria.",
+        icon: "info",
+      });
+      return;
+    }
+
+    const mapped = data.map((item: any, index: number) => ({
+      id: String(index + 1),
+      slNo: index + 1,
+
+      referenceNo: item.REFNO,
+      lineNo: item.LINE_NO,
+      plant: item.WERKS,
+      division: item.DIVISION,
+      vehicleType: item.VEH_TYPE,
+      noOfTrucks: Number(item.NO_TRUCKS || 0),
+      workOrder: item.WORK_ORDER,
+      vendorCode: String(item.VENDOR_CD || ""),
+      transporter: item.TRANSPORTER,
+      noOfLRs: Number(item.NO_LRS || 0),
+      lrNumber: item.LR_NO,
+      loadingPoints: item.LOAD_PT || "",
+      unloadingPoints: item.UNLOAD_PT || "",
+      noOfInvoices: Number(item.NO_INVOICES || 0),
+      createdDate: item.CREATED_DT,
+    }));
+
+    // Load mapped search results into the create-mode rows and switch to edit mode
+    setRows(mapped as DispatchRow[]);
+    setIsEditMode(true);
+    Swal.fire({
+      text: `${mapped.length} record${mapped.length === 1 ? "" : "s"} found successfully.`,
+      icon: "success",
+    });
+  } catch (err) {
+    console.error("Search failed:", err);
+    Swal.fire({
+      text: "An error occurred while searching. Please try again.",
+      icon: "error",
+    });
+  }
+};
+
+  // Fetch F4 lookup data (vendor codes, plants, divisions, transporters) when SAP selection changes
+  useEffect(() => {
+    resetForm();
+
+    const loadF4 = async () => {
+      if (!sap) return;
+      try {
+        const res: any = await service.fetchVendorCode();
+        // Response may be an array with a single object or an object directly
+        const data = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+
+        const vend: { vendorCode: string; transporter: string }[] = Array.isArray(data.VEND_CODE)
+          ? data.VEND_CODE.map((v: VendorData) => ({
+            vendorCode: String(v.VENDOR_CODE),
+            transporter: v.TRANSPORTER,
+          }))
+          : [];
+
+        const plants: string[] = Array.isArray(data.PLANT)
+          ? data.PLANT.map((p: PlantData) => `${p.PLANT} - ${p.PLANT_DESC}`)
+          : [];
+
+        const divisions: string[] = Array.isArray(data.PLANT)
+          ? Array.from(new Set(data.PLANT.map((p: PlantData) => String(p.DIVISION || "")).filter(Boolean)))
+          : [];
+
+        const transporters: string[] = Array.from(new Set(vend.map((v) => v.transporter).filter(Boolean)));
+
+        setFetchedVendors(vend);
+        setFetchedPlants(plants);
+        setFetchedDivisions(divisions.map((d) => d));
+        setFetchedTransporters(transporters);
+      } catch (err) {
+        // ignore failures for now — leave defaults in place
+        // console.error('F4 fetch failed', err);
+      }
+    };
+    void loadF4();
+    // only when sap toggles
+  }, [sap]);
 
   // Rows that are still missing one or more mandatory fields.
   const invalidRowIds = useMemo(
     () => new Set(rows.filter((r) => getMissingFields(r).length > 0).map((r) => r.id)),
     [rows],
   );
+
+  function resetForm() {
+    setRows([emptyDispatchRow(1)]);
+    setIsEditMode(false);
+    setShowErrors(false);
+    setSearchValue("");
+    setSearchNotice(null);
+  }
+
+  const handleVehicleTypeChange = (
+    vehicleType: string,
+    rowId: string
+  ) => {
+    let vendorCode = "";
+
+    switch (vehicleType) {
+      case "RATE CONTRACT":
+        vendorCode = "111111";
+        break;
+      case "LOCAL TRANSPORTATION":
+        vendorCode = "222222";
+        break;
+      case "CUSTOMER TRANSPORTER":
+        vendorCode = "333333";
+        break;
+      case "COMPANY VEHICLE":
+        vendorCode = "444444";
+        break;
+      case "COURIER":
+        vendorCode = "555555";
+        break;
+      case "BY HAND":
+        vendorCode = "666666";
+        break;
+      default:
+        break;
+    }
+
+    const vendor = fetchedVendors.find(
+      (v) => v.vendorCode === vendorCode
+    );
+
+    updateRow(rowId, {
+      vehicleType,
+      vendorCode: vendor?.vendorCode || "",
+      transporter: vendor?.transporter || "",
+    });
+  };
+
+  const handleSave = async (action?: "next" | "previous") => {
+    try {
+      const loggedInUser = getLoggedInUser();
+
+      const payload = {
+        DISPATCH: rows.map((row) => ({
+          NO_TRUCKS: row.noOfTrucks,
+          NO_INVOICES: row.noOfInvoices,
+          veh_type: row.vehicleType,
+          work_order: row.workOrder,
+          VENDOR_CD: row.vendorCode,
+          transporter: row.transporter,
+          WERKS: row.plant,
+          DIVISION: row.division,
+          NO_LRS: row.noOfLRs,
+          lr_no: row.lrNumber,
+          load_pt: row.loadingPoints,
+          unload_Pt: row.unloadingPoints,
+          ZLRSPEC: "",
+          ZDIS_RM: row.remarks,
+          ZUSER: loggedInUser,
+          ZUSER_CH: "",
+        })),
+      };
+
+      let res;
+
+      if (sap === "with") {
+        res = await service.DispatchSave(payload);
+      } else if (sap === "without") {
+        res = await service.DispatchNonSapSave(payload);
+      } else {
+        Swal.fire({
+          text: "Invalid SAP Type selected. Please choose With SAP or Without SAP.",
+          icon: "error",
+        });
+        return;
+      }
+
+      if (res?.STATUS === "TRUE" || res?.NUMBER === "200") {
+        Swal.fire({
+          text: res.MSG || "Dispatch data saved successfully!",
+          icon: "success",
+          confirmButtonText: "OK",
+        }).then(() => {
+          resetForm();
+          if (action === "next") {
+            // navigate("/order-info");
+          } else if (action === "previous") {
+            // navigate("/dashboard");
+          }
+        });
+      } else {
+        Swal.fire({
+          text: res?.MSG || "Dispatch saving failed!",
+          icon: "error",
+        });
+      }
+    } catch (err: any) {
+      Swal.fire({
+        text: err?.response?.data?.MSG || "Failed to save Dispatch!",
+        icon: "error",
+      });
+    }
+  };
+
+
 
   // Runs `next` only if every row satisfies the mandatory fields; otherwise reveals the
   // inline error states/banner without touching any existing save logic.
@@ -335,8 +737,8 @@ function CreateDispatch() {
                       "Sl.No",
                       "Vehicle Type",
                       "Work Order",
-                      "Trucks",
-                      "Invoices",
+                      "No of Trucks",
+                      "No of Invoices",
                       "Vendor",
                       "Transporter",
                       "Plant",
@@ -363,21 +765,23 @@ function CreateDispatch() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-hairline/60">
-                  {rows.map((row) => (
+                  {rows.map((row, index) => (
                     <tr key={row.id} className="hover:bg-accent/[0.04] transition-colors group">
                       <td className="px-2 py-1 text-center font-mono text-muted-foreground">{row.slNo}</td>
                       <CellSelect
                         value={row.vehicleType}
                         options={VEHICLE_TYPES}
-                        onChange={(v) => updateRow(row.id, { vehicleType: v })}
+                        onChange={(v) => handleVehicleTypeChange(v, row.id)}
                         placeholder="Select"
                         minWidth={130}
+                        disabled={isLockedRow(index)}
                         invalid={showErrors && isFieldEmpty(row, "vehicleType")}
                       />
                       <CellInput
                         value={row.workOrder}
                         onChange={(v) => updateRow(row.id, { workOrder: v })}
                         placeholder="WO-…"
+                        
                         mono
                         disabled={row.vehicleType !== "FULL TRUCK LOAD"}
                       />
@@ -391,28 +795,58 @@ function CreateDispatch() {
                         onChange={(v) => updateRow(row.id, { noOfInvoices: v })}
                         invalid={showErrors && isFieldEmpty(row, "noOfInvoices")}
                       />
-                      <CellInput
-                        value={row.vendorCode}
-                        onChange={(v) => updateRow(row.id, { vendorCode: v })}
-                        placeholder="V-…"
-                        mono
-                      />
+                      {fetchedVendors.length > 0 ? (
+                        <CellSelect
+                          value={row.vendorCode}
+                          options={fetchedVendors.map((v) => `${v.vendorCode}`)}
+                           disabled={isLockedRow(index)}
+                          onChange={(v) => {
+                            const selected = fetchedVendors.find(
+                              (item) => item.vendorCode === v
+                            );
+
+                            updateRow(row.id, {
+                              vendorCode: v,
+                              transporter: selected?.transporter || "",
+                            });
+                          }}
+                          minWidth={120}
+                        />
+                      ) : (
+                        <CellInput
+                          value={row.vendorCode}
+                          onChange={(v) => updateRow(row.id, { vendorCode: v })}
+                          
+                          placeholder="V-…"
+                          mono
+                        />
+                      )}
                       <CellSelect
                         value={row.transporter}
-                        options={TRANSPORTERS}
-                        onChange={(v) => updateRow(row.id, { transporter: v })}
+                        options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}
+                         disabled={isLockedRow(index)}
+                        onChange={(v) => {
+                          const selected = fetchedVendors.find(
+                            (item) => item.transporter === v
+                          );
+
+                          updateRow(row.id, {
+                            transporter: v,
+                            vendorCode: selected?.vendorCode || "",
+                          });
+                        }}
                         minWidth={130}
                       />
                       <CellSelect
                         value={row.plant}
-                        options={PLANTS}
+                        options={fetchedPlants.length > 0 ? fetchedPlants : PLANTS}
                         onChange={(v) => updateRow(row.id, { plant: v })}
                         minWidth={140}
                         invalid={showErrors && isFieldEmpty(row, "plant")}
                       />
                       <CellSelect
                         value={row.division}
-                        options={DIVISIONS}
+                        options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}
                         onChange={(v) => updateRow(row.id, { division: v })}
                         minWidth={125}
                         invalid={showErrors && isFieldEmpty(row, "division")}
@@ -492,20 +926,16 @@ function CreateDispatch() {
               variant="outline"
               size="sm"
               className="gap-1.5 h-7 px-3 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent"
-              onClick={() => validateAndRun(() => {
-                // existing save/update logic goes here
-              })}
+              onClick={() => validateAndRun(() => handleSave())}
             >
               <Save className="size-3.5" /> {isEditMode ? "Update" : "Save"}
             </Button>
             <Button
               size="sm"
               className="gap-1.5 h-7 px-3 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0"
-              onClick={() => validateAndRun(() => {
-                // existing save & next / update & next logic goes here
-              })}
+              onClick={() => validateAndRun(() => handleSave("next"))}
             >
-              {isEditMode ? "Update & Next" : "Save & Next"} <ChevronRight className="size-3.5" />
+              {isEditMode ? "Update & Next" : "Save & Next"}
             </Button>
           </div>
         </>
@@ -634,6 +1064,7 @@ function CellSelect({
   placeholder = "Select",
   minWidth = 110,
   invalid,
+  disabled,
 }: {
   value: string;
   options: string[];
@@ -641,6 +1072,7 @@ function CellSelect({
   placeholder?: string;
   minWidth?: number;
   invalid?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <td className="px-1.5 py-1">
@@ -648,6 +1080,7 @@ function CellSelect({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
+           disabled={disabled}  
           className={cn(
             "w-full h-7 appearance-none bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md pl-2 pr-6 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition cursor-pointer",
             invalid && "border-destructive hover:border-destructive focus:border-destructive ring-1 ring-destructive/30",
@@ -670,6 +1103,9 @@ function CellSelect({
 
 function SearchDispatch() {
   const [sap, setSap] = useState<SapMode | null>(null);
+  const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
+  const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
+  const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
   const [plant, setPlant] = useState("");
@@ -677,6 +1113,7 @@ function SearchDispatch() {
   const [transporter, setTransporter] = useState("");
   const [vehicleType, setVehicleType] = useState("");
   const [applied, setApplied] = useState(false);
+ const [results, setResults] = useState<any[]>([]);
 
   const onApply = () => setApplied(true);
   const onReset = () => {
@@ -689,6 +1126,31 @@ function SearchDispatch() {
     setApplied(false);
     setSap(null);
   };
+
+  useEffect(() => {
+    const loadF4 = async () => {
+      if (!sap) return;
+      try {
+        const res: any = await service.fetchVendorCode();
+        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+        const plants: string[] = Array.isArray(data.PLANT)
+          ? data.PLANT.map((p: PlantData) => `${p.PLANT} - ${p.PLANT_DESC}`)
+          : [];
+        const divisions: string[] = Array.isArray(data.PLANT)
+          ? Array.from(new Set(data.PLANT.map((p: PlantData) => String(p.DIVISION || "")).filter(Boolean)))
+          : [];
+        const transporters: string[] = Array.isArray(data.VEND_CODE)
+          ? Array.from(new Set(data.VEND_CODE.map((v: VendorData) => String(v.TRANSPORTER)).filter(Boolean)))
+          : [];
+        setFetchedPlants(plants);
+        setFetchedDivisions(divisions.map((d) => d));
+        setFetchedTransporters(transporters);
+      } catch (err) {
+        // ignore
+      }
+    };
+    void loadF4();
+  }, [sap]);
 
   return (
     <div className="space-y-5">
@@ -717,21 +1179,21 @@ function SearchDispatch() {
                 label="Plant"
                 value={plant}
                 onChange={setPlant}
-                options={PLANTS}
+                options={fetchedPlants.length > 0 ? fetchedPlants : PLANTS}
                 placeholder="Select Plant"
               />
               <SelectField
                 label="Division"
                 value={division}
                 onChange={setDivision}
-                options={DIVISIONS}
+                options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}
                 placeholder="Select Division"
               />
               <SelectField
                 label="Transporter"
                 value={transporter}
                 onChange={setTransporter}
-                options={TRANSPORTERS}
+                options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}
                 placeholder="Select Transporter"
               />
               <SelectField
@@ -762,7 +1224,7 @@ function SearchDispatch() {
       </div>
 
       {applied ? (
-        <ResultsTable />
+       <ResultsTable data={results} />
       ) : (
         <div className="bg-surface border border-dashed border-hairline rounded-xl p-10 text-center">
           <div className="mx-auto size-12 grid place-items-center rounded-full bg-muted text-muted-foreground">
@@ -851,7 +1313,7 @@ function SelectField({
 
 type SortKey = keyof DispatchResultRow;
 
-function ResultsTable() {
+function ResultsTable({ data }: { data: DispatchResultRow[] }) {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -860,7 +1322,7 @@ function ResultsTable() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base: DispatchResultRow[] = [];
+    const base: DispatchResultRow[] = data || [];
     void q;
     const sorted = [...base].sort((a, b) => {
       const av = a[sortKey];
@@ -871,7 +1333,7 @@ function ResultsTable() {
       return sortDir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
     });
     return sorted;
-  }, [query, sortKey, sortDir]);
+  }, [query, sortKey, sortDir, data]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
