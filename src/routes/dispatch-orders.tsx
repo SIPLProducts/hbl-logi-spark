@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+// @ts-ignore
+import service from "../services/generalservice_service.js";
 import {
   Filter,
   Play,
@@ -13,13 +15,10 @@ import {
   ChevronDown,
   ChevronsUpDown,
   Inbox,
-  ListFilter,
+  // ListFilter,
 } from "lucide-react";
 import { exportRowsToXls } from "@/lib/export-xls";
-import {
-  queryDispatchOrders,
-  type DispatchOrderRow,
-} from "@/lib/dispatch-orders-mock";
+import type { DispatchOrderRow } from "@/lib/dispatch-orders-mock";
 
 export const Route = createFileRoute("/dispatch-orders")({
   component: DispatchOrdersPage,
@@ -43,20 +42,61 @@ function formatDate(iso: string) {
   return `${d}-${m}-${y}`;
 }
 
-const INR = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const INR = new Intl.NumberFormat("en-IN", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 const COLUMNS: ColDef[] = [
-  { key: "invoiceNo", header: "Invoice No", render: (r) => <span className="font-mono">{r.invoiceNo}</span> },
-  { key: "invoiceDate", header: "Invoice Date", render: (r) => <span className="font-mono">{formatDate(r.invoiceDate)}</span> },
+  {
+    key: "invoiceNo",
+    header: "Invoice No",
+    render: (r) => <span className="font-mono">{r.invoiceNo}</span>,
+  },
+  {
+    key: "invoiceDate",
+    header: "Invoice Date",
+    render: (r) => (
+      <span className="font-mono">{formatDate(r.invoiceDate)}</span>
+    ),
+  },
   { key: "billingTransactionType", header: "Billing Transaction Type" },
-  { key: "material", header: "Material", render: (r) => <span className="font-mono">{r.material}</span> },
+  {
+    key: "material",
+    header: "Material",
+    render: (r) => <span className="font-mono">{r.material}</span>,
+  },
   { key: "description", header: "Description" },
-  { key: "plant", header: "Plant", render: (r) => <span className="font-mono">{r.plant}</span> },
+  {
+    key: "plant",
+    header: "Plant",
+    render: (r) => <span className="font-mono">{r.plant}</span>,
+  },
   { key: "plantName", header: "Plant Name" },
-  { key: "division", header: "Division", render: (r) => <span className="font-mono">{r.division}</span> },
+  {
+    key: "division",
+    header: "Division",
+    render: (r) => <span className="font-mono">{r.division}</span>,
+  },
   { key: "divisionText", header: "Division Text" },
-  { key: "basicShipmentValue", header: "Basic Shipment Value", align: "right", numeric: true, render: (r) => <span className="font-mono">{INR.format(r.basicShipmentValue)}</span> },
-  { key: "invoiceValueWithGst", header: "Invoice Value With GST", align: "right", numeric: true, render: (r) => <span className="font-mono">{INR.format(r.invoiceValueWithGst)}</span> },
+  {
+    key: "basicShipmentValue",
+    header: "Basic Shipment Value",
+    align: "right",
+    numeric: true,
+    render: (r) => (
+      <span className="font-mono">{INR.format(r.basicShipmentValue)}</span>
+    ),
+  },
+  {
+    key: "invoiceValueWithGst",
+    header: "Invoice Value With GST",
+    align: "right",
+    numeric: true,
+    render: (r) => (
+      <span className="font-mono">{INR.format(r.invoiceValueWithGst)}</span>
+    ),
+  },
   { key: "incoterms", header: "Incoterms" },
 ];
 
@@ -72,24 +112,75 @@ function DispatchOrdersPage() {
   const [pageSize, setPageSize] = useState(10);
   const [error, setError] = useState<string | null>(null);
 
-  const onExecute = () => {
+  // Pending/Completed counts from API
+  const [counts, setCounts] = useState({ pending: 0, completed: 0 });
+
+  // Fetch pending/completed counts on page load
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const response = await service.FetchDispatchOrderPendingCounts();
+        setCounts({
+          pending: response?.PENDING ?? 0,
+          completed: response?.COMPLETED ?? 0,
+        });
+      } catch (err) {
+        console.error("Failed to fetch counts:", err);
+      }
+    };
+    fetchCounts();
+  }, []);
+
+  const onExecute = async () => {
     setError(null);
+
     if (!fromDate || !toDate) {
       setError("Please select both From Date and To Date.");
       return;
     }
+
     if (fromDate > toDate) {
       setError("From Date must be on or before To Date.");
       return;
     }
-    setStatus("loading");
-    setRows([]);
-    setPage(1);
-    window.setTimeout(() => {
-      const data = queryDispatchOrders(fromDate, toDate);
+
+    const payload = {
+      from_date: fromDate,
+      to_date: toDate,
+    };
+
+    try {
+      setStatus("loading");
+      setRows([]);
+      setPage(1);
+
+      const response = await service.FetchDispatchOrderFlowData(payload);
+      const raw = response?.data || response || [];
+
+      // Map API UPPERCASE keys to camelCase DispatchOrderRow shape
+      const data: DispatchOrderRow[] = raw.map((item: any, index: number) => ({
+        id: String(index),
+        invoiceNo: item.INVOICE_NUMBER,
+        invoiceDate: item.INVOICE_DATE,
+        billingTransactionType: item.BILLING_TRANSACTION_TYPE,
+        material: item.MATERIAL,
+        description: item.DESCRIPTION,
+        plant: item.PLANT,
+        plantName: item.PLANT_NAME,
+        division: item.DIVISION,
+        divisionText: item.DIVISION_TEXT,
+        basicShipmentValue: item.BASIC_SHIPMENT_VALUE,
+        invoiceValueWithGst: item.INVOICE_VALUE_WITH_GST,
+        incoterms: item.INCOTERMS,
+      }));
+
       setRows(data);
       setStatus(data.length === 0 ? "empty" : "ready");
-    }, 600);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to fetch data.");
+      setStatus("empty");
+    }
   };
 
   const onClear = () => {
@@ -106,7 +197,7 @@ function DispatchOrdersPage() {
     const q = search.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) =>
-      COLUMNS.some((c) => String(r[c.key] ?? "").toLowerCase().includes(q)),
+      COLUMNS.some((c) => String(r[c.key] ?? "").toLowerCase().includes(q))
     );
   }, [rows, search]);
 
@@ -129,19 +220,13 @@ function DispatchOrdersPage() {
   const start = (safePage - 1) * pageSize;
   const paged = sorted.slice(start, start + pageSize);
 
-  const counts = useMemo(() => {
-    const pending = rows.filter((r) => ["EXW", "FOR"].includes(r.incoterms)).length;
-    const completed = rows.length - pending;
-    return { pending, completed };
-  }, [rows]);
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  };
+  // const toggleSort = (key: SortKey) => {
+  //   if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+  //   else {
+  //     setSortKey(key);
+  //     setSortDir("asc");
+  //   }
+  // };
 
   const onExport = () => {
     if (sorted.length === 0) return;
@@ -150,9 +235,11 @@ function DispatchOrdersPage() {
       COLUMNS.map((c) => ({
         header: c.header,
         value: (r: DispatchOrderRow) =>
-          c.key === "invoiceDate" ? formatDate(r.invoiceDate) : (r[c.key] as string | number),
+          c.key === "invoiceDate"
+            ? formatDate(r.invoiceDate)
+            : (r[c.key] as string | number),
       })),
-      sorted,
+      sorted
     );
   };
 
@@ -164,7 +251,8 @@ function DispatchOrdersPage() {
           Dispatch Orders
         </h1>
         <p className="mt-1 text-[12.5px] text-muted-foreground max-w-2xl">
-          Filter dispatch invoices by date range and execute the SAP report to review shipment values, plants, and incoterms.
+          Filter dispatch invoices by date range and execute the SAP report to
+          review shipment values, plants, and incoterms.
         </p>
       </div>
 
@@ -204,14 +292,19 @@ function DispatchOrdersPage() {
                 />
               </div>
 
+              {/* Counts from API */}
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-2 h-9 px-3 rounded-full bg-warning/15 text-warning-foreground border border-warning/30 text-[12px] font-medium">
                   <span className="size-1.5 rounded-full bg-warning" />
-                  Pending: <span className="font-mono font-bold">{counts.pending}</span>
+                  Pending:{" "}
+                  <span className="font-mono font-bold">{counts.pending}</span>
                 </span>
                 <span className="inline-flex items-center gap-2 h-9 px-3 rounded-full bg-success/15 text-success border border-success/30 text-[12px] font-medium">
                   <span className="size-1.5 rounded-full bg-success" />
-                  Completed: <span className="font-mono font-bold">{counts.completed}</span>
+                  Completed:{" "}
+                  <span className="font-mono font-bold">
+                    {counts.completed}
+                  </span>
                 </span>
               </div>
             </div>
@@ -219,20 +312,22 @@ function DispatchOrdersPage() {
             <div className="mt-4 flex items-center justify-end gap-2 flex-wrap">
               <button
                 onClick={onClear}
-                className="inline-flex items-center gap-1.5 px-3 h-9 text-[12.5px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted"
+                className="inline-flex items-center gap-1.5 px-3 h-9 text-[12.5px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted cursor-pointer"
               >
                 <RotateCcw className="size-3.5" /> Clear Filters
               </button>
               <button
                 onClick={onExecute}
-                className="inline-flex items-center gap-1.5 px-4 h-9 text-[12.5px] font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm"
+                className="inline-flex items-center gap-1.5 px-4 h-9 text-[12.5px] font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm cursor-pointer"
               >
                 <Play className="size-3.5" /> Execute Report
               </button>
             </div>
 
             {error && (
-              <div className="mt-3 text-[12px] text-destructive font-medium">{error}</div>
+              <div className="mt-3 text-[12px] text-destructive font-medium">
+                {error}
+              </div>
             )}
           </div>
         </section>
@@ -241,7 +336,7 @@ function DispatchOrdersPage() {
         <section className="bg-surface border border-hairline rounded-lg shadow-xs overflow-hidden">
           <header className="px-4 py-2.5 border-b border-hairline bg-muted/50 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
-              <ListFilter className="size-3.5 text-accent" />
+              {/* <ListFilter className="size-3.5 text-accent" /> */}
               <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
                 Dispatch Orders List
               </h2>
@@ -274,7 +369,7 @@ function DispatchOrdersPage() {
               <button
                 onClick={onExport}
                 disabled={status !== "ready"}
-                className="inline-flex items-center gap-1.5 px-3 h-7 text-[11.5px] font-semibold border border-hairline rounded-md bg-surface hover:bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 px-3 h-7 text-[11.5px] font-semibold border border-hairline rounded-md bg-surface hover:bg-muted text-foreground disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Download className="size-3.5" /> Export Excel
               </button>
@@ -305,15 +400,21 @@ function DispatchOrdersPage() {
             {status === "idle" && (
               <div className="py-20 grid place-items-center text-muted-foreground">
                 <Inbox className="size-7 mb-2 opacity-60" />
-                <div className="text-[12.5px]">Fill filters and click execute to see results.</div>
+                <div className="text-[12.5px]">
+                  Fill filters and click execute to see results.
+                </div>
               </div>
             )}
 
             {status === "empty" && (
               <div className="py-20 grid place-items-center text-muted-foreground">
                 <Inbox className="size-7 mb-2 opacity-60" />
-                <div className="text-[12.5px] font-semibold text-foreground">No Records Found</div>
-                <div className="text-[11.5px] mt-1">Try widening your date range.</div>
+                <div className="text-[12.5px] font-semibold text-foreground">
+                  No Records Found
+                </div>
+                <div className="text-[11.5px] mt-1">
+                  Try widening your date range.
+                </div>
               </div>
             )}
 
@@ -324,19 +425,27 @@ function DispatchOrdersPage() {
                     <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
                       {COLUMNS.map((c) => {
                         const active = sortKey === c.key;
-                        const Icon = active ? (sortDir === "asc" ? ChevronUp : ChevronDown) : ChevronsUpDown;
+                        const Icon = active
+                          ? sortDir === "asc"
+                            ? ChevronUp
+                            : ChevronDown
+                          : ChevronsUpDown;
                         return (
                           <th
                             key={c.key}
                             className={
-                              "px-3 py-2.5 whitespace-nowrap select-none cursor-pointer hover:text-foreground " +
+                              "px-3 py-2.5 whitespace-nowrap " +
                               (c.align === "right" ? "text-right" : "")
                             }
-                            onClick={() => toggleSort(c.key)}
+                            // onClick={() => toggleSort(c.key)}
                           >
-                            <span className={"inline-flex items-center gap-1 " + (c.align === "right" ? "justify-end w-full" : "")}>
+                            <span
+                              className={
+                                "inline-flex items-center gap-1 " +
+                                (c.align === "right" ? "justify-end w-full" : "")
+                              }
+                            >
                               {c.header}
-                              <Icon className={"size-3 " + (active ? "text-accent" : "opacity-50")} />
                             </span>
                           </th>
                         );
@@ -345,13 +454,25 @@ function DispatchOrdersPage() {
                   </thead>
                   <tbody className="divide-y divide-hairline/70">
                     {paged.map((r, idx) => (
-                      <tr key={r.id} className={idx % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
+                      <tr
+                        key={r.id}
+                        className={
+                          idx % 2 === 0
+                            ? "bg-surface hover:bg-muted/50"
+                            : "bg-surface-2/40 hover:bg-muted/50"
+                        }
+                      >
                         {COLUMNS.map((c) => (
                           <td
                             key={c.key}
-                            className={"px-3 py-2 whitespace-nowrap " + (c.align === "right" ? "text-right" : "")}
+                            className={
+                              "px-3 py-2 whitespace-nowrap " +
+                              (c.align === "right" ? "text-right" : "")
+                            }
                           >
-                            {c.render ? c.render(r) : (r[c.key] as React.ReactNode)}
+                            {c.render
+                              ? c.render(r)
+                              : (r[c.key] as React.ReactNode)}
                           </td>
                         ))}
                       </tr>
@@ -365,10 +486,18 @@ function DispatchOrdersPage() {
           {status === "ready" && sorted.length > 0 && (
             <footer className="border-t border-hairline bg-muted/40 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
               <div className="text-[11.5px] text-muted-foreground">
-                Showing <span className="font-mono font-semibold text-foreground">{start + 1}</span>
+                Showing{" "}
+                <span className="font-mono font-semibold text-foreground">
+                  {start + 1}
+                </span>
                 –
-                <span className="font-mono font-semibold text-foreground">{Math.min(start + pageSize, sorted.length)}</span>{" "}
-                of <span className="font-mono font-semibold text-foreground">{sorted.length}</span>
+                <span className="font-mono font-semibold text-foreground">
+                  {Math.min(start + pageSize, sorted.length)}
+                </span>{" "}
+                of{" "}
+                <span className="font-mono font-semibold text-foreground">
+                  {sorted.length}
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -381,7 +510,10 @@ function DispatchOrdersPage() {
                 </button>
                 {buildPageList(safePage, totalPages).map((p, i) =>
                   p === "…" ? (
-                    <span key={i} className="px-1.5 text-[11.5px] text-muted-foreground">
+                    <span
+                      key={i}
+                      className="px-1.5 text-[11.5px] text-muted-foreground"
+                    >
                       …
                     </span>
                   ) : (
@@ -397,7 +529,7 @@ function DispatchOrdersPage() {
                     >
                       {p}
                     </button>
-                  ),
+                  )
                 )}
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -412,7 +544,6 @@ function DispatchOrdersPage() {
           )}
         </section>
       </div>
-
     </div>
   );
 }

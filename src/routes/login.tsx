@@ -3,21 +3,24 @@ import { useState, useEffect, type FormEvent } from "react";
 import { Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
-import hblLogo from "@/assets/hbl-logo.png.asset.json";
-import slide1 from "@/assets/hbl-vision.png.asset.json";
-import slide2 from "@/assets/hbl-values.jpeg.asset.json";
-import slide3 from "@/assets/le-collage-1.png.asset.json";
-import slide4 from "@/assets/le-collage-2.jpg.asset.json";
-import slide5 from "@/assets/le-truck.jpg.asset.json";
-import slide6 from "@/assets/le-fleet.png.asset.json";
+import Swal from "sweetalert2";
+// @ts-ignore
+import service from "../services/generalservice_service.js";
+import hblLogo from "@/assets/hbl-logo.png";
+import slide1 from "@/assets/loginbgimage 1.png";
+import slide2 from "@/assets/loginbgimage 2.jpeg";
+import slide3 from "@/assets/loginggimage 3.png";
+import slide4 from "@/assets/loginbgimage 4.jpg";
+import slide5 from "@/assets/loginbgimage 5.jpg";
+import slide6 from "@/assets/Le1 image 6.png";
 
 const slides = [
-  { url: slide1.url, alt: "HBL Vision" },
-  { url: slide2.url, alt: "HBL Our Values" },
-  { url: slide3.url, alt: "Logistic Execution — port, road, sea" },
-  { url: slide4.url, alt: "Containers and truck transport" },
-  { url: slide5.url, alt: "Decorated freight truck on highway" },
-  { url: slide6.url, alt: "HBL fleet operations" },
+  { url: slide1, alt: "Slide 1" },
+  { url: slide2, alt: "Slide 2" },
+  { url: slide3, alt: "Slide 3" },
+  { url: slide4, alt: "Slide 4" },
+  { url: slide5, alt: "Slide 5" },
+  { url: slide6, alt: "Slide 6" },
 ];
 
 export const Route = createFileRoute("/login")({
@@ -52,25 +55,69 @@ function LoginPage() {
     return () => window.clearInterval(id);
   }, []);
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
     const result = schema.safeParse({ username, password });
+
     if (!result.success) {
       const next: typeof errors = {};
+
       for (const issue of result.error.issues) {
         const key = issue.path[0] as "username" | "password";
         if (!next[key]) next[key] = issue.message;
       }
+
       setErrors(next);
       return;
     }
+
     setErrors({});
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      toast.success("Signed in successfully");
+
+    try {
+      const loginPayload = {
+        LOGIN: {
+          USER: username,
+          PASSWORD: password,
+          ZSESSION: "",
+        },
+      };
+
+      const response = await service.GlobalUserAuth(loginPayload);
+
+      if (!response || response.STATUS === "FALSE") {
+        Swal.fire({
+          icon: "error",
+          title: "Login Failed",
+          text: response?.MESSAGE || "Invalid username or password",
+          footer: response?.NUMBER ? `Error Code: ${response.NUMBER}` : "",
+        });
+        return;
+      }
+
+      localStorage.setItem("userData", JSON.stringify(response));
+      localStorage.setItem("isLoggedIn", "true");
+
+      await Swal.fire({
+        icon: "success",
+        title: response?.MESSAGE || "Login Successful",
+        text: `Welcome ${response?.FIRST_NAME ?? ""} ${response?.LAST_NAME ?? ""}`,
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
       navigate({ to: "/" });
-    }, 600);
+
+    } catch (err: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Server Error",
+        text: err?.message || "Something went wrong. Please try again later.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -80,7 +127,7 @@ function LoginPage() {
         <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto">
           <div className="mb-10 flex items-center gap-3">
             <img
-              src={hblLogo.url}
+              src={hblLogo}
               alt="HBL Power Systems"
               className="h-16 w-auto object-contain"
             />
@@ -153,7 +200,11 @@ function LoginPage() {
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
                 </button>
               </div>
               {errors.password && (
@@ -164,7 +215,7 @@ function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full h-11 mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-accent to-primary text-white text-[13.5px] font-semibold shadow-cta hover:opacity-95 transition disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full h-11 mt-2 inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-accent to-primary text-white text-[13.5px] font-semibold shadow-cta hover:opacity-95 transition cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>
@@ -181,7 +232,7 @@ function LoginPage() {
               <button
                 type="button"
                 onClick={() => toast.info("Please contact your administrator")}
-                className="text-[12.5px] font-medium text-primary hover:underline"
+                className="text-[12.5px] font-medium text-primary hover:underline cursor-pointer"
               >
                 Forgot Password?
               </button>
@@ -190,7 +241,7 @@ function LoginPage() {
         </div>
 
         <p className="text-[11px] text-slate-400 mt-8 text-center md:text-left">
-          © {new Date().getFullYear()} HBL Power Systems. All Rights Reserved.
+          © {new Date().getFullYear()} Sharvi Infotech. All Rights Reserved.
         </p>
       </section>
 

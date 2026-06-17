@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -18,10 +18,12 @@ import {
   ChevronsRight,
   ChevronDown,
   FileBarChart,
+  LogOut,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { REPORTS_NAV } from "@/lib/reports-nav";
-import hblLogo from "@/assets/hbl-logo.png.asset.json";
+import hblLogo from "@/assets/hbl-logo.png";
 
 type NavItem = {
   title: string;
@@ -65,12 +67,42 @@ const groups: { items: NavItem[] }[] = [
   },
 ];
 
+function getUserData() {
+  try {
+    const raw = localStorage.getItem("userData");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getInitials(firstName: string, lastName: string) {
+  const f = firstName?.charAt(0)?.toUpperCase() ?? "";
+  const l = lastName?.charAt(0)?.toUpperCase() ?? "";
+  return `${f}${l}`;
+}
+
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
   const isActive = (to: string) => pathname === to || pathname.startsWith(to + "/");
   const [collapsed, setCollapsed] = useState(false);
   const reportsHasActive = pathname.startsWith("/reports");
   const [reportsOpen, setReportsOpen] = useState(reportsHasActive);
+
+  const user = getUserData();
+  const firstName = user?.FIRST_NAME ?? "User";
+  const lastName = user?.LAST_NAME ?? "";
+  const fullName = `${firstName} ${lastName}`.trim();
+  const initials = getInitials(firstName, lastName);
+  const role = user?.TYUSER ?? "";
+
+  const handleLogout = () => {
+    localStorage.removeItem("userData");
+    localStorage.removeItem("isLoggedIn");
+    toast.success("Signed out");
+    navigate({ to: "/login" });
+  };
 
   return (
     <aside
@@ -82,7 +114,7 @@ export function AppSidebar() {
       <div className="px-3 py-3 border-b border-sidebar-border/70 flex items-center gap-2.5">
         <Link to="/" className="flex items-center gap-2.5 min-w-0 flex-1">
           <div className="size-8 rounded-lg bg-white grid place-items-center shadow-md ring-1 ring-white/10 shrink-0 p-1">
-            <img src={hblLogo.url} alt="HBL" className="size-full object-contain" />
+            <img src={hblLogo} alt="HBL" className="size-full object-contain" />
           </div>
           {!collapsed && (
             <div className="leading-tight min-w-0">
@@ -217,16 +249,35 @@ export function AppSidebar() {
         </div>
       </nav>
 
+      {/* Bottom user section */}
       <div className="border-t border-sidebar-border/70 p-3">
-        <div className={"flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent/40 transition-colors " + (collapsed ? "justify-center" : "")}>
+        <div
+          className={
+            "flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent/40 transition-colors " +
+            (collapsed ? "justify-center" : "")
+          }
+        >
           <div className="size-9 rounded-full bg-gradient-to-br from-accent to-primary grid place-items-center text-[11px] font-display font-semibold text-white shrink-0 ring-2 ring-sidebar-accent/40">
-            HL
+            {initials}
           </div>
           {!collapsed && (
-            <div className="min-w-0">
-              <div className="text-[12.5px] text-white font-semibold tracking-tight truncate">Harshini Lingutla</div>
-              <div className="text-[10px] uppercase tracking-[0.14em] text-sidebar-foreground/55 truncate mt-0.5">LE Operator</div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[12.5px] text-white font-semibold tracking-tight truncate">
+                {fullName}
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-sidebar-foreground/55 truncate mt-0.5">
+                {role}
+              </div>
             </div>
+          )}
+          {!collapsed && (
+            <button
+              onClick={handleLogout}
+              title="Logout"
+              className="p-1.5 rounded-lg text-sidebar-foreground/50 hover:text-white hover:bg-sidebar-accent/70 transition-colors shrink-0"
+            >
+              <LogOut className="size-3.5" />
+            </button>
           )}
         </div>
       </div>

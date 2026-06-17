@@ -42,6 +42,7 @@ import {
   TRANSPORTERS,
   VEHICLE_TYPES,
   emptyDispatchRow,
+  sampleDispatchRows,
   type DispatchResultRow,
   type DispatchRow,
 } from "@/lib/dispatch-mock";
@@ -51,6 +52,42 @@ export const Route = createFileRoute("/dispatch")({
 });
 
 type SapMode = "with" | "without";
+
+// Columns in the Dispatch Lines table that must be filled in before the row can be saved.
+const MANDATORY_HEADERS = new Set([
+  "Vehicle Type",
+  "Trucks",
+  "Invoices",
+  "Plant",
+  "Division",
+  "LRs QTY",
+  "LR No",
+  "Load Pts",
+  "Unload Pts",
+]);
+
+// Matching keys on DispatchRow for the same mandatory columns above.
+const MANDATORY_KEYS: (keyof DispatchRow)[] = [
+  "vehicleType",
+  "noOfTrucks",
+  "noOfInvoices",
+  "plant",
+  "division",
+  "noOfLRs",
+  "lrNumber",
+  "loadingPoints",
+  "unloadingPoints",
+];
+
+function isFieldEmpty(row: DispatchRow, key: keyof DispatchRow) {
+  const v = row[key];
+  if (typeof v === "number") return !v || v <= 0;
+  return !v || String(v).trim() === "";
+}
+
+function getMissingFields(row: DispatchRow) {
+  return MANDATORY_KEYS.filter((k) => isFieldEmpty(row, k));
+}
 
 function DispatchPage() {
   const [tab, setTab] = useState<"create" | "search">("create");
@@ -136,6 +173,9 @@ function CreateDispatch() {
   const [searchType, setSearchType] = useState<string>(SEARCH_TYPES[0]);
   const [searchValue, setSearchValue] = useState("");
   const [rows, setRows] = useState<DispatchRow[]>([emptyDispatchRow(1)]);
+  const [showErrors, setShowErrors] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [searchNotice, setSearchNotice] = useState<string | null>(null);
 
   const deleteRow = (id: string) => setRows((r) => r.filter((x) => x.id !== id).map((x, i) => ({ ...x, slNo: i + 1 })));
   const updateRow = (id: string, patch: Partial<DispatchRow>) =>
@@ -160,6 +200,42 @@ function CreateDispatch() {
 
   const addRow = () =>
     setRows((r) => (r.length >= maxAllowed ? r : [...r, emptyDispatchRow(r.length + 1)]));
+
+  // Looks up an existing dispatch entry (mock data for now — swap for the real F4/search
+  // API later) and loads it straight into the same Dispatch Lines table below, which also
+  // switches the footer buttons into "Update" mode.
+  const handleSearch = () => {
+    const q = searchValue.trim().toLowerCase();
+    if (!q) return;
+    const matches = sampleDispatchRows.filter((r) =>
+      [r.workOrder, r.lrNumber, r.transporter, r.vendorCode].some((f) => f.toLowerCase().includes(q)),
+    );
+    if (matches.length > 0) {
+      setRows(matches.map((r, i) => ({ ...r, slNo: i + 1 })));
+      setIsEditMode(true);
+      setShowErrors(false);
+      setSearchNotice(null);
+    } else {
+      setSearchNotice("No matching records found.");
+    }
+  };
+
+  // Rows that are still missing one or more mandatory fields.
+  const invalidRowIds = useMemo(
+    () => new Set(rows.filter((r) => getMissingFields(r).length > 0).map((r) => r.id)),
+    [rows],
+  );
+
+  // Runs `next` only if every row satisfies the mandatory fields; otherwise reveals the
+  // inline error states/banner without touching any existing save logic.
+  const validateAndRun = (next: () => void) => {
+    if (invalidRowIds.size > 0) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
+    next();
+  };
 
   return (
     <div className="space-y-2">
@@ -213,7 +289,7 @@ function CreateDispatch() {
                     className="pl-7 h-7 text-[11px]"
                   />
                 </div>
-                <Button size="sm" className="h-7 gap-1 text-[11px] px-2.5">
+                <Button size="sm" className="h-7 gap-1 text-[11px] px-2.5" onClick={handleSearch}>
                   <Search className="size-3" /> Search
                 </Button>
               </div>
@@ -227,10 +303,19 @@ function CreateDispatch() {
             to continue.
           </p>
         )}
+        {sap && searchNotice && (
+          <p className="mt-1.5 text-[11px] text-amber-600">{searchNotice}</p>
+        )}
       </div>
 
       {sap && (
         <>
+          {showErrors && invalidRowIds.size > 0 && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[11.5px] font-medium text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+              Please fill all mandatory fields (marked with *) before saving.
+            </div>
+          )}
+
           {/* Editable table card */}
           <div className="bg-surface border border-hairline rounded-xl shadow-elegant overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="px-3 py-2 border-b border-hairline bg-surface-2/60">
@@ -272,6 +357,7 @@ function CreateDispatch() {
                         )}
                       >
                         {h}
+                        {MANDATORY_HEADERS.has(h) && <span className="text-destructive">{" *"}</span>}
                       </th>
                     ))}
                   </tr>
@@ -286,6 +372,7 @@ function CreateDispatch() {
                         onChange={(v) => updateRow(row.id, { vehicleType: v })}
                         placeholder="Select"
                         minWidth={130}
+                        invalid={showErrors && isFieldEmpty(row, "vehicleType")}
                       />
                       <CellInput
                         value={row.workOrder}
@@ -294,8 +381,16 @@ function CreateDispatch() {
                         mono
                         disabled={row.vehicleType !== "FULL TRUCK LOAD"}
                       />
-                      <CellNumber value={row.noOfTrucks} onChange={(v) => updateRow(row.id, { noOfTrucks: v })} />
-                      <CellNumber value={row.noOfInvoices} onChange={(v) => updateRow(row.id, { noOfInvoices: v })} />
+                      <CellNumber
+                        value={row.noOfTrucks}
+                        onChange={(v) => updateRow(row.id, { noOfTrucks: v })}
+                        invalid={showErrors && isFieldEmpty(row, "noOfTrucks")}
+                      />
+                      <CellNumber
+                        value={row.noOfInvoices}
+                        onChange={(v) => updateRow(row.id, { noOfInvoices: v })}
+                        invalid={showErrors && isFieldEmpty(row, "noOfInvoices")}
+                      />
                       <CellInput
                         value={row.vendorCode}
                         onChange={(v) => updateRow(row.id, { vendorCode: v })}
@@ -313,29 +408,38 @@ function CreateDispatch() {
                         options={PLANTS}
                         onChange={(v) => updateRow(row.id, { plant: v })}
                         minWidth={140}
+                        invalid={showErrors && isFieldEmpty(row, "plant")}
                       />
                       <CellSelect
                         value={row.division}
                         options={DIVISIONS}
                         onChange={(v) => updateRow(row.id, { division: v })}
                         minWidth={125}
+                        invalid={showErrors && isFieldEmpty(row, "division")}
                       />
-                      <CellNumber value={row.noOfLRs} onChange={(v) => updateRow(row.id, { noOfLRs: v })} />
+                      <CellNumber
+                        value={row.noOfLRs}
+                        onChange={(v) => updateRow(row.id, { noOfLRs: v })}
+                        invalid={showErrors && isFieldEmpty(row, "noOfLRs")}
+                      />
                       <CellInput
                         value={row.lrNumber}
                         onChange={(v) => updateRow(row.id, { lrNumber: v })}
                         placeholder="LR-…"
                         mono
+                        invalid={showErrors && isFieldEmpty(row, "lrNumber")}
                       />
                       <CellInput
                         value={row.loadingPoints}
                         onChange={(v) => updateRow(row.id, { loadingPoints: v })}
                         placeholder="Loading"
+                        invalid={showErrors && isFieldEmpty(row, "loadingPoints")}
                       />
                       <CellInput
                         value={row.unloadingPoints}
                         onChange={(v) => updateRow(row.id, { unloadingPoints: v })}
                         placeholder="Unloading"
+                        invalid={showErrors && isFieldEmpty(row, "unloadingPoints")}
                       />
                       {row.vehicleType === "FULL TRUCK LOAD" || row.vehicleType === "CARGO" ? (
                         <td className="px-1.5 py-1" />
@@ -388,14 +492,20 @@ function CreateDispatch() {
               variant="outline"
               size="sm"
               className="gap-1.5 h-7 px-3 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent"
+              onClick={() => validateAndRun(() => {
+                // existing save/update logic goes here
+              })}
             >
-              <Save className="size-3.5" /> Save
+              <Save className="size-3.5" /> {isEditMode ? "Update" : "Save"}
             </Button>
             <Button
               size="sm"
               className="gap-1.5 h-7 px-3 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0"
+              onClick={() => validateAndRun(() => {
+                // existing save & next / update & next logic goes here
+              })}
             >
-              Save &amp; Next <ChevronRight className="size-3.5" />
+              {isEditMode ? "Update & Next" : "Save & Next"} <ChevronRight className="size-3.5" />
             </Button>
           </div>
         </>
@@ -467,12 +577,14 @@ function CellInput({
   placeholder,
   mono,
   disabled,
+  invalid,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   mono?: boolean;
   disabled?: boolean;
+  invalid?: boolean;
 }) {
   return (
     <td className="px-1.5 py-1">
@@ -484,20 +596,32 @@ function CellInput({
         className={cn(
           "w-full min-w-[80px] h-7 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-1.5 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-transparent",
           mono && "font-mono",
+          invalid && "border-destructive hover:border-destructive focus:border-destructive ring-1 ring-destructive/30",
         )}
       />
     </td>
   );
 }
 
-function CellNumber({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function CellNumber({
+  value,
+  onChange,
+  invalid,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  invalid?: boolean;
+}) {
   return (
     <td className="px-1.5 py-1">
       <input
         type="number"
         value={value}
         onChange={(e) => onChange(Number(e.target.value) || 0)}
-        className="w-16 min-w-[56px] h-7 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-1.5 text-[12.5px] font-mono tabular-nums outline-none focus:ring-2 focus:ring-accent/20 transition"
+        className={cn(
+          "w-16 min-w-[56px] h-7 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-1.5 text-[12.5px] font-mono tabular-nums outline-none focus:ring-2 focus:ring-accent/20 transition",
+          invalid && "border-destructive hover:border-destructive focus:border-destructive ring-1 ring-destructive/30",
+        )}
       />
     </td>
   );
@@ -509,12 +633,14 @@ function CellSelect({
   onChange,
   placeholder = "Select",
   minWidth = 110,
+  invalid,
 }: {
   value: string;
   options: string[];
   onChange: (v: string) => void;
   placeholder?: string;
   minWidth?: number;
+  invalid?: boolean;
 }) {
   return (
     <td className="px-1.5 py-1">
@@ -522,7 +648,10 @@ function CellSelect({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full h-7 appearance-none bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md pl-2 pr-6 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition cursor-pointer"
+          className={cn(
+            "w-full h-7 appearance-none bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md pl-2 pr-6 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition cursor-pointer",
+            invalid && "border-destructive hover:border-destructive focus:border-destructive ring-1 ring-destructive/30",
+          )}
         >
           <option value="">{placeholder}</option>
           {options.map((o) => (
