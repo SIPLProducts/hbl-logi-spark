@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, MoreVertical, Save, ChevronLeft, ChevronRight } from "lucide-react";
+import Swal from "sweetalert2";
+// @ts-ignore
+import service from "../services/generalservice_service.js";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -65,25 +68,25 @@ const FIELDS: FieldSpec[] = [
   },
 
   {
-  label: "Sub Division",
-  value: "",
-  type: "select",
-  options: [
-    "FUZE",
-    "IPS SYSTEM",
-    "LITHIUM",
-    "NCFP",
-    "NCPP",
-    "NCPP-VSEZ",
-    "NCPP/ETP",
-    "NCSP",
-    "PE",
-    "SILVER ZINC",
-    "SYSTEM ORDERS",
-    "THERMAL",
-    "THERMAL,FUZE,SZ"
-  ],
-},
+    label: "Sub Division",
+    value: "",
+    type: "select",
+    options: [
+      "FUZE",
+      "IPS SYSTEM",
+      "LITHIUM",
+      "NCFP",
+      "NCPP",
+      "NCPP-VSEZ",
+      "NCPP/ETP",
+      "NCSP",
+      "PE",
+      "SILVER ZINC",
+      "SYSTEM ORDERS",
+      "THERMAL",
+      "THERMAL,FUZE,SZ"
+    ],
+  },
   { label: "SO / Ref. Number", value: "" },
   { label: "Customer Name", value: "" },
 
@@ -95,15 +98,121 @@ const FIELDS: FieldSpec[] = [
   { label: "Destination Zone", value: "" },
 ];
 
+function getLoggedInUser() {
+  try {
+    const raw = localStorage.getItem("userData");
+    if (!raw) return "";
+    const user = JSON.parse(raw) as Record<string, unknown>;
+    return String(
+      user?.USER ??
+      user?.USERNAME ??
+      user?.USER_ID ??
+      user?.EMP_ID ??
+      user?.EMAIL ??
+      `${user?.FIRST_NAME ?? ""} ${user?.LAST_NAME ?? ""}`.trim() ??
+      "",
+    );
+  } catch {
+    return "";
+  }
+}
+
 export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
   const isWithout = mode === "without";
   const [checked, setChecked] = useState(true);
+  const [tableData, setTableData] = useState<any[]>([
+    {
+      REF_NO: "",
+      WORK_ORDER_NO: "",
+      LR_NO: "",
+      TRANSPORTER: "",
+      selected: false,
+    },
+  ]);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [revealed, setRevealed] = useState(false);
   const showFields = isWithout || revealed;
   const fields = isWithout ? FIELDS.map((f, i) => (i === 0 ? { ...f, label: "DC Reference Number" } : f)) : FIELDS;
+
+  const fetchGlobalReferences = async (
+    row: any,
+    index: number,
+    fieldKey: string
+  ) => {
+
+    if (index !== 0) return;
+    try {
+      const payload = {
+        global_scr: "ORDER INFO",
+        REF_NO: fieldKey === "REF_NO" ? row.REF_NO : "",
+        WORK_ORDER_NO: fieldKey === "WORK_ORDER_NO" ? row.WORK_ORDER_NO : "",
+        LR_NO: fieldKey === "LR_NO" ? row.LR_NO : "",
+        TRANSPORTER: fieldKey === "TRANSPORTER" ? row.TRANSPORTER : "",
+        LINE_NO: index + 1,
+        ZUSER: getLoggedInUser(),
+      };
+
+      console.log("Payload:", payload);
+
+      const response = isWithout
+        ? await service.GlobalReferenceNoFetchwithoutsap(payload)
+        : await service.GlobalReferenceNoFetch(payload);
+
+      console.log("API Response:", response);
+
+      // No Data Found
+      if (response?.STATUS === "FALSE") {
+        Swal.fire({
+          icon: "warning",
+          title: "No Data Found",
+          text: response.MESSAGE || "No data found for given input.",
+          confirmButtonText: "OK",
+        });
+        return;
+      }
+
+      // Success Response
+      if (Array.isArray(response) && response.length > 0) {
+        setTableData(
+          response.map((item: any, idx: number) => ({
+            ...item,
+            selected: false,
+            editable: idx === 0,
+          }))
+        );
+
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Data fetched successfully.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error fetching references:", error);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error?.message || "Something went wrong while fetching data.",
+      });
+    }
+  };
+
+  
+
+
+
+  const handleChange = (index: number, field: string, value: string) => {
+    setTableData((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
 
   return (
     <div className="space-y-2">
@@ -122,34 +231,100 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td className="px-3 py-0.5 text-center">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => setChecked(e.target.checked)}
-                  className="size-4 accent-sky-600"
-                />
-              </td>
-              <td className="px-3 py-0.5 text-center">1</td>
-              <td className="px-3 py-0.5">
-                <input defaultValue="" className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input defaultValue="" className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5 text-center">
-                <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
-                  <MoreVertical className="size-4" />
-                </button>
-              </td>
-            </tr>
+            {tableData.map((row, index) => (
+              <tr key={index}>
+                <td className="px-3 py-0.5 text-center">
+                  <input
+                    type="checkbox"
+                    checked={row.selected || false}
+                    onChange={() => { }}
+                    className="size-4 accent-sky-600"
+                  />
+                </td>
+
+                <td className="px-3 py-0.5 text-center">
+                  {index + 1}
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.REF_NO || ""}
+                    readOnly={index !== 0}
+                    onChange={(e) =>
+                      handleChange(index, "REF_NO", e.target.value)
+                    }
+                    onBlur={() =>
+                      fetchGlobalReferences(
+                        row,
+                        index,
+                        "REF_NO"
+                      )
+                    }
+                    className={GREEN_INPUT}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.WORK_ORDER_NO || ""}
+                    readOnly={index !== 0}
+                    onChange={(e) =>
+                      handleChange(index, "WORK_ORDER_NO", e.target.value)
+                    }
+                    onBlur={() =>
+                      fetchGlobalReferences(
+                        row,
+                        index,
+                        "WORK_ORDER_NO"
+                      )
+                    }
+                    className={GREEN_INPUT}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.LR_NO || ""}
+                    readOnly={index !== 0}
+                    onChange={(e) =>
+                      handleChange(index, "LR_NO", e.target.value)
+                    }
+                    onBlur={() =>
+                      fetchGlobalReferences(
+                        row,
+                        index,
+                        "LR_NO"
+                      )
+                    }
+                    className={GREEN_INPUT}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.TRANSPORTER || ""}
+                    readOnly={index !== 0}
+                    onChange={(e) =>
+                      handleChange(index, "TRANSPORTER", e.target.value)
+                    }
+                    onBlur={() =>
+                      fetchGlobalReferences(
+                        row,
+                        index,
+                        "TRANSPORTER"
+                      )
+                    }
+                    className={GREEN_INPUT}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5 text-center">
+                  <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
+                    <MoreVertical className="size-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

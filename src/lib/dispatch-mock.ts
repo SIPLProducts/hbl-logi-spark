@@ -3,17 +3,22 @@ export type DispatchRow = {
   slNo: number;
   vehicleType: string;
   workOrder: string;
-  noOfTrucks: number;
-  noOfInvoices: number;
+  noOfTrucks: number | "";
+  noOfInvoices: number | "";
   vendorCode: string;
   transporter: string;
   plant: string;
   division: string;
-  noOfLRs: number;
+  noOfLRs: number | "";
   lrNumber: string;
   loadingPoints: string;
   unloadingPoints: string;
   remarks: string;
+  zMapId?: number;
+  referenceNo?: number | string;
+  lineNo?: number | string;
+  createdDate?: string;
+  lrSpec?: string;
 };
 
 export type DispatchResultRow = {
@@ -57,16 +62,21 @@ export const emptyDispatchRow = (slNo: number): DispatchRow => ({
   slNo,
   vehicleType: "",
   workOrder: "",
-  noOfTrucks: 0,
-  noOfInvoices: 0,
+  noOfTrucks: "",
+  noOfInvoices: "",
   vendorCode: "",
   transporter: "",
   plant: "",
   division: "",
-  noOfLRs: 0,
+  noOfLRs: "",
   lrNumber: "",
   loadingPoints: "",
   unloadingPoints: "",
   remarks: "",
+  zMapId: 0,
+  referenceNo: "",
+  lineNo: "",
+  createdDate: "",
+  lrSpec: "",
 });
 

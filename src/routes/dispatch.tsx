@@ -22,6 +22,7 @@ import {
   Trash2,
   Truck,
 } from "lucide-react";
+import { exportRowsToXls } from "@/lib/export-xls";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+
 import { Badge } from "@/components/ui/badge";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { cn } from "@/lib/utils";
 import {
   DIVISIONS,
@@ -85,7 +89,7 @@ const MANDATORY_KEYS: (keyof DispatchRow)[] = [
 
 function isFieldEmpty(row: DispatchRow, key: keyof DispatchRow) {
   const v = row[key];
-  if (typeof v === "number") return !v || v <= 0;
+  if (typeof v === "number") return Number.isNaN(v);
   return !v || String(v).trim() === "";
 }
 
@@ -95,7 +99,7 @@ function getMissingFields(row: DispatchRow) {
 
 function getLoggedInUser() {
   try {
-    const raw = localStorage.getItem("userData");
+    const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData");
     if (!raw) return "";
     const user = JSON.parse(raw) as Record<string, unknown>;
     return String(
@@ -215,6 +219,8 @@ function CreateDispatch() {
   const [rows, setRows] = useState<DispatchRow[]>([emptyDispatchRow(1)]);
   const [showErrors, setShowErrors] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchReference, setSearchReference] = useState<string>("");
   const [searchNotice, setSearchNotice] = useState<string | null>(null);
   const isLockedRow = (index: number) => index !== 0;
   const [originalTotals, setOriginalTotals] = useState({
@@ -224,6 +230,14 @@ function CreateDispatch() {
     loadPts: 0,
     unloadPts: 0,
   });
+  function formatCreatedDate(d?: string) {
+    if (!d) return "";
+    try {
+      return format(new Date(d), "dd-MMM-yyyy");
+    } catch {
+      return d;
+    }
+  }
   const deleteRow = (id: string) => {
     setRows((prev) => {
       const filtered = prev.filter((r) => r.id !== id);
@@ -365,105 +379,174 @@ function CreateDispatch() {
   // Looks up an existing dispatch entry (mock data for now — swap for the real F4/search
   // API later) and loads it straight into the same Dispatch Lines table below, which also
   // switches the footer buttons into "Update" mode.
-const SEARCH_TYPE_TO_API_KEY: Record<string, keyof Omit<Record<string, string>, "zuser">> = {
-  "Reference Number": "RNO",
-  "LR Number": "LR_NO",
-  Transporter: "TRANSPORTER",
-  "Work Order": "WORK_ORDER",
-};
+  const SEARCH_TYPE_TO_API_KEY: Record<string, keyof Omit<Record<string, string>, "zuser">> = {
+    "Reference Number": "RNO",
+    "LR Number": "LR_NO",
+    Transporter: "TRANSPORTER",
+    "Work Order": "WORK_ORDER",
+  };
 
-const handleSearch = async () => {
-  try {
-    if (!searchValue.trim()) {
+  const handleSearch = async () => {
+    setIsLoading(true);
+
+    try {
+      if (!searchValue.trim()) {
+        Swal.fire({
+          text: "Please enter a search value.",
+          icon: "warning",
+        });
+        return;
+      }
+
+      const field = SEARCH_TYPE_TO_API_KEY[searchType];
+
+      if (!field) {
+        Swal.fire({
+          text: "Please select a valid search type.",
+          icon: "warning",
+        });
+        return;
+      }
+
+      const payload = {
+        RNO: "",
+        LR_NO: "",
+        TRANSPORTER: "",
+        WORK_ORDER: "",
+        zuser: getLoggedInUser(),   // ← lowercase, matches Angular
+        [field]: searchValue.trim(),
+      };
+
+      console.log("Search Payload:", payload);
+
+      const res =
+        sap === "with"
+          ? await service.fetchReferencenumber(payload)
+          : await service.fetchReferencenumberWithoutSap(payload);
+
+      console.log("Search Response:", res);
+
+      if (res?.STATUS === "FALSE" || res?.NUMBER === "100") {
+        Swal.fire({
+          text: res?.MSG || "No records found.",
+          icon: "warning",
+        });
+        return;
+      }
+
+      const data = Array.isArray(res)
+        ? res
+        : res?.DATA || res?.data || [];
+
+      if (!data.length) {
+        Swal.fire({
+          text: "No records found for the search criteria.",
+          icon: "info",
+        });
+        return;
+      }
+
+      const mapped: DispatchRow[] = data.map(
+        (item: any, index: number) => ({
+          id: String(index + 1),
+          slNo: index + 1,
+          zMapId: item.ZMAPID || 0,
+          lrSpec: item.ZLRSPEC || "",
+          referenceNo: item.REFNO || "",
+          lineNo: item.LINE_NO || "",
+          plant: item.WERKS || "",
+          division: item.DIVISION || "",
+          vehicleType: item.VEH_TYPE || "",
+          noOfTrucks: Number(item.NO_TRUCKS || 0),
+          workOrder: item.WORK_ORDER || "",
+          vendorCode: String(item.VENDOR_CD || ""),
+          transporter: item.TRANSPORTER || "",
+          noOfLRs: Number(item.NO_LRS || 0),
+          lrNumber: item.LR_NO || "",
+          loadingPoints: item.LOAD_PT || "",
+          unloadingPoints: item.UNLOAD_PT || "",
+          noOfInvoices: Number(item.NO_INVOICES || 0),
+          createdDate: item.CREATED_DT || "",
+        })
+      );
+
+      setRows(mapped);
+      setSearchReference(String(mapped[0]?.referenceNo || ""));
+      setIsEditMode(true);
+
       Swal.fire({
-        text: "Please enter a search value.",
-        icon: "warning",
+        text: `${mapped.length} record${mapped.length > 1 ? "s" : ""} found successfully.`,
+        icon: "success",
       });
-      return;
-    }
+    } catch (error) {
+      console.error("Search API Error:", error);
 
-    const field = SEARCH_TYPE_TO_API_KEY[searchType];
-    if (!field) {
       Swal.fire({
-        text: "Please select a valid search type before searching.",
-        icon: "warning",
-      });
-      return;
-    }
-
-    const trimmedValue = searchValue.trim();
-
-    const payload: any = {
-      RNO: "",
-      LR_NO: "",
-      TRANSPORTER: "",
-      WORK_ORDER: "",
-      zuser: getLoggedInUser(),
-    };
-    payload[field] = trimmedValue;
-
-    console.log("Search payload:", payload); // For debugging
-
-    const res =
-      sap === "with"
-        ? await service.fetchReferencenumber(payload)
-        : await service.fetchReferencenumberWithoutSap(payload);
-
-    // Check if the API returned an error status
-    if (res?.STATUS === "FALSE" || res?.NUMBER === "100") {
-      Swal.fire({
-        text: res?.MSG || "Search failed. No records found.",
+        text: "Failed to fetch data. Please try again.",
         icon: "error",
       });
-      return;
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    const data = Array.isArray(res) ? res : res?.data || [];
+  // Updates an existing dispatch entry (loaded via Search) using the Edit API.
+  // Kept fully separate from handleSave so the original create/save flow is untouched.
+  const handleUpdate = async () => {
+    try {
+      const loggedInUser = getLoggedInUser();
 
-    if (data.length === 0) {
+      // ← plain array, no DISPATCH wrapper
+      const payload = rows.map((row) => ({
+        ZMAPID: row.zMapId || 0,
+        REFNO: Number(searchReference) || Number(row.referenceNo) || 0,  // ← use searchReference
+        LINE_NO: Number(row.lineNo) || 0,
+        CREATED_DT: row.createdDate || "",
+        VEH_TYPE: row.vehicleType || "",
+        NO_TRUCKS: Number(row.noOfTrucks) || 0,
+        NO_INVOICES: Number(row.noOfInvoices) || 0,
+        WORK_ORDER: row.workOrder || "",
+        VENDOR_CD: Number(row.vendorCode) || 0,
+        TRANSPORTER: row.transporter || "",
+        WERKS: row.plant || "",
+        DIVISION: row.division || "",
+        NO_LRS: Number(row.noOfLRs) || 0,
+        LR_NO: row.lrNumber || "",
+        ZLRSPEC: row.lrSpec || "0",
+        LOAD_PT: row.loadingPoints || "",
+        UNLOAD_PT: row.unloadingPoints || "",
+        ZDIS_RM: row.remarks || "",
+        ZUSER_CH: loggedInUser,
+      }));
+
+      console.log("🟡 Update Payload:", JSON.stringify(payload, null, 2));
+
+      const res = await service.fetchReferencenumberEdit(payload);
+
+      console.log("🟡 Update Response:", res);
+
+      if (res?.STATUS === "TRUE" || res?.NUMBER === "200") {
+        Swal.fire({
+          text: res.MSG || "Dispatch data updated successfully!",
+          icon: "success",
+          confirmButtonText: "OK",
+        }).then(() => {
+          resetForm();
+          setSearchReference("");
+        });
+      } else {
+        Swal.fire({
+          text: res?.MSG || "Dispatch update failed!",
+          icon: "error",
+        });
+      }
+    } catch (err: any) {
       Swal.fire({
-        text: "No records found for the search criteria.",
-        icon: "info",
+        text: err?.response?.data?.MSG || "Failed to update Dispatch!",
+        icon: "error",
       });
-      return;
     }
-
-    const mapped = data.map((item: any, index: number) => ({
-      id: String(index + 1),
-      slNo: index + 1,
-
-      referenceNo: item.REFNO,
-      lineNo: item.LINE_NO,
-      plant: item.WERKS,
-      division: item.DIVISION,
-      vehicleType: item.VEH_TYPE,
-      noOfTrucks: Number(item.NO_TRUCKS || 0),
-      workOrder: item.WORK_ORDER,
-      vendorCode: String(item.VENDOR_CD || ""),
-      transporter: item.TRANSPORTER,
-      noOfLRs: Number(item.NO_LRS || 0),
-      lrNumber: item.LR_NO,
-      loadingPoints: item.LOAD_PT || "",
-      unloadingPoints: item.UNLOAD_PT || "",
-      noOfInvoices: Number(item.NO_INVOICES || 0),
-      createdDate: item.CREATED_DT,
-    }));
-
-    // Load mapped search results into the create-mode rows and switch to edit mode
-    setRows(mapped as DispatchRow[]);
-    setIsEditMode(true);
-    Swal.fire({
-      text: `${mapped.length} record${mapped.length === 1 ? "" : "s"} found successfully.`,
-      icon: "success",
-    });
-  } catch (err) {
-    console.error("Search failed:", err);
-    Swal.fire({
-      text: "An error occurred while searching. Please try again.",
-      icon: "error",
-    });
-  }
-};
+  };
 
   // Fetch F4 lookup data (vendor codes, plants, divisions, transporters) when SAP selection changes
   useEffect(() => {
@@ -483,8 +566,12 @@ const handleSearch = async () => {
           }))
           : [];
 
+        // In BOTH CreateDispatch and SearchDispatch useEffect
         const plants: string[] = Array.isArray(data.PLANT)
-          ? data.PLANT.map((p: PlantData) => `${p.PLANT} - ${p.PLANT_DESC}`)
+          ? data.PLANT.map((p: PlantData) => {
+            const desc = String(p.PLANT_DESC || "").split("_")[0].trim();
+            return `${p.PLANT}_${desc}`;
+          })
           : [];
 
         const divisions: string[] = Array.isArray(data.PLANT)
@@ -518,6 +605,7 @@ const handleSearch = async () => {
     setShowErrors(false);
     setSearchValue("");
     setSearchNotice(null);
+    setSearchReference("");
   }
 
   const handleVehicleTypeChange = (
@@ -566,24 +654,26 @@ const handleSearch = async () => {
 
       const payload = {
         DISPATCH: rows.map((row) => ({
-          NO_TRUCKS: row.noOfTrucks,
-          NO_INVOICES: row.noOfInvoices,
-          veh_type: row.vehicleType,
-          work_order: row.workOrder,
-          VENDOR_CD: row.vendorCode,
-          transporter: row.transporter,
+          NO_TRUCKS: Number(row.noOfTrucks) || 0,
+          NO_INVOICES: Number(row.noOfInvoices) || 0,
+          VEH_TYPE: row.vehicleType,
+          WORK_ORDER: row.workOrder,
+          VENDOR_CD: Number(row.vendorCode) || 0,
+          TRANSPORTER: row.transporter,
           WERKS: row.plant,
           DIVISION: row.division,
-          NO_LRS: row.noOfLRs,
-          lr_no: row.lrNumber,
-          load_pt: row.loadingPoints,
-          unload_Pt: row.unloadingPoints,
-          ZLRSPEC: "",
+          NO_LRS: Number(row.noOfLRs) || 0,
+          LR_NO: row.lrNumber,
+          LOAD_PT: row.loadingPoints,
+          UNLOAD_PT: row.unloadingPoints,
+          ZLRSPEC: row.lrSpec || "0",
           ZDIS_RM: row.remarks,
           ZUSER: loggedInUser,
           ZUSER_CH: "",
         })),
       };
+
+      console.log("🔵 Save Payload:", JSON.stringify(payload, null, 2));
 
       let res;
 
@@ -598,6 +688,8 @@ const handleSearch = async () => {
         });
         return;
       }
+
+      console.log("🔵 Save Response:", res);
 
       if (res?.STATUS === "TRUE" || res?.NUMBER === "200") {
         Swal.fire({
@@ -672,7 +764,7 @@ const handleSearch = async () => {
               <div className="flex flex-wrap items-center gap-1.5 ml-auto w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-200">
                 <Select value={searchType} onValueChange={setSearchType}>
                   <SelectTrigger className="w-[150px] h-7 text-[11px]">
-                    <SelectValue />
+                    <SelectValue placeholder="Select Search Type" />
                   </SelectTrigger>
                   <SelectContent>
                     {SEARCH_TYPES.map((s) => (
@@ -688,6 +780,7 @@ const handleSearch = async () => {
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
                     placeholder={`Enter ${searchType}…`}
+                    // placeholder={searchType ? `Enter ${searchType}…` : "Enter Search..."}
                     className="pl-7 h-7 text-[11px]"
                   />
                 </div>
@@ -748,18 +841,22 @@ const handleSearch = async () => {
                       "Load Pts",
                       "Unload Pts",
                       "Remarks",
+                      ...(isEditMode ? ["Created Date"] : []),
                       ...(showActionCol ? ["Action"] : []),
                     ].map((h, i, arr) => (
                       <th
                         key={i}
                         className={cn(
-                          "px-2 py-2 text-left",
+                          "px-2 py-2 text-left whitespace-nowrap align-middle", // Added whitespace-nowrap and align-middle
                           i === 0 && "w-10 text-center",
-                          i === 14 && i === arr.length - 1 && "w-20 text-right",
+                          i === arr.length - 1 && showActionCol && "w-20 text-right",
                         )}
                       >
-                        {h}
-                        {MANDATORY_HEADERS.has(h) && <span className="text-destructive">{" *"}</span>}
+                        {/* Wrap in an inline-flex container to keep label and asterisk rigidly together */}
+                        <span className="inline-flex items-center gap-0.5">
+                          {h}
+                          {MANDATORY_HEADERS.has(h) && <span className="text-destructive font-bold text-[12px]">{"*"}</span>}
+                        </span>
                       </th>
                     ))}
                   </tr>
@@ -781,7 +878,7 @@ const handleSearch = async () => {
                         value={row.workOrder}
                         onChange={(v) => updateRow(row.id, { workOrder: v })}
                         placeholder="WO-…"
-                        
+
                         mono
                         disabled={row.vehicleType !== "FULL TRUCK LOAD"}
                       />
@@ -799,7 +896,7 @@ const handleSearch = async () => {
                         <CellSelect
                           value={row.vendorCode}
                           options={fetchedVendors.map((v) => `${v.vendorCode}`)}
-                           disabled={isLockedRow(index)}
+                          disabled={isLockedRow(index)}
                           onChange={(v) => {
                             const selected = fetchedVendors.find(
                               (item) => item.vendorCode === v
@@ -816,7 +913,7 @@ const handleSearch = async () => {
                         <CellInput
                           value={row.vendorCode}
                           onChange={(v) => updateRow(row.id, { vendorCode: v })}
-                          
+
                           placeholder="V-…"
                           mono
                         />
@@ -824,7 +921,7 @@ const handleSearch = async () => {
                       <CellSelect
                         value={row.transporter}
                         options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}
-                         disabled={isLockedRow(index)}
+                        disabled={isLockedRow(index)}
                         onChange={(v) => {
                           const selected = fetchedVendors.find(
                             (item) => item.transporter === v
@@ -884,6 +981,10 @@ const handleSearch = async () => {
                           placeholder="Remarks"
                         />
                       )}
+
+                      {isEditMode && (
+                        <td className="px-2 py-1 font-mono text-[12.5px] whitespace-nowrap">{formatCreatedDate(row.createdDate)}</td>
+                      )}
                       {showActionCol && (
                         <td className="px-2 py-1 text-right">
                           <div className="inline-flex items-center gap-1">
@@ -926,14 +1027,14 @@ const handleSearch = async () => {
               variant="outline"
               size="sm"
               className="gap-1.5 h-7 px-3 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent"
-              onClick={() => validateAndRun(() => handleSave())}
+              onClick={() => validateAndRun(() => (isEditMode ? handleUpdate() : handleSave()))}
             >
               <Save className="size-3.5" /> {isEditMode ? "Update" : "Save"}
             </Button>
             <Button
               size="sm"
               className="gap-1.5 h-7 px-3 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0"
-              onClick={() => validateAndRun(() => handleSave("next"))}
+              onClick={() => validateAndRun(() => (isEditMode ? handleUpdate() : handleSave("next")))}
             >
               {isEditMode ? "Update & Next" : "Save & Next"}
             </Button>
@@ -1038,8 +1139,8 @@ function CellNumber({
   onChange,
   invalid,
 }: {
-  value: number;
-  onChange: (v: number) => void;
+  value: number | "";
+  onChange: (v: number | "") => void;
   invalid?: boolean;
 }) {
   return (
@@ -1047,7 +1148,7 @@ function CellNumber({
       <input
         type="number"
         value={value}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
         className={cn(
           "w-16 min-w-[56px] h-7 bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md px-1.5 text-[12.5px] font-mono tabular-nums outline-none focus:ring-2 focus:ring-accent/20 transition",
           invalid && "border-destructive hover:border-destructive focus:border-destructive ring-1 ring-destructive/30",
@@ -1074,19 +1175,26 @@ function CellSelect({
   invalid?: boolean;
   disabled?: boolean;
 }) {
+  const showCurrentOption = value !== "" && !options.includes(value);
+
   return (
     <td className="px-1.5 py-1">
       <div className="relative" style={{ minWidth }}>
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-           disabled={disabled}  
+          disabled={disabled}
           className={cn(
             "w-full h-7 appearance-none bg-transparent border border-transparent hover:border-hairline focus:border-accent focus:bg-surface rounded-md pl-2 pr-6 text-[12.5px] outline-none focus:ring-2 focus:ring-accent/20 transition cursor-pointer",
             invalid && "border-destructive hover:border-destructive focus:border-destructive ring-1 ring-destructive/30",
           )}
         >
           <option value="">{placeholder}</option>
+          {showCurrentOption && (
+            <option key="current-value" value={value}>
+              {value}
+            </option>
+          )}
           {options.map((o) => (
             <option key={o} value={o}>
               {o}
@@ -1113,9 +1221,186 @@ function SearchDispatch() {
   const [transporter, setTransporter] = useState("");
   const [vehicleType, setVehicleType] = useState("");
   const [applied, setApplied] = useState(false);
- const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<DispatchResultRow[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const onApply = () => setApplied(true);
+  const downloadExcel = () => {
+    if (results.length === 0) return;
+
+    exportRowsToXls(
+      `dispatch-results-${format(new Date(), "yyyyMMdd_HHmmss")}.xls`,
+      [
+        { header: "Sl.No", value: (row: DispatchResultRow) => row.slNo },
+        { header: "Reference No", value: (row: DispatchResultRow) => row.referenceNo },
+        { header: "Line No", value: (row: DispatchResultRow) => row.lineNo },
+        { header: "Date", value: (row: DispatchResultRow) => row.date },
+        { header: "Plant", value: (row: DispatchResultRow) => row.plant },
+        { header: "Division", value: (row: DispatchResultRow) => row.division },
+        { header: "Vehicle Type", value: (row: DispatchResultRow) => row.vehicleType },
+        { header: "No. of Trucks", value: (row: DispatchResultRow) => row.noOfTrucks },
+        { header: "Work Order", value: (row: DispatchResultRow) => row.workOrder },
+        { header: "Vendor Code", value: (row: DispatchResultRow) => row.vendorCode },
+        { header: "Transporter", value: (row: DispatchResultRow) => row.transporter },
+        { header: "No. of LRs", value: (row: DispatchResultRow) => row.noOfLRs },
+        { header: "LR Number", value: (row: DispatchResultRow) => row.lrNumber },
+        { header: "Loading Point", value: (row: DispatchResultRow) => row.loadingPoint },
+        { header: "Unloading Point", value: (row: DispatchResultRow) => row.unloadingPoint },
+        { header: "No of Invoices", value: (row: DispatchResultRow) => row.noOfInvoices },
+        { header: "Created Date", value: (row: DispatchResultRow) => row.createdDate },
+      ],
+      results,
+    );
+  };
+
+  const downloadPdf = () => {
+    if (results.length === 0) return;
+
+    const doc = new jsPDF("landscape", "mm", "a3");
+
+    doc.setFontSize(16);
+    doc.text("Dispatch Report", 14, 15);
+
+    autoTable(doc, {
+      startY: 25,
+
+      head: [[
+        "Sl.No",
+        "Reference No",
+        "Line No",
+        "Date",
+        "Plant",
+        "Division",
+        "Vehicle Type",
+        "No. Trucks",
+        "Work Order",
+        "Vendor Code",
+        "Transporter",
+        "No. LRs",
+        "LR Number",
+        "Loading Point",
+        "Unloading Point",
+        "No. Invoices",
+        "Created Date",
+      ]],
+
+      body: results.map((row) => [
+        row.slNo,
+        row.referenceNo,
+        row.lineNo,
+        row.date,
+        row.plant,
+        row.division,
+        row.vehicleType,
+        row.noOfTrucks,
+        row.workOrder,
+        row.vendorCode,
+        row.transporter,
+        row.noOfLRs,
+        row.lrNumber,
+        row.loadingPoint,
+        row.unloadingPoint,
+        row.noOfInvoices,
+        row.createdDate,
+      ]),
+
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        overflow: "linebreak",
+      },
+
+      headStyles: {
+        fillColor: [52, 115, 170],
+        textColor: 255,
+        fontSize: 8,
+      },
+
+      theme: "grid",
+    });
+
+    doc.save("Dispatch_Report.pdf");
+  };
+
+  const onApply = async () => {
+    try {
+      setIsLoading(true);
+
+      const payload = {
+        ZUSER: getLoggedInUser(),
+        DATE_FROM: fromDate ? format(fromDate, "yyyy-MM-dd") : "",
+        DATE_TO: toDate ? format(toDate, "yyyy-MM-dd") : "",
+        PLANT: plant || "",
+        DIVISION: division || "",
+        TRANSPORTER: transporter || "",
+        VEHICLE_TYPE: vehicleType || "",
+      };
+
+      const res =
+        sap === "with"
+          ? await service.fetchDispatchFiltered(payload)
+          : await service.fetchDispatchFilteredNonSap(payload);
+
+      if (res?.STATUS === "FALSE" || res?.NUMBER === "100") {
+        Swal.fire({
+          text: res?.MSG || "No records found for the selected filters.",
+          icon: "info",
+        });
+        setResults([]);
+        setApplied(true);
+        return;
+      }
+
+      const data = Array.isArray(res) ? res : res?.data || [];
+
+      if (data.length === 0) {
+        Swal.fire({
+          text: "No records found for the selected filters.",
+          icon: "info",
+        });
+        setResults([]);
+        setApplied(true);
+        return;
+      }
+
+      const mapped = data.map((item: any, index: number) => ({
+        id: `${item.ZREFNO}-${item.ZLINE_NO}-${index}`,
+        slNo: index + 1,
+        referenceNo: item.ZREFNO,
+        lineNo: item.ZLINE_NO,
+        date: item.ZCREATED_DT,
+        plant: item.ZWERKS,
+        division: item.ZDIVISION,
+        vehicleType: item.ZVEH_TYPE,
+        noOfTrucks: Number(item.ZNO_TRUCKS || 0),
+        workOrder: item.ZWORK_ORDER,
+        vendorCode: String(item.ZVENDOR_CD || ""),
+        transporter: item.ZTRANSPORTER,
+        noOfLRs: Number(item.ZNO_LRS || 0),
+        lrNumber: item.ZLR_NO,
+        loadingPoint: item.ZLOAD_PT,
+        unloadingPoint: item.ZUNLOAD_PT,
+        noOfInvoices: Number(item.ZNO_INVOICES || 0),
+        createdDate: item.ZCREATED_DT,
+      }));
+
+      setResults(mapped);
+      setApplied(true);
+
+      Swal.fire({
+        text: `${mapped.length} record${mapped.length === 1 ? "" : "s"} found successfully.`,
+        icon: "success",
+      });
+    } catch (err) {
+      console.error("Filter fetch failed:", err);
+      Swal.fire({
+        text: "An error occurred while fetching filtered records. Please try again.",
+        icon: "error",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const onReset = () => {
     setFromDate(undefined);
     setToDate(undefined);
@@ -1133,8 +1418,12 @@ function SearchDispatch() {
       try {
         const res: any = await service.fetchVendorCode();
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+        // In BOTH CreateDispatch and SearchDispatch useEffect
         const plants: string[] = Array.isArray(data.PLANT)
-          ? data.PLANT.map((p: PlantData) => `${p.PLANT} - ${p.PLANT_DESC}`)
+          ? data.PLANT.map((p: PlantData) => {
+            const desc = String(p.PLANT_DESC || "").split("_")[0].trim();
+            return `${p.PLANT}_${desc}`;
+          })
           : [];
         const divisions: string[] = Array.isArray(data.PLANT)
           ? Array.from(new Set(data.PLANT.map((p: PlantData) => String(p.DIVISION || "")).filter(Boolean)))
@@ -1209,13 +1498,25 @@ function SearchDispatch() {
               <Button variant="ghost" size="sm" onClick={onReset}>
                 Reset
               </Button>
-              <Button variant="outline" size="sm" className="gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={downloadPdf}
+                disabled={results.length === 0 || isLoading}
+              >
                 <FileText className="size-3.5" /> Download PDF
               </Button>
-              <Button variant="outline" size="sm" className="gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={downloadExcel}
+                disabled={results.length === 0 || isLoading}
+              >
                 <FileDown className="size-3.5 text-emerald-600" /> Download Excel
               </Button>
-              <Button size="sm" onClick={onApply} className="gap-1.5">
+              <Button size="sm" onClick={onApply} className="gap-1.5" disabled={isLoading}>
                 <Filter className="size-3.5" /> Apply Filter
               </Button>
             </div>
@@ -1224,7 +1525,7 @@ function SearchDispatch() {
       </div>
 
       {applied ? (
-       <ResultsTable data={results} />
+        <ResultsTable data={results} />
       ) : (
         <div className="bg-surface border border-dashed border-hairline rounded-xl p-10 text-center">
           <div className="mx-auto size-12 grid place-items-center rounded-full bg-muted text-muted-foreground">
@@ -1251,13 +1552,13 @@ function DateField({
   onChange: (d: Date | undefined) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</label>
       <Popover>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={cn("h-10 justify-start text-left font-normal", !value && "text-muted-foreground")}
+            className={cn("h-8 justify-start text-left font-normal", !value && "text-muted-foreground")}
           >
             <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
             {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
@@ -1291,10 +1592,10 @@ function SelectField({
   placeholder: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-10">
+        <SelectTrigger className="h-8">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
