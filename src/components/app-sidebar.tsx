@@ -41,14 +41,16 @@ const groups: { items: NavItem[] }[] = [
   {
     items: [
       { title: "Order Info", to: "/order-info", icon: FileText },
-      { title: "Shipment Details", to: "/shipment-details", icon: PackageOpen },
       { title: "Invoice Load Details", to: "/invoice-load-details", icon: Receipt },
-      { title: "Segment Info", to: "/segment-info", icon: Split },
+      { title: "Vehicle Info", to: "/vehicle-info", icon: Bus },
+      { title: "Shipment Details", to: "/shipment-details", icon: PackageOpen },
+
+
     ],
   },
   {
     items: [
-      { title: "Vehicle Info", to: "/vehicle-info", icon: Bus },
+      { title: "Segment Info", to: "/segment-info", icon: Split },
       { title: "Transit Info", to: "/transit-info", icon: RouteIcon },
     ],
   },
@@ -57,7 +59,7 @@ const groups: { items: NavItem[] }[] = [
       { title: "Freight Billing", to: "/freight-billing", icon: IndianRupee },
       { title: "Service Level", to: "/service-level", icon: Gauge },
       { title: "Transit Damage Info", to: "/transit-damage-info", icon: AlertTriangle },
-      { title: "Insurance Claim Tracking", to: "/insurance-claim-tracking", icon: ShieldCheck },
+      { title: "Insurance Claim", to: "/insurance-claim-tracking", icon: ShieldCheck },
     ],
   },
   {
@@ -108,7 +110,7 @@ export function AppSidebar() {
     <aside
       className={
         "shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border sticky top-0 h-screen transition-[width] duration-200 " +
-        (collapsed ? "w-[68px]" : "w-64")
+        (collapsed ? "w-[68px]" : "w-57")
       }
     >
       <div className="px-3 py-3 border-b border-sidebar-border/70 flex items-center gap-2.5">

@@ -123,7 +123,7 @@ function DispatchPage() {
     <div className="flex flex-col min-h-full bg-background">
       <Tabs value={tab} onValueChange={(v: string) => setTab(v as "create" | "search")} className="w-full">
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
+        <div className="sticky top-0 z-50 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
           <Breadcrumb className="mb-1.5">
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -170,7 +170,7 @@ function DispatchPage() {
               <div className="h-5 w-px bg-hairline" />
               <button
                 onClick={() => window.location.reload()}
-                className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted"
+                className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted cursor-pointer"
               >
                 <RefreshCw className="size-3.5" /> Refresh
               </button>
@@ -287,7 +287,13 @@ function CreateDispatch() {
       transporter: firstRow.transporter,
       plant: firstRow.plant,
       division: firstRow.division,
-      lrNumber: firstRow.lrNumber,
+      // lrNumber:
+      //   originalTotals.lrs > 1
+      //     ? index === 0
+      //       ? firstRow.lrNumber
+      //       : ""
+      //     : firstRow.lrNumber,
+      lrNumber: index === 0 ? firstRow.lrNumber : "",
       remarks: firstRow.remarks,
 
       noOfTrucks: splitValue(
@@ -824,16 +830,16 @@ function CreateDispatch() {
 
             <div className="overflow-x-auto scrollbar-elegant">
               <table className="w-full text-[12.5px] border-collapse">
-                <thead className="sticky top-0 z-10">
-                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gradient-primary text-[9px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
                     {[
                       "Sl.No",
                       "Vehicle Type",
                       "Work Order",
                       "No of Trucks",
                       "No of Invoices",
-                      "Vendor",
                       "Transporter",
+                      "Vendor",
                       "Plant",
                       "Division",
                       "LRs QTY",
@@ -847,7 +853,7 @@ function CreateDispatch() {
                       <th
                         key={i}
                         className={cn(
-                          "px-2 py-2 text-left whitespace-nowrap align-middle", // Added whitespace-nowrap and align-middle
+                          "px-2 py-2 text-left whitespace-normal break-words align-middle", // Added whitespace-nowrap and align-middle
                           i === 0 && "w-10 text-center",
                           i === arr.length - 1 && showActionCol && "w-20 text-right",
                         )}
@@ -863,14 +869,14 @@ function CreateDispatch() {
                 </thead>
                 <tbody className="divide-y divide-hairline/60">
                   {rows.map((row, index) => (
-                    <tr key={row.id} className="hover:bg-accent/[0.04] transition-colors group">
-                      <td className="px-2 py-1 text-center font-mono text-muted-foreground">{row.slNo}</td>
+                    <tr key={row.id} className="hover:bg-accent/[0.04] transition-colors group text-[11.5px]">
+                      <td className="px-1 py-0.5 text-center font-mono text-muted-foreground text-[11px]">{row.slNo}</td>
                       <CellSelect
                         value={row.vehicleType}
                         options={VEHICLE_TYPES}
                         onChange={(v) => handleVehicleTypeChange(v, row.id)}
                         placeholder="Select"
-                        minWidth={130}
+                        minWidth={100}
                         disabled={isLockedRow(index)}
                         invalid={showErrors && isFieldEmpty(row, "vehicleType")}
                       />
@@ -885,6 +891,7 @@ function CreateDispatch() {
                       <CellNumber
                         value={row.noOfTrucks}
                         onChange={(v) => updateRow(row.id, { noOfTrucks: v })}
+
                         invalid={showErrors && isFieldEmpty(row, "noOfTrucks")}
                       />
                       <CellNumber
@@ -892,36 +899,10 @@ function CreateDispatch() {
                         onChange={(v) => updateRow(row.id, { noOfInvoices: v })}
                         invalid={showErrors && isFieldEmpty(row, "noOfInvoices")}
                       />
-                      {fetchedVendors.length > 0 ? (
-                        <CellSelect
-                          value={row.vendorCode}
-                          options={fetchedVendors.map((v) => `${v.vendorCode}`)}
-                          disabled={isLockedRow(index)}
-                          onChange={(v) => {
-                            const selected = fetchedVendors.find(
-                              (item) => item.vendorCode === v
-                            );
-
-                            updateRow(row.id, {
-                              vendorCode: v,
-                              transporter: selected?.transporter || "",
-                            });
-                          }}
-                          minWidth={120}
-                        />
-                      ) : (
-                        <CellInput
-                          value={row.vendorCode}
-                          onChange={(v) => updateRow(row.id, { vendorCode: v })}
-
-                          placeholder="V-…"
-                          mono
-                        />
-                      )}
                       <CellSelect
                         value={row.transporter}
                         options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}
-                        disabled={isLockedRow(index)}
+                        // disabled={isLockedRow(index)}
                         onChange={(v) => {
                           const selected = fetchedVendors.find(
                             (item) => item.transporter === v
@@ -932,20 +913,47 @@ function CreateDispatch() {
                             vendorCode: selected?.vendorCode || "",
                           });
                         }}
-                        minWidth={130}
+                        minWidth={100}
                       />
+                      {fetchedVendors.length > 0 ? (
+                        <CellSelect
+                          value={row.vendorCode}
+                          options={fetchedVendors.map((v) => `${v.vendorCode}`)}
+                          // disabled={isLockedRow(index)}
+                          onChange={(v) => {
+                            const selected = fetchedVendors.find(
+                              (item) => item.vendorCode === v
+                            );
+
+                            updateRow(row.id, {
+                              vendorCode: v,
+                              transporter: selected?.transporter || "",
+                            });
+                          }}
+                          minWidth={100}
+                        />
+                      ) : (
+                        <CellInput
+                          value={row.vendorCode}
+                          onChange={(v) => updateRow(row.id, { vendorCode: v })}
+
+                          placeholder="V-…"
+                          mono
+                        />
+                      )}
+
                       <CellSelect
                         value={row.plant}
                         options={fetchedPlants.length > 0 ? fetchedPlants : PLANTS}
                         onChange={(v) => updateRow(row.id, { plant: v })}
-                        minWidth={140}
+                        minWidth={110}
                         invalid={showErrors && isFieldEmpty(row, "plant")}
                       />
                       <CellSelect
                         value={row.division}
                         options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}
                         onChange={(v) => updateRow(row.id, { division: v })}
-                        minWidth={125}
+                        minWidth={100}
                         invalid={showErrors && isFieldEmpty(row, "division")}
                       />
                       <CellNumber
@@ -986,7 +994,7 @@ function CreateDispatch() {
                         <td className="px-2 py-1 font-mono text-[12.5px] whitespace-nowrap">{formatCreatedDate(row.createdDate)}</td>
                       )}
                       {showActionCol && (
-                        <td className="px-2 py-1 text-right">
+                        <td className="px-1 py-0.5 text-right">
                           <div className="inline-flex items-center gap-1">
                             <button
                               onClick={addRow}
@@ -1061,7 +1069,7 @@ function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: S
           key={m}
           onClick={() => onChange(m)}
           className={cn(
-            "relative z-10 px-3 py-1 rounded-full font-medium transition-colors",
+            "relative z-10 px-3 py-1 rounded-full font-medium transition-colors cursor-pointer",
             value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -1118,7 +1126,7 @@ function CellInput({
   invalid?: boolean;
 }) {
   return (
-    <td className="px-1.5 py-1">
+    <td className="px-0.5 py-0.5">
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -1163,7 +1171,7 @@ function CellSelect({
   options,
   onChange,
   placeholder = "Select",
-  minWidth = 110,
+  minWidth = 50,
   invalid,
   disabled,
 }: {
@@ -1449,7 +1457,21 @@ function SearchDispatch() {
             <Filter className="size-4 text-accent" />
             <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Filter Options</h3>
           </div>
-          <SapToggle value={sap} onChange={setSap} />
+          {/* <SapToggle value={sap} onChange={setSap} /> */}
+          <SapToggle
+            value={sap}
+            onChange={(v) => {
+              setSap(v);
+              setResults([]);
+              setApplied(false);
+              setFromDate(undefined);
+              setToDate(undefined);
+              setPlant("");
+              setDivision("");
+              setTransporter("");
+              setVehicleType("");
+            }}
+          />
         </div>
 
         {!sap && (
@@ -1615,40 +1637,14 @@ function SelectField({
 type SortKey = keyof DispatchResultRow;
 
 function ResultsTable({ data }: { data: DispatchResultRow[] }) {
-  const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("date");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const base: DispatchResultRow[] = data || [];
-    void q;
-    const sorted = [...base].sort((a, b) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
-      if (typeof av === "number" && typeof bv === "number") {
-        return sortDir === "asc" ? av - bv : bv - av;
-      }
-      return sortDir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
-    });
-    return sorted;
-  }, [query, sortKey, sortDir, data]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil((data || []).length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paged = (data || []).slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const toggleSort = (k: SortKey) => {
-    if (k === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortKey(k);
-      setSortDir("asc");
-    }
-  };
-
-  const cols: { key: SortKey; label: string; align?: "right"; mono?: boolean }[] = [
+  const cols: { key: keyof DispatchResultRow; label: string; align?: "right"; mono?: boolean }[] = [
     { key: "slNo", label: "Sl.No", align: "right", mono: true },
     { key: "referenceNo", label: "Reference No", mono: true },
     { key: "lineNo", label: "Line No", align: "right", mono: true },
@@ -1670,51 +1666,28 @@ function ResultsTable({ data }: { data: DispatchResultRow[] }) {
 
   return (
     <div className="bg-surface border border-hairline rounded-xl shadow-xs overflow-hidden">
-      <div className="px-4 py-3 border-b border-hairline flex flex-wrap items-center gap-3 justify-between bg-muted/40">
+      <div className="px-4 py-3 border-b border-hairline flex items-center justify-between bg-muted/40">
         <div>
           <h3 className="text-[13px] font-semibold text-foreground">Dispatch Results</h3>
           <p className="text-[11.5px] text-muted-foreground">
-            Showing {paged.length} of {filtered.length} records
+            Showing {paged.length} of {(data || []).length} records
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search records…"
-              className="pl-8 h-9 w-[260px]"
-            />
-          </div>
         </div>
       </div>
 
       <div className="overflow-x-auto max-h-[560px]">
         <table className="w-full text-[12.5px] border-collapse">
-          <thead className="sticky top-0 z-10">
+          <thead className="sticky top-0 z-30">
             <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
               {cols.map((c) => (
                 <th
                   key={c.key}
                   className={cn(
-                    "px-3 py-2.5 whitespace-nowrap select-none",
+                    "px-3 py-2.5 whitespace-nowrap",
                     c.align === "right" ? "text-right" : "text-left",
                   )}
                 >
-                  <button
-                    onClick={() => toggleSort(c.key)}
-                    className={cn(
-                      "inline-flex items-center gap-1 hover:text-primary-foreground/80 transition",
-                      sortKey === c.key && "underline underline-offset-2",
-                    )}
-                  >
-                    {c.label}
-                    <ArrowUpDown className="size-3" />
-                  </button>
+                  {c.label}
                 </th>
               ))}
             </tr>
@@ -1751,7 +1724,7 @@ function ResultsTable({ data }: { data: DispatchResultRow[] }) {
             {paged.length === 0 && (
               <tr>
                 <td colSpan={cols.length} className="px-6 py-10 text-center text-muted-foreground">
-                  No records match your filters.
+                  No records found.
                 </td>
               </tr>
             )}

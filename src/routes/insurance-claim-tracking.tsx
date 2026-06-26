@@ -10,7 +10,7 @@ export const Route = createFileRoute("/insurance-claim-tracking")({
 function InsuranceClaimTrackingPage() {
   return (
     <LeScreenShell
-      title="Insurance Claim Tracking"
+      title="Insurance Claim"
       renderDirectionExtras={() => (
         <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-indigo-300/60 bg-indigo-100 dark:bg-indigo-500/15 text-[11px] font-semibold text-indigo-800 dark:text-indigo-200">
           <ClipboardList className="size-3" />

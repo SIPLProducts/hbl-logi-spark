@@ -68,10 +68,10 @@ export function TopBar() {
             )}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleProfile} className="cursor-pointer">
-            <User className="size-4" />
-            <span>Profile</span>
-          </DropdownMenuItem>
+          {/* <DropdownMenuItem onClick={handleProfile} className="cursor-pointer"> */}
+            {/* <User className="size-4" /> */}
+            {/* <span>Profile</span> */}
+          {/* </DropdownMenuItem> */}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={handleLogout}
@@ -86,7 +86,7 @@ export function TopBar() {
       <button
         type="button"
         onClick={handleLogout}
-        className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-hairline bg-surface text-[12px] font-semibold text-foreground hover:bg-muted transition-colors"
+        className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-hairline bg-surface text-[12px] font-semibold text-foreground hover:bg-muted transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
         aria-label="Logout"
       >
         <LogOut className="size-3.5" />

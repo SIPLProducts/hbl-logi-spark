@@ -28,6 +28,14 @@ type Status = "idle" | "loading" | "ready" | "empty";
 type SortDir = "asc" | "desc";
 type SortKey = keyof DispatchOrderRow;
 
+type PlantData = {
+  PLANT: string;
+  PLANT_DESC: string;
+  DIVISION: string;
+  PLANT_TEXT: string;
+  DIV_TEXT: string;
+};
+
 type ColDef = {
   key: SortKey;
   header: string;
@@ -111,6 +119,10 @@ function DispatchOrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [error, setError] = useState<string | null>(null);
+  const [plant, setPlant] = useState("");
+  const [division, setDivision] = useState("");
+  const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
+  const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
 
   // Pending/Completed counts from API
   const [counts, setCounts] = useState({ pending: 0, completed: 0 });
@@ -193,6 +205,34 @@ function DispatchOrdersPage() {
     setPage(1);
   };
 
+  useEffect(() => {
+    const loadF4 = async () => {
+      try {
+        const res: any = await service.fetchVendorCode();
+        const data = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+
+        const plants: string[] = Array.isArray(data.PLANT)
+          ? data.PLANT.map((p: PlantData) => {
+            const desc = String(p.PLANT_DESC || "").split("_")[0].trim();
+            return `${p.PLANT}_${desc}`;
+          })
+          : [];
+
+        const divisions: string[] = Array.isArray(data.PLANT)
+          ? Array.from(
+            new Set(data.PLANT.map((p: PlantData) => String(p.DIVISION || "")).filter(Boolean))
+          )
+          : [];
+
+        setFetchedPlants(plants);
+        setFetchedDivisions(divisions);
+      } catch (err) {
+        console.error("F4 fetch failed:", err);
+      }
+    };
+    void loadF4();
+  }, []);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return rows;
@@ -246,7 +286,7 @@ function DispatchOrdersPage() {
   return (
     <div className="flex flex-col min-h-full">
       {/* Page header */}
-      <div className="sticky top-0 z-10 bg-surface border-b border-hairline px-6 py-5">
+      <div className="sticky top-0 z-50 bg-surface border-b border-hairline px-6 py-5">
         <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">
           Dispatch Orders
         </h1>
@@ -258,6 +298,7 @@ function DispatchOrdersPage() {
 
       <div className="p-6 space-y-5 flex-1">
         {/* Filter Card */}
+        {/* Filter Card */}
         <section className="bg-surface border border-hairline rounded-lg shadow-xs overflow-hidden">
           <header className="px-4 py-2.5 border-b border-hairline bg-muted/50 flex items-center gap-2">
             <Filter className="size-3.5 text-accent" />
@@ -265,9 +306,10 @@ function DispatchOrdersPage() {
               Dispatch Order Filter
             </h2>
           </header>
+
           <div className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
-              <div className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex flex-col gap-1 w-[190px]">
                 <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   From Date <span className="text-destructive">*</span>
                 </label>
@@ -279,7 +321,8 @@ function DispatchOrdersPage() {
                   className="h-9 bg-surface border border-hairline rounded-md px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                 />
               </div>
-              <div className="flex flex-col gap-1">
+
+              <div className="flex flex-col gap-1 w-[190px]">
                 <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   To Date <span className="text-destructive">*</span>
                 </label>
@@ -292,36 +335,41 @@ function DispatchOrdersPage() {
                 />
               </div>
 
-              {/* Counts from API */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-2 h-9 px-3 rounded-full bg-warning/15 text-warning-foreground border border-warning/30 text-[12px] font-medium">
-                  <span className="size-1.5 rounded-full bg-warning" />
-                  Pending:{" "}
-                  <span className="font-mono font-bold">{counts.pending}</span>
-                </span>
-                <span className="inline-flex items-center gap-2 h-9 px-3 rounded-full bg-success/15 text-success border border-success/30 text-[12px] font-medium">
-                  <span className="size-1.5 rounded-full bg-success" />
-                  Completed:{" "}
-                  <span className="font-mono font-bold">
-                    {counts.completed}
-                  </span>
-                </span>
+              <div className="flex flex-col gap-1 w-[190px]">
+                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Plant
+                </label>
+                <select
+                  value={plant}
+                  onChange={(e) => setPlant(e.target.value)}
+                  className="h-9 bg-surface border border-hairline rounded-md px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                >
+                  <option value="">Select plant…</option>
+                  {fetchedPlants.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
 
-            <div className="mt-4 flex items-center justify-end gap-2 flex-wrap">
-              <button
-                onClick={onClear}
-                className="inline-flex items-center gap-1.5 px-3 h-9 text-[12.5px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted cursor-pointer"
-              >
-                <RotateCcw className="size-3.5" /> Clear Filters
-              </button>
-              <button
-                onClick={onExecute}
-                className="inline-flex items-center gap-1.5 px-4 h-9 text-[12.5px] font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm cursor-pointer"
-              >
-                <Play className="size-3.5" /> Execute Report
-              </button>
+              <div className="flex flex-col gap-1 w-[190px]">
+                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Division
+                </label>
+                <select
+                  value={division}
+                  onChange={(e) => setDivision(e.target.value)}
+                  className="h-9 bg-surface border border-hairline rounded-md px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                >
+                  <option value="">Select division…</option>
+                  {fetchedDivisions.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {error && (
@@ -330,6 +378,53 @@ function DispatchOrdersPage() {
               </div>
             )}
           </div>
+
+          {/* Status row — left: status pills, right: Execute/Reset */}
+          <div className="px-4 py-3 border-t border-hairline flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Status
+              </span>
+              <span className="inline-flex items-center gap-2 h-9 px-3 rounded-full bg-warning/15 text-warning-foreground border border-warning/30 text-[12px] font-medium">
+                <span className="size-1.5 rounded-full bg-warning" />
+                Pending: <span className="font-mono font-bold">{counts.pending}</span>
+              </span>
+              <span className="inline-flex items-center gap-2 h-9 px-3 rounded-full bg-success/15 text-success border border-success/30 text-[12px] font-medium">
+                <span className="size-1.5 rounded-full bg-success" />
+                Completed: <span className="font-mono font-bold">{counts.completed}</span>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onExecute}
+                className="inline-flex items-center gap-1.5 px-4 h-9 text-[12.5px] font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/90 shadow-sm cursor-pointer"
+              >
+                <Play className="size-3.5" /> Execute
+              </button>
+              <button
+                onClick={onClear}
+                className="inline-flex items-center gap-1.5 px-3 h-9 text-[12.5px] font-semibold text-foreground border border-hairline rounded-md bg-surface hover:bg-muted cursor-pointer"
+              >
+                <RotateCcw className="size-3.5" /> Reset
+              </button>
+            </div>
+          </div>
+
+          {/* Status / counts row — separated by a divider, like the screenshot */}
+          {/* <div className="px-4 py-3 border-t border-hairline flex items-center gap-3 flex-wrap">
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Status
+            </span>
+            <span className="inline-flex items-center gap-2 h-9 px-3 rounded-full bg-warning/15 text-warning-foreground border border-warning/30 text-[12px] font-medium">
+              <span className="size-1.5 rounded-full bg-warning" />
+              Pending: <span className="font-mono font-bold">{counts.pending}</span>
+            </span>
+            <span className="inline-flex items-center gap-2 h-9 px-3 rounded-full bg-success/15 text-success border border-success/30 text-[12px] font-medium">
+              <span className="size-1.5 rounded-full bg-success" />
+              Completed: <span className="font-mono font-bold">{counts.completed}</span>
+            </span>
+          </div> */}
         </section>
 
         {/* Results Card */}
@@ -421,7 +516,7 @@ function DispatchOrdersPage() {
             {status === "ready" && (
               <div className="max-h-[560px] overflow-auto">
                 <table className="w-full text-left border-collapse text-[12.5px]">
-                  <thead className="sticky top-0 z-10">
+                  <thead className="sticky top-0 z-30">
                     <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
                       {COLUMNS.map((c) => {
                         const active = sortKey === c.key;
@@ -437,7 +532,7 @@ function DispatchOrdersPage() {
                               "px-3 py-2.5 whitespace-nowrap " +
                               (c.align === "right" ? "text-right" : "")
                             }
-                            // onClick={() => toggleSort(c.key)}
+                          // onClick={() => toggleSort(c.key)}
                           >
                             <span
                               className={
