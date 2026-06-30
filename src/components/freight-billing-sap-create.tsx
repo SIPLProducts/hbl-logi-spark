@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, X } from "lucide-react";
+// @ts-ignore
+import service from "../services/generalservice_service.js";
+import Swal from "sweetalert2";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -14,6 +17,37 @@ const SEARCH_OPTIONS = [
   "Work Order",
   "LR Number",
 ];
+
+const SEARCH_FIELD_MAP: Record<string, string> = {
+  "Reference": "ref_no",
+  "Invoice": "inv_no",
+  "ODN": "odn_no",
+  "SO Number": "so_no",
+  "Work Order": "workorder_no",
+  "LR Number": "lr_no",
+};
+
+type TableRow = {
+  REF_NO: string;
+  WORK_ORDER_NO: string;
+  LR_NO: string;
+  TRANSPORTER: string;
+  LINE_NO: string;
+  selected: boolean;
+};
+
+const EMPTY_ROW = (): TableRow => ({
+  REF_NO: "", WORK_ORDER_NO: "", LR_NO: "", TRANSPORTER: "", LINE_NO: "", selected: false,
+});
+
+
+function getLoggedInUser(): string {
+  try {
+    const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
+    const u = JSON.parse(raw) as Record<string, unknown>;
+    return String(u?.USER ?? u?.USERNAME ?? u?.USER_ID ?? "");
+  } catch { return ""; }
+}
 
 const BREAKDOWN_FIELDS = [
   "Basic Freight",
@@ -117,7 +151,10 @@ function ChargesBreakdownDialog({
   );
 }
 
-export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
+export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "without" }) {
+
+  const isWithout = mode === "without";
+  const isSap = !isWithout;
   const [checked, setChecked] = useState(false);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
@@ -136,6 +173,251 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
   const [freightBillDate, setFreightBillDate] = useState("");
   const [billSubmissionDate, setBillSubmissionDate] = useState("");
   const [physicalSubmissionDate, setPhysicalSubmissionDate] = useState("");
+  const [itemsList, setItemsList] = useState<any[]>([]);
+  const [showTable, setShowTable] = useState(false);
+  const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
+  const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
+  const [showForm, setShowForm] = useState(true);
+
+
+  const fetchGlobalReferences = async (row: TableRow, index: number, fieldKey: string) => {
+    if (index !== 0) return;
+    const value = (row as any)[fieldKey]?.trim();
+    if (!value) return;
+
+    const payload = {
+      global_scr: "TRANSIT INFO",
+      REF_NO: fieldKey === "REF_NO" ? row.REF_NO : "",
+      WORK_ORDER_NO: fieldKey === "WORK_ORDER_NO" ? row.WORK_ORDER_NO : "",
+      LR_NO: fieldKey === "LR_NO" ? row.LR_NO : "",
+      TRANSPORTER: fieldKey === "TRANSPORTER" ? row.TRANSPORTER : "",
+      LINE_NO: row.LINE_NO || "",
+      ZUSER: getLoggedInUser(),
+    };
+
+    try {
+      const res: any = isSap
+        ? await service.GlobalReferenceNoFetch(payload)
+        : await service.GlobalReferenceNoFetchwithoutsap(payload);
+
+      if (res?.STATUS === "FALSE") {
+        Swal.fire({ icon: "info", title: "No Records Found", text: "No matching reference details found.", timer: 1500, showConfirmButton: false });
+        setTableData([EMPTY_ROW()]);
+        return;
+      }
+      if (Array.isArray(res) && res.length > 0) {
+        setTableData(res.map((item: any) => ({
+          REF_NO: item.REF_NO || "",
+          WORK_ORDER_NO: item.WORK_ORDER_NO || "",
+          LR_NO: item.LR_NO || "",
+          TRANSPORTER: item.TRANSPORTER || "",
+          LINE_NO: item.LINE_NO || "",
+          selected: false,
+        })));
+      } else {
+        setTableData([EMPTY_ROW()]);
+      }
+    } catch (e) {
+      console.error("GlobalReference fetch error:", e);
+      Swal.fire({ icon: "error", text: "Error fetching reference details." });
+    }
+  };
+
+  const saveFreightBilling = async (
+    action = "stay" // stay | next | previous
+  ) => {
+    try {
+      // Find selected row
+      const selectedRow = tableData.find((row) => row.selected);
+
+      if (!selectedRow) {
+        Swal.fire({
+          icon: "warning",
+          text: "Please select at least one reference row before saving",
+        });
+        return;
+      }
+
+      const record = {
+        INV_NO: "",
+        REFNO: selectedRow.REF_NO,
+        LINE_NO: selectedRow.LINE_NO,
+        BILLNO: freightBillNo,
+        BILLDATE: freightBillDate,
+
+        PRO_CHK: provision ? "X" : "",
+        ACC_CHK: account ? "X" : "",
+
+        PROVDT: provisionDate,
+        PROVAMT: provisionTotal || 0,
+
+        PHY_DATE: physicalSubmissionDate,
+        FRT_CHARGES: freightTotal || 0,
+
+        ORDER_NO: selectedRow.WORK_ORDER_NO,
+        WORKORDER: selectedRow.WORK_ORDER_NO,
+        LRNO: selectedRow.LR_NO,
+        TRANSPORTER: selectedRow.TRANSPORTER,
+
+        BILL_SUBMISSION: billSubmissionDate,
+
+        FRBILLUP: "",
+        UNLOADAPP: "",
+        DETENTUP: "",
+        WORDUP: "",
+
+        // Freight Charges
+        ZFC_BASIC: account ? freightBreakdown["Basic Freight"] : 0,
+        ZFC_DELOAD: account ? freightBreakdown["Detention Loading"] : 0,
+        ZFC_DEUNLOAD: account ? freightBreakdown["Detention Unloading"] : 0,
+        ZFC_LOAD: account ? freightBreakdown["Loading Charges"] : 0,
+        ZFC_UNLOAD: account ? freightBreakdown["Unloading Charges"] : 0,
+        ZFC_ROUTE: account ? freightBreakdown["Route Change"] : 0,
+        ZFC_TSHIP: account ? freightBreakdown["Transhipment Charges"] : 0,
+        ZFC_OTHER: account ? freightBreakdown["Other Charges"] : 0,
+        ZFC_DEDUCT: account ? freightBreakdown["Deduction"] : 0,
+
+        // Provision Breakdown
+        ZPR_BASIC: provision ? provisionBreakdown["Basic Freight"] : 0,
+        ZPR_DELOAD: provision ? provisionBreakdown["Detention Loading"] : 0,
+        ZPR_DEUNLOAD: provision ? provisionBreakdown["Detention Unloading"] : 0,
+        ZPR_LOAD: provision ? provisionBreakdown["Loading Charges"] : 0,
+        ZPR_UNLOAD: provision ? provisionBreakdown["Unloading Charges"] : 0,
+        ZPR_ROUTE: provision ? provisionBreakdown["Route Change"] : 0,
+        ZPR_TSHIP: provision ? provisionBreakdown["Transhipment Charges"] : 0,
+        ZPR_OTHER: provision ? provisionBreakdown["Other Charges"] : 0,
+        ZPR_DEDUCT: provision ? provisionBreakdown["Deduction"] : 0,
+      };
+
+      console.log(record);
+
+      const response = isSap
+        ? await service.FreightBillingSave({ SAVE: [record] })
+        : await service.FreightBillingNonSap({ CREATE: [record] });
+
+      if (response.STATUS === "true" || response.NUMBER === "200") {
+        await Swal.fire({
+          icon: "success",
+          text: response.MESSAGE || "Freight Billing Saved Successfully",
+        });
+
+        if (action === "next") {
+          console.log("Navigate Next");
+          // navigate("/transit-damage-info");
+        } else if (action === "previous") {
+          console.log("Navigate Previous");
+          // navigate("/transit-info");
+        } else {
+          console.log("Reset Form");
+        }
+      } else {
+        Swal.fire({
+          icon: "error",
+          text: response.MESSAGE || "Save Failed",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Something went wrong while saving.",
+      });
+    }
+  };
+
+  const onSearchReference = async () => {
+    if (!searchValue.trim()) {
+      Swal.fire({
+        icon: "warning",
+        text: "Please enter a value",
+      });
+      return;
+    }
+
+    if (!searchType) {
+      Swal.fire({
+        icon: "info",
+        text: "Please select a search type",
+      });
+      return;
+    }
+
+    const payload = {
+      global: "FREIGHT BILLING",
+      data: {
+        ref_no: "",
+        inv_no: "",
+        so_no: "",
+        transporter: "",
+        lr_no: "",
+        workorder_no: "",
+        sales_person: "",
+        location: "",
+        odn_no: "",
+        vehicle_no: "",
+        freight_billno: "",
+        nature_damage: "",
+        claim_status: "",
+      },
+    };
+
+    const apiField = SEARCH_FIELD_MAP[searchType];
+
+    payload.data[apiField as keyof typeof payload.data] = searchValue.trim();
+
+    console.log("Payload", payload);
+
+    try {
+      const res = isSap
+        ? await service.global_Fields_SearchOption(payload)
+        : await service.global_Fields_SearchOption_WithoutSap(payload);
+
+      console.log("Response", res);
+
+      if (res.NUMBER === "100" && res.STATUS === "FALSE") {
+        setSearchOptionsList([]);
+        Swal.fire({
+          icon: "warning",
+          text: res.MESSAGE,
+        });
+        return;
+      }
+
+      if (!res.HEADER || res.HEADER.length === 0) {
+        setSearchOptionsList([]);
+        Swal.fire({
+          icon: "info",
+          text: "No records found",
+        });
+        return;
+      }
+
+      setSearchOptionsList(
+        res.HEADER.map((item: any) => ({
+          ...item,
+          isEdit: false,
+        }))
+      );
+
+      setShowForm(false);
+
+      Swal.fire({
+        icon: "success",
+        text: "Data fetched successfully!",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      console.error(err);
+
+      Swal.fire({
+        icon: "error",
+        text: "Error fetching data",
+      });
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -155,34 +437,94 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td className="px-3 py-0.5 text-center">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => setChecked(e.target.checked)}
-                  className="size-4 accent-sky-600"
-                />
-              </td>
-              <td className="px-3 py-0.5 text-center">1</td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Ref. No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter LR No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5 text-center">
-                <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
-                  <MoreVertical className="size-4" />
-                </button>
-              </td>
-            </tr>
+            {tableData.map((row, index) => (
+              <tr key={index}>
+                <td className="px-3 py-0.5 text-center">
+                  <input
+                    type="checkbox"
+                    checked={row.selected}
+                    onChange={(e) => {
+                      setTableData((prev) =>
+                        prev.map((item, i) => ({
+                          ...item,
+                          selected: i === index ? e.target.checked : false,
+                        }))
+                      );
+                    }}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5 text-center">
+                  {index + 1}
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.REF_NO}
+                    onChange={(e) =>
+                      setTableData(prev => {
+                        const copy = [...prev];
+                        copy[index].REF_NO = e.target.value;
+                        return copy;
+                      })
+                    }
+                    onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.WORK_ORDER_NO}
+                    onChange={(e) =>
+                      setTableData(prev => {
+                        const copy = [...prev];
+                        copy[index].WORK_ORDER_NO = e.target.value;
+                        return copy;
+                      })
+                    }
+                    onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.LR_NO}
+                    onChange={(e) =>
+                      setTableData(prev => {
+                        const copy = [...prev];
+                        copy[index].LR_NO = e.target.value;
+                        return copy;
+                      })
+                    }
+                    onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.TRANSPORTER}
+                    onChange={(e) =>
+                      setTableData(prev => {
+                        const copy = [...prev];
+                        copy[index].TRANSPORTER = e.target.value;
+                        return copy;
+                      })
+                    }
+                    onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5 text-center">
+                  <button>
+                    <MoreVertical className="size-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -211,12 +553,165 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
               placeholder="Enter Reference / Invoice / ODN / SO Number"
               className="h-7 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
             />
-            <button className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta">
+            <button
+              onClick={onSearchReference}
+              className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta"
+            >
               <Search className="size-4" />
             </button>
           </div>
         </div>
       </div>
+
+      {!showForm && searchOptionsList.length > 0 && (
+  <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+    <div className="overflow-x-auto">
+      <table className="w-full text-[12px] border-collapse">
+        <thead>
+          <tr className="bg-gradient-primary text-primary-foreground">
+            <th className="border px-2 py-1">Ref No</th>
+            <th className="border px-2 py-1">Invoice No</th>
+            <th className="border px-2 py-1">Line No</th>
+            <th className="border px-2 py-1">ODN No</th>
+            <th className="border px-2 py-1">SO No</th>
+            <th className="border px-2 py-1">Sales Person</th>
+            <th className="border px-2 py-1">P/A Check</th>
+            <th className="border px-2 py-1">Provision Amount</th>
+            <th className="border px-2 py-1">Provision Date</th>
+            <th className="border px-2 py-1">Freight Bill No</th>
+            <th className="border px-2 py-1">Freight Bill Date</th>
+            <th className="border px-2 py-1">Physical Submission</th>
+            <th className="border px-2 py-1">Freight Charges</th>
+            <th className="border px-2 py-1">Work Order</th>
+            <th className="border px-2 py-1">Bill Submission</th>
+            <th className="border px-2 py-1">LR No</th>
+            <th className="border px-2 py-1">Transporter</th>
+            <th className="border px-2 py-1">Location</th>
+            <th className="border px-2 py-1">Vehicle No</th>
+            <th className="border px-2 py-1">Created Date</th>
+            <th className="border px-2 py-1">Vehicle Line</th>
+            <th className="border px-2 py-1">Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {searchOptionsList.map((item, index) => (
+            <tr key={index}>
+              <td className="border px-2 py-1">{item.ZREFNO}</td>
+              <td className="border px-2 py-1">{item.ZINV_NO}</td>
+              <td className="border px-2 py-1">{item.ZLINE_NO}</td>
+
+              <td className="border px-2 py-1">
+                {item.isEdit ? (
+                  <input
+                    className={GREEN_INPUT}
+                    value={item.ZODN_NO || ""}
+                    onChange={(e) => {
+                      const list = [...searchOptionsList];
+                      list[index].ZODN_NO = e.target.value;
+                      setSearchOptionsList(list);
+                    }}
+                  />
+                ) : (
+                  item.ZODN_NO
+                )}
+              </td>
+
+              <td className="border px-2 py-1">
+                {item.isEdit ? (
+                  <input
+                    className={GREEN_INPUT}
+                    value={item.ZSONO || ""}
+                    onChange={(e) => {
+                      const list = [...searchOptionsList];
+                      list[index].ZSONO = e.target.value;
+                      setSearchOptionsList(list);
+                    }}
+                  />
+                ) : (
+                  item.ZSONO
+                )}
+              </td>
+
+              <td className="border px-2 py-1">
+                {item.isEdit ? (
+                  <input
+                    className={GREEN_INPUT}
+                    value={item.ZSALE_PERSON || ""}
+                    onChange={(e) => {
+                      const list = [...searchOptionsList];
+                      list[index].ZSALE_PERSON = e.target.value;
+                      setSearchOptionsList(list);
+                    }}
+                  />
+                ) : (
+                  item.ZSALE_PERSON
+                )}
+              </td>
+
+              <td className="border px-2 py-1">
+                <button className="bg-blue-500 text-white px-2 rounded">
+                  View
+                </button>
+              </td>
+
+              <td className="border px-2 py-1">{item.ZPROVAMT}</td>
+              <td className="border px-2 py-1">{item.ZPROVDT}</td>
+              <td className="border px-2 py-1">{item.ZBILLNO}</td>
+              <td className="border px-2 py-1">{item.ZBILLDATE}</td>
+              <td className="border px-2 py-1">{item.ZPHY_DATE}</td>
+              <td className="border px-2 py-1">{item.ZFRT_CHARGES}</td>
+              <td className="border px-2 py-1">{item.ZWORK_ORDER}</td>
+              <td className="border px-2 py-1">{item.ZBILL_SUBMISSION}</td>
+              <td className="border px-2 py-1">{item.ZLRNO}</td>
+              <td className="border px-2 py-1">{item.ZTRANSPORTER}</td>
+              <td className="border px-2 py-1">{item.ZLOCATION}</td>
+              <td className="border px-2 py-1">{item.ZVEH_NUM}</td>
+              <td className="border px-2 py-1">{item.ZCREATED_DT}</td>
+              <td className="border px-2 py-1">{item.ZVEH_LINE}</td>
+
+              <td className="border px-2 py-1">
+                {!item.isEdit ? (
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      className="bg-blue-500 text-white px-2 rounded"
+                      // onClick={() => editSearchRow(index)}
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      className="bg-red-500 text-white px-2 rounded"
+                      // onClick={() => deleteRow(index)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      className="bg-green-500 text-white px-2 rounded"
+                      // onClick={() => updateSearchRow(index)}
+                    >
+                      Save
+                    </button>
+
+                    <button
+                      className="bg-gray-500 text-white px-2 rounded"
+                      // onClick={() => cancelSearchEdit(index)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
 
       {/* Field grid */}
       <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
@@ -352,14 +847,26 @@ export function FreightBillingSapCreate(_: { mode?: "with" | "without" } = {}) {
 
       {/* Footer action bar */}
       <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-        <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm">
-          <Save className="size-3.5" /> Save
+        <button
+          onClick={() => saveFreightBilling("stay")}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
+        >
+          <Save className="size-3.5" />
+          Save
         </button>
-        <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-[12px] font-semibold shadow-sm">
-          Save and Next <ChevronRight className="size-3.5" />
+        <button
+          onClick={() => saveFreightBilling("next")}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-[12px] font-semibold shadow-sm"
+        >
+          Save and Next
+          <ChevronRight className="size-3.5" />
         </button>
-        <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold shadow-sm">
-          <ChevronLeft className="size-3.5" /> Save and Previous
+        <button
+          onClick={() => saveFreightBilling("previous")}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold shadow-sm"
+        >
+          <ChevronLeft className="size-3.5" />
+          Save and Previous
         </button>
       </div>
 

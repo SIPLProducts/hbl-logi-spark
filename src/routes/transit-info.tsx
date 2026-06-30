@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LeScreenShell } from "@/components/le-screen-shell";
 import { TransitInfoSapCreate } from "@/components/transit-info-sap-create";
+// @ts-ignore
+import service from "../services/generalservice_service.js";
 
 export const Route = createFileRoute("/transit-info")({
   component: TransitInfoPage,

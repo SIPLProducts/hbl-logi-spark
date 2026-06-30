@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MoreVertical, Save, ChevronLeft, ChevronRight } from "lucide-react";
+// @ts-ignore
+import service from "../services/generalservice_service.js";
+import Swal from "sweetalert2";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -22,20 +25,413 @@ type FieldSpec = {
   options?: string[];
   placeholder?: string;
 };
+type TableRow = {
+  REF_NO: string;
+  WORK_ORDER_NO: string;
+  LR_NO: string;
+  TRANSPORTER: string;
+  LINE_NO: string;
+  selected: boolean;
+};
 
+const EMPTY_ROW = (): TableRow => ({
+  REF_NO: "", WORK_ORDER_NO: "", LR_NO: "", TRANSPORTER: "", LINE_NO: "", selected: false,
+});
+
+function getLoggedInUser(): string {
+  try {
+    const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
+    const u = JSON.parse(raw) as Record<string, unknown>;
+    return String(u?.USER ?? u?.USERNAME ?? u?.USER_ID ?? "");
+  } catch { return ""; }
+}
 const FIELDS: FieldSpec[] = [
   { label: "Invoice Number" },
   { label: "Physical arrived at destination date", type: "datetime" },
   { label: "Unloading date and time", type: "datetime" },
   { label: "POD scan received date", type: "date" },
-  { label: "SIT/SALE", placeholder: "SIT/SALE" },
+  {
+    label: "SIT/SALE",
+    type: "select",
+    options: ["SIT", "SALE"],
+  },
   { label: "POD Scan", type: "file" },
 ];
 
-export function TransitInfoSapCreate(_: { mode?: "with" | "without" } = {}) {
+export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" }) {
+
+  const isWithout = mode === "without";
+  const isSap = !isWithout;
+
   const [checked, setChecked] = useState(false);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
+
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [physicalArrivedDate, setPhysicalArrivedDate] = useState("");
+  const [unloadingDate, setUnloadingDate] = useState("");
+  const [podScanDate, setPodScanDate] = useState("");
+  const [sitSale, setSitSale] = useState("");
+  const [headerData, setHeaderData] = useState<any[]>([]);
+  const [itemsList, setItemsList] = useState<any[]>([]);
+  const [showTable, setShowTable] = useState(false);
+  const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
+  const [referenceItems, setReferenceItems] = useState([
+    {
+      referenceNumber: "",
+      workOrderNumber: "",
+      lrNumber: "",
+      transporter: "",
+      lineNumber: "",
+    },
+  ]);
+
+  useEffect(() => {
+    // Reset search fields
+    setSearchType("");
+    setSearchValue("");
+
+    // Reset form fields
+    setInvoiceNumber("");
+    setPhysicalArrivedDate("");
+    setUnloadingDate("");
+    setPodScanDate("");
+    setSitSale("");
+
+    // Reset table data
+    setHeaderData([]);
+    setItemsList([]);
+    setShowTable(false);
+    setTableData([EMPTY_ROW()]);
+
+    // Reset reference items
+    setReferenceItems([
+      {
+        referenceNumber: "",
+        workOrderNumber: "",
+        lrNumber: "",
+        transporter: "",
+        lineNumber: "",
+      },
+    ]);
+  }, [mode]);
+  const handleInputChange = (
+    index: number,
+    field: string,
+    value: string
+  ) => {
+    const updated = [...referenceItems];
+    updated[index] = {
+      ...updated[index],
+      [field]: value,
+    };
+    setReferenceItems(updated);
+  };
+  const populateReferenceRows = (data: any[]) => {
+    if (Array.isArray(data)) {
+      const rows = data.map((item) => ({
+        referenceNumber: item.REF_NO?.toString() || "",
+        workOrderNumber: item.WORK_ORDER_NO || "",
+        lrNumber: item.LR_NO || "",
+        transporter: item.TRANSPORTER || "",
+        lineNumber: item.LINE_NO?.toString() || "",
+      }));
+
+      setReferenceItems(rows);
+    }
+  };
+
+  useEffect(() => {
+    if (unloadingDate || podScanDate) {
+      setSitSale("SALE");
+    } else if (physicalArrivedDate) {
+      setSitSale("SIT");
+    } else {
+      setSitSale("");
+    }
+  }, [physicalArrivedDate, unloadingDate, podScanDate]);
+
+  const resetAll = () => {
+    setSearchType("");
+    setSearchValue("");
+
+    setInvoiceNumber("");
+    setPhysicalArrivedDate("");
+    setUnloadingDate("");
+    setPodScanDate("");
+    setSitSale("");
+
+    setHeaderData([]);
+    setItemsList([]);
+    setShowTable(false);
+
+    setTableData([EMPTY_ROW()]);
+
+    setReferenceItems([
+      {
+        referenceNumber: "",
+        workOrderNumber: "",
+        lrNumber: "",
+        transporter: "",
+        lineNumber: "",
+      },
+    ]);
+  };
+
+  const fetchGlobalReferences = async (row: TableRow, index: number, fieldKey: string) => {
+    if (index !== 0) return;
+    const value = (row as any)[fieldKey]?.trim();
+    if (!value) return;
+
+    const payload = {
+      global_scr: "TRANSIT INFO",
+      REF_NO: fieldKey === "REF_NO" ? row.REF_NO : "",
+      WORK_ORDER_NO: fieldKey === "WORK_ORDER_NO" ? row.WORK_ORDER_NO : "",
+      LR_NO: fieldKey === "LR_NO" ? row.LR_NO : "",
+      TRANSPORTER: fieldKey === "TRANSPORTER" ? row.TRANSPORTER : "",
+      LINE_NO: row.LINE_NO || "",
+      ZUSER: getLoggedInUser(),
+    };
+
+    try {
+      const res: any = isSap
+        ? await service.GlobalReferenceNoFetch(payload)
+        : await service.GlobalReferenceNoFetchwithoutsap(payload);
+
+      if (res?.STATUS === "FALSE") {
+        Swal.fire({ icon: "info", title: "No Records Found", text: "No matching reference details found.", timer: 1500, showConfirmButton: false });
+        setTableData([EMPTY_ROW()]);
+        return;
+      }
+      if (Array.isArray(res) && res.length > 0) {
+        setTableData(res.map((item: any) => ({
+          REF_NO: item.REF_NO || "",
+          WORK_ORDER_NO: item.WORK_ORDER_NO || "",
+          LR_NO: item.LR_NO || "",
+          TRANSPORTER: item.TRANSPORTER || "",
+          LINE_NO: item.LINE_NO || "",
+          selected: false,
+        })));
+      } else {
+        setTableData([EMPTY_ROW()]);
+      }
+    } catch (e) {
+      console.error("GlobalReference fetch error:", e);
+      Swal.fire({ icon: "error", text: "Error fetching reference details." });
+    }
+  };
+
+  const saveTransitInfo = async (
+    action: "stay" | "next" | "previous" = "stay"
+  ) => {
+    try {
+      const HEAD = {
+        REFNO: tableData[0]?.REF_NO || "",
+        INV_NO: invoiceNumber,
+
+        PY_ARRIVED_DEST: physicalArrivedDate,
+        UNLOADING_DT: unloadingDate,
+        POD_SCAN: podScanDate,
+
+        SIT_SALE: sitSale,
+      };
+
+      console.log("REFERENCE ITEMS BEFORE SAVE:", referenceItems);
+      const ITEM = tableData.map((item, idx) => ({
+        REFNO: item.REF_NO,
+        INV_NO: invoiceNumber,
+        POSNR: (idx + 1) * 10,
+        VEH_LINE: idx + 1,
+        VEH_NUM: "",
+        LRNO: item.LR_NO,
+        WORK_ORDER: item.WORK_ORDER_NO,
+        TRANSPORTER: item.TRANSPORTER,
+        LINE_NO: item.LINE_NO,
+      }));
+
+      const payload = {
+        HEAD,
+        ITEM,
+      };
+
+      console.log("TRANSIT PAYLOAD", payload);
+
+      let response: any;
+
+      if (isSap) {
+        // With SAP
+        response = await service.TransitInfoSave(payload);
+      } else {
+        // Without SAP
+        response = await service.TransitInfoNonSap(payload);
+      }
+
+      console.log(response);
+
+      if (
+        response?.STATUS?.toUpperCase() === "TRUE" ||
+        response?.NUMBER === "200"
+      ) {
+        await Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Data saved successfully",
+          confirmButtonText: "OK",
+        });
+
+        // Clear all fields after clicking OK
+        resetAll();
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: response.MESSAGE || "Save Failed",
+          confirmButtonText: "OK",
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error while saving",
+        confirmButtonText: "OK",
+      });
+    }
+  };
+
+  const onSearchReference = async () => {
+    console.log("SEARCH BUTTON CLICKED");
+
+    // Reset old data
+    setHeaderData([]);
+    setItemsList([]);
+    setShowTable(false);
+
+    if (!searchValue.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Warning",
+        text: "Please enter a value",
+      });
+      return;
+    }
+
+    if (!searchType) {
+      Swal.fire({
+        icon: "warning",
+        title: "Warning",
+        text: "Please select a search type",
+      });
+      return;
+    }
+
+    const payload = {
+      global: "TRANSIT INFO",
+      data: {
+        ref_no: "",
+        inv_no: "",
+        so_no: "",
+        transporter: "",
+        lr_no: "",
+        workorder_no: "",
+        sales_person: "",
+        location: "",
+        odn_no: "",
+        vehicle_no: "",
+        freight_billno: "",
+        nature_damage: "",
+        claim_status: "",
+      },
+    };
+
+    const typeMap: Record<string, keyof typeof payload.data> = {
+      Reference: "ref_no",
+      Invoice: "inv_no",
+      ODN: "odn_no",
+      "SO Number": "so_no",
+      "Work Order": "workorder_no",
+      "LR Number": "lr_no",
+    };
+
+    const selectedField = typeMap[searchType];
+
+    if (selectedField) {
+      payload.data[selectedField] = searchValue.trim();
+    }
+
+    try {
+
+      let res: any;
+
+      if (isSap) {
+        // WITH SAP
+        res = await service.global_Fields_SearchOption(payload);
+      } else {
+        // WITHOUT SAP
+        res = await service.global_Fields_SearchOption_WithoutSap(payload);
+      }
+
+      console.log("SEARCH RESPONSE", res);
+
+      if (
+        res?.NUMBER === "100" &&
+        res?.STATUS === "FALSE"
+      ) {
+        Swal.fire({
+          icon: "warning",
+          title: "Warning",
+          text: res.MESSAGE,
+        });
+        return;
+      }
+
+      if (!res?.HEADER || res.HEADER.length === 0) {
+        Swal.fire({
+          icon: "info",
+          title: "No Records Found",
+        });
+        return;
+      }
+
+      setHeaderData(res.HEADER);
+      setItemsList(res.ITEMS || []);
+      setShowTable(true);
+
+      const firstHeader = res.HEADER[0];
+
+      setInvoiceNumber(firstHeader.ZINV_NO || "");
+      setPhysicalArrivedDate(firstHeader.ZPY_ARRIVED_DEST || "");
+      setUnloadingDate(firstHeader.ZUNLOADING_DT || "");
+      setPodScanDate(firstHeader.ZPOD_SCAN || "");
+      setSitSale(firstHeader.ZSIT_SALE || "");
+
+      const rows = (res.ITEMS || []).map((item: any) => ({
+        referenceNumber: item.ZREFNO || "",
+        workOrderNumber: item.ZWORK_ORDER || "",
+        lrNumber: item.ZLRNO || "",
+        transporter: item.ZTRANSPORTER || "",
+        lineNumber: item.ZLINE_NO || "",
+      }));
+
+      setReferenceItems(rows);
+
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Data fetched successfully",
+      });
+
+    } catch (err) {
+      console.error(err);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error fetching data",
+      });
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -55,34 +451,83 @@ export function TransitInfoSapCreate(_: { mode?: "with" | "without" } = {}) {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td className="px-3 py-0.5 text-center">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => setChecked(e.target.checked)}
-                  className="size-4 accent-sky-600"
-                />
-              </td>
-              <td className="px-3 py-0.5 text-center">1</td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Ref. No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter LR No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5 text-center">
-                <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
-                  <MoreVertical className="size-4" />
-                </button>
-              </td>
-            </tr>
+            {tableData.map((row, index) => (
+              <tr key={index}>
+                <td className="px-3 py-0.5 text-center">
+                  <input type="checkbox" />
+                </td>
+
+                <td className="px-3 py-0.5 text-center">
+                  {index + 1}
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.REF_NO}
+                    onChange={(e) =>
+                      setTableData(prev => {
+                        const copy = [...prev];
+                        copy[index].REF_NO = e.target.value;
+                        return copy;
+                      })
+                    }
+                    onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.WORK_ORDER_NO}
+                    onChange={(e) =>
+                      setTableData(prev => {
+                        const copy = [...prev];
+                        copy[index].WORK_ORDER_NO = e.target.value;
+                        return copy;
+                      })
+                    }
+                    onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.LR_NO}
+                    onChange={(e) =>
+                      setTableData(prev => {
+                        const copy = [...prev];
+                        copy[index].LR_NO = e.target.value;
+                        return copy;
+                      })
+                    }
+                    onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.TRANSPORTER}
+                    onChange={(e) =>
+                      setTableData(prev => {
+                        const copy = [...prev];
+                        copy[index].TRANSPORTER = e.target.value;
+                        return copy;
+                      })
+                    }
+                    onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+
+                <td className="px-3 py-0.5 text-center">
+                  <button>
+                    <MoreVertical className="size-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -97,6 +542,7 @@ export function TransitInfoSapCreate(_: { mode?: "with" | "without" } = {}) {
               className="h-7 w-full rounded-md border border-hairline bg-surface px-2 text-[12px] outline-none focus:border-accent"
             >
               <option value="">Select</option>
+
               {SEARCH_OPTIONS.map((o) => (
                 <option key={o} value={o}>
                   {o}
@@ -111,62 +557,256 @@ export function TransitInfoSapCreate(_: { mode?: "with" | "without" } = {}) {
               placeholder="Enter Reference / Invoice / ODN / SO Number"
               className="h-7 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
             />
-            <button className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta">
+            <button
+              type="button"
+              onClick={() => {
+                console.log("BUTTON CLICK");
+                onSearchReference();
+              }}
+              className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta"
+            >
               <Search className="size-4" />
             </button>
           </div>
         </div>
       </div>
 
+
       {/* Field grid */}
-      <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
-          {FIELDS.map((f) => (
-            <SapField key={f.label} field={f} />
-          ))}
+      {searchType === "" && (
+        <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
+
+            <SapField
+              field={FIELDS[0]}
+              value={invoiceNumber}
+              onChange={setInvoiceNumber}
+            />
+
+            <SapField
+              field={FIELDS[1]}
+              value={physicalArrivedDate}
+              onChange={setPhysicalArrivedDate}
+            />
+
+            <SapField
+              field={FIELDS[2]}
+              value={unloadingDate}
+              onChange={setUnloadingDate}
+            />
+
+            <SapField
+              field={FIELDS[3]}
+              value={podScanDate}
+              onChange={setPodScanDate}
+            />
+
+            <SapField
+              field={FIELDS[4]}
+              value={sitSale}
+              onChange={setSitSale}
+            />
+
+            <SapField field={FIELDS[5]} />
+
+          </div>
         </div>
-      </div>
+      )}
+
+      {showTable && headerData.length > 0 && (
+        <div className="mt-4 rounded-xl border border-hairline bg-surface shadow-elegant overflow-hidden">
+          <div className="bg-gradient-primary text-primary-foreground px-4 py-2 font-semibold">
+            Header Details
+          </div>
+
+          <div className="overflow-x-auto w-full">
+            <table className="min-w-[1800px] text-[12px] border-collapse">
+              <thead>
+                <tr className="bg-muted">
+                  <th className="border px-2 py-2">Ref No</th>
+                  <th className="border px-2 py-2">Invoice No</th>
+                  <th className="border px-2 py-2">ODN No</th>
+                  <th className="border px-2 py-2">SO No</th>
+                  <th className="border px-2 py-2">Sales Person</th>
+                  <th className="border px-2 py-2">Physical Arrived</th>
+                  <th className="border px-2 py-2">Unloading DT</th>
+                  <th className="border px-2 py-2">POD Scan</th>
+                  <th className="border px-2 py-2">SIT/SALE</th>
+                  <th className="border px-2 py-2">Location</th>
+                  <th className="border px-2 py-2">Plant</th>
+                  <th className="border px-2 py-2">Division</th>
+                  <th className="border px-2 py-2">Created Date</th>
+                  <th className="border px-2 py-2">Vehicle Type</th>
+                  <th className="border px-2 py-2">POD Name</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {headerData.map((header, index) => (
+                  <tr key={index}>
+                    <td>{header.ZREFNO}</td>
+                    <td>{header.ZINV_NO}</td>
+                    <td>{header.ZODN_NO}</td>
+                    <td>{header.ZSONO}</td>
+                    <td>{header.ZSALE_PERSON}</td>
+                    <td>{header.ZPY_ARRIVED_DEST}</td>
+                    <td>{header.ZUNLOADING_DT}</td>
+                    <td>{header.ZPOD_SCAN}</td>
+                    <td>{header.ZSIT_SALE}</td>
+                    <td>{header.ZLOCATION}</td>
+                    <td>{header.ZPLANT}</td>
+                    <td>{header.ZDIVISION}</td>
+                    <td>{header.ZCREATED_DT}</td>
+                    <td>{header.ZVEH_TYPE}</td>
+                    <td>{header.ZPODNAME}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {showTable && itemsList.length > 0 && (
+        <div className="mt-4 rounded-xl border border-hairline bg-surface shadow-elegant overflow-hidden">
+          <div className="bg-gradient-primary text-primary-foreground px-4 py-2 font-semibold">
+            Line Items
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="bg-muted">
+                  <th className="border px-2 py-2">Ref No</th>
+                  <th className="border px-2 py-2">Line No</th>
+                  <th className="border px-2 py-2">Invoice No</th>
+                  <th className="border px-2 py-2">Vehicle No</th>
+                  <th className="border px-2 py-2">Work Order</th>
+                  <th className="border px-2 py-2">LR No</th>
+                  <th className="border px-2 py-2">Transporter</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {itemsList.map((item: any, index: number) => (
+                  <tr key={index} className="hover:bg-muted/30">
+                    <td className="border px-2 py-2 text-center">
+                      {item.ZREFNO}
+                    </td>
+                    <td className="border px-2 py-2 text-center">
+                      {item.ZLINE_NO}
+                    </td>
+                    <td className="border px-2 py-2 text-center">
+                      {item.ZINV_NO}
+                    </td>
+                    <td className="border px-2 py-2 text-center">
+                      {item.ZVEH_NUM}
+                    </td>
+                    <td className="border px-2 py-2 text-center">
+                      {item.ZWORK_ORDER}
+                    </td>
+                    <td className="border px-2 py-2 text-center">
+                      {item.ZLRNO}
+                    </td>
+                    <td className="border px-2 py-2 text-center">
+                      {item.ZTRANSPORTER}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Footer action bar */}
       <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-        <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm">
+        {/* <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm">
+          <Save className="size-3.5" /> Save
+        </button> */}
+        <button
+          onClick={() => saveTransitInfo("stay")}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
+        >
           <Save className="size-3.5" /> Save
         </button>
-        <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-[12px] font-semibold shadow-sm">
-          Save and Next <ChevronRight className="size-3.5" />
+        <button
+          onClick={() => saveTransitInfo("next")}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
+        >
+          Save and Next
         </button>
-        <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold shadow-sm">
-          <ChevronLeft className="size-3.5" /> Save and Previous
+
+        <button
+          onClick={() => saveTransitInfo("previous")}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
+        >
+          Save and Previous
         </button>
       </div>
     </div>
   );
 }
 
-function SapField({ field }: { field: FieldSpec }) {
-  const { label, value = "", type = "text", options, placeholder } = field;
+function SapField({
+  field,
+  value = "",
+  onChange,
+}: {
+  field: FieldSpec;
+  value?: string;
+  onChange?: (value: string) => void;
+}) {
+  const {
+    label,
+    type = "text",
+    options,
+    placeholder,
+  } = field;
+
   return (
     <div>
       <label className={LABEL}>{label}</label>
-      {type === "select" ? (
-        <select defaultValue={value} className={GREEN_INPUT}>
-          <option value="" disabled>
-            Select
-          </option>
-          {(options ?? []).map((o) => (
-            <option key={o} value={o}>
-              {o}
+
+      {type === "datetime" ? (
+        <input
+          type="datetime-local"
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          className={GREEN_INPUT}
+        />
+      ) : type === "date" ? (
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          className={GREEN_INPUT}
+        />
+      ) : type === "select" ? (
+        <select
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          className={GREEN_INPUT}
+        >
+          <option value="">Select</option>
+          {options?.map((option) => (
+            <option key={option} value={option}>
+              {option}
             </option>
           ))}
         </select>
-      ) : type === "datetime" ? (
-        <input type="datetime-local" defaultValue={value} className={GREEN_INPUT} />
-      ) : type === "date" ? (
-        <input type="date" defaultValue={value} className={GREEN_INPUT} />
       ) : type === "file" ? (
-        <input type="file" className={GREEN_INPUT + " py-1.5"} />
+        <input
+          type="file"
+          className={GREEN_INPUT + " py-1.5"}
+        />
       ) : (
-        <input defaultValue={value} placeholder={placeholder ?? `Enter ${label}`} className={GREEN_INPUT} />
+        <input
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          placeholder={placeholder ?? `Enter ${label}`}
+          className={GREEN_INPUT}
+        />
       )}
     </div>
   );
