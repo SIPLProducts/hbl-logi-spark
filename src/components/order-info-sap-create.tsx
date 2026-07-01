@@ -293,17 +293,53 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
   }, [isWithout]);
 
   // ── Load plants + divisions from localStorage ──
+  // useEffect(() => {
+  //   try {
+  //     const userData = JSON.parse(localStorage.getItem("currentUser") || "{}");
+  //     setPlantList(userData.PLANTS || []);
+  //     setDivisionList(
+  //       (userData.DIV || []).map((d: any) => ({
+  //         DIVISION: d.DIVISION,
+  //         DIV_TEXT: d.DIV_TEXT || d.DIVISION_DESC || d.DIVISION,
+  //       }))
+  //     );
+  //   } catch { /* ignore */ }
+  // }, []);
+
+  // ── Load plants + divisions via F4 API (same pattern as Dispatch screen) ──
   useEffect(() => {
-    try {
-      const userData = JSON.parse(localStorage.getItem("currentUser") || "{}");
-      setPlantList(userData.PLANTS || []);
-      setDivisionList(
-        (userData.DIV || []).map((d: any) => ({
-          DIVISION: d.DIVISION,
-          DIV_TEXT: d.DIV_TEXT || d.DIVISION_DESC || d.DIVISION,
-        }))
-      );
-    } catch { /* ignore */ }
+    const loadF4 = async () => {
+      try {
+        const res: any = await service.fetchVendorCode();
+        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+
+        const plants: PlantData[] = Array.isArray(data.PLANT)
+          ? data.PLANT.map((p: any) => ({
+            PLANT: p.PLANT,
+            PLANT_DESC: p.PLANT_DESC,
+            WERKS: p.PLANT,
+          }))
+          : [];
+
+        const divisions: DivData[] = Array.isArray(data.PLANT)
+          ? Array.from(
+            new Map<string, DivData>(
+              data.PLANT.map((p: any) => [
+                p.DIVISION,
+                { DIVISION: p.DIVISION, DIV_TEXT: p.DIV_TEXT || p.DIVISION } as DivData,
+              ])
+            ).values()
+          )
+          : [];
+
+        setPlantList(plants);
+        setDivisionList(divisions);
+      } catch (err) {
+        // ignore failures for now — leave defaults in place
+        // console.error('F4 fetch failed', err);
+      }
+    };
+    void loadF4();
   }, []);
 
   // ── Load pdb dropdowns ──
@@ -896,25 +932,32 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       {searchResults.length > 0 && (
         <div className="max-h-[560px] overflow-auto">
           <div className="max-h-[560px] overflow-auto">
-            <table className="sticky top-0 z-30">
-              <thead>
+            <table className="w-full text-left border-collapse text-[12.5px]">
+              <thead className="sticky top-0 z-30">
                 <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
                   {["REFNO", "Invoice No", "Line No", "ODN No", "Invoice Date", "Basic Value", "Invoice Value (GST)",
                     "Required D&T", "Reported D&T", "Physical Dispatch", "Fiscal Year", "System Date",
                     "Fiscal Quarter", "Fiscal Month", "Plant", "Txn Type", "Bill Text", "Division", "Sub Division",
                     "SO Ref No", "Customer", "Cust. Group", "Consignee", "Dest. Location", "State", "Zone",
                     "Work Order", "LR No", "Transporter", "Created Date", "Veh. Type", "Action"].map(h => (
-                      <th key={h} className="px-2 py-1 whitespace-nowrap text-center">{h}</th>
+                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
                     ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-hairline/70">
                 {searchResults.map((item, i) => (
-                  <tr key={i} className={i % 2 === 1 ? "bg-muted/30" : ""}>
-                    <td className="px-2 py-0.5 whitespace-nowrap">{item.ZREFNO}</td>
-                    <td className="px-2 py-0.5 whitespace-nowrap">{item.ZINV_NO}</td>
-                    <td className="px-2 py-0.5 text-center">{item.ZLINE_NO}</td>
-                    <td className="px-2 py-0.5">{item.ZODN_NO}</td>
+                  <tr
+                    key={i}
+                    className={
+                      i % 2 === 0
+                        ? "bg-surface hover:bg-muted/50"
+                        : "bg-surface-2/40 hover:bg-muted/50"
+                    }
+                  >
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZREFNO}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZINV_NO}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZODN_NO}</td>
                     {[
                       { field: "ZINV_DATE", type: "date" },
                       { field: "ZBASIC_VALUE", type: "number" },
@@ -944,7 +987,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                       { field: "ZCREATED_DT", type: "date" },
                       { field: "ZVEH_TYPE", type: "text" },
                     ].map(({ field, type }) => (
-                      <td key={field} className="px-2 py-0.5">
+                      <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
                         {item.isEdit ? (
                           <input type={type} value={item[field] || ""}
                             onChange={(e) => setSearchResults((prev) =>
@@ -1143,7 +1186,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
               {/* Customer Name */}
               <div>
                 <FieldLabel label="Customer Name" fromSap={sapFetched && sapFilledKeys.has("Customer")} />
-{renderCustomerCombobox("Customer", "Search customer code/name...")}
+                {renderCustomerCombobox("Customer", "Search customer code/name...")}
               </div>
 
 
@@ -1151,7 +1194,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
               {/* Consignee Name */}
               <div>
                 <FieldLabel label="Consignee Name" fromSap={sapFetched && sapFilledKeys.has("CNee")} />
-{renderCustomerCombobox("CNee", "Search consignee code/name...")}
+                {renderCustomerCombobox("CNee", "Search consignee code/name...")}
               </div>
 
               {/* Destination Location */}
@@ -1274,7 +1317,10 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
             </button>
           </div>
         </>
+
+        
       )}
+      
     </div>
   );
 }
