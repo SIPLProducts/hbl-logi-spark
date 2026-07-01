@@ -1,29 +1,20 @@
-# Plan: Strip Gate In & Out Process to design-only
+## Plan: Add "Gate In and Out Process" Screen
 
-## Scope
-Rewrite `src/routes/gate-in-out-process.tsx` so it keeps only the visual structure/layout — no API calls, no data fetching, no mock-data wiring, no colored status/state styling.
+Add a new screen mirroring the Order Info structure, placed after Order Info in the sidebar navigation.
 
-## Changes to `src/routes/gate-in-out-process.tsx`
-1. Remove all imports and usages of:
-   - `sapExternalApi` / `backendNodejs` / any service in `src/services/*`
-   - `le-mock-data`, dispatch mocks, or any data source
-   - `useQuery`, `useMutation`, `useEffect`-based fetching, and loader data
-2. Remove all handler logic (GET, Save, Save & Next, Delete, fetchInvoiceList, etc.) — replace with no-op buttons.
-3. Remove colored styling:
-   - Drop `bg-gradient-primary`, `bg-primary`, amber/emerald status chip colors, `#8f1e42` GET button color, and any `bg-*`/`text-*` color utilities on containers, chips, buttons, table header.
-   - Keep only neutral defaults (`border`, `bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`).
-4. Keep intact (design only):
-   - `LeScreenShell` wrapper with Outward radio, With/Without SAP toggle, Reference Table + Invoice Number + Get row
-   - Tabs (Create / Filter & Download)
-   - Form field grid layout (4 cols)
-   - Table structure (headers + empty rows)
-   - Save / Save & Next / Save & Previous button row
-5. All inputs/selects rendered as empty static fields; table renders 1 empty row.
+### Files
 
-## Out of scope
-- No changes to `LeScreenShell`, sidebar, routing, or other screens.
-- No new files.
+1. **Create `src/routes/gate-in-out-process.tsx`** (single file)
+   - Copy full structure of `src/routes/order-info.tsx` (905 lines) — same tabs, filters, table, SAP/Non-SAP create toggle, export/PDF actions, pagination.
+   - Change route: `createFileRoute("/gate-in-out-process")`.
+   - Change page title/header text to "Gate In and Out Process".
+   - Reuse the same mock data and `OrderInfoSapCreate` component so the screen is fully functional out of the box (no new components, no new mock files).
 
-## Technical notes
-- Route export and component name (`GateInOutProcessPage`) remain unchanged.
-- File becomes a pure presentational component with local `useState` only where needed to keep controlled inputs from throwing React warnings.
+2. **Edit `src/components/app-sidebar.tsx`**
+   - In the second nav group, insert a new item `{ title: "Gate In & Out Process", to: "/gate-in-out-process", icon: DoorOpen }` immediately after the Order Info entry.
+   - Add `DoorOpen` to the lucide-react imports.
+
+### Notes
+- No changes to business logic, services, or shared components.
+- `routeTree.gen.ts` is auto-generated — do not edit.
+- If you'd later like a dedicated create form (instead of reusing `OrderInfoSapCreate`), that's a follow-up.
