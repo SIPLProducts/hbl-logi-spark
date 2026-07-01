@@ -19,6 +19,7 @@ import {
   ChevronDown,
   FileBarChart,
   LogOut,
+  DoorOpen,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ const groups: { items: NavItem[] }[] = [
   {
     items: [
       { title: "Order Info", to: "/order-info", icon: FileText },
+      { title: "Gate In & Out Process", to: "/gate-in-out-process", icon: DoorOpen },
       { title: "Invoice Load Details", to: "/invoice-load-details", icon: Receipt },
       { title: "Vehicle Info", to: "/vehicle-info", icon: Bus },
       { title: "Shipment Details", to: "/shipment-details", icon: PackageOpen },
