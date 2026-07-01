@@ -359,8 +359,8 @@ function GateInOutProcessPage() {
               )}
             </div>
 
-            {/* Order Info Create Body */}
-            {direction && sap && <OrderInfoSapCreate key={`${sap}`} mode={sap} />}
+            {/* Gate In/Out Create Body */}
+            {direction && sap && <GateInOutCreate key={`${sap}`} />}
 
           </TabsContent>
 
