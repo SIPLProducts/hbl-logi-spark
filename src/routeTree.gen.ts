@@ -20,6 +20,7 @@ import { Route as OrderInfoRouteImport } from './routes/order-info'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InvoiceLoadDetailsRouteImport } from './routes/invoice-load-details'
 import { Route as InsuranceClaimTrackingRouteImport } from './routes/insurance-claim-tracking'
+import { Route as GateInOutProcessRouteImport } from './routes/gate-in-out-process'
 import { Route as FreightBillingRouteImport } from './routes/freight-billing'
 import { Route as DispatchOrdersRouteImport } from './routes/dispatch-orders'
 import { Route as DispatchRouteImport } from './routes/dispatch'
@@ -87,6 +88,11 @@ const InvoiceLoadDetailsRoute = InvoiceLoadDetailsRouteImport.update({
 const InsuranceClaimTrackingRoute = InsuranceClaimTrackingRouteImport.update({
   id: '/insurance-claim-tracking',
   path: '/insurance-claim-tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GateInOutProcessRoute = GateInOutProcessRouteImport.update({
+  id: '/gate-in-out-process',
+  path: '/gate-in-out-process',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FreightBillingRoute = FreightBillingRouteImport.update({
@@ -163,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
   '/freight-billing': typeof FreightBillingRoute
+  '/gate-in-out-process': typeof GateInOutProcessRoute
   '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
   '/invoice-load-details': typeof InvoiceLoadDetailsRoute
   '/login': typeof LoginRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
   '/freight-billing': typeof FreightBillingRoute
+  '/gate-in-out-process': typeof GateInOutProcessRoute
   '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
   '/invoice-load-details': typeof InvoiceLoadDetailsRoute
   '/login': typeof LoginRoute
@@ -216,6 +224,7 @@ export interface FileRoutesById {
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
   '/freight-billing': typeof FreightBillingRoute
+  '/gate-in-out-process': typeof GateInOutProcessRoute
   '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
   '/invoice-load-details': typeof InvoiceLoadDetailsRoute
   '/login': typeof LoginRoute
@@ -244,6 +253,7 @@ export interface FileRouteTypes {
     | '/dispatch'
     | '/dispatch-orders'
     | '/freight-billing'
+    | '/gate-in-out-process'
     | '/insurance-claim-tracking'
     | '/invoice-load-details'
     | '/login'
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/dispatch'
     | '/dispatch-orders'
     | '/freight-billing'
+    | '/gate-in-out-process'
     | '/insurance-claim-tracking'
     | '/invoice-load-details'
     | '/login'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/dispatch'
     | '/dispatch-orders'
     | '/freight-billing'
+    | '/gate-in-out-process'
     | '/insurance-claim-tracking'
     | '/invoice-load-details'
     | '/login'
@@ -323,6 +335,7 @@ export interface RootRouteChildren {
   DispatchRoute: typeof DispatchRoute
   DispatchOrdersRoute: typeof DispatchOrdersRoute
   FreightBillingRoute: typeof FreightBillingRoute
+  GateInOutProcessRoute: typeof GateInOutProcessRoute
   InsuranceClaimTrackingRoute: typeof InsuranceClaimTrackingRoute
   InvoiceLoadDetailsRoute: typeof InvoiceLoadDetailsRoute
   LoginRoute: typeof LoginRoute
@@ -424,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsuranceClaimTrackingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gate-in-out-process': {
+      id: '/gate-in-out-process'
+      path: '/gate-in-out-process'
+      fullPath: '/gate-in-out-process'
+      preLoaderRoute: typeof GateInOutProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/freight-billing': {
       id: '/freight-billing'
       path: '/freight-billing'
@@ -523,6 +543,7 @@ const rootRouteChildren: RootRouteChildren = {
   DispatchRoute: DispatchRoute,
   DispatchOrdersRoute: DispatchOrdersRoute,
   FreightBillingRoute: FreightBillingRoute,
+  GateInOutProcessRoute: GateInOutProcessRoute,
   InsuranceClaimTrackingRoute: InsuranceClaimTrackingRoute,
   InvoiceLoadDetailsRoute: InvoiceLoadDetailsRoute,
   LoginRoute: LoginRoute,
