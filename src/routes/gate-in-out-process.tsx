@@ -798,3 +798,81 @@ function SelectField({
     </div>
   );
 }
+
+const GATE_COLUMNS = [
+  "Required Date and Time",
+  "Reported Date and Time",
+  "Physical Dispatch Date and Time",
+  "Truck Type",
+  "Type of Transporter",
+  "Vehicle Number",
+  "No of Vehicles",
+  "Driver Number",
+  "Driver Name",
+  "Customer Email Id",
+  "Salesperson Email Id",
+  "GPS Live Location",
+  "TAT Type",
+  "TAT Days ETA",
+];
+
+function GateInOutCreate() {
+  const [ewayDate, setEwayDate] = useState("");
+  const [ewayNumber, setEwayNumber] = useState("");
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-surface border border-hairline rounded-lg p-3 shadow-soft">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="space-y-1">
+            <Label>E-Way Bill Date</Label>
+            <Input type="date" value={ewayDate} onChange={(e) => setEwayDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>E-Way Bill Number</Label>
+            <Input
+              type="text"
+              placeholder="Enter E-Way Bill Number"
+              value={ewayNumber}
+              onChange={(e) => setEwayNumber(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-soft">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">Sl.No</TableHead>
+              {GATE_COLUMNS.map((c) => (
+                <TableHead key={c} className="whitespace-nowrap">
+                  {c}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell className="text-center text-muted-foreground">1</TableCell>
+              {GATE_COLUMNS.map((c) => (
+                <TableCell key={c} className="p-1">
+                  <Input
+                    type={c.toLowerCase().includes("date") ? "datetime-local" : "text"}
+                    className="h-7 min-w-[140px]"
+                  />
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button size="sm" className="h-7">
+          <Save className="size-3.5 mr-1" /> Save
+        </Button>
+      </div>
+    </div>
+  );
+}
