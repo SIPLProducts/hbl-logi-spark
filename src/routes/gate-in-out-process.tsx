@@ -1,7 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { format } from "date-fns";
-// @ts-ignore
-import service from "../services/generalservice_service.js";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Plus,
@@ -58,11 +56,8 @@ function GateInOutProcessPage() {
   const [direction, setDirection] = useState<"outward" | null>(null);
   const [sap, setSap] = useState<SapMode | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
-  const [pendingCount, setPendingCount] = useState(0);
-  const [completedCount, setCompletedCount] = useState(0);
-  const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
-  const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
-  const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
+  const [pendingCount] = useState(0);
+  const [completedCount] = useState(0);
   // Filter results — mirrors Angular's orderInfoData / dispatchData
   const [orderInfoData, setOrderInfoData] = useState<any[]>([]);
   const [dispatchData, setDispatchData] = useState<any[]>([]);
@@ -93,117 +88,14 @@ function GateInOutProcessPage() {
     setSearchSap(null);
   };
 
-  function getLoggedInUser(): string {
-    try {
-      const raw = localStorage.getItem("currentUser") || "{}";
-      const u = JSON.parse(raw) as Record<string, unknown>;
-      return String(u?.USER ?? "");
-    } catch {
-      return "";
-    }
-  }
-
-  useEffect(() => {
-    if (!sap) return;
-    (async () => {
-      try {
-        const res: any = await service.OutwardCountGlobalWithSap({
-          INOUT: "OUTWARD",
-          TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
-          SCREEN: "ORDER INFO",
-        });
-        setPendingCount(res?.ZPEND_CNT ?? 0);
-        setCompletedCount(res?.ZCONF_CNT ?? 0);
-      } catch (err) {
-        console.error("Count fetch failed:", err);
-      }
-    })();
-  }, [sap]);
-
-  useEffect(() => {
-    if (!searchSap) return;
-    (async () => {
-      try {
-        const res: any = await service.fetchVendorCode();
-        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
-
-        const plants: string[] = Array.isArray(data.PLANT)
-          ? data.PLANT.map((p: any) => {
-            const desc = String(p.PLANT_DESC || "").split("_")[0].trim();
-            return `${p.PLANT}_${desc}`;
-          })
-          : [];
-
-        const divisions: string[] = Array.isArray(data.PLANT)
-          ? Array.from(new Set(data.PLANT.map((p: any) => String(p.DIVISION || "")).filter(Boolean)))
-          : [];
-
-        const transporters: string[] = Array.isArray(data.VEND_CODE)
-          ? Array.from(new Set(data.VEND_CODE.map((v: any) => String(v.TRANSPORTER)).filter(Boolean)))
-          : [];
-
-        setFetchedPlants(plants);
-        setFetchedDivisions(divisions);
-        setFetchedTransporters(transporters);
-      } catch (err) {
-        console.error("Transporter/Plant/Division fetch failed:", err);
-      }
-    })();
-  }, [searchSap]);
-
   const onApply = async () => {
     if (!fromDate || !toDate) {
       Swal.fire("Warning", "Please select From Date and To Date", "warning");
       return;
     }
-
-    setApplied(false);
-    setIsFilterLoading(true);
-
-    const payload = {
-      GLOBAL: "ORDER INFO",
-      ZUSER: getLoggedInUser(),
-      DATE_FROM: format(fromDate, "yyyy-MM-dd"),
-      DATE_TO: format(toDate, "yyyy-MM-dd"),
-      PLANT: fPlant || "",
-      DIVISION: fDivision || "",
-      TRANSPORTER: fTransporter || "",
-      VEHICLE_TYPE: fVehicleType || "",
-      STATUS: fStatus || "",
-    };
-
-    try {
-      const res: any =
-        searchSap === "with"
-          ? await service.fetchOrderInfoFiltered(payload)
-          : await service.fetchGlobalFilteredNonSap(payload);
-
-      let records: any[] = [];
-      if (Array.isArray(res)) records = res;
-      else if (res?.HEADER) records = res.HEADER;
-      else if (res?.DATA) records = res.DATA;
-
-      setApplied(true);
-
-      if (fStatus === "Completed") {
-        setOrderInfoData(records);
-        setDispatchData([]);
-        Swal.fire("Success", `Order Info records: ${records.length}`, "success");
-      } else if (fStatus === "Pending") {
-        setDispatchData(records);
-        setOrderInfoData([]);
-        Swal.fire("Success", `Dispatch records: ${records.length}`, "success");
-      } else {
-        setOrderInfoData([]);
-        setDispatchData([]);
-        Swal.fire("Info", "Please select valid status", "info");
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Failed to fetch filtered data", "error");
-    } finally {
-      setIsFilterLoading(false);
-    }
+    setApplied(true);
+    setOrderInfoData([]);
+    setDispatchData([]);
   };
 
   const downloadExcel = () => {
@@ -514,21 +406,21 @@ function GateInOutProcessPage() {
                       label="Plant"
                       value={fPlant}
                       onChange={setFPlant}
-                      options={fetchedPlants.length > 0 ? fetchedPlants : PLANTS}   // ← was: PLANTS
+                      options={PLANTS}   // ← was: PLANTS
                       placeholder="Select Plant"
                     />
                     <SelectField
                       label="Division"
                       value={fDivision}
                       onChange={setFDivision}
-                      options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}  // ← was: DIVISIONS
+                      options={DIVISIONS}  // ← was: DIVISIONS
                       placeholder="Select Division"
                     />
                     <SelectField
                       label="Transporter"
                       value={fTransporter}
                       onChange={setFTransporter}
-                      options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}  // ← was: TRANSPORTERS
+                      options={TRANSPORTERS}  // ← was: TRANSPORTERS
                       placeholder="Select Transporter"
                     />
                     <SelectField
