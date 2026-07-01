@@ -392,7 +392,7 @@ function GateInOutProcessPage() {
               </div>
               <div className="min-w-0">
                 <h1 className="font-display text-[18px] leading-none font-bold tracking-tight text-foreground truncate">
-                  Order Info
+                  Gate In and Out Process
                 </h1>
               </div>
             </div>
