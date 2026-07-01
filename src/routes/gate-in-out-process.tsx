@@ -50,10 +50,10 @@ const DEFAULT_COLUMNS = [
 ];
 
 export const Route = createFileRoute("/gate-in-out-process")({
-  component: OrderInfoPage,
+  component: GateInOutProcessPage,
 });
 
-function OrderInfoPage() {
+function GateInOutProcessPage() {
   const [tab, setTab] = useState<"create" | "search">("create");
   const [direction, setDirection] = useState<"outward" | null>(null);
   const [sap, setSap] = useState<SapMode | null>(null);
