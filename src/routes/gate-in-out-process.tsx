@@ -406,21 +406,21 @@ function GateInOutProcessPage() {
                       label="Plant"
                       value={fPlant}
                       onChange={setFPlant}
-                      options={fetchedPlants.length > 0 ? fetchedPlants : PLANTS}   // ← was: PLANTS
+                      options={PLANTS}   // ← was: PLANTS
                       placeholder="Select Plant"
                     />
                     <SelectField
                       label="Division"
                       value={fDivision}
                       onChange={setFDivision}
-                      options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}  // ← was: DIVISIONS
+                      options={DIVISIONS}  // ← was: DIVISIONS
                       placeholder="Select Division"
                     />
                     <SelectField
                       label="Transporter"
                       value={fTransporter}
                       onChange={setFTransporter}
-                      options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}  // ← was: TRANSPORTERS
+                      options={TRANSPORTERS}  // ← was: TRANSPORTERS
                       placeholder="Select Transporter"
                     />
                     <SelectField
