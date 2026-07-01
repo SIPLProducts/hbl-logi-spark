@@ -1,24 +1,20 @@
-## Update Inward/Outward and SAP/Non-SAP dropdowns in Reports screens
+## Plan: Add "Gate In and Out Process" Screen
 
-### What
+Add a new screen mirroring the Order Info structure, placed after Order Info in the sidebar navigation.
 
-All Reports screens render through `ReportPlaceholder`. Two filter dropdowns currently show only a disabled placeholder with no selectable values:
+### Files
 
-- Inward/Outward
-- Sap/Nonsap
+1. **Create `src/routes/gate-in-out-process.tsx`** (single file)
+   - Copy full structure of `src/routes/order-info.tsx` (905 lines) — same tabs, filters, table, SAP/Non-SAP create toggle, export/PDF actions, pagination.
+   - Change route: `createFileRoute("/gate-in-out-process")`.
+   - Change page title/header text to "Gate In and Out Process".
+   - Reuse the same mock data and `OrderInfoSapCreate` component so the screen is fully functional out of the box (no new components, no new mock files).
 
-Update these to show actual dropdown options. All other filter dropdowns remain unchanged.
+2. **Edit `src/components/app-sidebar.tsx`**
+   - In the second nav group, insert a new item `{ title: "Gate In & Out Process", to: "/gate-in-out-process", icon: DoorOpen }` immediately after the Order Info entry.
+   - Add `DoorOpen` to the lucide-react imports.
 
-### How
-
-File: `src/components/report-placeholder.tsx`
-
-1. Change the `SELECTS` array from `{ label: string }[]` to `{ label: string; options?: string[] }[]`.
-2. Populate the two entries with options:
-   - `Select` → options: `["Inward", "Outward"]`
-   - `Select` → options: `["SAP", "Non-SAP"]`
-3. Update `SelectField` props to accept optional `options: string[]`.
-4. In `SelectField`, when `options` are provided, render a disabled placeholder plus one `<option>` per value. When no options are provided, keep the existing behavior (disabled placeholder only).
-5. Leave `SELECTS_ROW2`, `SELECTS_ROW3`, `SELECTS_ROW4` untouched — they continue passing only `label` to `SelectField`.
-
-No other files are affected.
+### Notes
+- No changes to business logic, services, or shared components.
+- `routeTree.gen.ts` is auto-generated — do not edit.
+- If you'd later like a dedicated create form (instead of reusing `OrderInfoSapCreate`), that's a follow-up.
