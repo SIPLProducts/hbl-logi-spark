@@ -49,7 +49,7 @@ const DEFAULT_COLUMNS = [
   { key: "transporter", header: "Transporter", render: (r: WorklistRow) => r.transporter },
 ];
 
-export const Route = createFileRoute("/order-info")({
+export const Route = createFileRoute("/gate-in-out-process")({
   component: OrderInfoPage,
 });
 
