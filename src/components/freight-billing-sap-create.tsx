@@ -91,8 +91,11 @@ function ChargesBreakdownDialog({
   onSave: (b: Breakdown, total: number) => void;
 }) {
   const [draft, setDraft] = useState<Breakdown>(value);
+  const [taxMode, setTaxMode] = useState<"RCM" | "FCM">("RCM");
+  const [gstAmount, setGstAmount] = useState<number>(0);
   // Sync when reopened
   const total = useMemo(() => computeTotal(draft), [draft]);
+  const grandTotal = taxMode === "FCM" ? total + (Number(gstAmount) || 0) : total;
 
   if (!open) return null;
 
@@ -110,6 +113,20 @@ function ChargesBreakdownDialog({
           </button>
         </div>
         <div className="p-6">
+          <div className="mb-3 flex items-center gap-4">
+            {(["RCM", "FCM"] as const).map((m) => (
+              <label key={m} className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground cursor-pointer">
+                <input
+                  type="radio"
+                  name={`tax-mode-${title}`}
+                  checked={taxMode === m}
+                  onChange={() => setTaxMode(m)}
+                  className="accent-primary"
+                />
+                {m}
+              </label>
+            ))}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
             {BREAKDOWN_FIELDS.map((k) => (
               <div key={k}>
@@ -124,9 +141,26 @@ function ChargesBreakdownDialog({
                 />
               </div>
             ))}
+            {taxMode === "FCM" && (
+              <div>
+                <label className={LABEL}>GST Amount</label>
+                <input
+                  type="number"
+                  value={gstAmount}
+                  onChange={(e) => setGstAmount(Number(e.target.value) || 0)}
+                  className={GREEN_INPUT}
+                />
+              </div>
+            )}
           </div>
-          <div className="mt-4 text-[13px] font-semibold text-foreground">
-            {totalLabel}: {total}
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-[13px] font-semibold text-foreground">
+            <span>{totalLabel}: {total}</span>
+            {taxMode === "FCM" && (
+              <>
+                <span>GST Total: {Number(gstAmount) || 0}</span>
+                <span>Grand Total: {grandTotal}</span>
+              </>
+            )}
           </div>
         </div>
         <div className="px-6 pb-5 flex items-center justify-end gap-2">
@@ -138,7 +172,7 @@ function ChargesBreakdownDialog({
           </button>
           <button
             onClick={() => {
-              onSave(draft, total);
+              onSave(draft, grandTotal);
               onOpenChange(false);
             }}
             className="inline-flex items-center px-5 h-9 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
