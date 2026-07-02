@@ -6,6 +6,8 @@ import Swal from "sweetalert2";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+const RED_INPUT =
+  "h-7 w-full rounded-md bg-red-50 border border-red-400 px-2 text-[12px] text-foreground font-medium outline-none focus:border-red-500 focus:ring-2 focus:ring-red-400/40";
 const LABEL =
   "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
