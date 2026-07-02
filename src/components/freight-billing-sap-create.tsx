@@ -82,15 +82,23 @@ function ChargesBreakdownDialog({
   totalLabel,
   value,
   onSave,
+  showTaxMode = false,
+  initialTaxMode = "RCM",
+  initialGstAmount = 0,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   title: string;
   totalLabel: string;
   value: Breakdown;
-  onSave: (b: Breakdown, total: number) => void;
+  onSave: (b: Breakdown, total: number, extra?: { taxMode: "RCM" | "FCM"; gstAmount: number }) => void;
+  showTaxMode?: boolean;
+  initialTaxMode?: "RCM" | "FCM";
+  initialGstAmount?: number;
 }) {
   const [draft, setDraft] = useState<Breakdown>(value);
+  const [taxMode, setTaxMode] = useState<"RCM" | "FCM">(initialTaxMode);
+  const [gstAmount, setGstAmount] = useState<number>(initialGstAmount);
   // Sync when reopened
   const total = useMemo(() => computeTotal(draft), [draft]);
 
@@ -110,6 +118,24 @@ function ChargesBreakdownDialog({
           </button>
         </div>
         <div className="p-6">
+          {showTaxMode && (
+            <div className="mb-4 flex items-center gap-5">
+              {(["RCM", "FCM"] as const).map((m) => (
+                <label key={m} className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground cursor-pointer">
+                  <input
+                    type="radio"
+                    name="freight-tax-mode"
+                    checked={taxMode === m}
+                    onChange={() => {
+                      setTaxMode(m);
+                      if (m === "RCM") setGstAmount(0);
+                    }}
+                  />
+                  {m}
+                </label>
+              ))}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
             {BREAKDOWN_FIELDS.map((k) => (
               <div key={k}>
@@ -124,10 +150,31 @@ function ChargesBreakdownDialog({
                 />
               </div>
             ))}
+            {showTaxMode && taxMode === "FCM" && (
+              <div>
+                <label className={LABEL}>GST Amount</label>
+                <input
+                  type="number"
+                  value={gstAmount}
+                  onChange={(e) => setGstAmount(Number(e.target.value) || 0)}
+                  className={GREEN_INPUT}
+                />
+              </div>
+            )}
           </div>
           <div className="mt-4 text-[13px] font-semibold text-foreground">
             {totalLabel}: {total}
           </div>
+          {showTaxMode && taxMode === "FCM" && (
+            <>
+              <div className="mt-1 text-[13px] font-semibold text-foreground">
+                GST Amount: {gstAmount}
+              </div>
+              <div className="mt-1 text-[13px] font-semibold text-foreground">
+                Grand Total: {total + gstAmount}
+              </div>
+            </>
+          )}
         </div>
         <div className="px-6 pb-5 flex items-center justify-end gap-2">
           <button
@@ -138,7 +185,7 @@ function ChargesBreakdownDialog({
           </button>
           <button
             onClick={() => {
-              onSave(draft, total);
+              onSave(draft, total, showTaxMode ? { taxMode, gstAmount } : undefined);
               onOpenChange(false);
             }}
             className="inline-flex items-center px-5 h-9 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
@@ -190,6 +237,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [freightBreakdown, setFreightBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
   const [freightTotal, setFreightTotal] = useState<number | "">("");
   const [freightOpen, setFreightOpen] = useState(false);
+  const [freightTaxMode, setFreightTaxMode] = useState<"RCM" | "FCM">("RCM");
+  const [freightGstAmount, setFreightGstAmount] = useState<number>(0);
   const [freightBillNo, setFreightBillNo] = useState(() => {
     if (typeof window === "undefined") return "";
     try {
@@ -241,6 +290,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setFreightBreakdown(EMPTY_BREAKDOWN);
     setFreightTotal("");
     setFreightOpen(false);
+    setFreightTaxMode("RCM");
+    setFreightGstAmount(0);
     setFreightBillNo("");
     setFreightBillDate("");
     setBillSubmissionDate("");
@@ -999,9 +1050,16 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         title="Detailed Freight Charges Input"
         totalLabel="Total Freight"
         value={freightBreakdown}
-        onSave={(b, total) => {
+        showTaxMode
+        initialTaxMode={freightTaxMode}
+        initialGstAmount={freightGstAmount}
+        onSave={(b, total, extra) => {
           setFreightBreakdown(b);
           setFreightTotal(total);
+          if (extra) {
+            setFreightTaxMode(extra.taxMode);
+            setFreightGstAmount(extra.gstAmount);
+          }
         }}
       />
     </div>
