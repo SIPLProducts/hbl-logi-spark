@@ -290,6 +290,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setFreightBreakdown(EMPTY_BREAKDOWN);
     setFreightTotal("");
     setFreightOpen(false);
+    setFreightTaxMode("RCM");
+    setFreightGstAmount(0);
     setFreightBillNo("");
     setFreightBillDate("");
     setBillSubmissionDate("");
