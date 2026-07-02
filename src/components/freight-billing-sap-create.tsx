@@ -6,8 +6,6 @@ import Swal from "sweetalert2";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
-const RED_INPUT =
-  "h-7 w-full rounded-md bg-red-50 border border-red-400 px-2 text-[12px] text-foreground font-medium outline-none focus:border-red-500 focus:ring-2 focus:ring-red-400/40";
 const LABEL =
   "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
@@ -84,23 +82,15 @@ function ChargesBreakdownDialog({
   totalLabel,
   value,
   onSave,
-  showTaxMode = false,
-  initialTaxMode = "RCM",
-  initialGstAmount = 0,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   title: string;
   totalLabel: string;
   value: Breakdown;
-  onSave: (b: Breakdown, total: number, extra?: { taxMode: "RCM" | "FCM"; gstAmount: number }) => void;
-  showTaxMode?: boolean;
-  initialTaxMode?: "RCM" | "FCM";
-  initialGstAmount?: number;
+  onSave: (b: Breakdown, total: number) => void;
 }) {
   const [draft, setDraft] = useState<Breakdown>(value);
-  const [taxMode, setTaxMode] = useState<"RCM" | "FCM">(initialTaxMode);
-  const [gstAmount, setGstAmount] = useState<number>(initialGstAmount);
   // Sync when reopened
   const total = useMemo(() => computeTotal(draft), [draft]);
 
@@ -120,25 +110,6 @@ function ChargesBreakdownDialog({
           </button>
         </div>
         <div className="p-6">
-          {showTaxMode && (
-            <div className="mb-4 flex items-center gap-5">
-              {(["RCM", "FCM"] as const).map((m) => (
-                <label key={m} className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground cursor-pointer">
-                  <input
-                    type="radio"
-                    name="freight-tax-mode"
-                    checked={taxMode === m}
-                    onChange={() => {
-                      setTaxMode(m);
-                      setDraft(EMPTY_BREAKDOWN);
-                      setGstAmount(0);
-                    }}
-                  />
-                  {m}
-                </label>
-              ))}
-            </div>
-          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
             {BREAKDOWN_FIELDS.map((k) => (
               <div key={k}>
@@ -153,31 +124,10 @@ function ChargesBreakdownDialog({
                 />
               </div>
             ))}
-            {showTaxMode && taxMode === "FCM" && (
-              <div>
-                <label className={LABEL}>GST Amount</label>
-                <input
-                  type="number"
-                  value={gstAmount}
-                  onChange={(e) => setGstAmount(Number(e.target.value) || 0)}
-                  className={GREEN_INPUT}
-                />
-              </div>
-            )}
           </div>
           <div className="mt-4 text-[13px] font-semibold text-foreground">
             {totalLabel}: {total}
           </div>
-          {showTaxMode && taxMode === "FCM" && (
-            <>
-              <div className="mt-1 text-[13px] font-semibold text-foreground">
-                GST Amount: {gstAmount}
-              </div>
-              <div className="mt-1 text-[13px] font-semibold text-foreground">
-                Grand Total: {total + gstAmount}
-              </div>
-            </>
-          )}
         </div>
         <div className="px-6 pb-5 flex items-center justify-end gap-2">
           <button
@@ -188,8 +138,7 @@ function ChargesBreakdownDialog({
           </button>
           <button
             onClick={() => {
-              const finalTotal = showTaxMode && taxMode === "FCM" ? total + gstAmount : total;
-              onSave(draft, finalTotal, showTaxMode ? { taxMode, gstAmount } : undefined);
+              onSave(draft, total);
               onOpenChange(false);
             }}
             className="inline-flex items-center px-5 h-9 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
@@ -241,8 +190,6 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [freightBreakdown, setFreightBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
   const [freightTotal, setFreightTotal] = useState<number | "">("");
   const [freightOpen, setFreightOpen] = useState(false);
-  const [freightTaxMode, setFreightTaxMode] = useState<"RCM" | "FCM">("RCM");
-  const [freightGstAmount, setFreightGstAmount] = useState<number>(0);
   const [freightBillNo, setFreightBillNo] = useState(() => {
     if (typeof window === "undefined") return "";
     try {
@@ -275,46 +222,6 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       return "";
     }
   });
-  const [financeDetails, setFinanceDetails] = useState(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      return sessionStorage.getItem("freight-billing-finance") || "";
-    } catch {
-      return "";
-    }
-  });
-  const [jvNumber, setJvNumber] = useState(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      return sessionStorage.getItem("freight-billing-jv-no") || "";
-    } catch {
-      return "";
-    }
-  });
-  const [jvDate, setJvDate] = useState(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      return sessionStorage.getItem("freight-billing-jv-date") || "";
-    } catch {
-      return "";
-    }
-  });
-  const [utrNumber, setUtrNumber] = useState(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      return sessionStorage.getItem("freight-billing-utr-no") || "";
-    } catch {
-      return "";
-    }
-  });
-  const [utrDate, setUtrDate] = useState(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      return sessionStorage.getItem("freight-billing-utr-date") || "";
-    } catch {
-      return "";
-    }
-  });
   const [itemsList, setItemsList] = useState<any[]>([]);
   const [showTable, setShowTable] = useState(false);
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
@@ -334,17 +241,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setFreightBreakdown(EMPTY_BREAKDOWN);
     setFreightTotal("");
     setFreightOpen(false);
-    setFreightTaxMode("RCM");
-    setFreightGstAmount(0);
     setFreightBillNo("");
     setFreightBillDate("");
     setBillSubmissionDate("");
     setPhysicalSubmissionDate("");
-    setFinanceDetails("");
-    setJvNumber("");
-    setJvDate("");
-    setUtrNumber("");
-    setUtrDate("");
     setItemsList([]);
     setShowTable(false);
     setTableData([EMPTY_ROW()]);
@@ -359,11 +259,6 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       sessionStorage.removeItem("freight-billing-date");
       sessionStorage.removeItem("freight-billing-submission-date");
       sessionStorage.removeItem("freight-billing-physical-date");
-      sessionStorage.removeItem("freight-billing-finance");
-      sessionStorage.removeItem("freight-billing-jv-no");
-      sessionStorage.removeItem("freight-billing-jv-date");
-      sessionStorage.removeItem("freight-billing-utr-no");
-      sessionStorage.removeItem("freight-billing-utr-date");
     }
   };
 
@@ -380,12 +275,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     sessionStorage.setItem("freight-billing-date", freightBillDate);
     sessionStorage.setItem("freight-billing-submission-date", billSubmissionDate);
     sessionStorage.setItem("freight-billing-physical-date", physicalSubmissionDate);
-    sessionStorage.setItem("freight-billing-finance", financeDetails);
-    sessionStorage.setItem("freight-billing-jv-no", jvNumber);
-    sessionStorage.setItem("freight-billing-jv-date", jvDate);
-    sessionStorage.setItem("freight-billing-utr-no", utrNumber);
-    sessionStorage.setItem("freight-billing-utr-date", utrDate);
-  }, [provision, account, provisionDate, freightBillNo, freightBillDate, billSubmissionDate, physicalSubmissionDate, financeDetails, jvNumber, jvDate, utrNumber, utrDate]);
+  }, [provision, account, provisionDate, freightBillNo, freightBillDate, billSubmissionDate, physicalSubmissionDate]);
 
 
   const fetchGlobalReferences = async (row: TableRow, index: number, fieldKey: string) => {
@@ -1048,60 +938,6 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
             )}
 
             <div>
-              <label className={LABEL}>Finance Details</label>
-              <select
-                value={financeDetails}
-                onChange={(e) => setFinanceDetails(e.target.value)}
-                className={RED_INPUT}
-              >
-                <option value="">Select</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-              </select>
-            </div>
-
-            {financeDetails === "Yes" && (
-              <>
-                <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>JV Number</label>
-                  <input
-                    value={jvNumber}
-                    onChange={(e) => setJvNumber(e.target.value)}
-                    placeholder="Enter JV Number"
-                    className={RED_INPUT}
-                  />
-                </div>
-                <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>JV Date</label>
-                  <input
-                    type="date"
-                    value={jvDate}
-                    onChange={(e) => setJvDate(e.target.value)}
-                    className={RED_INPUT}
-                  />
-                </div>
-                <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>UTR Number</label>
-                  <input
-                    value={utrNumber}
-                    onChange={(e) => setUtrNumber(e.target.value)}
-                    placeholder="Enter UTR Number"
-                    className={RED_INPUT}
-                  />
-                </div>
-                <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>UTR Date</label>
-                  <input
-                    type="date"
-                    value={utrDate}
-                    onChange={(e) => setUtrDate(e.target.value)}
-                    className={RED_INPUT}
-                  />
-                </div>
-              </>
-            )}
-
-            <div>
               <label className={LABEL}>Freight Bill upload</label>
               <input type="file" className={GREEN_INPUT + " py-1.5"} />
             </div>
@@ -1163,16 +999,9 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         title="Detailed Freight Charges Input"
         totalLabel="Total Freight"
         value={freightBreakdown}
-        showTaxMode
-        initialTaxMode={freightTaxMode}
-        initialGstAmount={freightGstAmount}
-        onSave={(b, total, extra) => {
+        onSave={(b, total) => {
           setFreightBreakdown(b);
           setFreightTotal(total);
-          if (extra) {
-            setFreightTaxMode(extra.taxMode);
-            setFreightGstAmount(extra.gstAmount);
-          }
         }}
       />
     </div>

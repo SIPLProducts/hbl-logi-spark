@@ -1,20 +1,20 @@
-## Goal
-Highlight the Finance Details dropdown and its four dependent fields (JV Number, JV Date, UTR Number, UTR Date) in red to match the reference image (soft pink fill, red border, red focus ring).
+## Plan: Add "Gate In and Out Process" Screen
 
-## Scope
-Single file: `src/components/freight-billing-sap-create.tsx`
+Add a new screen mirroring the Order Info structure, placed after Order Info in the sidebar navigation.
 
-## Changes
-1. Define a local `RED_INPUT` class string alongside the existing `GREEN_INPUT`, e.g.:
-   `"h-7 w-full rounded-md border border-red-400 bg-red-50 px-2 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-red-400 focus:border-red-400"`
-2. Apply `RED_INPUT` (in place of `GREEN_INPUT`) on:
-   - Finance Details `<select>`
-   - JV Number `<input>`
-   - JV Date `<input type="date">`
-   - UTR Number `<input>`
-   - UTR Date `<input type="date">`
-3. Keep labels, grid placement, conditional rendering, and state logic unchanged.
+### Files
 
-## Out of scope
-- Any other fields, dialogs, or screens.
-- State, persistence, or validation changes.
+1. **Create `src/routes/gate-in-out-process.tsx`** (single file)
+   - Copy full structure of `src/routes/order-info.tsx` (905 lines) — same tabs, filters, table, SAP/Non-SAP create toggle, export/PDF actions, pagination.
+   - Change route: `createFileRoute("/gate-in-out-process")`.
+   - Change page title/header text to "Gate In and Out Process".
+   - Reuse the same mock data and `OrderInfoSapCreate` component so the screen is fully functional out of the box (no new components, no new mock files).
+
+2. **Edit `src/components/app-sidebar.tsx`**
+   - In the second nav group, insert a new item `{ title: "Gate In & Out Process", to: "/gate-in-out-process", icon: DoorOpen }` immediately after the Order Info entry.
+   - Add `DoorOpen` to the lucide-react imports.
+
+### Notes
+- No changes to business logic, services, or shared components.
+- `routeTree.gen.ts` is auto-generated — do not edit.
+- If you'd later like a dedicated create form (instead of reusing `OrderInfoSapCreate`), that's a follow-up.
