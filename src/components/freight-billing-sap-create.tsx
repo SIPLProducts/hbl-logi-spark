@@ -128,7 +128,8 @@ function ChargesBreakdownDialog({
                     checked={taxMode === m}
                     onChange={() => {
                       setTaxMode(m);
-                      if (m === "RCM") setGstAmount(0);
+                      setDraft(EMPTY_BREAKDOWN);
+                      setGstAmount(0);
                     }}
                   />
                   {m}
@@ -185,7 +186,8 @@ function ChargesBreakdownDialog({
           </button>
           <button
             onClick={() => {
-              onSave(draft, total, showTaxMode ? { taxMode, gstAmount } : undefined);
+              const finalTotal = showTaxMode && taxMode === "FCM" ? total + gstAmount : total;
+              onSave(draft, finalTotal, showTaxMode ? { taxMode, gstAmount } : undefined);
               onOpenChange(false);
             }}
             className="inline-flex items-center px-5 h-9 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
