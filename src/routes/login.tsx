@@ -85,13 +85,17 @@ function LoginPage() {
       };
 
       const response = await service.GlobalUserAuth(loginPayload);
+      const isSuccessfulLogin =
+        !!response &&
+        response.STATUS !== "FALSE" &&
+        !!response.USER;
 
-      if (!response || response.STATUS === "FALSE") {
+      if (!isSuccessfulLogin) {
         Swal.fire({
           icon: "error",
           title: "Login Failed",
           text: response?.MESSAGE || "Invalid username or password",
-          footer: response?.NUMBER ? `Error Code: ${response.NUMBER}` : "",
+          // footer: response?.NUMBER ? `Error Code: ${response.NUMBER}` : "",
         });
         return;
       }

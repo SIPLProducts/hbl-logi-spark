@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Save,
+  Search,
+  Loader2,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,8 @@ import Swal from "sweetalert2";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { exportRowsToXls } from "@/lib/export-xls.js";
+// @ts-ignore
+import service from "@/services/generalservice_service.js";
 
 type SapMode = "with" | "without";
 
@@ -363,7 +367,7 @@ function GateInOutProcessPage() {
             </div>
 
             {/* Gate In/Out Create Body */}
-            {direction && sap && <GateInOutCreate key={`${sap}`} />}
+            {direction && sap && <GateInOutCreate key={`${sap}`} mode={sap} />}
 
           </TabsContent>
 
@@ -813,30 +817,286 @@ const GATE_COLUMNS = [
   "Salesperson Email Id",
   "GPS Live Location",
   "TAT Type",
-  "TAT Days ETA",
+  "TAT Days",
+  "ETA",
 ];
 
-function GateInOutCreate() {
+// ── Reference table + Invoice/Search bar — UI copied from OrderInfoSapCreate ──
+// NOTE: presentational only. No API/service calls are wired up here.
+
+type GateRefRow = {
+  REF_NO: string;
+  WORK_ORDER_NO: string;
+  LR_NO: string;
+  TRANSPORTER: string;
+  LINE_NO: string;
+  selected: boolean;
+};
+
+const EMPTY_GATE_REF_ROW = (): GateRefRow => ({
+  REF_NO: "",
+  WORK_ORDER_NO: "",
+  LR_NO: "",
+  TRANSPORTER: "",
+  LINE_NO: "",
+  selected: false,
+});
+
+const GATE_SEARCH_OPTIONS = [
+  { key: "ref_no", label: "Reference No" },
+  { key: "inv_no", label: "Invoice No" },
+  { key: "odn_no", label: "ODN No" },
+  { key: "so_no", label: "SO No" },
+  { key: "lr_no", label: "LR No" },
+];
+
+const GATE_INPUT_NORMAL =
+  "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+
+const GATE_INPUT_READONLY =
+  "h-7 w-full rounded-md bg-muted/60 border border-input px-2 text-[12px] text-foreground font-medium outline-none cursor-not-allowed";
+
+const GATE_LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
+
+type VehicleTypeOption = { code: string; label: string };
+
+function GateInOutCreate({ mode }: { mode: SapMode }) {
+  const isSap = mode === "with";
+
   const [ewayDate, setEwayDate] = useState("");
+  const [ewayExpireDate, setEwayExpireDate] = useState("");
   const [ewayNumber, setEwayNumber] = useState("");
+  const [ewayApplicable, setEwayApplicable] = useState("");
+
+  // ── Truck Type F4 (gettypeofvehicle) ──
+  const [truckType, setTruckType] = useState("");
+  const [truckTypeList, setTruckTypeList] = useState<VehicleTypeOption[]>([]);
+  const [loadingTruckTypes, setLoadingTruckTypes] = useState(false);
+  const [loadingSave, setLoadingSave] = useState(false);
+
+  const [tatType, setTatType] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      setLoadingTruckTypes(true);
+      try {
+        const res: any = await service.gettypeofvehicle();
+
+        // Actual response shape: a flat array of { ZTRUC_TYPE: "..." }
+        const raw: any[] = Array.isArray(res) ? res : [];
+
+        const options: VehicleTypeOption[] = raw
+          .map((v: any) => ({
+            code: v.ZTRUC_TYPE || "",
+            label: v.ZTRUC_TYPE || "",
+          }))
+          .filter((o) => o.code);
+
+        setTruckTypeList(options);
+      } catch (err) {
+        console.error("gettypeofvehicle failed:", err);
+      } finally {
+        setLoadingTruckTypes(false);
+      }
+    })();
+  }, []);
+
+  // ── Reference table state ──
+  const [refTableData, setRefTableData] = useState<GateRefRow[]>([EMPTY_GATE_REF_ROW()]);
+
+  // ── Invoice lookup + search bar state ──
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [searchType, setSearchType] = useState("");
+  const [searchValue, setSearchValue] = useState("");
+
+  const handleRefRowChange = (index: number, field: keyof GateRefRow, value: string) =>
+    setRefTableData((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+
+  const toggleRefRowSelect = (index: number) =>
+    setRefTableData((prev) => prev.map((r, i) => (i === index ? { ...r, selected: !r.selected } : r)));
+
+  const removeRefRow = (index: number) => {
+    if (refTableData.length === 1) return;
+    setRefTableData((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Placeholder handlers — no API wired up per requirement, UI only.
+  const handleGet = () => {
+    // TODO: integrate API when ready
+  };
+
+  const handleSearch = () => {
+    // TODO: integrate API when ready
+  };
+
+  function handleSave(arg0: string): void {
+    throw new Error("Function not implemented.");
+  }
 
   return (
     <div className="space-y-3">
+      {/* ── Reference table (same UI as Order Info) ── */}
+      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+        <table className="w-full text-[12px]">
+          <thead>
+            <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+              {["Select", "Sl.No", "Reference Number", "Work Order Number", "LR Number", "Transporter", "Action"].map((h) => (
+                <th key={h} className="px-3 py-1 text-center">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {refTableData.map((row, i) => (
+              <tr key={i} className="border-t border-hairline/60">
+                <td className="px-3 py-1 text-center">
+                  <input
+                    type="checkbox"
+                    checked={row.selected}
+                    onChange={() => toggleRefRowSelect(i)}
+                    className="size-4 accent-sky-600"
+                  />
+                </td>
+                <td className="px-3 py-1 text-center">{i + 1}</td>
+                {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
+                  <td key={field} className="px-3 py-1">
+                    <input
+                      value={(row as any)[field] || ""}
+                      readOnly={i !== 0}
+                      onChange={(e) => handleRefRowChange(i, field, e.target.value)}
+                      className={i !== 0 ? GATE_INPUT_READONLY : GATE_INPUT_NORMAL}
+                    />
+                  </td>
+                ))}
+                <td className="px-3 py-1 text-center">
+                  {refTableData.length > 1 && (
+                    <button
+                      onClick={() => removeRefRow(i)}
+                      className="size-6 grid place-items-center rounded-md text-red-500 hover:bg-red-50"
+                    >
+                      <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Invoice lookup + search bar (same UI as Order Info) ── */}
+      <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
+        <div className="flex flex-wrap items-end gap-3">
+          {isSap && (
+            <>
+              <div className="flex-1 min-w-[220px]">
+                <label className={GATE_LABEL}>Invoice Number</label>
+                <input
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleGet();
+                  }}
+                  className={GATE_INPUT_NORMAL}
+                  placeholder="Enter invoice number"
+                />
+              </div>
+              <button
+                onClick={handleGet}
+                disabled={!invoiceNumber.trim()}
+                className="h-7 px-4 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm flex items-center gap-1.5"
+              >
+                GET
+              </button>
+            </>
+          )}
+
+          <div className="min-w-[160px]">
+            <label className={GATE_LABEL}>Search By</label>
+            <select
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+              className="h-7 w-full rounded-md border border-hairline bg-surface px-2 text-[12px] outline-none focus:border-accent"
+            >
+              <option value="">Select</option>
+              {GATE_SEARCH_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-[2] min-w-[260px] flex items-stretch gap-0">
+            <input
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch();
+              }}
+              placeholder="Enter Reference / Invoice / ODN / SO Number"
+              className="h-7 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
+            />
+            <button
+              onClick={handleSearch}
+              className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta disabled:opacity-50"
+            >
+              <Search className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        {isSap && (
+          <p className="mt-2 text-[12px] text-muted-foreground px-1">
+            Enter an Invoice Number and click <span className="font-semibold">GET</span> to load fields.
+          </p>
+        )}
+      </div>
+
+      {/* ── E-Way Bill fields ── */}
       <div className="bg-surface border border-hairline rounded-lg p-3 shadow-soft">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           <div className="space-y-1">
-            <Label>E-Way Bill Date</Label>
-            <Input type="date" value={ewayDate} onChange={(e) => setEwayDate(e.target.value)} />
+            <Label>E-way Bill Applicable</Label>
+            <select
+              value={ewayApplicable}
+              onChange={(e) => setEwayApplicable(e.target.value)}
+              className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+            >
+              <option value="">Select</option>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
           </div>
-          <div className="space-y-1">
-            <Label>E-Way Bill Number</Label>
-            <Input
-              type="text"
-              placeholder="Enter E-Way Bill Number"
-              value={ewayNumber}
-              onChange={(e) => setEwayNumber(e.target.value)}
-            />
-          </div>
+          {ewayApplicable === "Yes" && (
+            <>
+              <div className="space-y-1">
+                <Label>E-Way Bill Date</Label>
+                <Input type="date" value={ewayDate} onChange={(e) => setEwayDate(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>E-Way Bill Number</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter E-Way Bill Number"
+                  value={ewayNumber}
+                  onChange={(e) => setEwayNumber(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>E-Way Bill Expire Date</Label>
+                <Input type="date" value={ewayExpireDate} onChange={(e) => setEwayExpireDate(e.target.value)} />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -855,23 +1115,82 @@ function GateInOutCreate() {
           <TableBody>
             <TableRow>
               <TableCell className="text-center text-muted-foreground">1</TableCell>
-              {GATE_COLUMNS.map((c) => (
-                <TableCell key={c} className="p-1">
-                  <Input
-                    type={c.toLowerCase().includes("date") ? "datetime-local" : "text"}
-                    className="h-7 min-w-[140px]"
-                  />
-                </TableCell>
-              ))}
+              {GATE_COLUMNS.map((c) =>
+                c === "Truck Type" ? (
+                  <TableCell key={c} className="p-1">
+                    <select
+                      value={truckType}
+                      onChange={(e) => setTruckType(e.target.value)}
+                      disabled={loadingTruckTypes}
+                      className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
+                    >
+                      <option value="">
+                        {loadingTruckTypes ? "Loading..." : "Select Truck Type"}
+                      </option>
+                      {truckTypeList.map((v) => (
+                        <option key={v.code} value={v.code}>
+                          {v.code}
+                        </option>
+                      ))}
+                    </select>
+                  </TableCell>
+                ) : c === "TAT Type" ? (
+                  <TableCell key={c} className="p-1">
+                    <select
+                      value={tatType}
+                      onChange={(e) => setTatType(e.target.value)}
+                      className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                    >
+                      <option value="">Select TAT Type</option>
+                      <option value="Direct Truck TAT(Vizag)">Direct Truck TAT(Vizag)</option>
+                      <option value="Direct Truck TAT(Hyd)">Direct Truck TAT(Hyd)</option>
+                      <option value="Revised TAT">Revised TAT</option>
+                      <option value="Safe Express TAT">Safe Express TAT</option>
+                      <option value="Delivery TAT">Delivery TAT</option>
+                      <option value="GATI TAT">GATI TAT</option>
+                    </select>
+                  </TableCell>
+                ) : c === "ETA" ? (
+                  <TableCell key={c} className="p-1">
+                    <Input type="date" className="h-7 min-w-[140px]" />
+                  </TableCell>
+                ) : (
+                  <TableCell key={c} className="p-1">
+                    <Input
+                      type={c.toLowerCase().includes("date") ? "datetime-local" : "text"}
+                      className="h-7 min-w-[140px]"
+                    />
+                  </TableCell>
+                )
+              )}
             </TableRow>
           </TableBody>
         </Table>
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button size="sm" className="h-7">
-          <Save className="size-3.5 mr-1" /> Save
-        </Button>
+      <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+        <button
+          onClick={() => handleSave("previous")}
+          disabled={loadingSave}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
+        >
+          <ChevronLeft className="size-3.5" /> Save &amp; Previous
+        </button>
+        <button
+          onClick={() => handleSave("stay")}
+          disabled={loadingSave}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
+        >
+          {loadingSave ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+          Save
+        </button>
+        <button
+          onClick={() => handleSave("next")}
+          disabled={loadingSave}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
+        >
+          Save &amp; Next <ChevronRight className="size-3.5" />
+        </button>
       </div>
     </div>
   );

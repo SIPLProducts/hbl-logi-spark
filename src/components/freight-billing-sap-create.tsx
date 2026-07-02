@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, X } from "lucide-react";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -158,26 +158,124 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [checked, setChecked] = useState(false);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
-  const [provision, setProvision] = useState(false);
-  const [account, setAccount] = useState(false);
+  const [provision, setProvision] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return JSON.parse(sessionStorage.getItem("freight-billing-provision") || "false");
+    } catch {
+      return false;
+    }
+  });
+  const [account, setAccount] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return JSON.parse(sessionStorage.getItem("freight-billing-account") || "false");
+    } catch {
+      return false;
+    }
+  });
 
   const [provisionBreakdown, setProvisionBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
   const [provisionTotal, setProvisionTotal] = useState<number | "">("");
-  const [provisionDate, setProvisionDate] = useState("");
+  const [provisionDate, setProvisionDate] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-provision-date") || "";
+    } catch {
+      return "";
+    }
+  });
   const [provisionOpen, setProvisionOpen] = useState(false);
 
   const [freightBreakdown, setFreightBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
   const [freightTotal, setFreightTotal] = useState<number | "">("");
   const [freightOpen, setFreightOpen] = useState(false);
-  const [freightBillNo, setFreightBillNo] = useState("");
-  const [freightBillDate, setFreightBillDate] = useState("");
-  const [billSubmissionDate, setBillSubmissionDate] = useState("");
-  const [physicalSubmissionDate, setPhysicalSubmissionDate] = useState("");
+  const [freightBillNo, setFreightBillNo] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-no") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [freightBillDate, setFreightBillDate] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-date") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [billSubmissionDate, setBillSubmissionDate] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-submission-date") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [physicalSubmissionDate, setPhysicalSubmissionDate] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-physical-date") || "";
+    } catch {
+      return "";
+    }
+  });
   const [itemsList, setItemsList] = useState<any[]>([]);
   const [showTable, setShowTable] = useState(false);
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
   const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(true);
+
+  const resetFormState = () => {
+    setChecked(false);
+    setSearchType("");
+    setSearchValue("");
+    setProvision(false);
+    setAccount(false);
+    setProvisionBreakdown(EMPTY_BREAKDOWN);
+    setProvisionTotal("");
+    setProvisionDate("");
+    setProvisionOpen(false);
+    setFreightBreakdown(EMPTY_BREAKDOWN);
+    setFreightTotal("");
+    setFreightOpen(false);
+    setFreightBillNo("");
+    setFreightBillDate("");
+    setBillSubmissionDate("");
+    setPhysicalSubmissionDate("");
+    setItemsList([]);
+    setShowTable(false);
+    setTableData([EMPTY_ROW()]);
+    setSearchOptionsList([]);
+    setShowForm(true);
+
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("freight-billing-provision");
+      sessionStorage.removeItem("freight-billing-account");
+      sessionStorage.removeItem("freight-billing-provision-date");
+      sessionStorage.removeItem("freight-billing-no");
+      sessionStorage.removeItem("freight-billing-date");
+      sessionStorage.removeItem("freight-billing-submission-date");
+      sessionStorage.removeItem("freight-billing-physical-date");
+    }
+  };
+
+  useEffect(() => {
+    resetFormState();
+  }, [mode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    sessionStorage.setItem("freight-billing-provision", JSON.stringify(provision));
+    sessionStorage.setItem("freight-billing-account", JSON.stringify(account));
+    sessionStorage.setItem("freight-billing-provision-date", provisionDate);
+    sessionStorage.setItem("freight-billing-no", freightBillNo);
+    sessionStorage.setItem("freight-billing-date", freightBillDate);
+    sessionStorage.setItem("freight-billing-submission-date", billSubmissionDate);
+    sessionStorage.setItem("freight-billing-physical-date", physicalSubmissionDate);
+  }, [provision, account, provisionDate, freightBillNo, freightBillDate, billSubmissionDate, physicalSubmissionDate]);
 
 
   const fetchGlobalReferences = async (row: TableRow, index: number, fieldKey: string) => {
@@ -328,6 +426,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   };
 
   const onSearchReference = async () => {
+    setShowForm(true);
+
     if (!searchValue.trim()) {
       Swal.fire({
         icon: "warning",
@@ -378,6 +478,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
 
       if (res.NUMBER === "100" && res.STATUS === "FALSE") {
         setSearchOptionsList([]);
+        setShowForm(true);
         Swal.fire({
           icon: "warning",
           text: res.MESSAGE,
@@ -387,6 +488,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
 
       if (!res.HEADER || res.HEADER.length === 0) {
         setSearchOptionsList([]);
+        setShowForm(true);
         Swal.fire({
           icon: "info",
           text: "No records found",
@@ -412,6 +514,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     } catch (err) {
       console.error(err);
 
+      setShowForm(true);
       Swal.fire({
         icon: "error",
         text: "Error fetching data",
@@ -564,286 +667,295 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       </div>
 
       {!showForm && searchOptionsList.length > 0 && (
-  <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
-    <div className="overflow-x-auto">
-      <table className="w-full text-[12px] border-collapse">
-        <thead>
-          <tr className="bg-gradient-primary text-primary-foreground">
-            <th className="border px-2 py-1">Ref No</th>
-            <th className="border px-2 py-1">Invoice No</th>
-            <th className="border px-2 py-1">Line No</th>
-            <th className="border px-2 py-1">ODN No</th>
-            <th className="border px-2 py-1">SO No</th>
-            <th className="border px-2 py-1">Sales Person</th>
-            <th className="border px-2 py-1">P/A Check</th>
-            <th className="border px-2 py-1">Provision Amount</th>
-            <th className="border px-2 py-1">Provision Date</th>
-            <th className="border px-2 py-1">Freight Bill No</th>
-            <th className="border px-2 py-1">Freight Bill Date</th>
-            <th className="border px-2 py-1">Physical Submission</th>
-            <th className="border px-2 py-1">Freight Charges</th>
-            <th className="border px-2 py-1">Work Order</th>
-            <th className="border px-2 py-1">Bill Submission</th>
-            <th className="border px-2 py-1">LR No</th>
-            <th className="border px-2 py-1">Transporter</th>
-            <th className="border px-2 py-1">Location</th>
-            <th className="border px-2 py-1">Vehicle No</th>
-            <th className="border px-2 py-1">Created Date</th>
-            <th className="border px-2 py-1">Vehicle Line</th>
-            <th className="border px-2 py-1">Action</th>
-          </tr>
-        </thead>
+        <div className="max-h-[560px] overflow-auto">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-[12.5px]">
+              <thead className="sticky top-0 z-30">
+                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Ref No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Invoice No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Line No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">ODN No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">SO No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Sales Person</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">P/A Check</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Provision Amount</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Provision Date</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Freight Bill No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Freight Bill Date</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Physical Submission</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Freight Charges</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Work Order</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Bill Submission</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">LR No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Transporter</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Location</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Vehicle No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Created Date</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Vehicle Line</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Action</th>
+                </tr>
+              </thead>
 
-        <tbody>
-          {searchOptionsList.map((item, index) => (
-            <tr key={index}>
-              <td className="border px-2 py-1">{item.ZREFNO}</td>
-              <td className="border px-2 py-1">{item.ZINV_NO}</td>
-              <td className="border px-2 py-1">{item.ZLINE_NO}</td>
+              <tbody className="divide-y divide-hairline/70">
+                {searchOptionsList.map((item, index) => (
+                  <tr
+                    key={index}
+                    className={
+                      index % 2 === 0
+                        ? "bg-surface hover:bg-muted/50"
+                        : "bg-surface-2/40 hover:bg-muted/50"
+                    }
+                  >
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZREFNO}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZINV_NO}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
 
-              <td className="border px-2 py-1">
-                {item.isEdit ? (
-                  <input
-                    className={GREEN_INPUT}
-                    value={item.ZODN_NO || ""}
-                    onChange={(e) => {
-                      const list = [...searchOptionsList];
-                      list[index].ZODN_NO = e.target.value;
-                      setSearchOptionsList(list);
-                    }}
-                  />
-                ) : (
-                  item.ZODN_NO
-                )}
-              </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {item.isEdit ? (
+                        <input
+                          className={GREEN_INPUT}
+                          value={item.ZODN_NO || ""}
+                          onChange={(e) => {
+                            const list = [...searchOptionsList];
+                            list[index].ZODN_NO = e.target.value;
+                            setSearchOptionsList(list);
+                          }}
+                        />
+                      ) : (
+                        item.ZODN_NO
+                      )}
+                    </td>
 
-              <td className="border px-2 py-1">
-                {item.isEdit ? (
-                  <input
-                    className={GREEN_INPUT}
-                    value={item.ZSONO || ""}
-                    onChange={(e) => {
-                      const list = [...searchOptionsList];
-                      list[index].ZSONO = e.target.value;
-                      setSearchOptionsList(list);
-                    }}
-                  />
-                ) : (
-                  item.ZSONO
-                )}
-              </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {item.isEdit ? (
+                        <input
+                          className={GREEN_INPUT}
+                          value={item.ZSONO || ""}
+                          onChange={(e) => {
+                            const list = [...searchOptionsList];
+                            list[index].ZSONO = e.target.value;
+                            setSearchOptionsList(list);
+                          }}
+                        />
+                      ) : (
+                        item.ZSONO
+                      )}
+                    </td>
 
-              <td className="border px-2 py-1">
-                {item.isEdit ? (
-                  <input
-                    className={GREEN_INPUT}
-                    value={item.ZSALE_PERSON || ""}
-                    onChange={(e) => {
-                      const list = [...searchOptionsList];
-                      list[index].ZSALE_PERSON = e.target.value;
-                      setSearchOptionsList(list);
-                    }}
-                  />
-                ) : (
-                  item.ZSALE_PERSON
-                )}
-              </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {item.isEdit ? (
+                        <input
+                          className={GREEN_INPUT}
+                          value={item.ZSALE_PERSON || ""}
+                          onChange={(e) => {
+                            const list = [...searchOptionsList];
+                            list[index].ZSALE_PERSON = e.target.value;
+                            setSearchOptionsList(list);
+                          }}
+                        />
+                      ) : (
+                        item.ZSALE_PERSON
+                      )}
+                    </td>
 
-              <td className="border px-2 py-1">
-                <button className="bg-blue-500 text-white px-2 rounded">
-                  View
-                </button>
-              </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      <button className="bg-blue-500 text-white px-2 rounded">
+                        View
+                      </button>
+                    </td>
 
-              <td className="border px-2 py-1">{item.ZPROVAMT}</td>
-              <td className="border px-2 py-1">{item.ZPROVDT}</td>
-              <td className="border px-2 py-1">{item.ZBILLNO}</td>
-              <td className="border px-2 py-1">{item.ZBILLDATE}</td>
-              <td className="border px-2 py-1">{item.ZPHY_DATE}</td>
-              <td className="border px-2 py-1">{item.ZFRT_CHARGES}</td>
-              <td className="border px-2 py-1">{item.ZWORK_ORDER}</td>
-              <td className="border px-2 py-1">{item.ZBILL_SUBMISSION}</td>
-              <td className="border px-2 py-1">{item.ZLRNO}</td>
-              <td className="border px-2 py-1">{item.ZTRANSPORTER}</td>
-              <td className="border px-2 py-1">{item.ZLOCATION}</td>
-              <td className="border px-2 py-1">{item.ZVEH_NUM}</td>
-              <td className="border px-2 py-1">{item.ZCREATED_DT}</td>
-              <td className="border px-2 py-1">{item.ZVEH_LINE}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZPROVAMT}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZPROVDT}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZBILLNO}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZBILLDATE}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZPHY_DATE}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZFRT_CHARGES}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZWORK_ORDER}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZBILL_SUBMISSION}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLRNO}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZTRANSPORTER}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLOCATION}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZVEH_NUM}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZCREATED_DT}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZVEH_LINE}</td>
 
-              <td className="border px-2 py-1">
-                {!item.isEdit ? (
-                  <div className="flex gap-2 justify-center">
-                    <button
-                      className="bg-blue-500 text-white px-2 rounded"
-                      // onClick={() => editSearchRow(index)}
-                    >
-                      Edit
-                    </button>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {!item.isEdit ? (
+                        <div className="flex gap-2 justify-center">
+                          <button
+                            className="bg-blue-500 text-white px-2 rounded"
+                          // onClick={() => editSearchRow(index)}
+                          >
+                            Edit
+                          </button>
 
-                    <button
-                      className="bg-red-500 text-white px-2 rounded"
-                      // onClick={() => deleteRow(index)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2 justify-center">
-                    <button
-                      className="bg-green-500 text-white px-2 rounded"
-                      // onClick={() => updateSearchRow(index)}
-                    >
-                      Save
-                    </button>
+                          <button
+                            className="bg-red-500 text-white px-2 rounded"
+                          // onClick={() => deleteRow(index)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 justify-center">
+                          <button
+                            className="bg-green-500 text-white px-2 rounded"
+                          // onClick={() => updateSearchRow(index)}
+                          >
+                            Save
+                          </button>
 
-                    <button
-                      className="bg-gray-500 text-white px-2 rounded"
-                      // onClick={() => cancelSearchEdit(index)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </div>
-)}
-
-      {/* Field grid */}
-      <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
-          <div>
-            <label className={LABEL}>Invoice Number</label>
-            <input placeholder="Enter Invoice Number" className={GREEN_INPUT} />
-          </div>
-          <div>
-            <label className={LABEL}>Transportation Type</label>
-            <input placeholder="Enter Transportation Type" className={GREEN_INPUT} />
-          </div>
-          <div className="flex items-end gap-6 pb-1">
-            <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">
-              <input
-                type="checkbox"
-                checked={provision}
-                onChange={(e) => {
-                  setProvision(e.target.checked);
-                  if (e.target.checked) setAccount(false);
-                }}
-                className="size-4 accent-emerald-600"
-              />
-              Provision
-            </label>
-            <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">
-              <input
-                type="checkbox"
-                checked={account}
-                onChange={(e) => {
-                  setAccount(e.target.checked);
-                  if (e.target.checked) setProvision(false);
-                }}
-                className="size-4 accent-emerald-600"
-              />
-              Account
-            </label>
-          </div>
-
-          {provision && (
-            <>
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <label className={LABEL}>Provision Amount</label>
-                <input
-                  readOnly
-                  value={provisionTotal === "" ? "" : String(provisionTotal)}
-                  onClick={() => setProvisionOpen(true)}
-                  placeholder="Click to enter amount"
-                  className={GREEN_INPUT + " cursor-pointer"}
-                />
-              </div>
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <label className={LABEL}>Provision Date</label>
-                <input
-                  type="date"
-                  value={provisionDate}
-                  onChange={(e) => setProvisionDate(e.target.value)}
-                  className={GREEN_INPUT}
-                />
-              </div>
-            </>
-          )}
-
-          {account && (
-            <>
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <label className={LABEL}>Freight Bill Number</label>
-                <input
-                  value={freightBillNo}
-                  onChange={(e) => setFreightBillNo(e.target.value)}
-                  placeholder="Freight Bill Number"
-                  className={GREEN_INPUT}
-                />
-              </div>
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <label className={LABEL}>Freight Bill Date</label>
-                <input
-                  type="date"
-                  value={freightBillDate}
-                  onChange={(e) => setFreightBillDate(e.target.value)}
-                  className={GREEN_INPUT}
-                />
-              </div>
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <label className={LABEL}>Physical Submission Date</label>
-                <input
-                  type="date"
-                  value={physicalSubmissionDate}
-                  onChange={(e) => setPhysicalSubmissionDate(e.target.value)}
-                  className={GREEN_INPUT}
-                />
-              </div>
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <label className={LABEL}>Freight Charges</label>
-                <input
-                  readOnly
-                  value={freightTotal === "" ? "" : String(freightTotal)}
-                  onClick={() => setFreightOpen(true)}
-                  placeholder="Click to enter charges"
-                  className={GREEN_INPUT + " cursor-pointer"}
-                />
-              </div>
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <label className={LABEL}>Bill Submission To F&amp;A</label>
-                <input
-                  type="date"
-                  value={billSubmissionDate}
-                  onChange={(e) => setBillSubmissionDate(e.target.value)}
-                  className={GREEN_INPUT}
-                />
-              </div>
-            </>
-          )}
-
-          <div>
-            <label className={LABEL}>Freight Bill upload</label>
-            <input type="file" className={GREEN_INPUT + " py-1.5"} />
-          </div>
-          <div>
-            <label className={LABEL}>Unloading Charges Approval</label>
-            <input type="file" className={GREEN_INPUT + " py-1.5"} />
-          </div>
-          <div>
-            <label className={LABEL}>Detention Charges Uploading</label>
-            <input type="file" className={GREEN_INPUT + " py-1.5"} />
-          </div>
-          <div>
-            <label className={LABEL}>Work Order Uploading</label>
-            <input type="file" className={GREEN_INPUT + " py-1.5"} />
+                          <button
+                            className="bg-gray-500 text-white px-2 rounded"
+                          // onClick={() => cancelSearchEdit(index)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Field grid */}
+      {showForm && (
+        <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
+            <div>
+              <label className={LABEL}>Invoice Number</label>
+              <input placeholder="Enter Invoice Number" className={GREEN_INPUT} />
+            </div>
+            <div>
+              <label className={LABEL}>Transportation Type</label>
+              <input placeholder="Enter Transportation Type" className={GREEN_INPUT} />
+            </div>
+            <div className="flex items-end gap-6 pb-1">
+              <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">
+                <input
+                  type="checkbox"
+                  checked={provision}
+                  onChange={(e) => {
+                    setProvision(e.target.checked);
+                    if (e.target.checked) setAccount(false);
+                  }}
+                  className="size-4 accent-emerald-600"
+                />
+                Provision
+              </label>
+              <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">
+                <input
+                  type="checkbox"
+                  checked={account}
+                  onChange={(e) => {
+                    setAccount(e.target.checked);
+                    if (e.target.checked) setProvision(false);
+                  }}
+                  className="size-4 accent-emerald-600"
+                />
+                Account
+              </label>
+            </div>
+
+            {provision && (
+              <>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>Provision Amount</label>
+                  <input
+                    readOnly
+                    value={provisionTotal === "" ? "" : String(provisionTotal)}
+                    onClick={() => setProvisionOpen(true)}
+                    placeholder="Click to enter amount"
+                    className={GREEN_INPUT + " cursor-pointer"}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>Provision Date</label>
+                  <input
+                    type="date"
+                    value={provisionDate}
+                    onChange={(e) => setProvisionDate(e.target.value)}
+                    className={GREEN_INPUT}
+                  />
+                </div>
+              </>
+            )}
+
+            {account && (
+              <>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>Freight Bill Number</label>
+                  <input
+                    value={freightBillNo}
+                    onChange={(e) => setFreightBillNo(e.target.value)}
+                    placeholder="Freight Bill Number"
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>Freight Bill Date</label>
+                  <input
+                    type="date"
+                    value={freightBillDate}
+                    onChange={(e) => setFreightBillDate(e.target.value)}
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>Physical Submission Date</label>
+                  <input
+                    type="date"
+                    value={physicalSubmissionDate}
+                    onChange={(e) => setPhysicalSubmissionDate(e.target.value)}
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>Freight Charges</label>
+                  <input
+                    readOnly
+                    value={freightTotal === "" ? "" : String(freightTotal)}
+                    onClick={() => setFreightOpen(true)}
+                    placeholder="Click to enter charges"
+                    className={GREEN_INPUT + " cursor-pointer"}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>Bill Submission To F&amp;A</label>
+                  <input
+                    type="date"
+                    value={billSubmissionDate}
+                    onChange={(e) => setBillSubmissionDate(e.target.value)}
+                    className={GREEN_INPUT}
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              <label className={LABEL}>Freight Bill upload</label>
+              <input type="file" className={GREEN_INPUT + " py-1.5"} />
+            </div>
+            <div>
+              <label className={LABEL}>Unloading Charges Approval</label>
+              <input type="file" className={GREEN_INPUT + " py-1.5"} />
+            </div>
+            <div>
+              <label className={LABEL}>Detention Charges Uploading</label>
+              <input type="file" className={GREEN_INPUT + " py-1.5"} />
+            </div>
+            <div>
+              <label className={LABEL}>Work Order Uploading</label>
+              <input type="file" className={GREEN_INPUT + " py-1.5"} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer action bar */}
       <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
