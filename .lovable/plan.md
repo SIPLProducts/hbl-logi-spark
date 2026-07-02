@@ -1,33 +1,24 @@
 ## Goal
-Add a "Finance Details" dropdown to the Freight Billing form that conditionally reveals four fields (JV Number, JV Date, UTR Number, UTR Date) when "Yes" is selected.
+In the "Detailed Freight Charges Input" popup: reset all inputs whenever the user switches between RCM/FCM, and include the GST Amount (FCM) in the final Freight Charges value shown on the form.
 
 ## Scope
 Single file: `src/components/freight-billing-sap-create.tsx`
 
 ## Changes
 
-1. **State management**
-   - Add `financeDetails` state (string: `"" | "Yes" | "No"`) default `""`.
-   - Add four new state variables: `jvNumber`, `jvDate`, `utrNumber`, `utrDate`.
-   - Persist to `sessionStorage` alongside existing fields; clear them in `resetFormState`.
+1. **Reset on RCM/FCM toggle** (inside `ChargesBreakdownDialog`)
+   - When the user clicks the RCM or FCM radio, reset `draft` to an empty `Breakdown` (all zeroes via `BREAKDOWN_FIELDS`) and reset `gstAmount` to `0`.
+   - Applies in both directions (RCM→FCM and FCM→RCM).
 
-2. **Finance Details dropdown**
-   - Render a labeled `<select>` in the main 4-column grid (same style as other form fields).
-   - Options: blank placeholder, "Yes", "No".
+2. **Include GST in Freight Charges** (Save handler)
+   - In the dialog's Save button, compute `finalTotal = taxMode === "FCM" ? total + gstAmount : total` and pass that as the `total` argument to `onSave`.
+   - Update the on-screen "Grand Total" line to reflect this same value (already correct).
+   - Parent `onSave` for the freight dialog already assigns `total` to `setFreightTotal`, so the "Freight Charges" input will automatically show the GST-inclusive value.
 
-3. **Conditional JV/UTR fields**
-   - When `financeDetails === "Yes"`, render four additional inputs in the same grid:
-     - JV Number (text)
-     - JV Date (date)
-     - UTR Number (text)
-     - UTR Date (date)
-   - Use existing `GREEN_INPUT` + `LABEL` styling and `animate-in fade-in slide-in-from-top-2` transition.
-   - When "No" or blank, hide the four fields.
-
-4. **No API changes**
-   - The new fields are UI-only for now; `saveFreightBilling` payload is untouched.
+3. **Persist tax mode state consistency**
+   - Keep passing `{ taxMode, gstAmount }` via `extra` so parent state (`freightTaxMode`, `freightGstAmount`) stays in sync for re-opens.
 
 ## Out of scope
-- Backend integration / `record` payload changes.
-- Changes to `ChargesBreakdownDialog` or provision/freight popup logic.
-- Any other screen or styling changes outside this component.
+- Any changes to other dialogs (provision/account) — `showTaxMode` is only enabled for freight.
+- Backend payload changes.
+- Styling changes.
