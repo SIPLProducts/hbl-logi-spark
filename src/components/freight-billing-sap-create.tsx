@@ -237,6 +237,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [freightBreakdown, setFreightBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
   const [freightTotal, setFreightTotal] = useState<number | "">("");
   const [freightOpen, setFreightOpen] = useState(false);
+  const [freightTaxMode, setFreightTaxMode] = useState<"RCM" | "FCM">("RCM");
+  const [freightGstAmount, setFreightGstAmount] = useState<number>(0);
   const [freightBillNo, setFreightBillNo] = useState(() => {
     if (typeof window === "undefined") return "";
     try {
