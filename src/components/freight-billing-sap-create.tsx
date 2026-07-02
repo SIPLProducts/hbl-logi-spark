@@ -271,6 +271,46 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       return "";
     }
   });
+  const [financeDetails, setFinanceDetails] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-finance") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [jvNumber, setJvNumber] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-jv-no") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [jvDate, setJvDate] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-jv-date") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [utrNumber, setUtrNumber] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-utr-no") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [utrDate, setUtrDate] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-utr-date") || "";
+    } catch {
+      return "";
+    }
+  });
   const [itemsList, setItemsList] = useState<any[]>([]);
   const [showTable, setShowTable] = useState(false);
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
