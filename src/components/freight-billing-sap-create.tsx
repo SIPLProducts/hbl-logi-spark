@@ -1044,6 +1044,60 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
             )}
 
             <div>
+              <label className={LABEL}>Finance Details</label>
+              <select
+                value={financeDetails}
+                onChange={(e) => setFinanceDetails(e.target.value)}
+                className={GREEN_INPUT}
+              >
+                <option value="">Select</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+
+            {financeDetails === "Yes" && (
+              <>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>JV Number</label>
+                  <input
+                    value={jvNumber}
+                    onChange={(e) => setJvNumber(e.target.value)}
+                    placeholder="Enter JV Number"
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>JV Date</label>
+                  <input
+                    type="date"
+                    value={jvDate}
+                    onChange={(e) => setJvDate(e.target.value)}
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>UTR Number</label>
+                  <input
+                    value={utrNumber}
+                    onChange={(e) => setUtrNumber(e.target.value)}
+                    placeholder="Enter UTR Number"
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>UTR Date</label>
+                  <input
+                    type="date"
+                    value={utrDate}
+                    onChange={(e) => setUtrDate(e.target.value)}
+                    className={GREEN_INPUT}
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
               <label className={LABEL}>Freight Bill upload</label>
               <input type="file" className={GREEN_INPUT + " py-1.5"} />
             </div>
