@@ -1,24 +1,20 @@
 ## Goal
-In the "Detailed Freight Charges Input" popup: reset all inputs whenever the user switches between RCM/FCM, and include the GST Amount (FCM) in the final Freight Charges value shown on the form.
+Highlight the Finance Details dropdown and its four dependent fields (JV Number, JV Date, UTR Number, UTR Date) in red to match the reference image (soft pink fill, red border, red focus ring).
 
 ## Scope
 Single file: `src/components/freight-billing-sap-create.tsx`
 
 ## Changes
-
-1. **Reset on RCM/FCM toggle** (inside `ChargesBreakdownDialog`)
-   - When the user clicks the RCM or FCM radio, reset `draft` to an empty `Breakdown` (all zeroes via `BREAKDOWN_FIELDS`) and reset `gstAmount` to `0`.
-   - Applies in both directions (RCM→FCM and FCM→RCM).
-
-2. **Include GST in Freight Charges** (Save handler)
-   - In the dialog's Save button, compute `finalTotal = taxMode === "FCM" ? total + gstAmount : total` and pass that as the `total` argument to `onSave`.
-   - Update the on-screen "Grand Total" line to reflect this same value (already correct).
-   - Parent `onSave` for the freight dialog already assigns `total` to `setFreightTotal`, so the "Freight Charges" input will automatically show the GST-inclusive value.
-
-3. **Persist tax mode state consistency**
-   - Keep passing `{ taxMode, gstAmount }` via `extra` so parent state (`freightTaxMode`, `freightGstAmount`) stays in sync for re-opens.
+1. Define a local `RED_INPUT` class string alongside the existing `GREEN_INPUT`, e.g.:
+   `"h-7 w-full rounded-md border border-red-400 bg-red-50 px-2 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-red-400 focus:border-red-400"`
+2. Apply `RED_INPUT` (in place of `GREEN_INPUT`) on:
+   - Finance Details `<select>`
+   - JV Number `<input>`
+   - JV Date `<input type="date">`
+   - UTR Number `<input>`
+   - UTR Date `<input type="date">`
+3. Keep labels, grid placement, conditional rendering, and state logic unchanged.
 
 ## Out of scope
-- Any changes to other dialogs (provision/account) — `showTaxMode` is only enabled for freight.
-- Backend payload changes.
-- Styling changes.
+- Any other fields, dialogs, or screens.
+- State, persistence, or validation changes.
