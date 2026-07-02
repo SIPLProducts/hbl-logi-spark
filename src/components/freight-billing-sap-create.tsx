@@ -6,6 +6,8 @@ import Swal from "sweetalert2";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+const RED_INPUT =
+  "h-7 w-full rounded-md bg-red-50 border border-red-400 px-2 text-[12px] text-foreground font-medium outline-none focus:border-red-500 focus:ring-2 focus:ring-red-400/40";
 const LABEL =
   "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
@@ -1050,7 +1052,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
               <select
                 value={financeDetails}
                 onChange={(e) => setFinanceDetails(e.target.value)}
-                className={GREEN_INPUT}
+                className={RED_INPUT}
               >
                 <option value="">Select</option>
                 <option value="Yes">Yes</option>
@@ -1066,7 +1068,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     value={jvNumber}
                     onChange={(e) => setJvNumber(e.target.value)}
                     placeholder="Enter JV Number"
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
@@ -1075,7 +1077,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     type="date"
                     value={jvDate}
                     onChange={(e) => setJvDate(e.target.value)}
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
@@ -1084,7 +1086,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     value={utrNumber}
                     onChange={(e) => setUtrNumber(e.target.value)}
                     placeholder="Enter UTR Number"
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
@@ -1093,7 +1095,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     type="date"
                     value={utrDate}
                     onChange={(e) => setUtrDate(e.target.value)}
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
               </>
