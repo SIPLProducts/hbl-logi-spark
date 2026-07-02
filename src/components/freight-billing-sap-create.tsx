@@ -1052,7 +1052,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
               <select
                 value={financeDetails}
                 onChange={(e) => setFinanceDetails(e.target.value)}
-                className={GREEN_INPUT}
+                className={RED_INPUT}
               >
                 <option value="">Select</option>
                 <option value="Yes">Yes</option>
@@ -1068,7 +1068,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     value={jvNumber}
                     onChange={(e) => setJvNumber(e.target.value)}
                     placeholder="Enter JV Number"
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
@@ -1077,7 +1077,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     type="date"
                     value={jvDate}
                     onChange={(e) => setJvDate(e.target.value)}
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
@@ -1086,7 +1086,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     value={utrNumber}
                     onChange={(e) => setUtrNumber(e.target.value)}
                     placeholder="Enter UTR Number"
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
@@ -1095,7 +1095,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     type="date"
                     value={utrDate}
                     onChange={(e) => setUtrDate(e.target.value)}
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
               </>
