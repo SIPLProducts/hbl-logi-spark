@@ -1753,7 +1753,6 @@ function InvoiceFilterDownload({ mode }: { mode: "with" | "without" }) {
           </p>
         </div>
       ) : fStatus === "Completed" ? (
-      ) : fStatus === "Completed" ? (
         <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
           <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
             <div>
