@@ -1698,7 +1698,7 @@ function InvoiceFilterDownload({ mode }: { mode: "with" | "without" }) {
           </div>
         </div>
 
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
           <DateField label="From Date" value={fromDate} onChange={setFromDate} />
           <DateField label="To Date" value={toDate} onChange={setToDate} />
           <PlantField value={fPlant} onChange={setFPlant} />
@@ -1753,82 +1753,132 @@ function InvoiceFilterDownload({ mode }: { mode: "with" | "without" }) {
           </p>
         </div>
       ) : fStatus === "Completed" ? (
-        <FilterResultsTable
-          columns={[
-            "Map ID", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number", "Truck Type",
-            "Passing Weight (Tons)", "Actual Load (Tons)", "Loading factor% (w.r.t weight)",
-            "Actual Volume Occupied", "Loading Factor w.r.t Volume", "Week Wise Shipment Flow",
-            "Eway Bill Number", "Eway Bill Expiry Date", "Plant", "Division", "Work Order", "LR No",
-            "Transporter", "Created date", "Vehicle Type",
-          ]}
-          rows={completedRows.map((item, i) => [
-            item.ZMAPID, item.ZLINE_NO, item.ZREFNO, item.VBELN, item.ZODN_NO, item.ZSO_NO, item.ZTRUC_TYPE,
-            item.ZTRUC_WT, item.ZACT_LOAD, item.ZLF_WT, item.ZACT_VOL, item.ZLF_VOL, item.ZWEEK_SF,
-            item.ZEWAYBILL_NO, item.ZEWAYBILL_DT, item.ZPLANT, item.ZDIVISION, item.ZWORK_ORDER, item.ZLRNO,
-            item.ZTRANSPORTER, item.ZCREATED_DT ? format(new Date(item.ZCREATED_DT), "dd-MM-yyyy") : "",
-            item.ZVEH_TYPE,
-          ])}
-        />
+      ) : fStatus === "Completed" ? (
+        <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
+          <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+                Invoice Load Details — Completed
+              </h3>
+              <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                {completedRows.length} row{completedRows.length === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto max-h-[560px]">
+            <table className="w-full text-left border-collapse text-[12px]">
+              <thead className="sticky top-0 z-30">
+                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                  {["SI.No", "Map ID", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number",
+                    "Truck Type", "Passing Weight (Tons)", "Actual Load (Tons)",
+                    "Loading factor% (w.r.t weight)", "Actual Volume Occupied",
+                    "Loading Factor w.r.t Volume", "Week Wise Shipment Flow", "Eway Bill Number",
+                    "Eway Bill Expiry Date", "Plant", "Division", "Work Order", "LR No",
+                    "Transporter", "Created date", "Vehicle Type"].map((h) => (
+                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
+                    ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-hairline/70">
+                {completedRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={23} className="px-3 py-10 text-center text-[12px] text-muted-foreground">
+                      No records found.
+                    </td>
+                  </tr>
+                ) : (
+                  completedRows.map((item, i) => (
+                    <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
+                      <td className="px-3 py-2 whitespace-nowrap">{i + 1}</td>
+                      <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZMAPID}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZLINE_NO}</td>
+                      <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZREFNO}</td>
+                      <td className="px-3 py-2 whitespace-nowrap font-mono">{item.VBELN}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZODN_NO}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZSO_NO}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZTRUC_TYPE}</td>
+                      <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZTRUC_WT}</td>
+                      <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZACT_LOAD}</td>
+                      <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZLF_WT}</td>
+                      <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZACT_VOL}</td>
+                      <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZLF_VOL}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZWEEK_SF}</td>
+                      <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZEWAYBILL_NO}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZEWAYBILL_DT}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZPLANT}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>
+                      <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZLRNO}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZTRANSPORTER}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {item.ZCREATED_DT ? format(new Date(item.ZCREATED_DT), "dd-MM-yyyy") : ""}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
-        <FilterResultsTable
-          columns={[
-            "Reference No", "Line No", "Date", "Plant", "Division", "Vehicle Type", "No. of Trucks",
-            "Work Order", "Vendor Code", "Transporter", "No. of LRs", "LR Number", "Loading Point",
-            "Unloading Point",
-          ]}
-          rows={pendingRows.map((item) => [
-            item.ZREFNO, item.ZLINE_NO, item.ZCREATED_DT ? format(new Date(item.ZCREATED_DT), "dd-MM-yyyy") : "",
-            item.ZWERKS, item.ZDIVISION, item.ZVEH_TYPE, item.ZNO_TRUCKS, item.ZWORK_ORDER, item.ZVENDOR_CD,
-            item.ZTRANSPORTER, item.ZNO_LRS, item.ZLR_NO, item.ZLOAD_PT, item.ZUNLOAD_PT,
-          ])}
-        />
+        <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
+          <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+                Dispatch Results — Pending
+              </h3>
+              <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                {pendingRows.length} row{pendingRows.length === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto max-h-[560px]">
+            <table className="w-full text-left border-collapse text-[12px]">
+              <thead className="sticky top-0 z-30">
+                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                  {["SI.No", "Reference No", "Line No", "Date", "Plant", "Division", "Vehicle Type",
+                    "No. of Trucks", "Work Order", "Vendor Code", "Transporter", "No. of LRs",
+                    "LR Number", "Loading Point", "Unloading Point"].map((h) => (
+                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
+                    ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-hairline/70">
+                {pendingRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={15} className="px-3 py-10 text-center text-[12px] text-muted-foreground">
+                      No records found.
+                    </td>
+                  </tr>
+                ) : (
+                  pendingRows.map((item, i) => (
+                    <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
+                      <td className="px-3 py-2 whitespace-nowrap">{i + 1}</td>
+                      <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZREFNO}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZLINE_NO}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {item.ZCREATED_DT ? format(new Date(item.ZCREATED_DT), "dd-MM-yyyy") : ""}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZWERKS}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
+                      <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZNO_TRUCKS}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>
+                      <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZVENDOR_CD}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZTRANSPORTER}</td>
+                      <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZNO_LRS}</td>
+                      <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZLR_NO}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZLOAD_PT}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZUNLOAD_PT}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
-    </div>
-  );
-}
-
-function FilterResultsTable({ columns, rows }: { columns: string[]; rows: any[][] }) {
-  return (
-    <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
-      <div className="px-5 py-3 border-b border-hairline bg-surface-2/60">
-        <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Results</h3>
-        <p className="text-[11.5px] text-muted-foreground mt-0.5">
-          {rows.length} row{rows.length === 1 ? "" : "s"}
-        </p>
-      </div>
-      <div className="overflow-x-auto scrollbar-elegant">
-        <table className="w-full text-left border-collapse text-[12px] min-w-[1600px]">
-          <thead>
-            <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
-              <th className="px-2 py-1.5 text-center w-10">SI.No</th>
-              {columns.map((c) => (
-                <th key={c} className="px-2 py-1.5 whitespace-nowrap">
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-hairline/60">
-            {rows.map((r, i) => (
-              <tr key={i} className="hover:bg-accent/[0.04]">
-                <td className="px-2 py-1 text-center">{i + 1}</td>
-                {r.map((cell, j) => (
-                  <td key={j} className="px-2 py-1 whitespace-nowrap">
-                    {cell}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={columns.length + 1} className="px-3 py-10 text-center text-[12px] text-muted-foreground">
-                  No records match your filters.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
