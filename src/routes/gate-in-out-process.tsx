@@ -858,6 +858,50 @@ const GATE_INPUT_READONLY =
 
 const GATE_LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
+type GateRow = {
+  requiredDateTime: string;
+  reportedDateTime: string;
+  physicalDispatchDateTime: string;
+  truckType: string;
+  typeOfTransporter: string;
+  vehicleNumber: string;
+  noOfVehicles: string;
+  driverNumber: string;
+  driverName: string;
+  customerEmailId: string;
+  salespersonEmailId: string;
+  gpsLiveLocation: string;
+  tatType: string;
+  tatDays: string;
+  eta: string;
+};
+
+const EMPTY_GATE_ROW = (): GateRow => ({
+  requiredDateTime: "",
+  reportedDateTime: "",
+  physicalDispatchDateTime: "",
+  truckType: "",
+  typeOfTransporter: "",
+  vehicleNumber: "",
+  noOfVehicles: "",
+  driverNumber: "",
+  driverName: "",
+  customerEmailId: "",
+  salespersonEmailId: "",
+  gpsLiveLocation: "",
+  tatType: "",
+  tatDays: "",
+  eta: "",
+});
+
+function getMinPhysicalDispatch(row: GateRow): string {
+  const dates: string[] = [];
+  if (row.requiredDateTime) dates.push(row.requiredDateTime);
+  if (row.reportedDateTime) dates.push(row.reportedDateTime);
+  if (dates.length === 0) return "";
+  return dates.reduce((a, b) => (a > b ? a : b));
+}
+
 type VehicleTypeOption = { code: string; label: string };
 
 function GateInOutCreate({ mode }: { mode: SapMode }) {
