@@ -1456,7 +1456,14 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
 /* Filter & Download tab — invoice-specific wiring                     */
 /* ------------------------------------------------------------------ */
 
-function InvoiceFilterDownload({ mode }: { mode: "with" | "without" }) {
+function InvoiceFilterDownload({
+  sap,
+  setSap,
+}: {
+  sap: "with" | "without" | null;
+  setSap: (v: "with" | "without") => void;
+}) {
+  const mode = sap ?? "with";
   const user = getCurrentUser();
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
@@ -1696,9 +1703,17 @@ function InvoiceFilterDownload({ mode }: { mode: "with" | "without" }) {
               Filter Options
             </h3>
           </div>
+          <SearchSapToggle value={sap} onChange={setSap} />
         </div>
 
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+        {!sap ? (
+          <div className="p-6 text-center text-[12px] text-muted-foreground">
+            Select <span className="font-semibold">With SAP</span> or{" "}
+            <span className="font-semibold">Without SAP</span> to view filters.
+          </div>
+        ) : (
+        <>
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
           <DateField label="From Date" value={fromDate} onChange={setFromDate} />
           <DateField label="To Date" value={toDate} onChange={setToDate} />
           <PlantField value={fPlant} onChange={setFPlant} />
@@ -1740,9 +1755,11 @@ function InvoiceFilterDownload({ mode }: { mode: "with" | "without" }) {
             <Filter className="size-3.5" /> Apply Filter
           </Button>
         </div>
+        </>
+        )}
       </div>
 
-      {!applied ? (
+      {sap && !applied ? (
         <div className="bg-surface border border-dashed border-hairline rounded-2xl p-10 text-center">
           <div className="mx-auto size-12 grid place-items-center rounded-full bg-muted text-muted-foreground">
             <Filter className="size-5" />
@@ -1752,7 +1769,7 @@ function InvoiceFilterDownload({ mode }: { mode: "with" | "without" }) {
             Choose your filters above and click <span className="font-semibold">Apply Filter</span> to load records.
           </p>
         </div>
-      ) : fStatus === "Completed" ? (
+      ) : sap && fStatus === "Completed" ? (
         <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
           <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
             <div>
@@ -1820,7 +1837,7 @@ function InvoiceFilterDownload({ mode }: { mode: "with" | "without" }) {
             </table>
           </div>
         </div>
-      ) : (
+      ) : sap ? (
         <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
           <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
             <div>
@@ -1877,7 +1894,7 @@ function InvoiceFilterDownload({ mode }: { mode: "with" | "without" }) {
             </table>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
