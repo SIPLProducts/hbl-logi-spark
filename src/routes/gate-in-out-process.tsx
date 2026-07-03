@@ -971,6 +971,24 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     // TODO: integrate API when ready
   };
 
+  const addGateRow = () => setGateRows((prev) => [...prev, EMPTY_GATE_ROW()]);
+  const removeGateRow = (index: number) => setGateRows((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  const updateGateRow = (index: number, field: keyof GateRow, value: string) => {
+    setGateRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== index) return r;
+        const next: GateRow = { ...r, [field]: value };
+        if ((field === "requiredDateTime" || field === "reportedDateTime") && next.physicalDispatchDateTime) {
+          const min = getMinPhysicalDispatch(next);
+          if (min && next.physicalDispatchDateTime < min) {
+            next.physicalDispatchDateTime = "";
+          }
+        }
+        return next;
+      })
+    );
+  };
+
   function handleSave(arg0: string): void {
     throw new Error("Function not implemented.");
   }
