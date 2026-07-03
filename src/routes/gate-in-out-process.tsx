@@ -291,7 +291,7 @@ function GateInOutProcessPage() {
               </div>
               <div className="min-w-0">
                 <h1 className="font-display text-[18px] leading-none font-bold tracking-tight text-foreground truncate">
-                  Gate In and Out Process
+                  Gate In and Out
                 </h1>
               </div>
             </div>
