@@ -1,20 +1,43 @@
-## Plan: Add "Gate In and Out Process" Screen
+## Plan: Gate In/Out Date Validation
 
-Add a new screen mirroring the Order Info structure, placed after Order Info in the sidebar navigation.
+### Goal
+Prevent users from selecting a **Physical Dispatch Date and Time** that is earlier than both the **Required Date and Time** and the **Reported Date and Time**. Validation must be real-time and work for every row.
 
-### Files
+### Current State
+The Gate In/Out table in `src/routes/gate-in-out-process.tsx` renders a single static `<TableRow>` with uncontrolled `<input type="datetime-local">` fields. There is no per-row state, so real-time cross-field comparison is impossible.
 
-1. **Create `src/routes/gate-in-out-process.tsx`** (single file)
-   - Copy full structure of `src/routes/order-info.tsx` (905 lines) — same tabs, filters, table, SAP/Non-SAP create toggle, export/PDF actions, pagination.
-   - Change route: `createFileRoute("/gate-in-out-process")`.
-   - Change page title/header text to "Gate In and Out Process".
-   - Reuse the same mock data and `OrderInfoSapCreate` component so the screen is fully functional out of the box (no new components, no new mock files).
+### Changes Required
 
-2. **Edit `src/components/app-sidebar.tsx`**
-   - In the second nav group, insert a new item `{ title: "Gate In & Out Process", to: "/gate-in-out-process", icon: DoorOpen }` immediately after the Order Info entry.
-   - Add `DoorOpen` to the lucide-react imports.
+#### 1. Convert table row to state-managed rows
+- Replace the hardcoded single `<TableRow>` with a `useState` array (`gateRows`) that starts with one empty row object.
+- Each row object tracks:
+  - `requiredDateTime`
+  - `reportedDateTime`
+  - `physicalDispatchDateTime`
+  - `truckType`, `tatType`, `eta`, and all other text fields currently in `GATE_COLUMNS`.
+- Wire every `<Input>` and `<select>` in the table to the corresponding row state via `onChange`.
 
-### Notes
-- No changes to business logic, services, or shared components.
-- `routeTree.gen.ts` is auto-generated — do not edit.
-- If you'd later like a dedicated create form (instead of reusing `OrderInfoSapCreate`), that's a follow-up.
+#### 2. Real-time validation logic
+- Create a helper `getMinPhysicalDispatch(row)` that returns the **later** of `requiredDateTime` and `reportedDateTime`.
+- On the **Physical Dispatch Date and Time** input:
+  - Set the HTML `min` attribute to the value returned by `getMinPhysicalDispatch(row)` (formatted as `YYYY-MM-DDTHH:mm`). This blocks selection of earlier datetimes natively.
+  - If the current `physicalDispatchDateTime` becomes invalid because one of the other two dates is moved forward, clear it or flag it with an inline error.
+- Add a per-row `error` state that shows a small red message (e.g., "Must be on or after Required and Reported dates") when validation fails.
+
+#### 3. Add / remove rows
+- Add an **Add Row** button below the table.
+- Add a **Delete** button in the Action column (already present in the reference table UI; replicate that pattern).
+- Validation rules apply to every row independently.
+
+#### 4. Styling
+- Keep existing compact styling (h-7 inputs, py-0 cells, 12px font).
+- Error message: 11px red text beneath the Physical Dispatch cell.
+- No changes to colors, gradients, or other screens.
+
+### Files to modify
+- `src/routes/gate-in-out-process.tsx` — state, validation, row management
+
+### Not in scope
+- Server-side validation (client-side only).
+- Changes to other screens.
+- API integration.
