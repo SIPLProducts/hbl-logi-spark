@@ -1272,22 +1272,23 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                       );
                     })}
                     <TableCell className="p-1 text-center">
-                      {gateRows.length > 1 && (
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={addGateRow}
+                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-accent hover:bg-accent/10 transition"
+                          aria-label="Add row"
+                        >
+                          <Plus className="size-3.5" />
+                        </button>
                         <button
                           onClick={() => removeGateRow(i)}
-                          className="size-6 grid place-items-center rounded-md text-red-500 hover:bg-red-50"
-                          title="Delete row"
+                          disabled={gateRows.length === 1}
+                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+                          aria-label="Delete row"
                         >
-                          <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
+                          <Trash2 className="size-3.5" />
                         </button>
-                      )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -1295,15 +1296,6 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
             </TableBody>
           </Table>
         </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={addGateRow}
-          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-gradient-primary text-primary-foreground text-[12px] font-semibold shadow-sm"
-        >
-          <Plus className="size-3.5" /> Add Row
-        </button>
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
