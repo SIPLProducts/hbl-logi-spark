@@ -913,12 +913,10 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const [ewayApplicable, setEwayApplicable] = useState("");
 
   // ── Truck Type F4 (gettypeofvehicle) ──
-  const [truckType, setTruckType] = useState("");
+  const [gateRows, setGateRows] = useState<GateRow[]>([EMPTY_GATE_ROW()]);
   const [truckTypeList, setTruckTypeList] = useState<VehicleTypeOption[]>([]);
   const [loadingTruckTypes, setLoadingTruckTypes] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
-
-  const [tatType, setTatType] = useState("");
 
   useEffect(() => {
     (async () => {
