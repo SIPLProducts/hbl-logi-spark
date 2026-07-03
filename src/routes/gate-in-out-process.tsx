@@ -1161,71 +1161,149 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       </div>
 
       <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-soft">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">Sl.No</TableHead>
-              {GATE_COLUMNS.map((c) => (
-                <TableHead key={c} className="whitespace-nowrap">
-                  {c}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell className="text-center text-muted-foreground">1</TableCell>
-              {GATE_COLUMNS.map((c) =>
-                c === "Truck Type" ? (
-                  <TableCell key={c} className="p-1">
-                    <select
-                      value={truckType}
-                      onChange={(e) => setTruckType(e.target.value)}
-                      disabled={loadingTruckTypes}
-                      className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
-                    >
-                      <option value="">
-                        {loadingTruckTypes ? "Loading..." : "Select Truck Type"}
-                      </option>
-                      {truckTypeList.map((v) => (
-                        <option key={v.code} value={v.code}>
-                          {v.code}
-                        </option>
-                      ))}
-                    </select>
-                  </TableCell>
-                ) : c === "TAT Type" ? (
-                  <TableCell key={c} className="p-1">
-                    <select
-                      value={tatType}
-                      onChange={(e) => setTatType(e.target.value)}
-                      className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                    >
-                      <option value="">Select TAT Type</option>
-                      <option value="Direct Truck TAT(Vizag)">Direct Truck TAT(Vizag)</option>
-                      <option value="Direct Truck TAT(Hyd)">Direct Truck TAT(Hyd)</option>
-                      <option value="Revised TAT">Revised TAT</option>
-                      <option value="Safe Express TAT">Safe Express TAT</option>
-                      <option value="Delivery TAT">Delivery TAT</option>
-                      <option value="GATI TAT">GATI TAT</option>
-                    </select>
-                  </TableCell>
-                ) : c === "ETA" ? (
-                  <TableCell key={c} className="p-1">
-                    <Input type="date" className="h-7 min-w-[140px]" />
-                  </TableCell>
-                ) : (
-                  <TableCell key={c} className="p-1">
-                    <Input
-                      type={c.toLowerCase().includes("date") ? "datetime-local" : "text"}
-                      className="h-7 min-w-[140px]"
-                    />
-                  </TableCell>
-                )
-              )}
-            </TableRow>
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">Sl.No</TableHead>
+                {GATE_COLUMNS.map((c) => (
+                  <TableHead key={c} className="whitespace-nowrap">
+                    {c}
+                  </TableHead>
+                ))}
+                <TableHead className="whitespace-nowrap text-center">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {gateRows.map((row, i) => {
+                const minPd = getMinPhysicalDispatch(row);
+                return (
+                  <TableRow key={i}>
+                    <TableCell className="text-center text-muted-foreground">{i + 1}</TableCell>
+                    {GATE_COLUMNS.map((c) => {
+                      if (c === "Truck Type") {
+                        return (
+                          <TableCell key={c} className="p-1">
+                            <select
+                              value={row.truckType}
+                              onChange={(e) => updateGateRow(i, "truckType", e.target.value)}
+                              disabled={loadingTruckTypes}
+                              className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
+                            >
+                              <option value="">{loadingTruckTypes ? "Loading..." : "Select Truck Type"}</option>
+                              {truckTypeList.map((v) => (
+                                <option key={v.code} value={v.code}>
+                                  {v.code}
+                                </option>
+                              ))}
+                            </select>
+                          </TableCell>
+                        );
+                      }
+                      if (c === "TAT Type") {
+                        return (
+                          <TableCell key={c} className="p-1">
+                            <select
+                              value={row.tatType}
+                              onChange={(e) => updateGateRow(i, "tatType", e.target.value)}
+                              className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                            >
+                              <option value="">Select TAT Type</option>
+                              <option value="Direct Truck TAT(Vizag)">Direct Truck TAT(Vizag)</option>
+                              <option value="Direct Truck TAT(Hyd)">Direct Truck TAT(Hyd)</option>
+                              <option value="Revised TAT">Revised TAT</option>
+                              <option value="Safe Express TAT">Safe Express TAT</option>
+                              <option value="Delivery TAT">Delivery TAT</option>
+                              <option value="GATI TAT">GATI TAT</option>
+                            </select>
+                          </TableCell>
+                        );
+                      }
+                      if (c === "ETA") {
+                        return (
+                          <TableCell key={c} className="p-1">
+                            <Input
+                              type="date"
+                              className="h-7 min-w-[140px]"
+                              value={row.eta}
+                              onChange={(e) => updateGateRow(i, "eta", e.target.value)}
+                            />
+                          </TableCell>
+                        );
+                      }
+                      const fieldMap: Record<string, keyof GateRow> = {
+                        "Required Date and Time": "requiredDateTime",
+                        "Reported Date and Time": "reportedDateTime",
+                        "Physical Dispatch Date and Time": "physicalDispatchDateTime",
+                        "Type of Transporter": "typeOfTransporter",
+                        "Vehicle Number": "vehicleNumber",
+                        "No of Vehicles": "noOfVehicles",
+                        "Driver Number": "driverNumber",
+                        "Driver Name": "driverName",
+                        "Customer Email Id": "customerEmailId",
+                        "Salesperson Email Id": "salespersonEmailId",
+                        "GPS Live Location": "gpsLiveLocation",
+                        "TAT Days": "tatDays",
+                      };
+                      const field = fieldMap[c];
+                      if (!field) return <TableCell key={c} className="p-1" />;
+                      const isPd = c === "Physical Dispatch Date and Time";
+                      const isDateTime = c.toLowerCase().includes("date");
+                      const val = row[field] || "";
+                      return (
+                        <TableCell key={c} className="p-1">
+                          <Input
+                            type={isDateTime ? "datetime-local" : "text"}
+                            className={cn(
+                              "h-7 min-w-[140px]",
+                              isPd && minPd && val && val < minPd
+                                ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
+                                : ""
+                            )}
+                            value={val}
+                            min={isPd ? minPd : undefined}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (isPd && minPd && v && v < minPd) return;
+                              updateGateRow(i, field, v);
+                            }}
+                          />
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell className="p-1 text-center">
+                      {gateRows.length > 1 && (
+                        <button
+                          onClick={() => removeGateRow(i)}
+                          className="size-6 grid place-items-center rounded-md text-red-500 hover:bg-red-50"
+                          title="Delete row"
+                        >
+                          <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={addGateRow}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-gradient-primary text-primary-foreground text-[12px] font-semibold shadow-sm"
+        >
+          <Plus className="size-3.5" /> Add Row
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
