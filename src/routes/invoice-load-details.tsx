@@ -1994,7 +1994,10 @@ function LeScreenShell({
   lineItems?: { columns: string[]; rows: (string | number)[][] };
   children?: ReactNode;
   renderCreateBody?: (ctx: { sap: SapMode; direction: "outward" | "inward" }) => ReactNode;
-  renderFilterBody?: (ctx: { sap: SapMode }) => ReactNode;
+  renderFilterBody?: (ctx: {
+    sap: SapMode | null;
+    setSap: (v: SapMode) => void;
+  }) => ReactNode;
   renderDirectionExtras?: (ctx: { sap: SapMode; direction: "outward" | "inward" }) => ReactNode;
 }) {
   const [tab, setTab] = useState<"create" | "search">("create");
@@ -2123,25 +2126,7 @@ function LeScreenShell({
 
           {/* ───────── Filter & Download tab ───────── */}
           <TabsContent value="search" className="mt-5 space-y-5">
-            <div className="bg-surface border border-hairline rounded-2xl shadow-elegant">
-              <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
-                <div className="flex items-center gap-2">
-                  <Filter className="size-4 text-accent" />
-                  <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
-                    SAP Mode
-                  </h3>
-                </div>
-                <SearchSapToggle value={searchSap} onChange={setSearchSap} />
-              </div>
-              {!searchSap && (
-                <div className="p-6 text-center text-[12px] text-muted-foreground">
-                  Select <span className="font-semibold">With SAP</span> or{" "}
-                  <span className="font-semibold">Without SAP</span> to view filters.
-                </div>
-              )}
-            </div>
-
-            {searchSap && renderFilterBody?.({ sap: searchSap })}
+            {renderFilterBody?.({ sap: searchSap, setSap: setSearchSap })}
           </TabsContent>
         </div>
       </Tabs>
@@ -2333,10 +2318,10 @@ function InvoiceLoadDetailsPage() {
           <InvoiceLoadDetailsSapCreate key={sap} mode={sap === "with" ? "with" : "without"} />
         ) : null
       }
-      renderFilterBody={({ sap }) => (
-        // Same reasoning as above — Angular's onFilterSapTypeChange() clears every filter
-        // field when the toggle changes; key={sap} gives the React version the same behavior.
-        <InvoiceFilterDownload key={sap} mode={sap} />
+      renderFilterBody={({ sap, setSap }) => (
+        // key={sap} forces remount when the With/Without SAP toggle changes so all
+        // local filter state resets — mirroring Angular's onFilterSapTypeChange().
+        <InvoiceFilterDownload key={sap ?? "none"} sap={sap} setSap={setSap} />
       )}
     />
   );
