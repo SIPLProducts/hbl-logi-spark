@@ -212,6 +212,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [allChecked, setAllChecked] = useState(false);
 
   const [vehicleTypes, setVehicleTypes] = useState<{ ZTRUC_TYPE: string; ZTRUC_WT: string }[]>([]);
+  const [fTransporter, setFTransporter] = useState("");
   const [saving, setSaving] = useState(false);
 
   const showFields = isWithout || revealed;
@@ -228,6 +229,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
       }
     })();
   }, []);
+
 
   /* ── Reference row field blur -> global reference lookup (Angular: onFieldBlur) ── */
   const onFieldBlur = async (fieldKey: "REF_NO" | "WORK_ORDER_NO" | "LR_NO" | "TRANSPORTER") => {
@@ -1055,10 +1057,10 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
       {showFields && searchResults.length === 0 && (
         <>
           {/* Load details table */}
-          <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+          <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface max-h-[600px] overflow-y-auto">
             <div className="overflow-x-auto">
               <table className="w-full text-[12px] min-w-[1400px]">
-                <thead>
+                <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
                     <th className="px-2 py-1.5 text-center w-10">
                       <input
@@ -1088,9 +1090,9 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                     </th>
                     <th className="px-2 py-1.5 text-center">Actual Volume Occupied</th>
                     <th className="px-2 py-1.5 text-center">Loading Factor w.r.t Volume</th>
-                    <th className="px-2 py-1.5 text-center">Week Wise Shipment Flow</th>
+                    {/* <th className="px-2 py-1.5 text-center">Week Wise Shipment Flow</th>
                     <th className="px-2 py-1.5 text-center">Eway Bill Number</th>
-                    <th className="px-2 py-1.5 text-center">Eway Bill Expiry Date</th>
+                    <th className="px-2 py-1.5 text-center">Eway Bill Expiry Date</th> */}
                     <th className="px-2 py-1.5 text-center w-24">Action</th>
                   </tr>
                 </thead>
@@ -1176,7 +1178,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                             className={GREEN_INPUT + " text-center disabled:opacity-50"}
                           />
                         </td>
-                        <td className="px-2 py-1">
+                        {/* <td className="px-2 py-1">
                           <select
                             value={row.ZWEEK_SF}
                             onChange={(e) => updateRow(row.id, { ZWEEK_SF: e.target.value })}
@@ -1207,7 +1209,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                             />
                             <CalendarIcon className="size-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                           </div>
-                        </td>
+                        </td> */}
                         <td className="px-2 py-1">
                           <div className="flex items-center justify-center gap-1.5">
                             <button
@@ -1266,35 +1268,42 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
       {/* Search results (Angular: searchOptionsList table with inline edit/delete) */}
       {searchResults.length > 0 && (
-        <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface mt-3">
-          <div className="overflow-x-auto">
-            <table className="w-full text-[11.5px] min-w-[1600px]">
-              <thead>
-                <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-                  <th className="px-2 py-1.5 text-center">Map ID</th>
-                  <th className="px-2 py-1.5 text-center">Ref No</th>
-                  <th className="px-2 py-1.5 text-center">Invoice No</th>
-                  <th className="px-2 py-1.5 text-center">Line No</th>
-                  <th className="px-2 py-1.5 text-center">ODN No</th>
-                  <th className="px-2 py-1.5 text-center">SO No</th>
-                  <th className="px-2 py-1.5 text-center">Truck Type</th>
-                  <th className="px-2 py-1.5 text-center">Actual Load</th>
-                  <th className="px-2 py-1.5 text-center">Actual Volume</th>
-                  <th className="px-2 py-1.5 text-center">E-Way Bill No</th>
-                  <th className="px-2 py-1.5 text-center">E-Way Bill Date</th>
-                  <th className="px-2 py-1.5 text-center">Work Order</th>
-                  <th className="px-2 py-1.5 text-center">LR No</th>
-                  <th className="px-2 py-1.5 text-center">Transporter</th>
-                  <th className="px-2 py-1.5 text-center w-20">Action</th>
+        <div className="max-h-[560px] overflow-auto">
+          <div className="max-h-[560px] overflow-auto">
+            <table className="w-full text-left border-collapse text-[12.5px]">
+              <thead className="sticky top-0 z-30">
+                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Map ID</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Ref No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Invoice No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Line No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">ODN No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">SO No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Truck Type</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Actual Load</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Actual Volume</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">E-Way Bill No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">E-Way Bill Date</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Work Order</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">LR No</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Transporter</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-center w-20">Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-hairline/70">
                 {searchResults.map((item, i) => (
-                  <tr key={i} className="odd:bg-muted/20">
-                    <td className="px-2 py-1 text-center">{item.ZMAPID}</td>
-                    <td className="px-2 py-1 text-center">{item.ZREFNO}</td>
-                    <td className="px-2 py-1 text-center">{item.VBELN}</td>
-                    <td className="px-2 py-1 text-center">{item.ZLINE_NO}</td>
+                  <tr
+                    key={i}
+                    className={
+                      i % 2 === 0
+                        ? "bg-surface hover:bg-muted/50"
+                        : "bg-surface-2/40 hover:bg-muted/50"
+                    }
+                  >
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZMAPID}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZREFNO}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.VBELN}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
                     <td className="px-2 py-1">
                       {item.isEdit ? (
                         <input
@@ -1306,7 +1315,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         <span>{item.ZODN_NO}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           value={item.ZSO_NO || ""}
@@ -1317,7 +1326,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         <span>{item.ZSO_NO}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           value={item.ZTRUC_TYPE || ""}
@@ -1328,7 +1337,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         <span>{item.ZTRUC_TYPE}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           type="number"
@@ -1340,7 +1349,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         <span>{item.ZACT_LOAD}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           type="number"
@@ -1352,7 +1361,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         <span>{item.ZACT_VOL}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           value={item.ZEWAYBILL_NO || ""}
@@ -1363,7 +1372,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         <span>{item.ZEWAYBILL_NO}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           type="date"
@@ -1375,7 +1384,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         <span>{item.ZEWAYBILL_DT ? format(new Date(item.ZEWAYBILL_DT), "dd-MM-yyyy") : ""}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           value={item.ZWORK_ORDER || ""}
@@ -1386,7 +1395,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         <span>{item.ZWORK_ORDER}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           value={item.ZLRNO || ""}
@@ -1397,7 +1406,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         <span>{item.ZLRNO}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1">
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           value={item.ZTRANSPORTER || ""}
@@ -1408,7 +1417,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         <span>{item.ZTRANSPORTER}</span>
                       )}
                     </td>
-                    <td className="px-2 py-1 text-center">
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
                       {!item.isEdit ? (
                         <div className="flex items-center justify-center gap-1">
                           <button
@@ -1470,6 +1479,7 @@ function InvoiceFilterDownload({
   const [fPlant, setFPlant] = useState("");
   const [fDivision, setFDivision] = useState("");
   const [fTransporter, setFTransporter] = useState("");
+  const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
   const [fVehicleType, setFVehicleType] = useState("");
   const [fStatus, setFStatus] = useState("");
   const [applied, setApplied] = useState(false);
@@ -1489,6 +1499,22 @@ function InvoiceFilterDownload({
     setCompletedRows([]);
     setPendingRows([]);
   };
+
+  useEffect(() => {
+    if (!sap) return;
+    (async () => {
+      try {
+        const res: any = await service.fetchVendorCode();
+        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+        const transporters: string[] = Array.isArray(data.VEND_CODE)
+          ? Array.from(new Set(data.VEND_CODE.map((v: any) => String(v.TRANSPORTER)).filter(Boolean)))
+          : [];
+        setFetchedTransporters(transporters);
+      } catch (err) {
+        console.error("Transporter fetch failed:", err);
+      }
+    })();
+  }, [sap]);
 
   const applyFilter = async () => {
     if (!fromDate || !toDate) {
@@ -1550,7 +1576,7 @@ function InvoiceFilterDownload({
   const downloadExcel = () => {
     const exportSource = fStatus === "Completed" ? completedRows : pendingRows;
     if (!exportSource.length) {
-       Swal.fire('Warning', 'No data available to download', 'warning');
+      Swal.fire('Warning', 'No data available to download', 'warning');
       return;
     }
     const fileName =
@@ -1690,7 +1716,7 @@ function InvoiceFilterDownload({
     });
 
     doc.save(fileName);
-     Swal.fire('Success', `PDF file downloaded: ${fileName}`, 'success');
+    Swal.fire('Success', `PDF file downloaded: ${fileName}`, 'success');
   };
 
   return (
@@ -1712,50 +1738,50 @@ function InvoiceFilterDownload({
             <span className="font-semibold">Without SAP</span> to view filters.
           </div>
         ) : (
-        <>
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-          <DateField label="From Date" value={fromDate} onChange={setFromDate} />
-          <DateField label="To Date" value={toDate} onChange={setToDate} />
-          <PlantField value={fPlant} onChange={setFPlant} />
-          <DivisionField value={fDivision} onChange={setFDivision} />
-          <SelectField
-            label="Transporter"
-            value={fTransporter}
-            onChange={setFTransporter}
-            options={TRANSPORTERS}
-            placeholder="Select Transporter"
-          />
-          <SelectField
-            label="Vehicle Type"
-            value={fVehicleType}
-            onChange={setFVehicleType}
-            options={VEHICLE_TYPES}
-            placeholder="Select Vehicle Type"
-          />
-          <SelectField
-            label="Status"
-            value={fStatus}
-            onChange={setFStatus}
-            options={["Pending", "Completed"]}
-            placeholder="Select Status Type"
-          />
-        </div>
+          <>
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+              <DateField label="From Date" value={fromDate} onChange={setFromDate} />
+              <DateField label="To Date" value={toDate} onChange={setToDate} />
+              <PlantField value={fPlant} onChange={setFPlant} />
+              <DivisionField value={fDivision} onChange={setFDivision} />
+              <SelectField
+                label="Transporter"
+                value={fTransporter}
+                onChange={setFTransporter}
+                options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}
+                placeholder="Select Transporter"
+              />
+              <SelectField
+                label="Vehicle Type"
+                value={fVehicleType}
+                onChange={setFVehicleType}
+                options={VEHICLE_TYPES}
+                placeholder="Select Vehicle Type"
+              />
+              <SelectField
+                label="Status"
+                value={fStatus}
+                onChange={setFStatus}
+                options={["Pending", "Completed"]}
+                placeholder="Select Status Type"
+              />
+            </div>
 
-        <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
-          <Button variant="ghost" size="sm" onClick={reset}>
-            Reset
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadPDF} disabled={!applied}>
-            <FileText className="size-3.5" /> Download PDF
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadExcel} disabled={!applied}>
-            <FileDown className="size-3.5 text-emerald-600" /> Download Excel
-          </Button>
-          <Button size="sm" onClick={applyFilter} className="gap-1.5">
-            <Filter className="size-3.5" /> Apply Filter
-          </Button>
-        </div>
-        </>
+            <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
+              <Button variant="ghost" size="sm" onClick={reset}>
+                Reset
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadPDF} disabled={!applied}>
+                <FileText className="size-3.5" /> Download PDF
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadExcel} disabled={!applied}>
+                <FileDown className="size-3.5 text-emerald-600" /> Download Excel
+              </Button>
+              <Button size="sm" onClick={applyFilter} className="gap-1.5">
+                <Filter className="size-3.5" /> Apply Filter
+              </Button>
+            </div>
+          </>
         )}
       </div>
 
@@ -1905,7 +1931,7 @@ function PlantField({ value, onChange }: { value: string; onChange: (v: string) 
     <div className="flex flex-col gap-1.5">
       <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Plant</label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-10">
+        <SelectTrigger className="h-8">
           <SelectValue placeholder="Select Plant" />
         </SelectTrigger>
         <SelectContent>
@@ -1926,7 +1952,7 @@ function DivisionField({ value, onChange }: { value: string; onChange: (v: strin
     <div className="flex flex-col gap-1.5">
       <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Division</label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-10">
+        <SelectTrigger className="h-8">
           <SelectValue placeholder="Select Division" />
         </SelectTrigger>
         <SelectContent>
@@ -2250,7 +2276,7 @@ function DateField({
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={cn("h-10 justify-start text-left font-normal", !value && "text-muted-foreground")}
+            className={cn("h-8 justify-start text-left font-normal", !value && "text-muted-foreground")}
           >
             <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
             {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
@@ -2283,7 +2309,7 @@ function SelectField({
         {label}
       </label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-10">
+        <SelectTrigger className="h-8">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
