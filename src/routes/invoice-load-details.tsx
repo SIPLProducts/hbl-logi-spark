@@ -1810,14 +1810,14 @@ function InvoiceFilterDownload({
           <div className="overflow-x-auto max-h-[560px]">
             <table className="w-full text-left border-collapse text-[12px]">
               <thead className="sticky top-0 z-30">
-                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                <tr className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
                   {["SI.No", "Map ID", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number",
                     "Truck Type", "Passing Weight (Tons)", "Actual Load (Tons)",
                     "Loading factor% (w.r.t weight)", "Actual Volume Occupied",
                     "Loading Factor w.r.t Volume", "Week Wise Shipment Flow", "Eway Bill Number",
                     "Eway Bill Expiry Date", "Plant", "Division", "Work Order", "LR No",
                     "Transporter", "Created date", "Vehicle Type"].map((h) => (
-                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
+                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left bg-gradient-primary shadow-soft">{h}</th>
                     ))}
                 </tr>
               </thead>
@@ -1878,11 +1878,11 @@ function InvoiceFilterDownload({
           <div className="overflow-x-auto max-h-[560px]">
             <table className="w-full text-left border-collapse text-[12px]">
               <thead className="sticky top-0 z-30">
-                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                <tr className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
                   {["SI.No", "Reference No", "Line No", "Date", "Plant", "Division", "Vehicle Type",
                     "No. of Trucks", "Work Order", "Vendor Code", "Transporter", "No. of LRs",
                     "LR Number", "Loading Point", "Unloading Point"].map((h) => (
-                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
+                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left bg-gradient-primary shadow-soft">{h}</th>
                     ))}
                 </tr>
               </thead>
