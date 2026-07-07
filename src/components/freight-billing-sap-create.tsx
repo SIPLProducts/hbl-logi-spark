@@ -325,6 +325,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setTableData([EMPTY_ROW()]);
     setSearchOptionsList([]);
     setShowForm(true);
+    setFinanceDetails("");
+    setJvNumber("");
+    setJvDate("");
+    setUtrNumber("");
+    setUtrDate("");
 
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("freight-billing-provision");
@@ -334,6 +339,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       sessionStorage.removeItem("freight-billing-date");
       sessionStorage.removeItem("freight-billing-submission-date");
       sessionStorage.removeItem("freight-billing-physical-date");
+      sessionStorage.removeItem("freight-billing-finance-details");
+      sessionStorage.removeItem("freight-billing-jv-number");
+      sessionStorage.removeItem("freight-billing-jv-date");
+      sessionStorage.removeItem("freight-billing-utr-number");
+      sessionStorage.removeItem("freight-billing-utr-date");
     }
   };
 
