@@ -262,6 +262,47 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(true);
 
+  const [financeDetails, setFinanceDetails] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-finance-details") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [jvNumber, setJvNumber] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-jv-number") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [jvDate, setJvDate] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-jv-date") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [utrNumber, setUtrNumber] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-utr-number") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [utrDate, setUtrDate] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-utr-date") || "";
+    } catch {
+      return "";
+    }
+  });
+
   const resetFormState = () => {
     setChecked(false);
     setSearchType("");
@@ -284,6 +325,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setTableData([EMPTY_ROW()]);
     setSearchOptionsList([]);
     setShowForm(true);
+    setFinanceDetails("");
+    setJvNumber("");
+    setJvDate("");
+    setUtrNumber("");
+    setUtrDate("");
 
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("freight-billing-provision");
@@ -293,6 +339,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       sessionStorage.removeItem("freight-billing-date");
       sessionStorage.removeItem("freight-billing-submission-date");
       sessionStorage.removeItem("freight-billing-physical-date");
+      sessionStorage.removeItem("freight-billing-finance-details");
+      sessionStorage.removeItem("freight-billing-jv-number");
+      sessionStorage.removeItem("freight-billing-jv-date");
+      sessionStorage.removeItem("freight-billing-utr-number");
+      sessionStorage.removeItem("freight-billing-utr-date");
     }
   };
 
@@ -309,7 +360,12 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     sessionStorage.setItem("freight-billing-date", freightBillDate);
     sessionStorage.setItem("freight-billing-submission-date", billSubmissionDate);
     sessionStorage.setItem("freight-billing-physical-date", physicalSubmissionDate);
-  }, [provision, account, provisionDate, freightBillNo, freightBillDate, billSubmissionDate, physicalSubmissionDate]);
+    sessionStorage.setItem("freight-billing-finance-details", financeDetails);
+    sessionStorage.setItem("freight-billing-jv-number", jvNumber);
+    sessionStorage.setItem("freight-billing-jv-date", jvDate);
+    sessionStorage.setItem("freight-billing-utr-number", utrNumber);
+    sessionStorage.setItem("freight-billing-utr-date", utrDate);
+  }, [provision, account, provisionDate, freightBillNo, freightBillDate, billSubmissionDate, physicalSubmissionDate, financeDetails, jvNumber, jvDate, utrNumber, utrDate]);
 
 
   const fetchGlobalReferences = async (row: TableRow, index: number, fieldKey: string) => {
@@ -419,6 +475,12 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         ZPR_TSHIP: provision ? provisionBreakdown["Transhipment Charges"] : 0,
         ZPR_OTHER: provision ? provisionBreakdown["Other Charges"] : 0,
         ZPR_DEDUCT: provision ? provisionBreakdown["Deduction"] : 0,
+
+        FINANCE_DETAILS: financeDetails,
+        JV_NUMBER: jvNumber,
+        JV_DATE: jvDate,
+        UTR_NUMBER: utrNumber,
+        UTR_DATE: utrDate,
       };
 
       console.log(record);
@@ -965,6 +1027,62 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     type="date"
                     value={billSubmissionDate}
                     onChange={(e) => setBillSubmissionDate(e.target.value)}
+                    className={GREEN_INPUT}
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="animate-in fade-in slide-in-from-top-2">
+              <label className={LABEL}>Finance Details</label>
+              <select
+                value={financeDetails}
+                onChange={(e) => setFinanceDetails(e.target.value)}
+                className={GREEN_INPUT}
+              >
+                <option value="" disabled>
+                  Select Finance Details
+                </option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+
+            {financeDetails === "Yes" && (
+              <>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>JV Number</label>
+                  <input
+                    value={jvNumber}
+                    onChange={(e) => setJvNumber(e.target.value)}
+                    placeholder="Enter JV Number"
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>JV Date</label>
+                  <input
+                    type="date"
+                    value={jvDate}
+                    onChange={(e) => setJvDate(e.target.value)}
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>UTR Number</label>
+                  <input
+                    value={utrNumber}
+                    onChange={(e) => setUtrNumber(e.target.value)}
+                    placeholder="Enter UTR Number"
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div className="animate-in fade-in slide-in-from-top-2">
+                  <label className={LABEL}>UTR Date</label>
+                  <input
+                    type="date"
+                    value={utrDate}
+                    onChange={(e) => setUtrDate(e.target.value)}
                     className={GREEN_INPUT}
                   />
                 </div>

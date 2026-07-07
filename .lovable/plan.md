@@ -1,44 +1,32 @@
-# Plan: Self-contained Shipment Details screen
+## Freight Billing — Add Conditional Finance Details Section
 
-Make `src/routes/shipment-details.tsx` fully standalone — no dependency on `LeScreenShell` — while preserving the current visible behavior for this screen.
+### Objective
+Add a dropdown field "Finance Details" with options "Yes" / "No" on the Freight Billing screen. When "Yes", show four fields: JV Number, JV Date, UTR Number, UTR Date. When "No", hide those four fields and keep the existing layout intact.
 
-## Scope
+### Scope
+This change is limited to `src/components/freight-billing-sap-create.tsx`. No backend or API changes.
 
-- Only `src/routes/shipment-details.tsx` is modified.
-- `LeScreenShell` and its file remain untouched (other routes still use it).
-- `ShipmentDetailsSapCreate` continues to be used as-is (it already holds the Outward/With-SAP create body).
+### Implementation Steps
 
-## What the new single file contains
+1. **Add state**  
+   Introduce `financeDetails` state (value `"" | "Yes" | "No"`), plus four string/date states: `jvNumber`, `jvDate`, `utrNumber`, `utrDate`. Persist them in `sessionStorage` alongside existing fields.
 
-All of the following lives in `src/routes/shipment-details.tsx`:
+2. **Wire reset / clear**  
+   Extend `resetFormState()` and the `useEffect(mode)` cleanup to clear the new five states and their sessionStorage keys.
 
-1. `createFileRoute("/shipment-details")` export.
-2. Local page component with the same shell UX currently rendered via `LeScreenShell`:
-   - Sticky page header with title "Shipment Details", Create / Filter & Download tabs, Refresh button.
-   - Create tab:
-     - Direction selector (Outward) + With SAP / Without SAP toggle.
-     - Pending / Completed count chips (from `counts` in `@/lib/le-mock-data`).
-     - When Outward + a SAP mode are chosen, render `<ShipmentDetailsSapCreate mode={sap} />`.
-     - Inward selection shows nothing (matches current behavior).
-   - Filter & Download tab:
-     - With SAP / Without SAP toggle.
-     - Filter grid: From Date, To Date, Plant, Division, Transporter, Vehicle Type, Status (using `PLANTS`, `DIVISIONS`, `TRANSPORTERS`, `VEHICLE_TYPES` from `@/lib/dispatch-mock`).
-     - Apply / Reset buttons, results table using the current columns (Sl.No, Map ID, Reference Number, Work Order Number, LR Number, Transporter) driven by mock `WorklistRow` data.
-3. All small helpers previously imported from `LeScreenShell` (`PremiumRadio`, `SapToggle`, `SearchSapToggle`, `DateField`, `SelectField`, `FieldInput`, `spanClass`, `KpiCard` as needed) are redefined locally in the same file — copied only to the extent this screen actually uses them. Unused ones are dropped.
-4. Local `SEARCH_TYPES`, `STATUS_OPTIONS`, and any constants used only here.
+3. **Add dropdown to the form grid**  
+   Place the "Finance Details" `<select>` in the existing field grid (line ~860+) using the same `GREEN_INPUT` / `LABEL` styling. Options: `""` (placeholder), `"Yes"`, `"No"`.
 
-## Removed
+4. **Conditionally render the four fields**  
+   Immediately after the Finance Details dropdown, render JV Number, JV Date, UTR Number, UTR Date only when `financeDetails === "Yes"`. Use the same grid column layout (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`) so the layout stays consistent when they appear/disappear.
 
-- `import { LeScreenShell, type WorklistColumn } from "@/components/le-screen-shell"` — deleted from this route.
-- The `columns`, `topFields`, `lineItems` props previously passed to `LeScreenShell` (topFields/lineItems were unused because `renderCreateBody` overrode them).
+5. **Include in save payload**  
+   Add the five new fields to the `record` object sent in `saveFreightBilling` so they are submitted with the save call.
 
-## Verification
+### Files Changed
+- `src/components/freight-billing-sap-create.tsx` (single file)
 
-- `bun run build` (or dev server) succeeds.
-- `/shipment-details` renders: header + tabs, direction+SAP flow shows `ShipmentDetailsSapCreate`, Filter & Download tab shows filters and results table.
-- Other routes (dispatch, order-info, etc.) still compile — `LeScreenShell` file is unchanged.
-
-## Technical notes
-
-- Keep styling classes identical to the shell (`bg-surface`, `border-hairline`, `bg-gradient-primary`, `shadow-elegant`, etc.) so the visual output matches today's screen.
-- Keep the file under ~500 lines by only porting the pieces this screen uses (no KPI cards, no grouped field sections, no line-items shell block — the SAP create body already handles line items).
+### Verification
+- Build passes (`bun run build`).
+- Preview shows the Finance Details dropdown.
+- Selecting "Yes" reveals the four fields; "No" hides them.
