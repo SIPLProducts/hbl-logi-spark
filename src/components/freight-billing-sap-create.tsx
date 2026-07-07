@@ -360,7 +360,12 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     sessionStorage.setItem("freight-billing-date", freightBillDate);
     sessionStorage.setItem("freight-billing-submission-date", billSubmissionDate);
     sessionStorage.setItem("freight-billing-physical-date", physicalSubmissionDate);
-  }, [provision, account, provisionDate, freightBillNo, freightBillDate, billSubmissionDate, physicalSubmissionDate]);
+    sessionStorage.setItem("freight-billing-finance-details", financeDetails);
+    sessionStorage.setItem("freight-billing-jv-number", jvNumber);
+    sessionStorage.setItem("freight-billing-jv-date", jvDate);
+    sessionStorage.setItem("freight-billing-utr-number", utrNumber);
+    sessionStorage.setItem("freight-billing-utr-date", utrDate);
+  }, [provision, account, provisionDate, freightBillNo, freightBillDate, billSubmissionDate, physicalSubmissionDate, financeDetails, jvNumber, jvDate, utrNumber, utrDate]);
 
 
   const fetchGlobalReferences = async (row: TableRow, index: number, fieldKey: string) => {
