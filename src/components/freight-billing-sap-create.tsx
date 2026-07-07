@@ -262,6 +262,47 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(true);
 
+  const [financeDetails, setFinanceDetails] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-finance-details") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [jvNumber, setJvNumber] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-jv-number") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [jvDate, setJvDate] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-jv-date") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [utrNumber, setUtrNumber] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-utr-number") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [utrDate, setUtrDate] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return sessionStorage.getItem("freight-billing-utr-date") || "";
+    } catch {
+      return "";
+    }
+  });
+
   const resetFormState = () => {
     setChecked(false);
     setSearchType("");
