@@ -402,10 +402,15 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
     updateRow(index, {
       ZMAPID: selectedObj.MAPID,
       ZREFNO: selectedObj.referenceNumber,
+      ZLINE_NO: selectedObj.lineNumber,
       ZWORK_ORDER: selectedObj.workOrderNumber,
       ZLRNO: selectedObj.lrNumber,
       ZTRANSPORTER: selectedObj.transporter,
-      ZLINE_NO: selectedObj.lineNumber,
+      ZSO_NO: selectedObj.soNumber,
+      ZODN_NO: selectedObj.odnNumber,
+      ZPIN_PLT: selectedObj.plantCode,
+      ZPIN_STP: selectedObj.shippingPoint,
+      MTART: items[index]?.MTART || selectedObj.materialType,
     });
   };
 
