@@ -475,6 +475,12 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         ZPR_TSHIP: provision ? provisionBreakdown["Transhipment Charges"] : 0,
         ZPR_OTHER: provision ? provisionBreakdown["Other Charges"] : 0,
         ZPR_DEDUCT: provision ? provisionBreakdown["Deduction"] : 0,
+
+        FINANCE_DETAILS: financeDetails,
+        JV_NUMBER: jvNumber,
+        JV_DATE: jvDate,
+        UTR_NUMBER: utrNumber,
+        UTR_DATE: utrDate,
       };
 
       console.log(record);
