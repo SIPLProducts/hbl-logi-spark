@@ -402,10 +402,15 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
     updateRow(index, {
       ZMAPID: selectedObj.MAPID,
       ZREFNO: selectedObj.referenceNumber,
+      ZLINE_NO: selectedObj.lineNumber,
       ZWORK_ORDER: selectedObj.workOrderNumber,
       ZLRNO: selectedObj.lrNumber,
       ZTRANSPORTER: selectedObj.transporter,
-      ZLINE_NO: selectedObj.lineNumber,
+      ZSO_NO: selectedObj.soNumber,
+      ZODN_NO: selectedObj.odnNumber,
+      ZPIN_PLT: selectedObj.plantCode,
+      ZPIN_STP: selectedObj.shippingPoint,
+      MTART: items[index]?.MTART || selectedObj.materialType,
     });
   };
 
@@ -639,15 +644,41 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
     const commonFields = { ZINCO: zinco || "", ZINS_SCPOE: zinsScope || "", ZKM: zkm || "", VBELN: vbeln || "" };
 
-    const finalPayload = selectedRows.map((row) => ({
-      ...row,
-      ZINS_SCPOE: row.ZINS_SCPOE?.trim() ? row.ZINS_SCPOE : commonFields.ZINS_SCPOE,
-      ZKM: row.ZKM !== "" && row.ZKM != null ? row.ZKM : commonFields.ZKM,
-      ZINCO: row.ZINCO?.trim() ? row.ZINCO : commonFields.ZINCO,
-      VBELN: row.VBELN?.trim() ? row.VBELN : commonFields.VBELN,
-      ZUSER: loggedInUser,
-      ZUSER_CH: "",
-    }));
+    const refByMapId = new Map(selectedItems.map((r) => [r.MAPID, r]));
+    const finalPayload = selectedRows.map((row) => {
+      const ref = refByMapId.get(row.ZMAPID);
+      return {
+        ...row,
+        ZREFNO: row.ZREFNO || ref?.referenceNumber || "",
+        ZLINE_NO: row.ZLINE_NO || ref?.lineNumber || "",
+        ZWORK_ORDER: row.ZWORK_ORDER || ref?.workOrderNumber || "",
+        ZLRNO: row.ZLRNO || ref?.lrNumber || "",
+        ZTRANSPORTER: row.ZTRANSPORTER || ref?.transporter || "",
+        ZSO_NO: row.ZSO_NO || ref?.soNumber || "",
+        ZODN_NO: row.ZODN_NO || ref?.odnNumber || "",
+        ZPIN_PLT: row.ZPIN_PLT || ref?.plantCode || "",
+        ZPIN_STP: row.ZPIN_STP || ref?.shippingPoint || "",
+        MTART: row.MTART || ref?.materialType || "",
+        ZINS_SCPOE: row.ZINS_SCPOE?.trim() ? row.ZINS_SCPOE : commonFields.ZINS_SCPOE,
+        ZKM: row.ZKM !== "" && row.ZKM != null ? row.ZKM : commonFields.ZKM,
+        ZINCO: row.ZINCO?.trim() ? row.ZINCO : commonFields.ZINCO,
+        VBELN: row.VBELN?.trim() ? row.VBELN : commonFields.VBELN,
+        ZUSER: loggedInUser,
+        ZUSER_CH: "",
+      };
+    });
+
+    const missing = finalPayload.find(
+      (r) => !r.ZREFNO || !r.ZMAPID || (isSap && !r.VBELN),
+    );
+    if (missing) {
+      Swal.fire({
+        icon: "warning",
+        title: "Incomplete row",
+        text: "Please pick a Map ID that matches a selected reference row so Ref No / Invoice No get populated.",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
