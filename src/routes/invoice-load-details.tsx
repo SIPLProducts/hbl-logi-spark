@@ -1561,7 +1561,7 @@ function InvoiceFilterDownload({
       if (fStatus === "Completed") {
         setCompletedRows(records);
         setPendingRows([]);
-        await Swal.fire('Success', `Invoice Load Details records: ${records.length}`, 'success');
+        await Swal.fire('Success', `Loading Factor records: ${records.length}`, 'success');
       } else {
         setPendingRows(records);
         setCompletedRows([]);
@@ -1582,8 +1582,8 @@ function InvoiceFilterDownload({
     const fileName =
       fStatus === "Completed"
         ? mode === "with"
-          ? "InvoiceLoadDetails_Completed_SAP.xlsx"
-          : "InvoiceLoadDetails_Completed_NonSAP.xlsx"
+          ? "Loading Factor_Completed_SAP.xlsx"
+          : "Loading Factor_Completed_NonSAP.xlsx"
         : mode === "with"
           ? "Dispatch_Pending_SAP.xlsx"
           : "Dispatch_Pending_NonSAP.xlsx";
@@ -1603,9 +1603,9 @@ function InvoiceFilterDownload({
           "Loading factor % (w.r.t weight)": item.ZLF_WT || "",
           "Actual Volume Occupied": item.ZACT_VOL || "",
           "Loading Factor w.r.t Volume": item.ZLF_VOL || "",
-          "Week Wise Shipment Flow": item.ZWEEK_SF || "",
-          "Eway Bill Number": item.ZEWAYBILL_NO || "",
-          "Eway Bill Expiry Date": item.ZEWAYBILL_DT || "",
+          // "Week Wise Shipment Flow": item.ZWEEK_SF || "",
+          // "Eway Bill Number": item.ZEWAYBILL_NO || "",
+          // "Eway Bill Expiry Date": item.ZEWAYBILL_DT || "",
           Plant: item.ZPLANT || "",
           Division: item.ZDIVISION || "",
           "Work Order": item.ZWORK_ORDER || "",
@@ -1649,13 +1649,13 @@ function InvoiceFilterDownload({
     const fileName =
       fStatus === "Completed"
         ? mode === "with"
-          ? "Invoice-load-details_Completed_SAP.pdf"
-          : "Invoice-load-details_Completed_NonSAP.pdf"
+          ? "Loading Factor_Completed_SAP.pdf"
+          : "Loading Factor_Completed_NonSAP.pdf"
         : mode === "with"
           ? "Dispatch_Pending_SAP.pdf"
           : "Dispatch_Pending_NonSAP.pdf";
     const reportTitle =
-      fStatus === "Completed" ? "Invoice Load Details Records (Completed)" : "Dispatch Records (Pending)";
+      fStatus === "Completed" ? "Loading Factor Records (Completed)" : "Dispatch Records (Pending)";
 
     const doc = new (jsPDF as any)({ orientation: "landscape", unit: "mm", format: [420, 297] });
     doc.setFontSize(16);
@@ -1675,8 +1675,7 @@ function InvoiceFilterDownload({
         [
           "SI.No", "Map ID", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number",
           "Truck Type", "Passing Weight (Tons)", "Actual Load (Tons)", "Loading factor % (Wt)",
-          "Actual Volume", "Loading Factor (Vol)", "Week Wise Shipment Flow", "Eway Bill No",
-          "Eway Bill Expiry", "Plant", "Division", "Work Order", "LR No", "Transporter",
+          "Actual Volume", "Loading Factor (Vol)", "Plant", "Division", "Work Order", "LR No", "Transporter",
           "Created Date", "Vehicle Type",
         ],
       ];
@@ -1684,7 +1683,7 @@ function InvoiceFilterDownload({
         index + 1, item.ZMAPID || "", item.ZLINE_NO || "", item.ZREFNO || "", item.VBELN || "",
         item.ZODN_NO || "", item.ZSO_NO || "", item.ZTRUC_TYPE || "", item.ZTRUC_WT || "",
         item.ZACT_LOAD || "", item.ZLF_WT || "", item.ZACT_VOL || "", item.ZLF_VOL || "",
-        item.ZWEEK_SF || "", item.ZEWAYBILL_NO || "", item.ZEWAYBILL_DT || "", item.ZPLANT || "",
+        item.ZPLANT || "",
         item.ZDIVISION || "", item.ZWORK_ORDER || "", item.ZLRNO || "", item.ZTRANSPORTER || "",
         item.ZCREATED_DT ? format(new Date(item.ZCREATED_DT), "dd-MM-yyyy") : "", item.ZVEH_TYPE || "",
       ]);
@@ -1800,7 +1799,7 @@ function InvoiceFilterDownload({
           <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
             <div>
               <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
-                Invoice Load Details — Completed
+                Loading Factor — Completed
               </h3>
               <p className="text-[11.5px] text-muted-foreground mt-0.5">
                 {completedRows.length} row{completedRows.length === 1 ? "" : "s"}
@@ -1814,8 +1813,7 @@ function InvoiceFilterDownload({
                   {["SI.No", "Map ID", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number",
                     "Truck Type", "Passing Weight (Tons)", "Actual Load (Tons)",
                     "Loading factor% (w.r.t weight)", "Actual Volume Occupied",
-                    "Loading Factor w.r.t Volume", "Week Wise Shipment Flow", "Eway Bill Number",
-                    "Eway Bill Expiry Date", "Plant", "Division", "Work Order", "LR No",
+                    "Loading Factor w.r.t Volume", "Plant", "Division", "Work Order", "LR No",
                     "Transporter", "Created date", "Vehicle Type"].map((h) => (
                       <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left bg-gradient-primary shadow-soft">{h}</th>
                     ))}
@@ -1844,9 +1842,9 @@ function InvoiceFilterDownload({
                       <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZLF_WT}</td>
                       <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZACT_VOL}</td>
                       <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZLF_VOL}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{item.ZWEEK_SF}</td>
+                      {/* <td className="px-3 py-2 whitespace-nowrap">{item.ZWEEK_SF}</td>
                       <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZEWAYBILL_NO}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{item.ZEWAYBILL_DT}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZEWAYBILL_DT}</td> */}
                       <td className="px-3 py-2 whitespace-nowrap">{item.ZPLANT}</td>
                       <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
                       <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>
