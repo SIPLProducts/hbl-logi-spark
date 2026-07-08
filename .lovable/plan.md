@@ -1,32 +1,41 @@
-## Freight Billing — Add Conditional Finance Details Section
+## Reduce scrolling on Invoice Load Details — Filter & Download tab
 
 ### Objective
-Add a dropdown field "Finance Details" with options "Yes" / "No" on the Freight Billing screen. When "Yes", show four fields: JV Number, JV Date, UTR Number, UTR Date. When "No", hide those four fields and keep the existing layout intact.
+Make the Filter & Download section fit within the visible screen with minimal scrolling. Keep all existing CSS/design tokens in `src/styles.css` untouched — only adjust Tailwind utility classes already in use in the JSX.
 
 ### Scope
-This change is limited to `src/components/freight-billing-sap-create.tsx`. No backend or API changes.
+Single file: `src/routes/invoice-load-details.tsx`, inside the `InvoiceFilterDownload` component (lines ~1722–1786 for the filter card, ~1788–1866 for the empty/results container).
 
-### Implementation Steps
+### Changes
 
-1. **Add state**  
-   Introduce `financeDetails` state (value `"" | "Yes" | "No"`), plus four string/date states: `jvNumber`, `jvDate`, `utrNumber`, `utrDate`. Persist them in `sessionStorage` alongside existing fields.
+1. **Compact the Filter Options card**
+   - Header row: `px-5 py-4` → `px-4 py-2`.
+   - Body grid: `p-4 … gap-x-4 gap-y-3` → `p-3 … gap-x-3 gap-y-2`.
+   - Bump grid density on wide screens: `lg:grid-cols-3` → `lg:grid-cols-4 xl:grid-cols-6` so all 7 filter fields fit in ~2 rows on desktop, 1 row on wide.
+   - Footer action bar: `px-4 py-3` → `px-3 py-2`.
+   - Card rounding stays (`rounded-2xl`) — no token changes.
 
-2. **Wire reset / clear**  
-   Extend `resetFormState()` and the `useEffect(mode)` cleanup to clear the new five states and their sessionStorage keys.
+2. **Shrink the "Select With/Without SAP" placeholder**
+   - `p-6` → `p-3`, text stays `text-[12px]`.
 
-3. **Add dropdown to the form grid**  
-   Place the "Finance Details" `<select>` in the existing field grid (line ~860+) using the same `GREEN_INPUT` / `LABEL` styling. Options: `""` (placeholder), `"Yes"`, `"No"`.
+3. **Shrink the "No results yet" empty state**
+   - Outer padding: `p-10` → `p-5`.
+   - Icon circle: `size-12` → `size-9`, inner icon `size-5` → `size-4`.
+   - Heading: `mt-4 text-lg` → `mt-2 text-sm`.
+   - Helper text: `mt-1` → `mt-0.5`.
 
-4. **Conditionally render the four fields**  
-   Immediately after the Finance Details dropdown, render JV Number, JV Date, UTR Number, UTR Date only when `financeDetails === "Yes"`. Use the same grid column layout (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`) so the layout stays consistent when they appear/disappear.
+4. **Cap results table to available viewport instead of fixed 560px**
+   - Both results tables (`Completed` at ~line 1810 and `Pending` at ~line 1878): `max-h-[560px]` → `max-h-[calc(100vh-320px)]`. Sticky header still works because the `overflow-x-auto` wrapper owns the scroll container.
+   - Results card header padding: `px-5 py-3` → `px-4 py-2` on both blocks so the table area gets more vertical room.
 
-5. **Include in save payload**  
-   Add the five new fields to the `record` object sent in `saveFreightBilling` so they are submitted with the save call.
+5. **Tab container spacing**
+   - `TabsContent value="search"` currently uses `mt-5 space-y-5` (line 2154). Change to `mt-2 space-y-2` so the filter card starts higher and the results card sits closer beneath it.
 
-### Files Changed
-- `src/components/freight-billing-sap-create.tsx` (single file)
+### Non-goals
+- No edits to `src/styles.css`, theme tokens, or any global CSS.
+- No changes to filter logic, payloads, download handlers, or the Create tab.
+- No layout restructuring outside the two blocks above.
 
 ### Verification
-- Build passes (`bun run build`).
-- Preview shows the Finance Details dropdown.
-- Selecting "Yes" reveals the four fields; "No" hides them.
+- Build passes.
+- On a standard desktop viewport (~1188×724 as in the current preview), the Filter Options card + action bar + either empty state or a short results list fit without page-level scroll; only the table body scrolls when rows exceed the capped height.
