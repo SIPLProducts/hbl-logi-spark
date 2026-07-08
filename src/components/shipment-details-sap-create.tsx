@@ -1,15 +1,23 @@
 import { useState } from "react";
-import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import Swal from "sweetalert2";
+import { Search, Plus, Trash2, Save, ChevronLeft, ChevronRight, Pencil, Check, X as XIcon } from "lucide-react";
+// @ts-ignore
+import service from "../services/generalservice_service.js";
 
 const GREEN_INPUT =
-  "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+  "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60 disabled:cursor-not-allowed";
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
-const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
+const SEARCH_OPTIONS = [
+  { key: "ref_no", label: "Reference No" },
+  { key: "inv_no", label: "Invoice No" },
+  { key: "odn_no", label: "ODN No" },
+  { key: "so_no", label: "SO No" },
+  { key: "lr_no", label: "LR NO" },
+];
 
-const INCOTERMS = ["FOR", "FOB", "CIF", "EXW", "DAP"];
 const INSURANCE_SCOPE = ["Buyer", "Supplier"];
-const MAP_IDS = ["101", "102", "200"];
 const PRODUCTS = [
   "Batteries",
   "Electronics",
@@ -43,54 +51,662 @@ const BATTERY_CONDITIONS = [
   "Lead acid batteries (Filled)",
 ];
 
+// ---------- Types ----------
+type RefRow = {
+  MAPID: string;
+  referenceNumber: string;
+  workOrderNumber: string;
+  lrNumber: string;
+  transporter: string;
+  soNumber: string;
+  odnNumber: string;
+  materialType: string;
+  plantCode: string;
+  shippingPoint: string;
+  lineNumber: string;
+};
+
+const emptyRefRow = (): RefRow => ({
+  MAPID: "",
+  referenceNumber: "",
+  workOrderNumber: "",
+  lrNumber: "",
+  transporter: "",
+  soNumber: "",
+  odnNumber: "",
+  materialType: "",
+  plantCode: "",
+  shippingPoint: "",
+  lineNumber: "",
+});
+
+type ProductRow = {
+  selected: boolean;
+  ZMAPID: string;
+  ZPRODUCT: string;
+  MTART: string;
+  MAKTX: string;
+  ZSETS: string;
+  ZAH: string;
+  ZSHIP_WT: string;
+  ZBATCOND: string;
+  ZREFNO: string;
+  ZLINE_NO: string;
+  VBELN: string;
+  POSNR: string;
+  ZSO_NO: string;
+  ZODN_NO: string;
+  ZINCO: string;
+  ZINS_SCPOE: string;
+  ZPIN_PLT: string;
+  ZPIN_STP: string;
+  ZKM: string;
+  ZWORK_ORDER: string;
+  ZLRNO: string;
+  ZTRANSPORTER: string;
+};
+
+const emptyProductRow = (): ProductRow => ({
+  selected: false,
+  ZMAPID: "",
+  ZPRODUCT: "",
+  MTART: "",
+  MAKTX: "",
+  ZSETS: "",
+  ZAH: "",
+  ZSHIP_WT: "",
+  ZBATCOND: "",
+  ZREFNO: "",
+  ZLINE_NO: "",
+  VBELN: "",
+  POSNR: "",
+  ZSO_NO: "",
+  ZODN_NO: "",
+  ZINCO: "",
+  ZINS_SCPOE: "",
+  ZPIN_PLT: "",
+  ZPIN_STP: "",
+  ZKM: "",
+  ZWORK_ORDER: "",
+  ZLRNO: "",
+  ZTRANSPORTER: "",
+});
+
 export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
-  const isWithout = mode === "without";
-  const [checked, setChecked] = useState(true);
-  const [searchType, setSearchType] = useState("");
-  const [searchValue, setSearchValue] = useState("");
-  const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [revealed, setRevealed] = useState(false);
-  type LineItem = {
-    id: number;
-    checked: boolean;
-    mapId: string;
-    product: string;
-    materialType: string;
-    description: string;
-    qty: string;
-    ahLoaded: string;
-    weight: string;
-    batteryCondition: string;
+  const isSap = mode === "with";
+  const navigate = useNavigate();
+
+  const currentUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("currentUser") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  const loggedInUser = currentUser.USER || "";
+
+  // ---- Reference table ----
+  const [referenceItems, setReferenceItems] = useState<RefRow[]>([emptyRefRow()]);
+  const [selectedItems, setSelectedItems] = useState<RefRow[]>([]);
+  const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
+  const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
+
+  // ---- Invoice / DC reference / common fields ----
+  const [invoicenumber, setInvoicenumber] = useState("");
+  const [showForm, setShowForm] = useState(!isSap); // Non-SAP shows form immediately
+  const [zinco, setZinco] = useState("");
+  const [zinsScope, setZinsScope] = useState("");
+  const [zkm, setZkm] = useState("");
+  const [vbeln, setVbeln] = useState(""); // DC reference (non-SAP)
+  const [incotermsList, setIncotermsList] = useState<any[]>([]);
+
+  // ---- Product table ----
+  const [items, setItems] = useState<ProductRow[]>([emptyProductRow()]);
+  const [isAllSelected, setIsAllSelected] = useState(false);
+
+  // ---- Global search ----
+  const [selectedType, setSelectedType] = useState("");
+  const [searchReference, setSearchReference] = useState("");
+  const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
+
+  const [loading, setLoading] = useState(false);
+
+  const rowMatches = (a: RefRow, b: RefRow) =>
+    a.MAPID === b.MAPID &&
+    a.referenceNumber === b.referenceNumber &&
+    a.workOrderNumber === b.workOrderNumber &&
+    a.lrNumber === b.lrNumber &&
+    a.transporter === b.transporter &&
+    a.soNumber === b.soNumber &&
+    a.odnNumber === b.odnNumber &&
+    a.lineNumber === b.lineNumber;
+
+  // ---------- Reference row field-blur lookup (only row 0 is editable/live) ----------
+  const updateRefRow = (index: number, patch: Partial<RefRow>) => {
+    setReferenceItems((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   };
-  const newLineItem = (id: number): LineItem => ({
-    id,
-    checked: false,
-    mapId: "",
-    product: "",
-    materialType: "",
-    description: "",
-    qty: "",
-    ahLoaded: "",
-    weight: "0",
-    batteryCondition: "",
+
+  const populateReferenceRows = (data: any[]) => {
+    setInvoiceF4List([]);
+    setSelectedItems([]);
+    setFullReferenceData([]);
+
+    if (data && data.length > 0) {
+      setFullReferenceData(data);
+      const f4: string[] = [];
+      const rows: RefRow[] = data.map((d: any) => {
+        if (d.INV_NO && Array.isArray(d.INV_NO)) {
+          d.INV_NO.forEach((inv: any) => {
+            if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
+          });
+        }
+        return {
+          MAPID: d.MAPID || "",
+          referenceNumber: d.REF_NO || d.referenceNumber || "",
+          workOrderNumber: d.WORK_ORDER_NO || d.workOrderNumber || "",
+          lrNumber: d.LR_NO || d.lrNumber || "",
+          transporter: d.TRANSPORTER || d.transporter || "",
+          soNumber: d.SO_NO || d.soNumber || "",
+          odnNumber: d.ODN_NO || d.odnNumber || "",
+          materialType: d.MTART || d.materialType || "",
+          plantCode: d.PLANT_CODE || d.ZPIN_PLT || d.plantCode || "",
+          shippingPoint: d.SHIPPING_POINT || d.ZPIN_STP || d.shippingPoint || "",
+          lineNumber: d.LINE_NO || d.lineNumber || "",
+        };
+      });
+      setReferenceItems(rows);
+      setInvoiceF4List(f4);
+      setVbeln("");
+    } else {
+      Swal.fire({
+        icon: "info",
+        title: "No Records Found",
+        text: "No matching reference details were found.",
+        timer: 1500,
+        showConfirmButton: false,
+        width: 300,
+      });
+      setReferenceItems([emptyRefRow()]);
+    }
+  };
+
+  const onFieldBlur = async (index: number, fieldKey: "REF_NO" | "WORK_ORDER_NO" | "LR_NO" | "TRANSPORTER") => {
+    if (index !== 0) return;
+    const values = referenceItems[0];
+
+    if (!values.referenceNumber && !values.workOrderNumber && !values.lrNumber && !values.transporter) {
+      setReferenceItems([emptyRefRow()]);
+      return;
+    }
+
+    const obj = {
+      global_scr: "SHIPMENT DETAILS",
+      REF_NO: fieldKey === "REF_NO" ? values.referenceNumber : "",
+      WORK_ORDER_NO: fieldKey === "WORK_ORDER_NO" ? values.workOrderNumber : "",
+      LR_NO: fieldKey === "LR_NO" ? values.lrNumber : "",
+      TRANSPORTER: fieldKey === "TRANSPORTER" ? values.transporter : "",
+      LINE_NO: values.lineNumber || "",
+      ZUSER: loggedInUser,
+    };
+
+    setLoading(true);
+    try {
+      const res = isSap
+        ? await service.GlobalReferenceNoFetch(obj)
+        : await service.GlobalReferenceNoFetchwithoutsap(obj);
+      populateReferenceRows(res);
+    } catch (err) {
+      console.error("Reference fetch error:", err);
+      Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch reference details." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeReferenceRow = (index: number) => {
+    const rowValue = referenceItems[index];
+    setReferenceItems((prev) => prev.filter((_, i) => i !== index));
+    setSelectedItems((prev) =>
+      prev.filter(
+        (item) =>
+          !(
+            item.referenceNumber === rowValue.referenceNumber &&
+            item.workOrderNumber === rowValue.workOrderNumber &&
+            item.lrNumber === rowValue.lrNumber &&
+            item.transporter === rowValue.transporter
+          ),
+      ),
+    );
+  };
+
+  const updateInvoiceListForSelectedItems = (nextSelected: RefRow[]) => {
+    if (nextSelected.length === 0) {
+      setInvoiceF4List([]);
+      return;
+    }
+    const selectedMapIds = [...new Set(nextSelected.map((i) => i.MAPID))];
+    const f4: string[] = [];
+    fullReferenceData.forEach((refItem) => {
+      if (selectedMapIds.includes(refItem.MAPID) && refItem.INV_NO && Array.isArray(refItem.INV_NO)) {
+        refItem.INV_NO.forEach((inv: any) => {
+          if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
+        });
+      }
+    });
+    setInvoiceF4List(f4);
+  };
+
+  const isItemSelected = (index: number) => {
+    const rowValue = referenceItems[index];
+    return selectedItems.some((item) => rowMatches(item, rowValue));
+  };
+
+  const onCheckboxChange = (index: number, checked: boolean) => {
+    const rowValue = referenceItems[index];
+    setSelectedItems((prev) => {
+      let next: RefRow[];
+      if (checked) {
+        next = prev.some((i) => rowMatches(i, rowValue)) ? prev : [...prev, rowValue];
+      } else {
+        next = prev.filter((i) => !rowMatches(i, rowValue));
+      }
+      updateInvoiceListForSelectedItems(next);
+      return next;
+    });
+  };
+
+  // ---------- Invoice GET (SAP) ----------
+  const fetchInvoiceDetails = async () => {
+    if (!invoicenumber.trim()) {
+      Swal.fire({ icon: "warning", title: "Please enter a valid Invoice Number" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await service.shipmentdetailsfetch({ INV_GET: invoicenumber.trim() });
+      const result = Array.isArray(res) ? res : [];
+      if (result.length === 0) {
+        Swal.fire({ icon: "info", title: "No data found for this reference." });
+        return;
+      }
+      const firstItem = result[0];
+      setZinco(firstItem.ZINCO || "");
+      setZinsScope(firstItem.ZINS_SCPOE || "");
+      setZkm(firstItem.ZKM ?? "");
+      setVbeln(firstItem.VBELN || "");
+
+      setItems(
+        result.map((item: any) => ({
+          selected: false,
+          ZMAPID: String(item.ZMAPID ?? ""),
+          ZPRODUCT: item.ZPRODUCT || "",
+          MTART: item.MTART || "",
+          MAKTX: item.MAKTX || "",
+          ZSETS: item.ZSETS ?? "",
+          ZAH: item.ZAH ?? "",
+          ZSHIP_WT: item.ZSHIP_WT ?? "",
+          ZBATCOND: item.ZBATCOND || "",
+          ZREFNO: item.ZREFNO || "",
+          ZLINE_NO: item.ZLINE_NO || "",
+          VBELN: item.VBELN || "",
+          POSNR: item.POSNR || "",
+          ZSO_NO: item.ZSO_NO || "",
+          ZODN_NO: item.ZODN_NO || "",
+          ZINCO: item.ZINCO || "",
+          ZINS_SCPOE: item.ZINS_SCPOE || "",
+          ZPIN_PLT: item.ZPIN_PLT || "",
+          ZPIN_STP: item.ZPIN_STP || "",
+          ZKM: item.ZKM || "",
+          ZWORK_ORDER: item.ZWORK_ORDER || "",
+          ZLRNO: item.ZLRNO || "",
+          ZTRANSPORTER: item.ZTRANSPORTER || "",
+        })),
+      );
+      setShowForm(true);
+      setSearchOptionsList([]);
+      Swal.fire({ icon: "success", title: "Success", text: "Invoice details loaded successfully" });
+    } catch (err) {
+      console.error("Invoice fetch error:", err);
+      Swal.fire({ icon: "error", title: "Error", text: "Error fetching data from SAP." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ---------- Product rows ----------
+  const addRow = () => setItems((prev) => [...prev, emptyProductRow()]);
+  const removeRow = (index: number) => {
+    setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  };
+  const updateRow = (index: number, patch: Partial<ProductRow>) => {
+    setItems((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  };
+  const toggleAllSelection = (checked: boolean) => {
+    setIsAllSelected(checked);
+    setItems((prev) => prev.map((r) => ({ ...r, selected: checked })));
+  };
+  const onRowCheckboxChange = (index: number, checked: boolean) => {
+    setItems((prev) => {
+      const next = prev.map((r, i) => (i === index ? { ...r, selected: checked } : r));
+      setIsAllSelected(next.length > 0 && next.every((r) => r.selected));
+      return next;
+    });
+  };
+
+  const onChangeMapId = (index: number, mapId: string) => {
+    const selectedObj = selectedItems.find((item) => item.MAPID === mapId);
+    if (!selectedObj) {
+      updateRow(index, { ZMAPID: mapId });
+      return;
+    }
+    updateRow(index, {
+      ZMAPID: selectedObj.MAPID,
+      ZREFNO: selectedObj.referenceNumber,
+      ZWORK_ORDER: selectedObj.workOrderNumber,
+      ZLRNO: selectedObj.lrNumber,
+      ZTRANSPORTER: selectedObj.transporter,
+      ZLINE_NO: selectedObj.lineNumber,
+    });
+  };
+
+  // ---------- Global search ----------
+  const onSearchTypeChange = (val: string) => {
+    setSelectedType(val);
+    setSearchReference("");
+    setSearchOptionsList([]);
+  };
+
+  const onSearchReference = async () => {
+    if (!searchReference.trim()) {
+      Swal.fire({ icon: "warning", title: "Please enter a value" });
+      return;
+    }
+    if (!selectedType) {
+      Swal.fire({ icon: "info", title: "Please select a search type" });
+      return;
+    }
+    const data: Record<string, string> = {
+      ref_no: "",
+      inv_no: "",
+      so_no: "",
+      transporter: "",
+      lr_no: "",
+      workorder_no: "",
+      sales_person: "",
+      location: "",
+      odn_no: "",
+      vehicle_no: "",
+      freight_billno: "",
+      nature_damage: "",
+      claim_status: "",
+    };
+    data[selectedType] = searchReference.trim();
+    const payload1 = { global: "SHIPMENT DETAILS", ZUSER: loggedInUser, data };
+
+    setLoading(true);
+    try {
+      const res = isSap
+        ? await service.global_Fields_SearchOption(payload1)
+        : await service.global_Fields_SearchOption_WithoutSap(payload1);
+
+      if (res?.NUMBER === "100" && res?.STATUS === "FALSE") {
+        setSearchOptionsList([]);
+        Swal.fire({ title: "", text: res.MESSAGE, icon: "warning" });
+      } else if (!res?.HEADER || res.HEADER.length === 0) {
+        setSearchOptionsList([]);
+        Swal.fire({ title: "No records found", icon: "info" });
+      } else {
+        setSearchOptionsList(res.HEADER.map((item: any) => ({ ...item, isEdit: false })));
+        setShowForm(false);
+        Swal.fire({ title: "Data fetched successfully!", icon: "success" });
+      }
+    } catch (err) {
+      console.error("Search error:", err);
+      Swal.fire({ title: "Error fetching data", icon: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const editSearchRow = (index: number) => {
+    setSearchOptionsList((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, _backup: { ...r }, isEdit: true } : r)),
+    );
+  };
+
+  const cancelSearchEdit = (index: number) => {
+    setSearchOptionsList((prev) =>
+      prev.map((r, i) => {
+        if (i !== index) return r;
+        const restored = r._backup ? { ...r._backup } : r;
+        return { ...restored, isEdit: false };
+      }),
+    );
+  };
+
+  const patchSearchRow = (index: number, patch: Record<string, any>) => {
+    setSearchOptionsList((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  };
+
+  const buildChangePayload = (row: any) => ({
+    CHANGE: [
+      {
+        ZREFNO: row.ZREFNO,
+        ZLINE_NO: row.ZLINE_NO,
+        VBELN: row.VBELN,
+        POSNR: row.POSNR,
+        ZMAPID: row.ZMAPID,
+        ZSO_NO: row.ZSO_NO,
+        ZODN_NO: row.ZODN_NO,
+        ZPRODUCT: row.ZPRODUCT,
+        MTART: row.MTART,
+        MAKTX: row.MAKTX,
+        ZSETS: row.ZSETS,
+        ZAH: row.ZAH,
+        ZSHIP_WT: row.ZSHIP_WT,
+        ZBATCOND: row.ZBATCOND,
+        ZINCO: row.ZINCO,
+        ZINS_SCPOE: row.ZINS_SCPOE,
+        ZPIN_PLT: row.ZPIN_PLT,
+        ZPIN_STP: row.ZPIN_STP,
+        ZKM: row.ZKM,
+        ZWORK_ORDER: row.ZWORK_ORDER,
+        ZLRNO: row.ZLRNO,
+        ZTRANSPORTER: row.ZTRANSPORTER,
+        ZPLANT: row.ZPLANT,
+        ZDIVISION: row.ZDIVISION,
+        ZCREATED_DT: row.ZCREATED_DT,
+        ZVEH_TYPE: row.ZVEH_TYPE,
+        ZUSER: row.ZUSER,
+        ZUSER_CH: loggedInUser,
+      },
+    ],
   });
-  const [lineItems, setLineItems] = useState<LineItem[]>([newLineItem(1)]);
-  const [nextId, setNextId] = useState(2);
-  const addLineItem = () => {
-    setLineItems((prev) => [...prev, newLineItem(nextId)]);
-    setNextId((n) => n + 1);
+
+  const updateSearchRow = async (index: number) => {
+    const row = searchOptionsList[index];
+
+    if (!row.ZREFNO || !row.VBELN || !row.POSNR || (isSap && !row.ZLINE_NO)) {
+      Swal.fire({ title: "Error", text: "Primary key missing", icon: "error" });
+      return;
+    }
+
+    const confirm = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to update this shipment record?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Update",
+      cancelButtonText: "Cancel",
+    });
+    if (!confirm.isConfirmed) return;
+
+    setLoading(true);
+    try {
+      const payload = buildChangePayload(row);
+      const res = isSap
+        ? await service.Shipmentchangewithsap(payload)
+        : await service.Shipmentchangewithoutsap(payload);
+
+      if (res?.STATUS === "true" || res?.NUMBER === "200") {
+        Swal.fire({ title: "Success", text: res.MESSAGE || "Record updated successfully", icon: "success" }).then(
+          () => {
+            patchSearchRow(index, { isEdit: false, _backup: undefined });
+            onSearchReference();
+          },
+        );
+      } else {
+        Swal.fire({ title: "Error", text: res?.MSG || res?.MESSAGE || "Update failed", icon: "error" });
+      }
+    } catch (err) {
+      console.error("Update error:", err);
+      Swal.fire({ title: "Error", text: "Internal Server Error", icon: "error" });
+    } finally {
+      setLoading(false);
+    }
   };
-  const removeLineItem = (id: number) => {
-    setLineItems((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
+
+  const deleteRow = async (index: number) => {
+    const row = searchOptionsList[index];
+    const confirm = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to delete this record? This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Delete",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#d33",
+    });
+    if (!confirm.isConfirmed) return;
+
+    const payload = { DELETE: [{ ZREFNO: row.ZREFNO, ZINV_NO: row.VBELN, ZLINE_NO: row.ZLINE_NO }] };
+
+    setLoading(true);
+    try {
+      const res = isSap
+        ? await service.ShipmentDeleteWithSap(payload)
+        : await service.ShipmentDeleteWithoutSap(payload);
+
+      if (res?.NUMBER === "200") {
+        setSearchOptionsList((prev) => prev.filter((_, i) => i !== index));
+        Swal.fire({ title: "Deleted", text: res.MSG || "Record deleted successfully", icon: "success" });
+      } else {
+        Swal.fire({ title: "Failed", text: res?.MSG || "Delete failed", icon: "error" });
+      }
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      Swal.fire({ title: "Error", text: err?.error?.MSG || "Something went wrong while deleting", icon: "error" });
+    } finally {
+      setLoading(false);
+    }
   };
-  const updateLineItem = (id: number, patch: Partial<LineItem>) => {
-    setLineItems((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  // ---------- Incoterms (fetched once, used for Non-SAP select) ----------
+  const fetchIncoterms = async () => {
+    try {
+      const res = await service.Incoterms({ INCO1: "", BEZEI: "" });
+      setIncotermsList(Array.isArray(res) ? res : res?.data || []);
+    } catch (err) {
+      console.error("Error fetching Incoterms:", err);
+    }
   };
-  const showFields = isWithout || revealed;
+
+  // fetch once on mount
+  useState(() => {
+    fetchIncoterms();
+    return null;
+  });
+
+  // ---------- Save ----------
+  const saveShipmentOutward = async (action: "stay" | "next" | "previous" = "stay") => {
+    const selectedRows = items.filter((r) => r.selected).map(({ selected, ...rest }) => rest);
+
+    if (selectedRows.length === 0) {
+      Swal.fire({
+        title: "Warning",
+        text: "Please select at least one product row to save.",
+        icon: "warning",
+        timer: 3000,
+        confirmButtonText: "Ok",
+      });
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      Swal.fire({ icon: "warning", text: "Please select at least one reference row before saving" });
+      return;
+    }
+
+    const commonFields = { ZINCO: zinco || "", ZINS_SCPOE: zinsScope || "", ZKM: zkm || "", VBELN: vbeln || "" };
+
+    const finalPayload = selectedRows.map((row) => ({
+      ...row,
+      ZINS_SCPOE: row.ZINS_SCPOE?.trim() ? row.ZINS_SCPOE : commonFields.ZINS_SCPOE,
+      ZKM: row.ZKM !== "" && row.ZKM != null ? row.ZKM : commonFields.ZKM,
+      ZINCO: row.ZINCO?.trim() ? row.ZINCO : commonFields.ZINCO,
+      VBELN: row.VBELN?.trim() ? row.VBELN : commonFields.VBELN,
+      ZUSER: loggedInUser,
+      ZUSER_CH: "",
+    }));
+
+    setLoading(true);
+    try {
+      const savePayload = isSap
+        ? { CHANGE: "", SAVE: finalPayload }
+        : { CHANGE: "", CREATE: finalPayload };
+
+      const res = isSap
+        ? await service.ShipmentOutwardSave(savePayload)
+        : await service.shipmentdetailsNonSapSave(savePayload);
+
+      if (res?.STATUS === "true" || res?.NUMBER === "200") {
+        Swal.fire({
+          title: "Success",
+          text: res.MESSAGE || res.MSG || "Data saved successfully",
+          icon: "success",
+          confirmButtonText: "Ok",
+        }).then(() => {
+          if (action === "next") navigate({ to: "/invoice-load-details" });
+          else if (action === "previous") navigate({ to: "/order-info" });
+          else resetForm();
+        });
+      } else {
+        Swal.fire({
+          title: "Error",
+          text: res.MESSAGE || res.MSG || "Failed to save data",
+          icon: "error",
+          confirmButtonText: "Ok",
+        });
+      }
+    } catch (err) {
+      console.error("Save error:", err);
+      Swal.fire({ title: "Error", text: "Internal Server Error. Please try again later.", icon: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setReferenceItems([emptyRefRow()]);
+    setSelectedItems([]);
+    setFullReferenceData([]);
+    setInvoiceF4List([]);
+    setInvoicenumber("");
+    setShowForm(!isSap);
+    setZinco("");
+    setZinsScope("");
+    setZkm("");
+    setVbeln("");
+    setItems([emptyProductRow()]);
+    setIsAllSelected(false);
+    setSearchOptionsList([]);
+    setSelectedType("");
+    setSearchReference("");
+  };
 
   return (
     <div className="space-y-2">
-      {/* Selection table */}
+      {/* Reference table */}
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
@@ -106,59 +722,108 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td className="px-3 py-0.5 text-center">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => setChecked(e.target.checked)}
-                  className="size-4 accent-sky-600"
-                />
-              </td>
-              <td className="px-3 py-0.5 text-center">1</td>
-              <td className="px-3 py-0.5">
-                <input defaultValue="" className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input defaultValue="" className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input defaultValue="" className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5 text-center">
-                <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
-                  <MoreVertical className="size-4" />
-                </button>
-              </td>
-            </tr>
+            {referenceItems.map((row, idx) => (
+              <tr key={idx}>
+                <td className="px-3 py-0.5 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isItemSelected(idx)}
+                    onChange={(e) => onCheckboxChange(idx, e.target.checked)}
+                    className="size-4 accent-sky-600"
+                  />
+                </td>
+                <td className="px-3 py-0.5 text-center">{idx + 1}</td>
+                <td className="px-3 py-0.5">
+                  <input value={row.MAPID} readOnly className={GREEN_INPUT + " text-center"} />
+                </td>
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.referenceNumber}
+                    maxLength={10}
+                    readOnly={idx !== 0}
+                    onChange={(e) => updateRefRow(idx, { referenceNumber: e.target.value })}
+                    onBlur={() => onFieldBlur(idx, "REF_NO")}
+                    onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "REF_NO")}
+                    placeholder="Enter Ref. No."
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.workOrderNumber}
+                    readOnly={idx !== 0}
+                    onChange={(e) => updateRefRow(idx, { workOrderNumber: e.target.value })}
+                    onBlur={() => onFieldBlur(idx, "WORK_ORDER_NO")}
+                    onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "WORK_ORDER_NO")}
+                    placeholder="Enter Work Order No."
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.lrNumber}
+                    readOnly={idx !== 0}
+                    onChange={(e) => updateRefRow(idx, { lrNumber: e.target.value })}
+                    onBlur={() => onFieldBlur(idx, "LR_NO")}
+                    onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "LR_NO")}
+                    placeholder="Enter LR No."
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+                <td className="px-3 py-0.5">
+                  <input
+                    value={row.transporter}
+                    readOnly={idx !== 0}
+                    onChange={(e) => updateRefRow(idx, { transporter: e.target.value })}
+                    onBlur={() => onFieldBlur(idx, "TRANSPORTER")}
+                    onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "TRANSPORTER")}
+                    placeholder="Enter Transporter"
+                    className={GREEN_INPUT + " text-center"}
+                  />
+                </td>
+                <td className="px-3 py-0.5 text-center">
+                  {referenceItems.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeReferenceRow(idx)}
+                      aria-label="Remove row"
+                      className="inline-grid place-items-center size-7 rounded-md text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
-      {/* Invoice lookup bar */}
+      {/* SAP: Invoice lookup + global search | Non-SAP: global search only */}
       <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
         <div className="flex flex-wrap items-end gap-3">
-          {!isWithout && (
+          {isSap && (
             <>
               <div className="flex-1 min-w-[220px]">
                 <label className={LABEL}>Invoice Number</label>
-                <input
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                <select
+                  value={invoicenumber}
+                  onChange={(e) => setInvoicenumber(e.target.value)}
                   className={GREEN_INPUT}
-                />
+                >
+                  <option value="" disabled>
+                    Select Invoice
+                  </option>
+                  {invoiceF4List.map((inv) => (
+                    <option key={inv} value={inv}>
+                      {inv}
+                    </option>
+                  ))}
+                </select>
               </div>
               <button
-                onClick={() => {
-                  if (invoiceNumber.trim()) setRevealed(true);
-                }}
-                disabled={!invoiceNumber.trim()}
+                onClick={fetchInvoiceDetails}
+                disabled={!invoicenumber.trim() || loading}
                 className="h-7 px-4 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
               >
                 GET
@@ -167,62 +832,68 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
           )}
           <div className="min-w-[160px]">
             <select
-              value={searchType}
-              onChange={(e) => setSearchType(e.target.value)}
+              value={selectedType}
+              onChange={(e) => onSearchTypeChange(e.target.value)}
               className="h-7 w-full rounded-md border border-hairline bg-surface px-2 text-[12px] outline-none focus:border-accent"
             >
-              <option value="">Select</option>
+              <option value="" disabled>
+                Select
+              </option>
               {SEARCH_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o}
+                <option key={o.key} value={o.key}>
+                  {o.label}
                 </option>
               ))}
             </select>
           </div>
           <div className="flex-[2] min-w-[260px] flex items-stretch gap-0">
             <input
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
+              value={searchReference}
+              onChange={(e) => setSearchReference(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && onSearchReference()}
               placeholder="Enter Reference / Invoice / ODN / SO Number"
               className="h-7 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
             />
-            <button className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta">
+            <button
+              onClick={onSearchReference}
+              className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta"
+            >
               <Search className="size-4" />
             </button>
           </div>
         </div>
       </div>
 
-      {!isWithout && !revealed && (
+      {isSap && !showForm && (
         <p className="text-[12px] text-muted-foreground px-1">
-          Enter an Invoice Number and click <span className="font-semibold">GET</span> to load fields.
+          Select an Invoice Number and click <span className="font-semibold">GET</span> to load fields.
         </p>
       )}
 
-      {showFields && (
+      {showForm && (
         <>
           {/* Top fields */}
           <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
               <div>
                 <label className={LABEL}>Incoterms</label>
-                <select defaultValue="" className={GREEN_INPUT}>
-                  <option value="" disabled>
-                    Select
-                  </option>
-                  {INCOTERMS.map((o) => (
-                    <option key={o} value={o}>
-                      {o}
-                    </option>
-                  ))}
-                </select>
+                {isSap ? (
+                  <input value={zinco} readOnly className={GREEN_INPUT} />
+                ) : (
+                  <select value={zinco} onChange={(e) => setZinco(e.target.value)} className={GREEN_INPUT}>
+                    <option value="">Select Incoterm</option>
+                    {incotermsList.map((i, idx) => (
+                      <option key={idx} value={i.INCO1}>
+                        {i.INCO1} - {i.BEZEI}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <div>
                 <label className={LABEL}>Insurance Scope</label>
-                <select defaultValue="" className={GREEN_INPUT}>
-                  <option value="" disabled>
-                    Select
-                  </option>
+                <select value={zinsScope} onChange={(e) => setZinsScope(e.target.value)} className={GREEN_INPUT}>
+                  <option value="">Select Insurance Scope</option>
                   {INSURANCE_SCOPE.map((o) => (
                     <option key={o} value={o}>
                       {o}
@@ -232,24 +903,44 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
               </div>
               <div>
                 <label className={LABEL}>Kilometres</label>
-                <input type="number" placeholder="0" className={GREEN_INPUT} />
+                <input
+                  type="number"
+                  value={zkm}
+                  onChange={(e) => setZkm(e.target.value)}
+                  placeholder="0"
+                  className={GREEN_INPUT}
+                />
               </div>
-              {isWithout && (
+              {!isSap && (
                 <div>
                   <label className={LABEL}>DC Reference Number</label>
-                  <input placeholder="Enter DC Reference Number" className={GREEN_INPUT} />
+                  <select value={vbeln} onChange={(e) => setVbeln(e.target.value)} className={GREEN_INPUT}>
+                    <option value="" disabled>
+                      Select DC Reference
+                    </option>
+                    {invoiceF4List.map((inv) => (
+                      <option key={inv} value={inv}>
+                        {inv}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Line Items */}
+          {/* Product table */}
           <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
             <table className="w-full text-[12px]">
               <thead>
                 <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
                   <th className="px-2 py-1.5 text-center w-10">
-                    <input type="checkbox" className="size-4 accent-white" />
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={(e) => toggleAllSelection(e.target.checked)}
+                      className="size-4 accent-white"
+                    />
                   </th>
                   <th className="px-2 py-1.5 text-center w-14">Sl.No</th>
                   <th className="px-2 py-1.5 text-center">Map ID</th>
@@ -264,42 +955,38 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                 </tr>
               </thead>
               <tbody>
-                {lineItems.map((row, idx) => (
-                  <tr key={row.id}>
+                {items.map((row, idx) => (
+                  <tr key={idx}>
                     <td className="px-2 py-1 text-center">
                       <input
                         type="checkbox"
-                        checked={row.checked}
-                        onChange={(e) => updateLineItem(row.id, { checked: e.target.checked })}
+                        checked={row.selected}
+                        onChange={(e) => onRowCheckboxChange(idx, e.target.checked)}
                         className="size-4 accent-sky-600"
                       />
                     </td>
                     <td className="px-2 py-1 text-center">{idx + 1}</td>
                     <td className="px-2 py-1">
                       <select
-                        value={row.mapId}
-                        onChange={(e) => updateLineItem(row.id, { mapId: e.target.value })}
+                        value={row.ZMAPID}
+                        onChange={(e) => onChangeMapId(idx, e.target.value)}
                         className={GREEN_INPUT}
                       >
-                        <option value="" disabled>
-                          Select
-                        </option>
-                        {MAP_IDS.map((o) => (
-                          <option key={o} value={o}>
-                            {o}
+                        <option value="">Select</option>
+                        {selectedItems.map((o) => (
+                          <option key={o.MAPID} value={o.MAPID}>
+                            {o.MAPID}
                           </option>
                         ))}
                       </select>
                     </td>
                     <td className="px-2 py-1">
                       <select
-                        value={row.product}
-                        onChange={(e) => updateLineItem(row.id, { product: e.target.value })}
+                        value={row.ZPRODUCT}
+                        onChange={(e) => updateRow(idx, { ZPRODUCT: e.target.value })}
                         className={GREEN_INPUT}
                       >
-                        <option value="" disabled>
-                          Select Product
-                        </option>
+                        <option value="">Select Product</option>
                         {PRODUCTS.map((o) => (
                           <option key={o} value={o}>
                             {o}
@@ -309,13 +996,11 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                     </td>
                     <td className="px-2 py-1">
                       <select
-                        value={row.materialType}
-                        onChange={(e) => updateLineItem(row.id, { materialType: e.target.value })}
+                        value={row.MTART}
+                        onChange={(e) => updateRow(idx, { MTART: e.target.value })}
                         className={GREEN_INPUT}
                       >
-                        <option value="" disabled>
-                          Select Type
-                        </option>
+                        <option value="">Select Type</option>
                         {MATERIAL_TYPES.map((o) => (
                           <option key={o} value={o}>
                             {o}
@@ -325,8 +1010,8 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                     </td>
                     <td className="px-2 py-1">
                       <input
-                        value={row.description}
-                        onChange={(e) => updateLineItem(row.id, { description: e.target.value })}
+                        value={row.MAKTX}
+                        onChange={(e) => updateRow(idx, { MAKTX: e.target.value })}
                         placeholder="Enter Description"
                         className={GREEN_INPUT}
                       />
@@ -334,49 +1019,55 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                     <td className="px-2 py-1">
                       <input
                         type="number"
-                        value={row.qty}
-                        onChange={(e) => updateLineItem(row.id, { qty: e.target.value })}
+                        min={0}
+                        value={row.ZSETS}
+                        onChange={(e) => updateRow(idx, { ZSETS: e.target.value })}
                         placeholder="0"
                         className={GREEN_INPUT + " text-center"}
                       />
                     </td>
                     <td className="px-2 py-1">
-                      <input
-                        value={row.ahLoaded}
-                        onChange={(e) => updateLineItem(row.id, { ahLoaded: e.target.value })}
-                        placeholder="Ah"
-                        className={GREEN_INPUT + " text-center"}
-                      />
+                      {row.ZPRODUCT === "Batteries" && (
+                        <input
+                          type="number"
+                          min={0}
+                          value={row.ZAH}
+                          onChange={(e) => updateRow(idx, { ZAH: e.target.value })}
+                          placeholder="Ah"
+                          className={GREEN_INPUT + " text-center"}
+                        />
+                      )}
                     </td>
                     <td className="px-2 py-1">
                       <input
                         type="number"
-                        value={row.weight}
-                        onChange={(e) => updateLineItem(row.id, { weight: e.target.value })}
+                        min={0}
+                        value={row.ZSHIP_WT}
+                        onChange={(e) => updateRow(idx, { ZSHIP_WT: e.target.value })}
                         className={GREEN_INPUT + " text-center"}
                       />
                     </td>
                     <td className="px-2 py-1">
-                      <select
-                        value={row.batteryCondition}
-                        onChange={(e) => updateLineItem(row.id, { batteryCondition: e.target.value })}
-                        className={GREEN_INPUT}
-                      >
-                        <option value="" disabled>
-                          Select
-                        </option>
-                        {BATTERY_CONDITIONS.map((o) => (
-                          <option key={o} value={o}>
-                            {o}
-                          </option>
-                        ))}
-                      </select>
+                      {row.ZPRODUCT === "Batteries" && (
+                        <select
+                          value={row.ZBATCOND}
+                          onChange={(e) => updateRow(idx, { ZBATCOND: e.target.value })}
+                          className={GREEN_INPUT}
+                        >
+                          <option value="">Select Condition</option>
+                          {BATTERY_CONDITIONS.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                     <td className="px-2 py-1">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           type="button"
-                          onClick={addLineItem}
+                          onClick={addRow}
                           aria-label="Add row"
                           className="inline-grid place-items-center size-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm"
                         >
@@ -384,12 +1075,12 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         </button>
                         <button
                           type="button"
-                          onClick={() => removeLineItem(row.id)}
-                          disabled={lineItems.length === 1}
+                          onClick={() => removeRow(idx)}
+                          disabled={items.length === 1}
                           aria-label="Delete row"
                           className="inline-grid place-items-center size-7 rounded-md bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-sm"
                         >
-                          <X className="size-3.5" />
+                          <XIcon className="size-3.5" />
                         </button>
                       </div>
                     </td>
@@ -401,17 +1092,219 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
           {/* Footer action bar */}
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm">
+            <button
+              onClick={() => saveShipmentOutward("stay")}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white text-[12px] font-semibold shadow-sm"
+            >
               <Save className="size-3.5" /> Save
             </button>
-            <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-[12px] font-semibold shadow-sm">
+            <button
+              onClick={() => saveShipmentOutward("next")}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 disabled:opacity-60 text-white text-[12px] font-semibold shadow-sm"
+            >
               Save and Next <ChevronRight className="size-3.5" />
             </button>
-            <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold shadow-sm">
+            <button
+              onClick={() => saveShipmentOutward("previous")}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-[12px] font-semibold shadow-sm"
+            >
               <ChevronLeft className="size-3.5" /> Save and Previous
             </button>
           </div>
         </>
+      )}
+
+      {/* Global search results (edit/delete) */}
+      {searchOptionsList.length > 0 && (
+        <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
+          <table className="w-full text-[11.5px]">
+            <thead>
+              <tr className="bg-gradient-primary text-primary-foreground text-[10.5px] font-semibold">
+                {[
+                  "Map ID",
+                  "Ref No",
+                  "Invoice No",
+                  "Line No",
+                  "POSNR",
+                  "ODN No",
+                  "SO No",
+                  "Product",
+                  "Material Type",
+                  "Material Description",
+                  "No of Sets",
+                  "Ah Loaded",
+                  "Shipment Weight",
+                  "Battery Condition",
+                  "Incoterms",
+                  "Insurance Scope",
+                  "Kilometres",
+                  "Plant",
+                  "Division",
+                  "Work Order",
+                  "LR No",
+                  "Transporter",
+                  "Created Date",
+                  "Vehicle Type",
+                  "Action",
+                ].map((h) => (
+                  <th key={h} className="px-2 py-1.5 whitespace-nowrap text-center">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {searchOptionsList.map((item, i) => (
+                <tr key={i} className={item.isEdit ? "bg-accent/[0.06]" : ""}>
+                  <td className="px-2 py-1 text-center">{item.ZMAPID}</td>
+                  <td className="px-2 py-1 text-center">{item.ZREFNO}</td>
+                  <td className="px-2 py-1 text-center">{item.VBELN}</td>
+                  <td className="px-2 py-1 text-center">{item.ZLINE_NO}</td>
+                  <td className="px-2 py-1 text-center">{item.POSNR}</td>
+                  {[
+                    ["ZODN_NO"],
+                    ["ZSO_NO"],
+                    ["ZPRODUCT"],
+                    ["MTART"],
+                    ["MAKTX"],
+                  ].map(([field]) => (
+                    <td key={field} className="px-2 py-1 text-center">
+                      {item.isEdit ? (
+                        <input
+                          value={item[field] ?? ""}
+                          onChange={(e) => patchSearchRow(i, { [field]: e.target.value })}
+                          className="h-6 w-24 rounded border border-hairline px-1 text-[11px]"
+                        />
+                      ) : (
+                        item[field] || "-"
+                      )}
+                    </td>
+                  ))}
+                  {[["ZSETS"], ["ZAH"]].map(([field]) => (
+                    <td key={field} className="px-2 py-1 text-center">
+                      {item.isEdit ? (
+                        <input
+                          type="number"
+                          value={item[field] ?? ""}
+                          onChange={(e) => patchSearchRow(i, { [field]: e.target.value })}
+                          className="h-6 w-16 rounded border border-hairline px-1 text-[11px]"
+                        />
+                      ) : (
+                        item[field]
+                      )}
+                    </td>
+                  ))}
+                  <td className="px-2 py-1 text-center">
+                    {item.isEdit ? (
+                      <input
+                        type="number"
+                        value={item.ZSHIP_WT ?? ""}
+                        onChange={(e) => patchSearchRow(i, { ZSHIP_WT: e.target.value })}
+                        className="h-6 w-16 rounded border border-hairline px-1 text-[11px]"
+                      />
+                    ) : (
+                      Number(item.ZSHIP_WT ?? 0).toFixed(2)
+                    )}
+                  </td>
+                  {["ZBATCOND", "ZINCO", "ZINS_SCPOE"].map((field) => (
+                    <td key={field} className="px-2 py-1 text-center">
+                      {item.isEdit ? (
+                        <input
+                          value={item[field] ?? ""}
+                          onChange={(e) => patchSearchRow(i, { [field]: e.target.value })}
+                          className="h-6 w-24 rounded border border-hairline px-1 text-[11px]"
+                        />
+                      ) : (
+                        item[field] || "-"
+                      )}
+                    </td>
+                  ))}
+                  <td className="px-2 py-1 text-center">
+                    {item.isEdit ? (
+                      <input
+                        type="number"
+                        value={item.ZKM ?? ""}
+                        onChange={(e) => patchSearchRow(i, { ZKM: e.target.value })}
+                        className="h-6 w-16 rounded border border-hairline px-1 text-[11px]"
+                      />
+                    ) : (
+                      item.ZKM
+                    )}
+                  </td>
+                  {["ZPLANT", "ZDIVISION", "ZWORK_ORDER", "ZLRNO", "ZTRANSPORTER"].map((field) => (
+                    <td key={field} className="px-2 py-1 text-center">
+                      {item.isEdit ? (
+                        <input
+                          value={item[field] ?? ""}
+                          onChange={(e) => patchSearchRow(i, { [field]: e.target.value })}
+                          className="h-6 w-24 rounded border border-hairline px-1 text-[11px]"
+                        />
+                      ) : (
+                        item[field] || "-"
+                      )}
+                    </td>
+                  ))}
+                  <td className="px-2 py-1 text-center whitespace-nowrap">
+                    {item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : "-"}
+                  </td>
+                  <td className="px-2 py-1 text-center">
+                    {item.isEdit ? (
+                      <input
+                        value={item.ZVEH_TYPE ?? ""}
+                        onChange={(e) => patchSearchRow(i, { ZVEH_TYPE: e.target.value })}
+                        className="h-6 w-24 rounded border border-hairline px-1 text-[11px]"
+                      />
+                    ) : (
+                      item.ZVEH_TYPE || "-"
+                    )}
+                  </td>
+                  <td className="px-2 py-1 text-center">
+                    <div className="inline-flex items-center gap-1">
+                      {!item.isEdit ? (
+                        <>
+                          <button
+                            onClick={() => editSearchRow(i)}
+                            title="Edit"
+                            className="size-6 grid place-items-center rounded-md text-primary hover:bg-accent/10"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            onClick={() => deleteRow(i)}
+                            title="Delete"
+                            className="size-6 grid place-items-center rounded-md text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => updateSearchRow(i)}
+                            title="Update"
+                            className="size-6 grid place-items-center rounded-md text-emerald-600 hover:bg-emerald-500/10"
+                          >
+                            <Check className="size-3.5" />
+                          </button>
+                          <button
+                            onClick={() => cancelSearchEdit(i)}
+                            title="Cancel"
+                            className="size-6 grid place-items-center rounded-md text-muted-foreground hover:bg-muted"
+                          >
+                            <XIcon className="size-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

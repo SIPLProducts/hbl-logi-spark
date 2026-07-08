@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Save,
+  Search,
+  Loader2,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,8 @@ import Swal from "sweetalert2";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { exportRowsToXls } from "@/lib/export-xls.js";
+// @ts-ignore
+import service from "@/services/generalservice_service.js";
 
 type SapMode = "with" | "without";
 
@@ -287,7 +291,7 @@ function GateInOutProcessPage() {
               </div>
               <div className="min-w-0">
                 <h1 className="font-display text-[18px] leading-none font-bold tracking-tight text-foreground truncate">
-                  Gate In and Out Process
+                  Gate In and Out
                 </h1>
               </div>
             </div>
@@ -363,7 +367,7 @@ function GateInOutProcessPage() {
             </div>
 
             {/* Gate In/Out Create Body */}
-            {direction && sap && <GateInOutCreate key={`${sap}`} />}
+            {direction && sap && <GateInOutCreate key={`${sap}`} mode={sap} />}
 
           </TabsContent>
 
@@ -813,65 +817,510 @@ const GATE_COLUMNS = [
   "Salesperson Email Id",
   "GPS Live Location",
   "TAT Type",
-  "TAT Days ETA",
+  "TAT Days",
+  "ETA",
 ];
 
-function GateInOutCreate() {
+// ── Reference table + Invoice/Search bar — UI copied from OrderInfoSapCreate ──
+// NOTE: presentational only. No API/service calls are wired up here.
+
+type GateRefRow = {
+  REF_NO: string;
+  WORK_ORDER_NO: string;
+  LR_NO: string;
+  TRANSPORTER: string;
+  LINE_NO: string;
+  selected: boolean;
+};
+
+const EMPTY_GATE_REF_ROW = (): GateRefRow => ({
+  REF_NO: "",
+  WORK_ORDER_NO: "",
+  LR_NO: "",
+  TRANSPORTER: "",
+  LINE_NO: "",
+  selected: false,
+});
+
+const GATE_SEARCH_OPTIONS = [
+  { key: "ref_no", label: "Reference No" },
+  { key: "inv_no", label: "Invoice No" },
+  { key: "odn_no", label: "ODN No" },
+  { key: "so_no", label: "SO No" },
+  { key: "lr_no", label: "LR No" },
+];
+
+const GATE_INPUT_NORMAL =
+  "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+
+const GATE_INPUT_READONLY =
+  "h-7 w-full rounded-md bg-muted/60 border border-input px-2 text-[12px] text-foreground font-medium outline-none cursor-not-allowed";
+
+const GATE_LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
+
+type GateRow = {
+  requiredDateTime: string;
+  reportedDateTime: string;
+  physicalDispatchDateTime: string;
+  truckType: string;
+  typeOfTransporter: string;
+  vehicleNumber: string;
+  noOfVehicles: string;
+  driverNumber: string;
+  driverName: string;
+  customerEmailId: string;
+  salespersonEmailId: string;
+  gpsLiveLocation: string;
+  tatType: string;
+  tatDays: string;
+  eta: string;
+};
+
+const EMPTY_GATE_ROW = (): GateRow => ({
+  requiredDateTime: "",
+  reportedDateTime: "",
+  physicalDispatchDateTime: "",
+  truckType: "",
+  typeOfTransporter: "",
+  vehicleNumber: "",
+  noOfVehicles: "",
+  driverNumber: "",
+  driverName: "",
+  customerEmailId: "",
+  salespersonEmailId: "",
+  gpsLiveLocation: "",
+  tatType: "",
+  tatDays: "",
+  eta: "",
+});
+
+function getMinPhysicalDispatch(row: GateRow): string {
+  const dates: string[] = [];
+  if (row.requiredDateTime) dates.push(row.requiredDateTime);
+  if (row.reportedDateTime) dates.push(row.reportedDateTime);
+  if (dates.length === 0) return "";
+  return dates.reduce((a, b) => (a > b ? a : b));
+}
+
+type VehicleTypeOption = { code: string; label: string };
+
+function GateInOutCreate({ mode }: { mode: SapMode }) {
+  const isSap = mode === "with";
+
   const [ewayDate, setEwayDate] = useState("");
+  const [ewayExpireDate, setEwayExpireDate] = useState("");
   const [ewayNumber, setEwayNumber] = useState("");
+  const [ewayApplicable, setEwayApplicable] = useState("");
+
+  // ── Truck Type F4 (gettypeofvehicle) ──
+  const [gateRows, setGateRows] = useState<GateRow[]>([EMPTY_GATE_ROW()]);
+  const [truckTypeList, setTruckTypeList] = useState<VehicleTypeOption[]>([]);
+  const [loadingTruckTypes, setLoadingTruckTypes] = useState(false);
+  const [loadingSave, setLoadingSave] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setLoadingTruckTypes(true);
+      try {
+        const res: any = await service.gettypeofvehicle();
+
+        // Actual response shape: a flat array of { ZTRUC_TYPE: "..." }
+        const raw: any[] = Array.isArray(res) ? res : [];
+
+        const options: VehicleTypeOption[] = raw
+          .map((v: any) => ({
+            code: v.ZTRUC_TYPE || "",
+            label: v.ZTRUC_TYPE || "",
+          }))
+          .filter((o) => o.code);
+
+        setTruckTypeList(options);
+      } catch (err) {
+        console.error("gettypeofvehicle failed:", err);
+      } finally {
+        setLoadingTruckTypes(false);
+      }
+    })();
+  }, []);
+
+  // ── Reference table state ──
+  const [refTableData, setRefTableData] = useState<GateRefRow[]>([EMPTY_GATE_REF_ROW()]);
+
+  // ── Invoice lookup + search bar state ──
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [searchType, setSearchType] = useState("");
+  const [searchValue, setSearchValue] = useState("");
+
+  const handleRefRowChange = (index: number, field: keyof GateRefRow, value: string) =>
+    setRefTableData((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+
+  const toggleRefRowSelect = (index: number) =>
+    setRefTableData((prev) => prev.map((r, i) => (i === index ? { ...r, selected: !r.selected } : r)));
+
+  const removeRefRow = (index: number) => {
+    if (refTableData.length === 1) return;
+    setRefTableData((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Placeholder handlers — no API wired up per requirement, UI only.
+  const handleGet = () => {
+    // TODO: integrate API when ready
+  };
+
+  const handleSearch = () => {
+    // TODO: integrate API when ready
+  };
+
+  const addGateRow = () => setGateRows((prev) => [...prev, EMPTY_GATE_ROW()]);
+  const removeGateRow = (index: number) => setGateRows((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+  const updateGateRow = (index: number, field: keyof GateRow, value: string) => {
+    setGateRows((prev) =>
+      prev.map((r, i) => {
+        if (i !== index) return r;
+        const next: GateRow = { ...r, [field]: value };
+        if ((field === "requiredDateTime" || field === "reportedDateTime") && next.physicalDispatchDateTime) {
+          const min = getMinPhysicalDispatch(next);
+          if (min && next.physicalDispatchDateTime < min) {
+            next.physicalDispatchDateTime = "";
+          }
+        }
+        return next;
+      })
+    );
+  };
+
+  function handleSave(arg0: string): void {
+    throw new Error("Function not implemented.");
+  }
 
   return (
     <div className="space-y-3">
+      {/* ── Reference table (same UI as Order Info) ── */}
+      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+        <table className="w-full text-[12px]">
+          <thead>
+            <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+              {["Select", "Sl.No", "Reference Number", "Work Order Number", "LR Number", "Transporter", "Action"].map((h) => (
+                <th key={h} className="px-3 py-1 text-center">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {refTableData.map((row, i) => (
+              <tr key={i} className="border-t border-hairline/60">
+                <td className="px-3 py-1 text-center">
+                  <input
+                    type="checkbox"
+                    checked={row.selected}
+                    onChange={() => toggleRefRowSelect(i)}
+                    className="size-4 accent-sky-600"
+                  />
+                </td>
+                <td className="px-3 py-1 text-center">{i + 1}</td>
+                {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
+                  <td key={field} className="px-3 py-1">
+                    <input
+                      value={(row as any)[field] || ""}
+                      readOnly={i !== 0}
+                      onChange={(e) => handleRefRowChange(i, field, e.target.value)}
+                      className={i !== 0 ? GATE_INPUT_READONLY : GATE_INPUT_NORMAL}
+                    />
+                  </td>
+                ))}
+                <td className="px-3 py-1 text-center">
+                  {refTableData.length > 1 && (
+                    <button
+                      onClick={() => removeRefRow(i)}
+                      className="size-6 grid place-items-center rounded-md text-red-500 hover:bg-red-50"
+                    >
+                      <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Invoice lookup + search bar (same UI as Order Info) ── */}
+      <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
+        <div className="flex flex-wrap items-end gap-3">
+          {isSap && (
+            <>
+              <div className="flex-1 min-w-[220px]">
+                <label className={GATE_LABEL}>Invoice Number</label>
+                <input
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleGet();
+                  }}
+                  className={GATE_INPUT_NORMAL}
+                  placeholder="Enter invoice number"
+                />
+              </div>
+              <button
+                onClick={handleGet}
+                disabled={!invoiceNumber.trim()}
+                className="h-7 px-4 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm flex items-center gap-1.5"
+              >
+                GET
+              </button>
+            </>
+          )}
+
+          <div className="min-w-[160px]">
+            <label className={GATE_LABEL}>Search By</label>
+            <select
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+              className="h-7 w-full rounded-md border border-hairline bg-surface px-2 text-[12px] outline-none focus:border-accent"
+            >
+              <option value="">Select</option>
+              {GATE_SEARCH_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-[2] min-w-[260px] flex items-stretch gap-0">
+            <input
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch();
+              }}
+              placeholder="Enter Reference / Invoice / ODN / SO Number"
+              className="h-7 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
+            />
+            <button
+              onClick={handleSearch}
+              className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta disabled:opacity-50"
+            >
+              <Search className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        {isSap && (
+          <p className="mt-2 text-[12px] text-muted-foreground px-1">
+            Enter an Invoice Number and click <span className="font-semibold">GET</span> to load fields.
+          </p>
+        )}
+      </div>
+
+      {/* ── E-Way Bill fields ── */}
       <div className="bg-surface border border-hairline rounded-lg p-3 shadow-soft">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           <div className="space-y-1">
-            <Label>E-Way Bill Date</Label>
-            <Input type="date" value={ewayDate} onChange={(e) => setEwayDate(e.target.value)} />
+            <Label>E-way Bill Applicable</Label>
+            <select
+              value={ewayApplicable}
+              onChange={(e) => setEwayApplicable(e.target.value)}
+              className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+            >
+              <option value="">Select</option>
+              <option value="No">No</option>
+              <option value="Yes">Yes</option>
+            </select>
           </div>
-          <div className="space-y-1">
-            <Label>E-Way Bill Number</Label>
-            <Input
-              type="text"
-              placeholder="Enter E-Way Bill Number"
-              value={ewayNumber}
-              onChange={(e) => setEwayNumber(e.target.value)}
-            />
-          </div>
+          {ewayApplicable === "Yes" && (
+            <>
+              <div className="space-y-1">
+                <Label>E-Way Bill Date</Label>
+                <Input type="date" value={ewayDate} onChange={(e) => setEwayDate(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label>E-Way Bill Number</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter E-Way Bill Number"
+                  value={ewayNumber}
+                  onChange={(e) => setEwayNumber(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>E-Way Bill Expire Date</Label>
+                <Input type="date" value={ewayExpireDate} onChange={(e) => setEwayExpireDate(e.target.value)} />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-soft">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10">Sl.No</TableHead>
-              {GATE_COLUMNS.map((c) => (
-                <TableHead key={c} className="whitespace-nowrap">
-                  {c}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell className="text-center text-muted-foreground">1</TableCell>
-              {GATE_COLUMNS.map((c) => (
-                <TableCell key={c} className="p-1">
-                  <Input
-                    type={c.toLowerCase().includes("date") ? "datetime-local" : "text"}
-                    className="h-7 min-w-[140px]"
-                  />
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableBody>
-        </Table>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">Sl.No</TableHead>
+                {GATE_COLUMNS.map((c) => (
+                  <TableHead key={c} className="whitespace-nowrap">
+                    {c}
+                  </TableHead>
+                ))}
+                <TableHead className="whitespace-nowrap text-center">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {gateRows.map((row, i) => {
+                const minPd = getMinPhysicalDispatch(row);
+                return (
+                  <TableRow key={i}>
+                    <TableCell className="text-center text-muted-foreground">{i + 1}</TableCell>
+                    {GATE_COLUMNS.map((c) => {
+                      if (c === "Truck Type") {
+                        return (
+                          <TableCell key={c} className="p-1">
+                            <select
+                              value={row.truckType}
+                              onChange={(e) => updateGateRow(i, "truckType", e.target.value)}
+                              disabled={loadingTruckTypes}
+                              className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
+                            >
+                              <option value="">{loadingTruckTypes ? "Loading..." : "Select Truck Type"}</option>
+                              {truckTypeList.map((v) => (
+                                <option key={v.code} value={v.code}>
+                                  {v.code}
+                                </option>
+                              ))}
+                            </select>
+                          </TableCell>
+                        );
+                      }
+                      if (c === "TAT Type") {
+                        return (
+                          <TableCell key={c} className="p-1">
+                            <select
+                              value={row.tatType}
+                              onChange={(e) => updateGateRow(i, "tatType", e.target.value)}
+                              className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                            >
+                              <option value="">Select TAT Type</option>
+                              <option value="Direct Truck TAT(Vizag)">Direct Truck TAT(Vizag)</option>
+                              <option value="Direct Truck TAT(Hyd)">Direct Truck TAT(Hyd)</option>
+                              <option value="Revised TAT">Revised TAT</option>
+                              <option value="Safe Express TAT">Safe Express TAT</option>
+                              <option value="Delivery TAT">Delivery TAT</option>
+                              <option value="GATI TAT">GATI TAT</option>
+                            </select>
+                          </TableCell>
+                        );
+                      }
+                      if (c === "ETA") {
+                        return (
+                          <TableCell key={c} className="p-1">
+                            <Input
+                              type="date"
+                              className="h-7 min-w-[140px]"
+                              value={row.eta}
+                              onChange={(e) => updateGateRow(i, "eta", e.target.value)}
+                            />
+                          </TableCell>
+                        );
+                      }
+                      const fieldMap: Record<string, keyof GateRow> = {
+                        "Required Date and Time": "requiredDateTime",
+                        "Reported Date and Time": "reportedDateTime",
+                        "Physical Dispatch Date and Time": "physicalDispatchDateTime",
+                        "Type of Transporter": "typeOfTransporter",
+                        "Vehicle Number": "vehicleNumber",
+                        "No of Vehicles": "noOfVehicles",
+                        "Driver Number": "driverNumber",
+                        "Driver Name": "driverName",
+                        "Customer Email Id": "customerEmailId",
+                        "Salesperson Email Id": "salespersonEmailId",
+                        "GPS Live Location": "gpsLiveLocation",
+                        "TAT Days": "tatDays",
+                      };
+                      const field = fieldMap[c];
+                      if (!field) return <TableCell key={c} className="p-1" />;
+                      const isPd = c === "Physical Dispatch Date and Time";
+                      const isDateTime = c.toLowerCase().includes("date");
+                      const val = row[field] || "";
+                      return (
+                        <TableCell key={c} className="p-1">
+                          <Input
+                            type={isDateTime ? "datetime-local" : "text"}
+                            className={cn(
+                              "h-7 min-w-[140px]",
+                              isPd && minPd && val && val < minPd
+                                ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
+                                : ""
+                            )}
+                            value={val}
+                            min={isPd ? minPd : undefined}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (isPd && minPd && v && v < minPd) return;
+                              updateGateRow(i, field, v);
+                            }}
+                          />
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell className="p-1 text-center">
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          onClick={addGateRow}
+                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-accent hover:bg-accent/10 transition"
+                          aria-label="Add row"
+                        >
+                          <Plus className="size-3.5" />
+                        </button>
+                        <button
+                          onClick={() => removeGateRow(i)}
+                          disabled={gateRows.length === 1}
+                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+                          aria-label="Delete row"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button size="sm" className="h-7">
-          <Save className="size-3.5 mr-1" /> Save
-        </Button>
+      <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+        <button
+          onClick={() => handleSave("previous")}
+          disabled={loadingSave}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
+        >
+          <ChevronLeft className="size-3.5" /> Save &amp; Previous
+        </button>
+        <button
+          onClick={() => handleSave("stay")}
+          disabled={loadingSave}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
+        >
+          {loadingSave ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+          Save
+        </button>
+        <button
+          onClick={() => handleSave("next")}
+          disabled={loadingSave}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
+        >
+          Save &amp; Next <ChevronRight className="size-3.5" />
+        </button>
       </div>
     </div>
   );
