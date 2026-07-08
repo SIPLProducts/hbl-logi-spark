@@ -1722,7 +1722,7 @@ function InvoiceFilterDownload({
   return (
     <div className="space-y-3">
       <div className="bg-surface border border-hairline rounded-2xl shadow-elegant">
-        <div className="px-5 py-4 border-b border-hairline flex items-center justify-between bg-surface-2/60">
+        <div className="px-4 py-2 border-b border-hairline flex items-center justify-between bg-surface-2/60">
           <div className="flex items-center gap-2">
             <Filter className="size-4 text-accent" />
             <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
@@ -1733,13 +1733,13 @@ function InvoiceFilterDownload({
         </div>
 
         {!sap ? (
-          <div className="p-6 text-center text-[12px] text-muted-foreground">
+          <div className="p-3 text-center text-[12px] text-muted-foreground">
             Select <span className="font-semibold">With SAP</span> or{" "}
             <span className="font-semibold">Without SAP</span> to view filters.
           </div>
         ) : (
           <>
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-x-3 gap-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
               <DateField label="From Date" value={fromDate} onChange={setFromDate} />
               <DateField label="To Date" value={toDate} onChange={setToDate} />
               <PlantField value={fPlant} onChange={setFPlant} />
@@ -1767,7 +1767,7 @@ function InvoiceFilterDownload({
               />
             </div>
 
-            <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
+            <div className="px-3 py-2 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
               <Button variant="ghost" size="sm" onClick={reset}>
                 Reset
               </Button>
@@ -1786,18 +1786,18 @@ function InvoiceFilterDownload({
       </div>
 
       {sap && !applied ? (
-        <div className="bg-surface border border-dashed border-hairline rounded-2xl p-10 text-center">
-          <div className="mx-auto size-12 grid place-items-center rounded-full bg-muted text-muted-foreground">
-            <Filter className="size-5" />
+        <div className="bg-surface border border-dashed border-hairline rounded-2xl p-5 text-center">
+          <div className="mx-auto size-9 grid place-items-center rounded-full bg-muted text-muted-foreground">
+            <Filter className="size-4" />
           </div>
-          <h3 className="mt-4 font-display text-lg font-semibold text-foreground">No results yet</h3>
-          <p className="mt-1 text-[12px] text-muted-foreground max-w-md mx-auto">
+          <h3 className="mt-2 font-display text-sm font-semibold text-foreground">No results yet</h3>
+          <p className="mt-0.5 text-[12px] text-muted-foreground max-w-md mx-auto">
             Choose your filters above and click <span className="font-semibold">Apply Filter</span> to load records.
           </p>
         </div>
       ) : sap && fStatus === "Completed" ? (
         <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
-          <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+          <div className="px-4 py-2 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
             <div>
               <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
                 Invoice Load Details — Completed
@@ -1807,7 +1807,7 @@ function InvoiceFilterDownload({
               </p>
             </div>
           </div>
-          <div className="overflow-x-auto max-h-[560px]">
+          <div className="overflow-x-auto max-h-[calc(100vh-320px)]">
             <table className="w-full text-left border-collapse text-[12px]">
               <thead className="sticky top-0 z-30">
                 <tr className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
@@ -1865,7 +1865,7 @@ function InvoiceFilterDownload({
         </div>
       ) : sap ? (
         <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
-          <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+          <div className="px-4 py-2 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
             <div>
               <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
                 Dispatch Results — Pending
@@ -1875,7 +1875,7 @@ function InvoiceFilterDownload({
               </p>
             </div>
           </div>
-          <div className="overflow-x-auto max-h-[560px]">
+          <div className="overflow-x-auto max-h-[calc(100vh-320px)]">
             <table className="w-full text-left border-collapse text-[12px]">
               <thead className="sticky top-0 z-30">
                 <tr className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
@@ -2151,7 +2151,7 @@ function LeScreenShell({
           </TabsContent>
 
           {/* ───────── Filter & Download tab ───────── */}
-          <TabsContent value="search" className="mt-5 space-y-5">
+          <TabsContent value="search" className="mt-2 space-y-2">
             {renderFilterBody?.({ sap: searchSap, setSap: setSearchSap })}
           </TabsContent>
         </div>
