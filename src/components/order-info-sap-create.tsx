@@ -21,6 +21,11 @@ const INPUT_SAP_FILLED =
 const INPUT_SAP_EMPTY =
   "h-7 w-full rounded-md bg-red-50 border-2 border-red-400 px-2 text-[12px] text-foreground font-medium outline-none focus:border-red-500 focus:ring-2 focus:ring-red-300";
 
+// Highlighted (yellow) — used for the Incoterms field
+const INPUT_YELLOW =
+  "h-7 w-full rounded-md bg-yellow-50 border-2 border-yellow-400 px-2 text-[12px] text-yellow-900 font-semibold outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-300";
+const LABEL_YELLOW = "block text-[11px] font-semibold text-yellow-700 mb-0.5";
+
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
 // ── Search options ────────────────────────────────────────────────────────────
@@ -66,6 +71,7 @@ type FormState = {
   DestinationLocation: string;
   DestinationState: string;
   DestinationZone: string;
+  Incoterms: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -77,6 +83,7 @@ const EMPTY_FORM: FormState = {
   Division: "", SubDivision: "", RefNumber: "",
   Customer: "", CustomerGroup: "", CUST_CODE: "",
   CNee: "", DestinationLocation: "", DestinationState: "", DestinationZone: "",
+  Incoterms: "",
 };
 
 type ComboOption = { code: string; label: string };
@@ -252,6 +259,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
   const [billingList, setBillingList] = useState<BillingData[]>([]);
   const [statesList, setStatesList] = useState<StateData[]>([]);
   const [customerList, setCustomerList] = useState<CustomerData[]>([]);
+  const [incotermsList, setIncotermsList] = useState<any[]>([]);
 
   // loading
   const [loadingGet, setLoadingGet] = useState(false);
@@ -355,6 +363,16 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     })();
   }, []);
 
+  // ── Load Incoterms (for Non-SAP dropdown / display) ──
+  useEffect(() => {
+    (async () => {
+      try {
+        const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+        setIncotermsList(Array.isArray(res) ? res : res?.data || []);
+      } catch (err) { console.error("Error fetching Incoterms:", err); }
+    })();
+  }, []);
+
   // ── patchForm: fill form from SAP response, track which keys are non-empty ──
   const patchForm = useCallback((data: any) => {
     const physDispatch = convertPhysDispatchFormat(data.PHYS_DISPATCH || "");
@@ -387,6 +405,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       DestinationLocation: data.DEST_LOC || "",
       DestinationState: data.DEST_STATE || "",
       DestinationZone: data.DEST_ZONE || "",
+      Incoterms: data.ZINCO || "",
     };
 
     setForm(patched);
@@ -595,6 +614,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       DEST_LOC: form.DestinationLocation,
       DEST_STATE: form.DestinationState,
       DEST_ZONE: form.DestinationZone,
+      ZINCO: form.Incoterms,
       ZUSER: getLoggedInUser(),
       ZUSER_CH: "",
     }));
@@ -1286,6 +1306,27 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
               <div>
                 <FieldLabel label="Customer Group" fromSap={sapFetched && sapFilledKeys.has("CustomerGroup")} />
                 {renderInput("CustomerGroup")}
+              </div>
+
+              {/* Incoterms (highlighted yellow) */}
+              <div>
+                <label className={LABEL_YELLOW}>Incoterms</label>
+                {isSap ? (
+                  <input value={form.Incoterms} readOnly className={INPUT_YELLOW} />
+                ) : (
+                  <select
+                    value={form.Incoterms}
+                    onChange={(e) => setField("Incoterms", e.target.value)}
+                    className={INPUT_YELLOW}
+                  >
+                    <option value="">Select Incoterm</option>
+                    {incotermsList.map((i, idx) => (
+                      <option key={idx} value={i.INCO1}>
+                        {i.INCO1} - {i.BEZEI}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
             </div>
