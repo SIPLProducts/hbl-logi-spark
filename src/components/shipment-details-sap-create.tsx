@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import Swal from "sweetalert2";
 import { Search, Plus, Trash2, Save, ChevronLeft, ChevronRight, Pencil, Check, X as XIcon } from "lucide-react";
@@ -85,11 +85,13 @@ type ProductRow = {
   ZMAPID: string;
   ZPRODUCT: string;
   MTART: string;
+  MTBEZ: string;
   MAKTX: string;
   ZSETS: string;
   ZAH: string;
   ZSHIP_WT: string;
   ZBATCOND: string;
+  MANDT: string;
   ZREFNO: string;
   ZLINE_NO: string;
   VBELN: string;
@@ -111,11 +113,13 @@ const emptyProductRow = (): ProductRow => ({
   ZMAPID: "",
   ZPRODUCT: "",
   MTART: "",
+  MTBEZ: "",
   MAKTX: "",
   ZSETS: "",
   ZAH: "",
   ZSHIP_WT: "",
   ZBATCOND: "",
+  MANDT: "",
   ZREFNO: "",
   ZLINE_NO: "",
   VBELN: "",
@@ -138,9 +142,14 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
   const currentUser = (() => {
     try {
-      return JSON.parse(localStorage.getItem("currentUser") || "{}");
+      const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
+      const parsed = JSON.parse(raw || "{}");
+      const USER = String(parsed?.USER ?? parsed?.USERNAME ?? parsed?.USER_ID ?? parsed?.user ?? "");
+      const PLANTS = parsed?.PLANTS || parsed?.PLANT || [];
+      const DIV = parsed?.DIV || parsed?.DIVISION || [];
+      return { ...parsed, USER, PLANTS, DIV };
     } catch {
-      return {};
+      return { USER: "", PLANTS: [], DIV: [] };
     }
   })();
   const loggedInUser = currentUser.USER || "";
@@ -170,16 +179,6 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
   const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(false);
-
-  const rowMatches = (a: RefRow, b: RefRow) =>
-    a.MAPID === b.MAPID &&
-    a.referenceNumber === b.referenceNumber &&
-    a.workOrderNumber === b.workOrderNumber &&
-    a.lrNumber === b.lrNumber &&
-    a.transporter === b.transporter &&
-    a.soNumber === b.soNumber &&
-    a.odnNumber === b.odnNumber &&
-    a.lineNumber === b.lineNumber;
 
   // ---------- Reference row field-blur lookup (only row 0 is editable/live) ----------
   const updateRefRow = (index: number, patch: Partial<RefRow>) => {
@@ -266,17 +265,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
   const removeReferenceRow = (index: number) => {
     const rowValue = referenceItems[index];
     setReferenceItems((prev) => prev.filter((_, i) => i !== index));
-    setSelectedItems((prev) =>
-      prev.filter(
-        (item) =>
-          !(
-            item.referenceNumber === rowValue.referenceNumber &&
-            item.workOrderNumber === rowValue.workOrderNumber &&
-            item.lrNumber === rowValue.lrNumber &&
-            item.transporter === rowValue.transporter
-          ),
-      ),
-    );
+    setSelectedItems((prev) => prev.filter((item) => String(item.MAPID) !== String(rowValue.MAPID)));
   };
 
   const updateInvoiceListForSelectedItems = (nextSelected: RefRow[]) => {
@@ -284,10 +273,10 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
       setInvoiceF4List([]);
       return;
     }
-    const selectedMapIds = [...new Set(nextSelected.map((i) => i.MAPID))];
+    const selectedMapIds = [...new Set(nextSelected.map((i) => String(i.MAPID)))];
     const f4: string[] = [];
     fullReferenceData.forEach((refItem) => {
-      if (selectedMapIds.includes(refItem.MAPID) && refItem.INV_NO && Array.isArray(refItem.INV_NO)) {
+      if (selectedMapIds.includes(String(refItem.MAPID)) && refItem.INV_NO && Array.isArray(refItem.INV_NO)) {
         refItem.INV_NO.forEach((inv: any) => {
           if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
         });
@@ -298,7 +287,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
   const isItemSelected = (index: number) => {
     const rowValue = referenceItems[index];
-    return selectedItems.some((item) => rowMatches(item, rowValue));
+    return selectedItems.some((item) => String(item.MAPID) === String(rowValue.MAPID));
   };
 
   const onCheckboxChange = (index: number, checked: boolean) => {
@@ -306,9 +295,11 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
     setSelectedItems((prev) => {
       let next: RefRow[];
       if (checked) {
-        next = prev.some((i) => rowMatches(i, rowValue)) ? prev : [...prev, rowValue];
+        next = prev.some((i) => String(i.MAPID) === String(rowValue.MAPID))
+          ? prev
+          : [...prev, { ...rowValue, MAPID: String(rowValue.MAPID) }];
       } else {
-        next = prev.filter((i) => !rowMatches(i, rowValue));
+        next = prev.filter((i) => String(i.MAPID) !== String(rowValue.MAPID));
       }
       updateInvoiceListForSelectedItems(next);
       return next;
@@ -341,11 +332,13 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
           ZMAPID: String(item.ZMAPID ?? ""),
           ZPRODUCT: item.ZPRODUCT || "",
           MTART: item.MTART || "",
+          MTBEZ: item.MTBEZ || "",
           MAKTX: item.MAKTX || "",
           ZSETS: item.ZSETS ?? "",
           ZAH: item.ZAH ?? "",
           ZSHIP_WT: item.ZSHIP_WT ?? "",
           ZBATCOND: item.ZBATCOND || "",
+          MANDT: item.MANDT || "",
           ZREFNO: item.ZREFNO || "",
           ZLINE_NO: item.ZLINE_NO || "",
           VBELN: item.VBELN || "",
@@ -364,7 +357,13 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
       );
       setShowForm(true);
       setSearchOptionsList([]);
-      Swal.fire({ icon: "success", title: "Success", text: "Invoice details loaded successfully" });
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Invoice details loaded successfully",
+        timer: 1500,
+        showConfirmButton: false,
+      });
     } catch (err) {
       console.error("Invoice fetch error:", err);
       Swal.fire({ icon: "error", title: "Error", text: "Error fetching data from SAP." });
@@ -458,7 +457,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
       } else {
         setSearchOptionsList(res.HEADER.map((item: any) => ({ ...item, isEdit: false })));
         setShowForm(false);
-        Swal.fire({ title: "Data fetched successfully!", icon: "success" });
+        Swal.fire({ title: "Data fetched successfully!", icon: "success", timer: 1500, showConfirmButton: false });
       }
     } catch (err) {
       console.error("Search error:", err);
@@ -549,12 +548,16 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
         : await service.Shipmentchangewithoutsap(payload);
 
       if (res?.STATUS === "true" || res?.NUMBER === "200") {
-        Swal.fire({ title: "Success", text: res.MESSAGE || "Record updated successfully", icon: "success" }).then(
-          () => {
-            patchSearchRow(index, { isEdit: false, _backup: undefined });
-            onSearchReference();
-          },
-        );
+        Swal.fire({
+          title: "Success",
+          text: res.MESSAGE || "Record updated successfully",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        }).then(() => {
+          patchSearchRow(index, { isEdit: false, _backup: undefined });
+          onSearchReference();
+        });
       } else {
         Swal.fire({ title: "Error", text: res?.MSG || res?.MESSAGE || "Update failed", icon: "error" });
       }
@@ -589,7 +592,13 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
       if (res?.NUMBER === "200") {
         setSearchOptionsList((prev) => prev.filter((_, i) => i !== index));
-        Swal.fire({ title: "Deleted", text: res.MSG || "Record deleted successfully", icon: "success" });
+        Swal.fire({
+          title: "Deleted",
+          text: res.MSG || "Record deleted successfully",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
       } else {
         Swal.fire({ title: "Failed", text: res?.MSG || "Delete failed", icon: "error" });
       }
@@ -612,10 +621,10 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
   };
 
   // fetch once on mount
-  useState(() => {
+  useEffect(() => {
     fetchIncoterms();
-    return null;
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---------- Save ----------
   const saveShipmentOutward = async (action: "stay" | "next" | "previous" = "stay") => {
@@ -626,7 +635,6 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
         title: "Warning",
         text: "Please select at least one product row to save.",
         icon: "warning",
-        timer: 3000,
         confirmButtonText: "Ok",
       });
       return;
@@ -639,32 +647,50 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
     const commonFields = { ZINCO: zinco || "", ZINS_SCPOE: zinsScope || "", ZKM: zkm || "", VBELN: vbeln || "" };
 
-    const finalPayload = selectedRows.map((row) => ({
-      ...row,
-      ZINS_SCPOE: row.ZINS_SCPOE?.trim() ? row.ZINS_SCPOE : commonFields.ZINS_SCPOE,
-      ZKM: row.ZKM !== "" && row.ZKM != null ? row.ZKM : commonFields.ZKM,
-      ZINCO: row.ZINCO?.trim() ? row.ZINCO : commonFields.ZINCO,
-      VBELN: row.VBELN?.trim() ? row.VBELN : commonFields.VBELN,
-      ZUSER: loggedInUser,
-      ZUSER_CH: "",
-    }));
+    // A row's ZMAPID may have arrived pre-filled from the invoice fetch, which never
+    // carries reference/work-order/LR/transporter data. Fall back to the matching
+    // reference-table row (the one the user checked off) for those fields, by MAPID.
+    const refForRow = (mapId: string) => selectedItems.find((r) => r.MAPID === mapId);
+
+    // Helper: some fields can come back from the API as numbers (or null/undefined)
+    // rather than strings, which breaks .trim(). Normalize to a string first.
+    const asTrimmed = (val: unknown): string => (val === null || val === undefined ? "" : String(val).trim());
+
+    const finalPayload = selectedRows.map((row) => {
+      const ref = refForRow(row.ZMAPID);
+      return {
+        ...row,
+        ZINS_SCPOE: asTrimmed(row.ZINS_SCPOE) ? row.ZINS_SCPOE : commonFields.ZINS_SCPOE,
+        ZKM: row.ZKM !== "" && row.ZKM != null ? row.ZKM : commonFields.ZKM,
+        ZINCO: asTrimmed(row.ZINCO) ? row.ZINCO : commonFields.ZINCO,
+        VBELN: asTrimmed(row.VBELN) ? row.VBELN : commonFields.VBELN,
+        ZREFNO: asTrimmed(row.ZREFNO) ? row.ZREFNO : ref?.referenceNumber || "",
+        ZLINE_NO: asTrimmed(row.ZLINE_NO) ? row.ZLINE_NO : ref?.lineNumber || "",
+        ZWORK_ORDER: asTrimmed(row.ZWORK_ORDER) ? row.ZWORK_ORDER : ref?.workOrderNumber || "",
+        ZLRNO: asTrimmed(row.ZLRNO) ? row.ZLRNO : ref?.lrNumber || "",
+        ZTRANSPORTER: asTrimmed(row.ZTRANSPORTER) ? row.ZTRANSPORTER : ref?.transporter || "",
+        ZUSER: loggedInUser,
+        ZUSER_CH: "",
+      };
+    });
 
     setLoading(true);
     try {
-      const savePayload = isSap
-        ? { CHANGE: "", SAVE: finalPayload }
-        : { CHANGE: "", CREATE: finalPayload };
-
+      // IMPORTANT: the backend for ShipmentOutwardSave / shipmentdetailsNonSapSave expects
+      // the row array directly as the request body (see the Angular original), NOT wrapped
+      // in an object like { CHANGE: "", SAVE: [...] }. Wrapping it was the reason saves
+      // were silently failing.
       const res = isSap
-        ? await service.ShipmentOutwardSave(savePayload)
-        : await service.shipmentdetailsNonSapSave(savePayload);
+        ? await service.ShipmentOutwardSave(finalPayload)
+        : await service.shipmentdetailsNonSapSave(finalPayload);
 
       if (res?.STATUS === "true" || res?.NUMBER === "200") {
         Swal.fire({
           title: "Success",
           text: res.MESSAGE || res.MSG || "Data saved successfully",
           icon: "success",
-          confirmButtonText: "Ok",
+          timer: 1500,
+          showConfirmButton: false,
         }).then(() => {
           if (action === "next") navigate({ to: "/invoice-load-details" });
           else if (action === "previous") navigate({ to: "/order-info" });
@@ -703,6 +729,11 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
     setSelectedType("");
     setSearchReference("");
   };
+
+  // Reset form whenever the parent toggles SAP mode
+  useEffect(() => {
+    resetForm();
+  }, [mode]);
 
   return (
     <div className="space-y-2">
@@ -1119,10 +1150,10 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
       {/* Global search results (edit/delete) */}
       {searchOptionsList.length > 0 && (
-        <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
-          <table className="w-full text-[11.5px]">
-            <thead>
-              <tr className="bg-gradient-primary text-primary-foreground text-[10.5px] font-semibold">
+        <div className="overflow-x-auto max-h-[560px]">
+          <table className="w-full text-left border-collapse text-[12.5px]">
+            <thead className="sticky top-0 z-30">
+              <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
                 {[
                   "Map ID",
                   "Ref No",
@@ -1156,14 +1187,21 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-hairline/70">
               {searchOptionsList.map((item, i) => (
-                <tr key={i} className={item.isEdit ? "bg-accent/[0.06]" : ""}>
-                  <td className="px-2 py-1 text-center">{item.ZMAPID}</td>
-                  <td className="px-2 py-1 text-center">{item.ZREFNO}</td>
-                  <td className="px-2 py-1 text-center">{item.VBELN}</td>
-                  <td className="px-2 py-1 text-center">{item.ZLINE_NO}</td>
-                  <td className="px-2 py-1 text-center">{item.POSNR}</td>
+                <tr
+                  key={i}
+                  className={
+                    i % 2 === 0
+                      ? "bg-surface hover:bg-muted/50"
+                      : "bg-surface-2/40 hover:bg-muted/50"
+                  }
+                >
+                  <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZMAPID}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZREFNO}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center">{item.VBELN}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center">{item.POSNR}</td>
                   {[
                     ["ZODN_NO"],
                     ["ZSO_NO"],
@@ -1171,7 +1209,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                     ["MTART"],
                     ["MAKTX"],
                   ].map(([field]) => (
-                    <td key={field} className="px-2 py-1 text-center">
+                    <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           value={item[field] ?? ""}
@@ -1184,7 +1222,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                     </td>
                   ))}
                   {[["ZSETS"], ["ZAH"]].map(([field]) => (
-                    <td key={field} className="px-2 py-1 text-center">
+                    <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           type="number"
@@ -1197,7 +1235,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                       )}
                     </td>
                   ))}
-                  <td className="px-2 py-1 text-center">
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
                     {item.isEdit ? (
                       <input
                         type="number"
@@ -1210,7 +1248,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                     )}
                   </td>
                   {["ZBATCOND", "ZINCO", "ZINS_SCPOE"].map((field) => (
-                    <td key={field} className="px-2 py-1 text-center">
+                    <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           value={item[field] ?? ""}
@@ -1222,7 +1260,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                       )}
                     </td>
                   ))}
-                  <td className="px-2 py-1 text-center">
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
                     {item.isEdit ? (
                       <input
                         type="number"
@@ -1235,7 +1273,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                     )}
                   </td>
                   {["ZPLANT", "ZDIVISION", "ZWORK_ORDER", "ZLRNO", "ZTRANSPORTER"].map((field) => (
-                    <td key={field} className="px-2 py-1 text-center">
+                    <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
                           value={item[field] ?? ""}
@@ -1247,10 +1285,10 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                       )}
                     </td>
                   ))}
-                  <td className="px-2 py-1 text-center whitespace-nowrap">
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
                     {item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : "-"}
                   </td>
-                  <td className="px-2 py-1 text-center">
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
                     {item.isEdit ? (
                       <input
                         value={item.ZVEH_TYPE ?? ""}
@@ -1261,7 +1299,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                       item.ZVEH_TYPE || "-"
                     )}
                   </td>
-                  <td className="px-2 py-1 text-center">
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
                     <div className="inline-flex items-center gap-1">
                       {!item.isEdit ? (
                         <>

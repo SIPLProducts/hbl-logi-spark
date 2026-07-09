@@ -48,11 +48,21 @@ const VEHICLE_TYPES = [
 ];
 const STATUS_OPTIONS = ["Pending", "Completed"] as const;
 
-function getCurrentUser() {
+function getCurrentUser(): { USER: string; PLANTS: any[]; DIV: any[] } {
   try {
-    return JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
+    const parsed = JSON.parse(raw || "{}");
+    const userVal = String(
+      parsed?.USER ?? parsed?.USERNAME ?? parsed?.USER_ID ?? parsed?.user ?? ""
+    );
+
+    return {
+      USER: userVal,
+      PLANTS: parsed?.PLANTS || parsed?.PLANT || [],
+      DIV: parsed?.DIV || parsed?.DIVISION || [],
+    };
   } catch {
-    return {};
+    return { USER: "", PLANTS: [], DIV: [] };
   }
 }
 
@@ -822,7 +832,7 @@ function DateField({
       <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</label>
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" className={cn("h-10 justify-start text-left font-normal", !value && "text-muted-foreground")}>
+          <Button variant="outline" className={cn("h-8 justify-start text-left font-normal", !value && "text-muted-foreground")}>
             <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
             {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
           </Button>
@@ -852,7 +862,7 @@ function SelectField({
     <div className="flex flex-col gap-1.5">
       <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-10">
+        <SelectTrigger className="h-8">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
