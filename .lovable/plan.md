@@ -1,31 +1,27 @@
-## Add Incoterms field to Order Info screen
+## Add Insurance Scope + Kilometres to Gate In/Out screen
 
-Port the Incoterms dropdown from `src/components/shipment-details-sap-create.tsx` into `src/components/order-info-sap-create.tsx`, styled with a yellow theme.
+Add two new fields into `src/routes/gate-in-out-process.tsx`, placed right after the existing E-Way Bill fields block (~line 1161).
 
-### Changes to `src/components/order-info-sap-create.tsx`
+### Changes in `src/routes/gate-in-out-process.tsx`
 
-1. **State + data**
-   - Add `incotermsList` state (`any[]`).
-   - Add `zinco` state (selected Incoterm code).
-   - Add `Incoterms` to `FormState`, `EMPTY_FORM`, and any reset/save payload path so it persists like other fields.
-   - Add `fetchIncoterms()` calling `service.Incoterms({ INCO1: "", BEZEI: "" })` and invoke it in a `useEffect` on mount (same pattern used in Shipment Details).
-
-2. **Yellow field style constant**
-   Add a new style near the other `INPUT_*` constants:
+1. **State** — add alongside the existing `eway*` state (~line 910):
+   ```ts
+   const [insuranceScope, setInsuranceScope] = useState("");
+   const [kilometres, setKilometres] = useState("");
    ```
-   const INPUT_YELLOW =
-     "h-7 w-full rounded-md bg-yellow-50 border-2 border-yellow-400 px-2 text-[12px] text-yellow-900 font-semibold outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-300";
+
+2. **Constant** — add near the top of the file (module scope), mirroring Shipment Details:
+   ```ts
+   const INSURANCE_SCOPE = ["Buyer", "Supplier"];
    ```
-   Use a matching yellow label class for just this field (e.g. `text-yellow-700 font-semibold`).
 
-3. **Render the field**
-   Add an Incoterms cell inside the existing form grid (placed alongside the other top-row selects so it flows naturally in the 4-col layout):
-   - In SAP mode: `<input value={zinco} readOnly className={INPUT_YELLOW} />`
-   - In Non-SAP mode: `<select>` populated from `incotermsList`, options rendered as `{INCO1} - {BEZEI}`, using `INPUT_YELLOW`.
-   - `onChange` updates both `zinco` and `form.Incoterms`.
+3. **Render** — inside the same card that holds the E-Way Bill fields (the `grid ... lg:grid-cols-4` at line 1126), append two grid cells after the E-Way Bill Expire Date cell so the 4-column flow stays intact:
 
-4. **No changes** to Shipment Details, routing, or business logic elsewhere. Incoterms remains in Shipment Details as-is (the request is to also put it in Order Info, not to move it).
+   - **Insurance Scope** — `<select>` using `INSURANCE_SCOPE` options, styled with the same class already used for the E-way applicable select (`h-7 w-full rounded-md border border-input …`) and wrapped in `<Label>` like the neighbours.
+   - **Kilometres** — `<Input type="number" placeholder="0" />` bound to `kilometres`.
 
-### Notes
-- Reuses the existing `service.Incoterms` API already imported via `generalservice_service.js` — no new dependencies.
-- Only presentation + a single new field; no schema, routing, or backend changes.
+   Both cells always visible (not gated by the E-Way "Yes" toggle) so they appear on load, immediately after the E-way section.
+
+### Out of scope
+- No changes to Shipment Details (fields remain there too).
+- No table/column edits, no persistence/API wiring — matches how the sibling `eway*` fields are currently kept in local state only.
