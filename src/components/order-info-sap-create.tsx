@@ -71,6 +71,7 @@ type FormState = {
   DestinationLocation: string;
   DestinationState: string;
   DestinationZone: string;
+  Incoterms: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -82,6 +83,7 @@ const EMPTY_FORM: FormState = {
   Division: "", SubDivision: "", RefNumber: "",
   Customer: "", CustomerGroup: "", CUST_CODE: "",
   CNee: "", DestinationLocation: "", DestinationState: "", DestinationZone: "",
+  Incoterms: "",
 };
 
 type ComboOption = { code: string; label: string };
