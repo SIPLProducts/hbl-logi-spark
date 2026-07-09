@@ -259,6 +259,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
   const [billingList, setBillingList] = useState<BillingData[]>([]);
   const [statesList, setStatesList] = useState<StateData[]>([]);
   const [customerList, setCustomerList] = useState<CustomerData[]>([]);
+  const [incotermsList, setIncotermsList] = useState<any[]>([]);
 
   // loading
   const [loadingGet, setLoadingGet] = useState(false);
