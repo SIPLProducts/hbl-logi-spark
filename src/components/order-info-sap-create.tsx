@@ -21,6 +21,11 @@ const INPUT_SAP_FILLED =
 const INPUT_SAP_EMPTY =
   "h-7 w-full rounded-md bg-red-50 border-2 border-red-400 px-2 text-[12px] text-foreground font-medium outline-none focus:border-red-500 focus:ring-2 focus:ring-red-300";
 
+// Highlighted (yellow) — used for the Incoterms field
+const INPUT_YELLOW =
+  "h-7 w-full rounded-md bg-yellow-50 border-2 border-yellow-400 px-2 text-[12px] text-yellow-900 font-semibold outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-300";
+const LABEL_YELLOW = "block text-[11px] font-semibold text-yellow-700 mb-0.5";
+
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
 // ── Search options ────────────────────────────────────────────────────────────
