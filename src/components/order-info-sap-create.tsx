@@ -363,6 +363,16 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     })();
   }, []);
 
+  // ── Load Incoterms (for Non-SAP dropdown / display) ──
+  useEffect(() => {
+    (async () => {
+      try {
+        const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+        setIncotermsList(Array.isArray(res) ? res : res?.data || []);
+      } catch (err) { console.error("Error fetching Incoterms:", err); }
+    })();
+  }, []);
+
   // ── patchForm: fill form from SAP response, track which keys are non-empty ──
   const patchForm = useCallback((data: any) => {
     const physDispatch = convertPhysDispatchFormat(data.PHYS_DISPATCH || "");
