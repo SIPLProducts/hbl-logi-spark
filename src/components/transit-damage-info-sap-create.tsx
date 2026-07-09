@@ -127,6 +127,17 @@ const labelToKey = (label: string) => {
   }
 };
 
+type SearchResult = {
+  [key: string]: any;
+  isEdit?: boolean;
+  _backup?: any;
+};
+type HeaderData = {
+  [key: string]: any;
+  isEdit?: boolean;
+  _backup?: any;
+};
+
 function getLoggedInUser(): string {
   try {
     const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
@@ -146,7 +157,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
   const [revealed, setRevealed] = useState(false);
 
-  const [headerData, setHeaderData] = useState<any>({});
+  const [headerData, setHeaderData] = useState<HeaderData>({});
   const [itemData, setItemData] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<TableRow[]>([]);
 
@@ -167,6 +178,51 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
   const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [selectedItem, setSelectedItem] = useState<any>({});
+  const editSearchRow = () => {
+    setHeaderData((prev: any) => ({
+      ...prev,
+      _backup: { ...prev },
+      isEdit: true,
+    }));
+  };
+  const cancelSearchEdit = () => {
+    setHeaderData((prev: any) => {
+      if (!prev._backup) return prev;
+
+      const backup = prev._backup;
+
+      return {
+        ...backup,
+        isEdit: false,
+      };
+    });
+  };
+  const editItemRow = (index: number) => {
+    const rows = [...itemData];
+
+    rows[index] = {
+      ...rows[index],
+      _backup: { ...rows[index] },
+      isEdit: true,
+    };
+
+    setItemData(rows);
+  };
+  const cancelItemEdit = (index: number) => {
+    const rows = [...itemData];
+
+    if (rows[index]._backup) {
+      rows[index] = {
+        ...rows[index]._backup,
+        isEdit: false,
+      };
+    }
+
+    setItemData(rows);
+  };
+
   const handleHeaderChange = (key: string, value: any) => {
     setHeaderData((prev: any) => ({
       ...prev,
@@ -503,7 +559,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       setHeaderData(header);
       setItemData(items);
       setShowForm(true);
-      setIsGlobalSearch(true);
+      setIsGlobalSearch(false);
     } catch (err) {
       console.error(err);
 
@@ -656,6 +712,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     setShowForm(false);
     setRevealed(false);
     setIsGlobalSearch(true);
+
 
     if (!searchValue.trim()) {
       Swal.fire({
@@ -843,7 +900,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
       setShowForm(true);
       setRevealed(true);
-      setIsGlobalSearch(true);
+      setIsGlobalSearch(false);
 
       Swal.fire({
         icon: "success",
@@ -973,6 +1030,125 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
         title: "Error",
         text: "Save Failed",
       });
+    }
+  };
+
+  const updateSearchRow = async () => {
+    const payload = {
+      ZDIMAGES: imagesBase64 || "",
+      ZDIMG_PATH: imagesPath || "",
+
+      ZFSRREP: fsrReportBase64 || "",
+      ZFSRREP_PATH: fsrReportPath || "",
+
+      ZFIRREP: firReportBase64 || "",
+      ZFIRREP_PATH: firReportPath || "",
+
+      ZCOF: cofBase64 || "",
+      ZCOF_PATH: cofPath || "",
+
+      HEAD: {
+        ...headerData,
+        ZUSER_CH: getLoggedInUser(),
+      },
+
+      ITEM: itemData.map((item: any) => ({
+        ...item,
+        ZUSER_CH: getLoggedInUser(),
+      })),
+    };
+
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to update this transit record?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Update",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const res = isSap
+        ? await service.TransitDamageInfoChangeWithSap(payload)
+        : await service.TransitDamageInfoChangeWithoutSap(payload);
+
+      if (res.STATUS === "TRUE" || res.NUMBER === "200") {
+        Swal.fire("Success", res.MESSAGE, "success");
+
+        setHeaderData((prev: any) => ({
+          ...prev,
+          isEdit: false,
+        }));
+
+        setItemData((prev: any[]) =>
+          prev.map((x) => ({
+            ...x,
+            isEdit: false,
+          }))
+        );
+
+        onSearchReference();
+      } else {
+        Swal.fire("Error", res.MESSAGE || "Update Failed", "error");
+      }
+    } catch {
+      Swal.fire("Error", "Internal Server Error", "error");
+    }
+  };
+
+  const deleteRow = async (row: any) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to delete this record?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Delete",
+    });
+
+    if (!result.isConfirmed) return;
+
+    const payload = {
+      DELETE: [
+        {
+          ZREFNO: row.ZREFNO,
+          ZINV_NO: row.ZINV_NO,
+          ZLINE_NO: row.ZLINE_NO || "",
+        },
+      ],
+    };
+
+    try {
+      const res = isSap
+        ? await service.TransitDamageInfoDeleteWithSap(payload)
+        : await service.TransitDamageInfoDeleteWithoutSap(payload);
+
+      if (res.STATUS === "TRUE" || res.NUMBER === "200") {
+        Swal.fire("Deleted", "Record deleted successfully", "success");
+
+        setItemData((prev) =>
+          prev.filter(
+            (x) =>
+              !(
+                x.ZREFNO === row.ZREFNO &&
+                x.ZINV_NO === row.ZINV_NO &&
+                x.ZLINE_NO === row.ZLINE_NO
+              )
+          )
+        );
+
+        if (
+          headerData.ZREFNO === row.ZREFNO &&
+          headerData.ZINV_NO === row.ZINV_NO
+        ) {
+          setHeaderData({});
+          setShowForm(false);
+        }
+      } else {
+        Swal.fire("Failed", res.MESSAGE || "Delete failed", "error");
+      }
+    } catch {
+      Swal.fire("Error", "Delete failed", "error");
     }
   };
 
@@ -1183,8 +1359,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
       {showFields && (
         <>
+          {/* ================= GLOBAL SEARCH ================= */}
 
-          {showForm && Object.keys(headerData).length > 0 && (
+          {showForm && isGlobalSearch && Object.keys(headerData).length > 0 && (
             <div className="max-h-[500px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant">
               <div className="p-2 font-semibold">Header Details</div>
 
@@ -1211,77 +1388,176 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
                 <tbody className="divide-y divide-hairline/70">
                   <tr className="bg-surface hover:bg-muted/50">
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZREFNO}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZLINE_NO}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZINV_NO}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZODN_NO}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZSONO}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZINV_DATE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZFSR_RPT_DT}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZBASIC_VALUE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZINC_DATE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZCUSTOMER}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZCONSIGN_NAME}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZDAMAGE_RMK}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZSETTLEMENT}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZCLOSING_DT}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZDIMAGES || "-"}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZFSRREP || "-"}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZFIRREP || "-"}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZCOF || "-"}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZSALE_PERSON}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZLOCATION}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZROUTE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZPLANT}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZDIVISION}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZCREATED_DT}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{headerData.ZVEH_TYPE}</td>
 
-                    <td className="px-2 py-0.5 text-center">
-                      <div className="flex items-center gap-1 justify-center">
-                        <button
-                          className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
-                        >
-                          <svg
-                            className="size-3.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    {[
+                      { field: "ZREFNO", type: "text" },
+                      { field: "ZLINE_NO", type: "text" },
+                      { field: "ZINV_NO", type: "text" },
+                      { field: "ZODN_NO", type: "text" },
+                      { field: "ZSONO", type: "text" },
+                      { field: "ZINV_DATE", type: "date" },
+                      { field: "ZFSR_RPT_DT", type: "date" },
+                      { field: "ZBASIC_VALUE", type: "number" },
+                      { field: "ZINC_DATE", type: "date" },
+                      { field: "ZCUSTOMER", type: "text" },
+                      { field: "ZCONSIGN_NAME", type: "text" },
+                      { field: "ZDAMAGE_RMK", type: "textarea" },
+                      { field: "ZSETTLEMENT", type: "text" },
+                      { field: "ZCLOSING_DT", type: "date" },
+                      { field: "ZDIMAGES", type: "text" },
+                      { field: "ZFSRREP", type: "text" },
+                      { field: "ZFIRREP", type: "text" },
+                      { field: "ZCOF", type: "text" },
+                      { field: "ZSALE_PERSON", type: "text" },
+                      { field: "ZLOCATION", type: "text" },
+                      { field: "ZROUTE", type: "text" },
+                      { field: "ZPLANT", type: "text" },
+                      { field: "ZDIVISION", type: "text" },
+                      { field: "ZCREATED_DT", type: "date" },
+                      { field: "ZVEH_TYPE", type: "text" },
+                    ].map(({ field, type }) => (
+                      <td
+                        key={field}
+                        className="px-3 py-2 whitespace-nowrap text-center"
+                      >
+                        {headerData.isEdit ? (
+                          type === "textarea" ? (
+                            <textarea
+                              className={`${GREEN_INPUT} h-16`}
+                              value={headerData[field] || ""}
+                              onChange={(e) =>
+                                setSearchResults((prev: any[]) => ({
+                                  ...prev,
+                                  [field]: e.target.value,
+                                }))
+                              }
                             />
-                          </svg>
-                        </button>
+                          ) : (
+                            <input
+                              type={type}
+                              className={GREEN_INPUT}
+                              value={headerData[field] || ""}
+                              onChange={(e) =>
+                                setHeaderData((prev) => ({
+                                  ...prev,
+                                  [field]: e.target.value,
+                                }))
+                              }
+                            />
+                          )
+                        ) : (
+                          <span>
+                            {type === "date" && headerData[field]
+                              ? new Date(headerData[field]).toLocaleDateString("en-GB")
+                              : headerData[field] || "-"}
+                          </span>
+                        )}
+                      </td>
+                    ))}
 
-                        <button
-                          className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
-                        >
-                          <svg
-                            className="size-3.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                    {/* Action */}
+                    <td className="px-2 py-2 text-center">
+                      {!headerData.isEdit ? (
+                        <div className="flex items-center gap-1 justify-center">
+                          <button
+                            onClick={() =>
+                              setHeaderData((prev) => ({
+                                ...prev,
+                                _backup: { ...prev },
+                                isEdit: true,
+                              }))
+                            }
+                            className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      </div>
+                            <svg
+                              className="size-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                              />
+                            </svg>
+                          </button>
+
+                          <button
+                            onClick={() => deleteRow(headerData)}
+                            className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+                          >
+                            <svg
+                              className="size-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 justify-center">
+                          <button
+                            onClick={updateSearchRow}
+                            className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                          >
+                            <svg
+                              className="size-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              setHeaderData((prev) => ({
+                                ...prev._backup,
+                                isEdit: false,
+                              }))
+                            }
+                            className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          >
+                            <svg
+                              className="size-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 </tbody>
               </table>
+
             </div>
           )}
-          {showForm && itemData.length > 0 && (
+
+          {showForm && isGlobalSearch && itemData.length > 0 && (
             <div className="max-h-[400px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant mt-3">
               <div className="p-2 font-semibold">Line Items</div>
 
@@ -1299,6 +1575,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       "Work Order",
                       "LR No",
                       "Transporter",
+                      "Action",
                     ].map((h) => (
                       <th
                         key={h}
@@ -1320,181 +1597,257 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                           : "bg-surface-2/40 hover:bg-muted/50"
                       }
                     >
-                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZMAPID}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZREFNO}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZINV_NO}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZTRUCK_NO}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZBILLNO}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZPRODUCT}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZWORK_ORDER}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLRNO}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZTRANSPORTER}</td>
+                      {[
+                        { field: "ZMAPID", type: "text" },
+                        { field: "ZREFNO", type: "text" },
+                        { field: "ZLINE_NO", type: "text" },
+                        { field: "ZINV_NO", type: "text" },
+                        { field: "ZTRUCK_NO", type: "text" },
+                        { field: "ZBILLNO", type: "text" },
+                        { field: "ZPRODUCT", type: "text" },
+                        { field: "ZWORK_ORDER", type: "text" },
+                        { field: "ZLRNO", type: "text" },
+                        { field: "ZTRANSPORTER", type: "text" },
+                      ].map(({ field, type }) => (
+                        <td
+                          key={field}
+                          className="px-3 py-2 whitespace-nowrap text-center"
+                        >
+                          {item.isEdit ? (
+                            <input
+                              type={type}
+                              className={GREEN_INPUT}
+                              value={item[field] || ""}
+                              onChange={(e) => {
+                                const rows = [...itemData];
+                                rows[index] = {
+                                  ...rows[index],
+                                  [field]: e.target.value,
+                                };
+                                setItemData(rows);
+                              }}
+                            />
+                          ) : (
+                            <span>{item[field] || "-"}</span>
+                          )}
+                        </td>
+                      ))}
+
+                      {/* Action */}
+                      <td className="px-2 py-2 text-center">
+                        {!item.isEdit ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => editItemRow(index)}
+                              className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                            >
+                              ✏️
+                            </button>
+
+                            <button
+                              onClick={() => deleteRow(item)}
+                              className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={updateSearchRow}
+                              className="size-6 grid place-items-center rounded bg-green-50 text-green-600 hover:bg-green-100"
+                            >
+                              ✔
+                            </button>
+
+                            <button
+                              onClick={() => cancelItemEdit(index)}
+                              className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            >
+                              ✖
+                            </button>
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
+
               </table>
+
             </div>
           )}
-          {/* Field grid */}
-          <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
-              {fields.map((f) => (
-                <SapField
-                  key={f.label}
-                  field={f}
-                  onChange={handleHeaderChange}
-                />
-              ))}
-            </div>
-          </div>
 
-          {/* Secondary table */}
-          <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
-            <table className="w-full text-[12px]">
-              <thead>
-                <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-                  <th className="px-3 py-0.5 text-center w-12">
-                    <input
-                      type="checkbox"
-                      onChange={(e) => {
-                        const checked = e.target.checked;
+          {/* ================= GET SCREEN ================= */}
 
-                        const updated = itemData.map((item) => ({
-                          ...item,
-                          selected: checked,
-                        }));
-
-                        setItemData(updated);
-                      }}
-                      className="size-4 accent-sky-600"
+          {!isGlobalSearch && (
+            <>
+              {/* Field Grid */}
+              <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
+                  {fields.map((f) => (
+                    <SapField
+                      key={f.label}
+                      field={f}
+                      onChange={handleHeaderChange}
                     />
-                  </th>
-                  <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
-                  <th className="px-3 py-0.5 text-center">Map ID</th>
-                  <th className="px-3 py-0.5 text-center">Vehicle Number</th>
-                  <th className="px-3 py-0.5 text-center">LR Number</th>
-                  <th className="px-3 py-0.5 text-center">Transporter</th>
-                  <th className="px-3 py-0.5 text-center w-24">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {itemData.map((row: any, index: number) => (
-                  <tr key={index}>
-                    <td className="px-3 py-0.5 text-center">
-                      <input
-                        type="checkbox"
-                        onChange={(e) => {
-                          const checked = e.target.checked;
+                  ))}
+                </div>
+              </div>
 
-                          const updated = itemData.map((item) => ({
-                            ...item,
-                            selected: checked,
-                          }));
+              {/* Secondary Table */}
+              <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+                      <th className="px-3 py-0.5 text-center w-12">
+                        <input
+                          type="checkbox"
+                          onChange={(e) => {
+                            const checked = e.target.checked;
 
-                          setItemData(updated);
-                        }}
-                        className="size-4 accent-sky-600"
-                      />
-                    </td>
+                            const updated = itemData.map((item) => ({
+                              ...item,
+                              selected: checked,
+                            }));
 
-                    <td className="px-3 py-0.5 text-center">
-                      {index + 1}
-                    </td>
+                            setItemData(updated);
+                          }}
+                          className="size-4 accent-sky-600"
+                        />
+                      </th>
 
-                    <td className="px-3 py-0.5">
-                      <select
-                        value={row.ZMAPID || ""}
-                        onChange={(e) => onchangeMAPID(index, e.target.value)}
-                        className={GREEN_INPUT}
-                      >
-                        <option value="">Select</option>
+                      <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
+                      <th className="px-3 py-0.5 text-center">Map ID</th>
+                      <th className="px-3 py-0.5 text-center">Vehicle Number</th>
+                      <th className="px-3 py-0.5 text-center">LR Number</th>
+                      <th className="px-3 py-0.5 text-center">Transporter</th>
+                      <th className="px-3 py-0.5 text-center w-24">Action</th>
+                    </tr>
+                  </thead>
 
-                        {selectedItems.map((item) => (
-                          <option key={item.MAPID} value={item.MAPID}>
-                            {item.MAPID}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+                  <tbody>
+                    {itemData.map((row: any, index: number) => (
+                      <tr key={index}>
+                        <td className="px-3 py-0.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={row.selected || false}
+                            onChange={(e) => {
+                              const updated = [...itemData];
+                              updated[index].selected = e.target.checked;
+                              setItemData(updated);
+                            }}
+                            className="size-4 accent-sky-600"
+                          />
+                        </td>
 
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.VEHICLE_NO || ""}
-                        className={GREEN_INPUT + " text-center"}
-                        readOnly
-                      />
-                    </td>
+                        <td className="px-3 py-0.5 text-center">
+                          {index + 1}
+                        </td>
 
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.LR_NO || ""}
-                        className={GREEN_INPUT + " text-center"}
-                        readOnly
-                      />
-                    </td>
+                        <td className="px-3 py-0.5">
+                          <select
+                            value={row.ZMAPID || ""}
+                            onChange={(e) =>
+                              onchangeMAPID(index, e.target.value)
+                            }
+                            className={GREEN_INPUT}
+                          >
+                            <option value="">Select</option>
 
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.TRANSPORTER || ""}
-                        className={GREEN_INPUT + " text-center"}
-                        readOnly
-                      />
-                    </td>
+                            {selectedItems.map((item) => (
+                              <option
+                                key={item.MAPID}
+                                value={item.MAPID}
+                              >
+                                {item.MAPID}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
 
-                    <td className="px-3 py-0.5 text-center">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button className="inline-grid place-items-center size-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm">
-                          <Plus className="size-3.5" />
-                        </button>
+                        <td className="px-3 py-0.5">
+                          <input
+                            value={row.VEHICLE_NO || ""}
+                            className={GREEN_INPUT + " text-center"}
+                            readOnly
+                          />
+                        </td>
 
-                        <button className="inline-grid place-items-center size-7 rounded-md bg-rose-500 hover:bg-rose-600 text-white shadow-sm">
-                          <X className="size-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        <td className="px-3 py-0.5">
+                          <input
+                            value={row.LR_NO || ""}
+                            className={GREEN_INPUT + " text-center"}
+                            readOnly
+                          />
+                        </td>
 
-          {/* Footer */}
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <button
-              onClick={() =>
-                isWithout
-                  ? handleSaveNonSap("stay")
-                  : handleSave("stay")
-              }
-              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
-            >
-              <Save className="size-3.5" />
-              Save
-            </button>
-            <button
-              onClick={() =>
-                isWithout
-                  ? handleSaveNonSap("next")
-                  : handleSave("next")
-              }
-              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-[12px] font-semibold shadow-sm"
-            >
-              Save and Next
-              <ChevronRight className="size-3.5" />
-            </button>
-            <button
-              onClick={() =>
-                isWithout
-                  ? handleSaveNonSap("previous")
-                  : handleSave("previous")
-              }
-              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold shadow-sm"
-            >
-              <ChevronLeft className="size-3.5" />
-              Save and Previous
-            </button>
-          </div>
+                        <td className="px-3 py-0.5">
+                          <input
+                            value={row.TRANSPORTER || ""}
+                            className={GREEN_INPUT + " text-center"}
+                            readOnly
+                          />
+                        </td>
+
+                        <td className="px-3 py-0.5 text-center">
+                          <div className="inline-flex items-center gap-1.5">
+                            <button className="inline-grid place-items-center size-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm">
+                              <Plus className="size-3.5" />
+                            </button>
+
+                            <button className="inline-grid place-items-center size-7 rounded-md bg-rose-500 hover:bg-rose-600 text-white shadow-sm">
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Footer */}
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                <button
+                  onClick={() =>
+                    isWithout
+                      ? handleSaveNonSap("stay")
+                      : handleSave("stay")
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
+                >
+                  <Save className="size-3.5" />
+                  Save
+                </button>
+
+                <button
+                  onClick={() =>
+                    isWithout
+                      ? handleSaveNonSap("next")
+                      : handleSave("next")
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-[12px] font-semibold shadow-sm"
+                >
+                  Save and Next
+                  <ChevronRight className="size-3.5" />
+                </button>
+
+                <button
+                  onClick={() =>
+                    isWithout
+                      ? handleSaveNonSap("previous")
+                      : handleSave("previous")
+                  }
+                  className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold shadow-sm"
+                >
+                  <ChevronLeft className="size-3.5" />
+                  Save and Previous
+                </button>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
