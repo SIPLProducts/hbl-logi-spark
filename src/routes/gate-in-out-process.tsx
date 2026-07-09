@@ -911,6 +911,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const [ewayExpireDate, setEwayExpireDate] = useState("");
   const [ewayNumber, setEwayNumber] = useState("");
   const [ewayApplicable, setEwayApplicable] = useState("");
+  const [insuranceScope, setInsuranceScope] = useState("");
+  const [kilometres, setKilometres] = useState("");
 
   // ── Truck Type F4 (gettypeofvehicle) ──
   const [gateRows, setGateRows] = useState<GateRow[]>([EMPTY_GATE_ROW()]);
@@ -1157,6 +1159,27 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               </div>
             </>
           )}
+          <div className="space-y-1">
+            <Label>Insurance Scope</Label>
+            <select
+              value={insuranceScope}
+              onChange={(e) => setInsuranceScope(e.target.value)}
+              className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+            >
+              <option value="">Select Insurance Scope</option>
+              <option value="Buyer">Buyer</option>
+              <option value="Supplier">Supplier</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label>Kilometres</Label>
+            <Input
+              type="number"
+              placeholder="0"
+              value={kilometres}
+              onChange={(e) => setKilometres(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
