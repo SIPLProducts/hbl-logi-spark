@@ -394,6 +394,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       DestinationLocation: data.DEST_LOC || "",
       DestinationState: data.DEST_STATE || "",
       DestinationZone: data.DEST_ZONE || "",
+      Incoterms: data.ZINCO || "",
     };
 
     setForm(patched);
