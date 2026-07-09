@@ -614,6 +614,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       DEST_LOC: form.DestinationLocation,
       DEST_STATE: form.DestinationState,
       DEST_ZONE: form.DestinationZone,
+      ZINCO: form.Incoterms,
       ZUSER: getLoggedInUser(),
       ZUSER_CH: "",
     }));
