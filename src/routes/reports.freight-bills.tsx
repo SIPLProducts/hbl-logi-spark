@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FileSpreadsheet, FileSpreadsheet, Calendar, RotateCcw } from "lucide-react";
+import { FileSpreadsheet, Calendar, RotateCcw } from "lucide-react";
 
 const INPUT =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-[12.5px] text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20";
