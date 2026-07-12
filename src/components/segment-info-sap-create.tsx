@@ -4,8 +4,6 @@ import { Search, Trash2, Save, ChevronLeft, ChevronRight, Loader2, Pencil, Check
 import Swal from "sweetalert2";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -154,9 +152,6 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [loadingGet, setLoadingGet] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [loadingSearch, setLoadingSearch] = useState(false);
-
-  // ── UI-only: Sales Person searchable dropdown open state ──
-  const [salePersonOpen, setSalePersonOpen] = useState(false);
 
   const setField = (key: keyof FormState, value: any) => setForm((p) => ({ ...p, [key]: value }));
 
@@ -940,42 +935,18 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               <div>
                 <label className={LABEL}>Sales Person</label>
                 {isWithout || showF4.SALE_PERSON ? (
-                  <Popover open={salePersonOpen} onOpenChange={setSalePersonOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className={`${GREEN_INPUT} flex items-center justify-between gap-1 text-left cursor-pointer`}
-                      >
-                        <span className={form.SALE_PERSON ? "truncate" : "truncate text-muted-foreground"}>
-                          {form.SALE_PERSON || "Select Sales Person"}
-                        </span>
-                        <Search className="size-3.5 shrink-0 opacity-50" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[260px] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Search sales person..." className="text-[12px]" />
-                        <CommandList>
-                          <CommandEmpty>No sales person found.</CommandEmpty>
-                          <CommandGroup>
-                            {supplierList.map((s: any, idx: number) => (
-                              <CommandItem
-                                key={idx}
-                                value={`${s.SUPPLIER} ${s.SUPPLIER_NAME}`}
-                                onSelect={() => {
-                                  setField("SALE_PERSON", s.SUPPLIER_NAME);
-                                  setSalePersonOpen(false);
-                                }}
-                                className="text-[12px]"
-                              >
-                                {s.SUPPLIER} - {s.SUPPLIER_NAME}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <select
+                    value={form.SALE_PERSON}
+                    onChange={(e) => setField("SALE_PERSON", e.target.value)}
+                    className={GREEN_INPUT}
+                  >
+                    <option value="" disabled>Select Sales Person</option>
+                    {supplierList.map((s: any, idx: number) => (
+                      <option key={idx} value={s.SUPPLIER_NAME}>
+                        {s.SUPPLIER} - {s.SUPPLIER_NAME}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
                   <input value={form.SALE_PERSON} readOnly className={READONLY_INPUT} />
                 )}
