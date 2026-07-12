@@ -1797,31 +1797,31 @@ function InvoiceFilterDownload({
         </div>
       ) : sap && fStatus === "Completed" ? (
         <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
-          <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+          <div className="px-5 py-3 border-b border-hairline bg-surface-2/60">
             <div>
               <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
-                Invoice Load Details — Completed
+                Loading Factor— Completed
               </h3>
               <p className="text-[11.5px] text-muted-foreground mt-0.5">
                 {completedRows.length} row{completedRows.length === 1 ? "" : "s"}
               </p>
             </div>
           </div>
-          <div className="overflow-x-auto max-h-[560px]">
-            <table className="w-full text-left border-collapse text-[12px]">
-              <thead className="sticky top-0 z-30">
-                <tr className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+          <div className="overflow-x-auto scrollbar-elegant">
+            <table className="w-full text-left border-collapse text-[11.5px]">
+              <thead>
+                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.1em] text-primary-foreground">
                   {["SI.No", "Map ID", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number",
                     "Truck Type", "Passing Weight (Tons)", "Actual Load (Tons)",
                     "Loading factor% (w.r.t weight)", "Actual Volume Occupied",
                     "Loading Factor w.r.t Volume", "Week Wise Shipment Flow", "Eway Bill Number",
                     "Eway Bill Expiry Date", "Plant", "Division", "Work Order", "LR No",
                     "Transporter", "Created date", "Vehicle Type"].map((h) => (
-                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left bg-gradient-primary shadow-soft">{h}</th>
+                      <th key={h} className="px-2 py-1.5 whitespace-nowrap">{h}</th>
                     ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-hairline/70">
+              <tbody className="divide-y divide-hairline/60">
                 {completedRows.length === 0 ? (
                   <tr>
                     <td colSpan={23} className="px-3 py-10 text-center text-[12px] text-muted-foreground">
@@ -1865,20 +1865,20 @@ function InvoiceFilterDownload({
         </div>
       ) : sap ? (
         <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
-          <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+          <div className="px-5 py-3 border-b border-hairline bg-surface-2/60">
             <div>
               <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
-                Dispatch Results — Pending
+                Results — Pending
               </h3>
               <p className="text-[11.5px] text-muted-foreground mt-0.5">
                 {pendingRows.length} row{pendingRows.length === 1 ? "" : "s"}
               </p>
             </div>
           </div>
-          <div className="overflow-x-auto max-h-[560px]">
-            <table className="w-full text-left border-collapse text-[12px]">
+          <div className="overflow-x-auto scrollbar-elegant">
+            <table className="w-full text-left border-collapse text-[11.5px]">
               <thead className="sticky top-0 z-30">
-                <tr className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.1em] text-primary-foreground">
                   {["SI.No", "Reference No", "Line No", "Date", "Plant", "Division", "Vehicle Type",
                     "No. of Trucks", "Work Order", "Vendor Code", "Transporter", "No. of LRs",
                     "LR Number", "Loading Point", "Unloading Point"].map((h) => (

@@ -906,7 +906,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
           {/* Top fields */}
           <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
-              <div>
+              {/* <div>
                 <label className={LABEL}>Incoterms</label>
                 {isSap ? (
                   <input value={zinco} readOnly className={GREEN_INPUT} />
@@ -941,7 +941,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                   placeholder="0"
                   className={GREEN_INPUT}
                 />
-              </div>
+              </div> */}
               {!isSap && (
                 <div>
                   <label className={LABEL}>DC Reference Number</label>
@@ -1169,9 +1169,9 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                   "Ah Loaded",
                   "Shipment Weight",
                   "Battery Condition",
-                  "Incoterms",
-                  "Insurance Scope",
-                  "Kilometres",
+                  // "Incoterms",
+                  // "Insurance Scope",
+                  // "Kilometres",
                   "Plant",
                   "Division",
                   "Work Order",
@@ -1247,7 +1247,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                       Number(item.ZSHIP_WT ?? 0).toFixed(2)
                     )}
                   </td>
-                  {["ZBATCOND", "ZINCO", "ZINS_SCPOE"].map((field) => (
+                  {["ZBATCOND"].map((field) => (
                     <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
                         <input
@@ -1260,7 +1260,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                       )}
                     </td>
                   ))}
-                  <td className="px-3 py-2 whitespace-nowrap text-center">
+                  {/* <td className="px-3 py-2 whitespace-nowrap text-center">
                     {item.isEdit ? (
                       <input
                         type="number"
@@ -1271,7 +1271,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                     ) : (
                       item.ZKM
                     )}
-                  </td>
+                  </td> */}
                   {["ZPLANT", "ZDIVISION", "ZWORK_ORDER", "ZLRNO", "ZTRANSPORTER"].map((field) => (
                     <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (

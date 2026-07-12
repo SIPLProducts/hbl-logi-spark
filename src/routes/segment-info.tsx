@@ -1,20 +1,12 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   Plus,
   RefreshCw,
-  Search,
-  Trash2,
-  Save,
-  ChevronLeft,
-  ChevronRight,
   Filter,
-  Eye,
-  Pencil,
   FileText,
   FileDown,
-  MoreVertical,
   CalendarIcon,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -28,110 +20,55 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PLANTS, DIVISIONS, TRANSPORTERS, VEHICLE_TYPES } from "@/lib/dispatch-mock";
-import { counts, type WorklistRow } from "@/lib/le-mock-data";
+import { VEHICLE_TYPES } from "@/lib/dispatch-mock";
 import { cn } from "@/lib/utils";
+import { SegmentInfoSapCreate } from "@/components/segment-info-sap-create";
+import Swal from "sweetalert2";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { exportRowsToXls } from "@/lib/export-xls.js";
+// @ts-ignore
+import service from "../services/generalservice_service.js";
 
 export const Route = createFileRoute("/segment-info")({
   component: SegmentInfoPage,
 });
 
-// ─────────────── Local types & constants ───────────────
 type SapMode = "with" | "without";
 type Direction = "outward" | "inward";
 
-type FieldDef = {
-  label: string;
-  value?: string | number;
-  type?: "text" | "select" | "date" | "number" | "textarea";
-  options?: string[];
-  span?: 1 | 2 | 3 | 4;
-};
-
-type FieldGroup = { title: string; fields: FieldDef[] };
-
-type WorklistColumn = {
-  key: keyof WorklistRow | string;
-  header: string;
-  render?: (r: WorklistRow) => ReactNode;
-  className?: string;
-};
-
-const SEARCH_TYPES = [
-  "Reference",
-  "Invoice",
-  "ODN",
-  "SO Number",
-  "Work Order",
-  "LR Number",
-] as const;
 const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
-const SEARCH_TYPE_TO_KEY: Record<(typeof SEARCH_TYPES)[number], keyof WorklistRow> = {
-  Reference: "reference",
-  Invoice: "reference",
-  ODN: "reference",
-  "SO Number": "reference",
-  "Work Order": "workOrder",
-  "LR Number": "lrNumber",
-};
 
-const DEFAULT_COLUMNS: WorklistColumn[] = [
-  { key: "slNo", header: "Sl.No", render: (r) => r.slNo },
-  { key: "reference", header: "Reference", render: (r) => <span className="font-mono">{r.reference}</span> },
-  { key: "workOrder", header: "Work Order", render: (r) => <span className="font-mono">{r.workOrder}</span> },
-  { key: "lrNumber", header: "LR Number", render: (r) => <span className="font-mono">{r.lrNumber}</span> },
-  { key: "transporter", header: "Transporter", render: (r) => r.transporter },
-];
+function getLoggedInUser(): string {
+  try {
+    const raw = localStorage.getItem("currentUser") || "{}";
+    const u = JSON.parse(raw) as Record<string, unknown>;
+    return String(u?.USER ?? "");
+  } catch {
+    return "";
+  }
+}
 
-const GROUPS: FieldGroup[] = [
-  {
-    title: "Segment",
-    fields: [
-      { label: "Segment No.", value: "SEG-001" },
-      { label: "Mode", value: "Road", type: "select", options: ["Road", "Rail", "Air", "Sea"] },
-      { label: "Origin", value: "Shameerpet WH" },
-      { label: "Destination", value: "Solapur Hub" },
-      { label: "Distance (km)", value: 525, type: "number" },
-      { label: "Carrier", value: "SAFEXPRESS PRIVATE LTD" },
-      { label: "Vehicle / Container No.", value: "TS09EE4521" },
-      { label: "Stage Cost", value: 18500, type: "number" },
-    ],
-  },
-  {
-    title: "Schedule",
-    fields: [
-      { label: "Planned Departure", value: "2026-06-10T08:00", type: "date" },
-      { label: "Planned Arrival", value: "2026-06-11T06:00", type: "date" },
-      { label: "Actual Departure", value: "2026-06-10T08:25", type: "date" },
-      { label: "Actual Arrival", value: "", type: "date" },
-      { label: "Remarks", value: "Driver change at Pune", span: 4, type: "textarea" },
-    ],
-  },
-];
-
-const LINE_ITEM_COLUMNS = [
-  "Sl.No",
-  "Origin",
-  "Destination",
-  "Mode",
-  "Distance (km)",
-  "Planned Dep.",
-  "Planned Arr.",
-  "Status",
-];
+// Segment Info's Angular source reads Plant/Division straight from the
+// login payload (userData.PLANTS / userData.DIV), unlike Transporter which
+// comes from the F4 vendor-code API — mirrored here rather than unified.
+function getLoginPlantsDivisions(): { plants: any[]; divisions: any[] } {
+  try {
+    const raw = localStorage.getItem("currentUser") || "{}";
+    const u = JSON.parse(raw) as Record<string, any>;
+    return { plants: u?.PLANTS || [], divisions: u?.DIV || [] };
+  } catch {
+    return { plants: [], divisions: [] };
+  }
+}
 
 // ─────────────── Page ───────────────
 function SegmentInfoPage() {
-  const rows: WorklistRow[] = [];
-  const columns = DEFAULT_COLUMNS;
-  const title = "Segment Info";
-
   const [tab, setTab] = useState<"create" | "search">("create");
-  const [selectedId, setSelectedId] = useState<string>(rows[0]?.id ?? "");
   const [direction, setDirection] = useState<Direction | null>(null);
   const [sap, setSap] = useState<SapMode | null>(null);
-  const [searchType] = useState<(typeof SEARCH_TYPES)[number]>("Reference");
-  const [searchValue] = useState("");
+  const [pendingCount, setPendingCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
 
   // Filter & Download state
   const [searchSap, setSearchSap] = useState<SapMode | null>(null);
@@ -143,6 +80,53 @@ function SegmentInfoPage() {
   const [fVehicleType, setFVehicleType] = useState("");
   const [fStatus, setFStatus] = useState("");
   const [applied, setApplied] = useState(false);
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
+
+  const [plantList, setPlantList] = useState<any[]>([]);
+  const [divisionList, setDivisionList] = useState<any[]>([]);
+  const [transporterList, setTransporterList] = useState<any[]>([]);
+
+  // Filter results — mirrors Angular's SegmentData / dispatchData
+  const [segmentData, setSegmentData] = useState<any[]>([]);
+  const [dispatchData, setDispatchData] = useState<any[]>([]);
+
+  // Plant/Division from login payload, Transporter from F4 vendor-code API —
+  // fetched once on mount, matching Angular's ngOnInit (not gated by mode toggles)
+  useEffect(() => {
+    const { plants, divisions } = getLoginPlantsDivisions();
+    setPlantList(plants);
+    setDivisionList(divisions);
+
+    (async () => {
+      try {
+        const res: any = await service.fetchVendorCode();
+        const data: any = Array.isArray(res) && res.length > 0 ? res[0] : {};
+        setTransporterList(data.VEND_CODE || []);
+      } catch (err) {
+        console.error("Transporter fetch error:", err);
+      }
+    })();
+  }, []);
+
+  // Pending/Completed counts once Outward + SAP mode chosen
+  useEffect(() => {
+    if (!(direction === "outward" && sap)) return;
+    (async () => {
+      try {
+        const res: any = await service.OutwardCountGlobalWithSap({
+          INOUT: "OUTWARD",
+          TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
+          SCREEN: "SEGMENT INFO",
+        });
+        setPendingCount(res?.ZPEND_CNT || 0);
+        setCompletedCount(res?.ZCONF_CNT || 0);
+      } catch (err) {
+        console.error("Error fetching counts:", err);
+        setPendingCount(0);
+        setCompletedCount(0);
+      }
+    })();
+  }, [direction, sap]);
 
   const resetFilters = () => {
     setFromDate(undefined);
@@ -153,16 +137,226 @@ function SegmentInfoPage() {
     setFVehicleType("");
     setFStatus("");
     setApplied(false);
-    setSearchSap(null);
+    setSegmentData([]);
+    setDispatchData([]);
   };
 
-  const filteredRows = searchValue.trim()
-    ? rows.filter((r) => {
-        const key = SEARCH_TYPE_TO_KEY[searchType];
-        const v = String((r as Record<string, unknown>)[key] ?? "").toLowerCase();
-        return v.includes(searchValue.trim().toLowerCase());
-      })
-    : rows;
+  const onApply = async () => {
+    if (!fromDate || !toDate) {
+      Swal.fire("Warning", "Please select From Date and To Date", "warning");
+      return;
+    }
+
+    setApplied(false);
+    setIsFilterLoading(true);
+
+    const payload = {
+      GLOBAL: "SEGMENT INFO",
+      ZUSER: getLoggedInUser(),
+      DATE_FROM: format(fromDate, "yyyy-MM-dd"),
+      DATE_TO: format(toDate, "yyyy-MM-dd"),
+      PLANT: fPlant || "",
+      DIVISION: fDivision || "",
+      TRANSPORTER: fTransporter || "",
+      VEHICLE_TYPE: fVehicleType || "",
+      STATUS: fStatus || "",
+    };
+
+    try {
+      const res: any =
+        searchSap === "with"
+          ? await service.fetchOrderInfoFiltered(payload)
+          : await service.fetchGlobalFilteredNonSap(payload);
+
+      if (res?.STATUS === "FALSE") {
+        setSegmentData([]);
+        setDispatchData([]);
+        Swal.fire({ icon: "info", title: "No Data Found", text: res.MSG || "No records available for selected filters" });
+        return;
+      }
+
+      let records: any[] = [];
+      if (Array.isArray(res)) records = res;
+      else if (res?.HEADER) records = res.HEADER;
+      else if (res?.DATA) records = res.DATA;
+
+      setApplied(true);
+
+      if (fStatus === "Completed") {
+        setSegmentData(records);
+        setDispatchData([]);
+        Swal.fire("Success", `SegmentInfo records: ${records.length}`, "success");
+      } else if (fStatus === "Pending") {
+        setDispatchData(records);
+        setSegmentData([]);
+        Swal.fire("Success", `Dispatch records: ${records.length}`, "success");
+      } else {
+        setSegmentData([]);
+        setDispatchData([]);
+        Swal.fire("Info", "Please select valid status", "info");
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "Failed to fetch filtered data", "error");
+    } finally {
+      setIsFilterLoading(false);
+    }
+  };
+
+  const downloadExcel = () => {
+    let exportSource: any[] = [];
+    let fileName = "";
+
+    if (fStatus === "Completed") {
+      exportSource = segmentData;
+      fileName = searchSap === "with" ? "SegmentData_Completed_SAP.xls" : "SegmentData_Completed_NonSAP.xls";
+    } else if (fStatus === "Pending") {
+      exportSource = dispatchData;
+      fileName = searchSap === "with" ? "Dispatch_Pending_SAP.xls" : "Dispatch_Pending_NonSAP.xls";
+    } else {
+      Swal.fire("Warning", "Please select valid status before download", "warning");
+      return;
+    }
+
+    if (!exportSource || exportSource.length === 0) {
+      Swal.fire("Warning", "No data available to download", "warning");
+      return;
+    }
+
+    if (fStatus === "Completed") {
+      exportRowsToXls(
+        fileName,
+        [
+          { header: "Line No", value: (r: any) => r.ZLINE_NO || "" },
+          { header: "REFNO", value: (r: any) => r.ZREFNO || "" },
+          { header: "Invoice No", value: (r: any) => r.ZINV_NUM || "" },
+          { header: "ODN Number", value: (r: any) => r.ZODN_NO || "" },
+          { header: "SO Number", value: (r: any) => r.ZSO_NO || "" },
+          { header: "Sales Person", value: (r: any) => r.ZSALE_PERSON || "" },
+          { header: "Segment", value: (r: any) => r.ZSEGMENT || "" },
+          { header: "Application Type", value: (r: any) => r.ZAPPTYP || "" },
+          { header: "Customer Profile", value: (r: any) => r.ZCUST_PROFILE || "" },
+          { header: "Branch", value: (r: any) => r.ZBRANCH || "" },
+          { header: "Branch Zone", value: (r: any) => r.ZBRANCH_ZONE || "" },
+          { header: "TAT Type", value: (r: any) => r.ZTAT_TYPE || "" },
+          { header: "TAT Days", value: (r: any) => r.ZTAT || "" },
+          { header: "ETA", value: (r: any) => r.ZETA || "" },
+          { header: "Plant", value: (r: any) => r.ZPLANT || "" },
+          { header: "Division", value: (r: any) => r.ZDIVISION || "" },
+          { header: "Work Order", value: (r: any) => r.ZWORK_ORDER || "" },
+          { header: "LR No", value: (r: any) => r.ZLRNO || "" },
+          { header: "Transporter", value: (r: any) => r.ZTRANSPORTER || "" },
+          { header: "Created Date", value: (r: any) => r.ZCREATED_DT || "" },
+          { header: "Vehicle Type", value: (r: any) => r.ZVEH_TYPE || "" },
+        ],
+        exportSource,
+      );
+    } else {
+      exportRowsToXls(
+        fileName,
+        [
+          { header: "Reference No", value: (r: any) => r.ZREFNO || "" },
+          { header: "Line No", value: (r: any) => r.ZLINE_NO || "" },
+          { header: "Date", value: (r: any) => (r.ZCREATED_DT ? new Date(r.ZCREATED_DT).toLocaleDateString("en-GB") : "") },
+          { header: "Plant", value: (r: any) => r.ZWERKS || "" },
+          { header: "Division", value: (r: any) => r.ZDIVISION || "" },
+          { header: "Vehicle Type", value: (r: any) => r.ZVEH_TYPE || "" },
+          { header: "No. of Trucks", value: (r: any) => r.ZNO_TRUCKS || "" },
+          { header: "Work Order", value: (r: any) => r.ZWORK_ORDER || "" },
+          { header: "Vendor Code", value: (r: any) => r.ZVENDOR_CD || "" },
+          { header: "Transporter", value: (r: any) => r.ZTRANSPORTER || "" },
+          { header: "No. of LRs", value: (r: any) => r.ZNO_LRS || "" },
+          { header: "LR Number", value: (r: any) => r.ZLR_NO || "" },
+          { header: "Loading Point", value: (r: any) => r.ZLOAD_PT || "" },
+          { header: "Unloading Point", value: (r: any) => r.ZUNLOAD_PT || "" },
+        ],
+        exportSource,
+      );
+    }
+
+    Swal.fire("Success", `Excel file downloaded: ${fileName}`, "success");
+  };
+
+  const downloadPDF = () => {
+    let exportSource: any[] = [];
+    let fileName = "";
+    let reportTitle = "";
+
+    if (fStatus === "Completed") {
+      exportSource = segmentData;
+      fileName = searchSap === "with" ? "SegmentData_Completed_SAP.pdf" : "SegmentData_Completed_NonSAP.pdf";
+      reportTitle = "Segment Data Records (Completed)";
+    } else if (fStatus === "Pending") {
+      exportSource = dispatchData;
+      fileName = searchSap === "with" ? "Dispatch_Pending_SAP.pdf" : "Dispatch_Pending_NonSAP.pdf";
+      reportTitle = "Dispatch Records (Pending)";
+    } else {
+      Swal.fire("Warning", "Please select valid status before download", "warning");
+      return;
+    }
+
+    if (!exportSource || exportSource.length === 0) {
+      Swal.fire("Warning", "No data available to download", "warning");
+      return;
+    }
+
+    const doc = new jsPDF("landscape", "mm", [420, 297]);
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(reportTitle, doc.internal.pageSize.getWidth() / 2, 12, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generated on: ${new Date().toLocaleDateString("en-GB")}`, doc.internal.pageSize.getWidth() / 2, 18, { align: "center" });
+
+    let headers: any[] = [];
+    let data: any[] = [];
+
+    if (fStatus === "Completed") {
+      headers = [[
+        "SI.No", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number", "Sales Person", "Segment",
+        "Application Type", "Customer Profile", "Branch", "Branch Zone", "TAT Type", "TAT Days", "ETA",
+        "Plant", "Division", "Work Order", "LR No", "Transporter", "Created Date", "Vehicle Type",
+      ]];
+
+      data = exportSource.map((item, index) => ([
+        index + 1, item.ZLINE_NO || "", item.ZREFNO || "", item.ZINV_NUM || "", item.ZODN_NO || "",
+        item.ZSO_NO || "", item.ZSALE_PERSON || "", item.ZSEGMENT || "", item.ZAPPTYP || "",
+        item.ZCUST_PROFILE || "", item.ZBRANCH || "", item.ZBRANCH_ZONE || "", item.ZTAT_TYPE || "",
+        item.ZTAT || "", item.ZETA || "", item.ZPLANT || "", item.ZDIVISION || "", item.ZWORK_ORDER || "",
+        item.ZLRNO || "", item.ZTRANSPORTER || "",
+        item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : "",
+        item.ZVEH_TYPE || "",
+      ]));
+    } else {
+      headers = [[
+        "SI.No", "Reference No", "Line No", "Date", "Plant", "Division", "Vehicle Type", "No. of Trucks",
+        "Work Order", "Vendor Code", "Transporter", "No. of LRs", "LR Number", "Loading Point", "Unloading Point",
+      ]];
+
+      data = exportSource.map((item, index) => ([
+        index + 1, item.ZREFNO || "", item.ZLINE_NO || "",
+        item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : "",
+        item.ZWERKS || "", item.ZDIVISION || "", item.ZVEH_TYPE || "", item.ZNO_TRUCKS || "",
+        item.ZWORK_ORDER || "", item.ZVENDOR_CD || "", item.ZTRANSPORTER || "", item.ZNO_LRS || "",
+        item.ZLR_NO || "", item.ZLOAD_PT || "", item.ZUNLOAD_PT || "",
+      ]));
+    }
+
+    autoTable(doc, {
+      head: headers,
+      body: data,
+      startY: 25,
+      theme: "grid",
+      styles: { fontSize: 6, cellPadding: 1.5 },
+      headStyles: { fillColor: [52, 152, 219], fontStyle: "bold", fontSize: 6 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+    });
+
+    doc.save(fileName);
+    Swal.fire("Success", `PDF downloaded: ${fileName}`, "success");
+  };
 
   return (
     <div className="flex flex-col min-h-full">
@@ -176,7 +370,7 @@ function SegmentInfoPage() {
               </div>
               <div className="min-w-0">
                 <h1 className="font-display text-[18px] leading-none font-bold tracking-tight text-foreground truncate">
-                  {title}
+                  Segment Info
                 </h1>
               </div>
             </div>
@@ -231,12 +425,12 @@ function SegmentInfoPage() {
                   <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-amber-300/60 bg-amber-100 dark:bg-amber-500/15 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
                     <span className="size-1.5 rounded-full bg-warning" />
                     Pending
-                    <span className="font-mono">{counts.pending}</span>
+                    <span className="font-mono">{pendingCount}</span>
                   </span>
                   <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-emerald-300/60 bg-emerald-100 dark:bg-emerald-500/15 text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">
                     <span className="size-1.5 rounded-full bg-success" />
                     Completed
-                    <span className="font-mono">{counts.completed}</span>
+                    <span className="font-mono">{completedCount}</span>
                   </span>
                 </div>
               </div>
@@ -251,71 +445,7 @@ function SegmentInfoPage() {
               )}
             </div>
 
-            {direction === "outward" && sap && (
-              <SegmentInfoSapCreateInline mode={sap} />
-            )}
-
-            {direction === "inward" && sap && (
-              <>
-                {GROUPS.map((g) => (
-                  <div
-                    key={g.title}
-                    className="bg-surface border border-hairline rounded-xl shadow-elegant overflow-hidden"
-                  >
-                    <div className="px-3 py-2 border-b border-hairline bg-surface-2/60">
-                      <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
-                        {g.title}
-                      </h3>
-                    </div>
-                    <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                      {g.fields.map((f) => (
-                        <div key={f.label} className={spanClass(f.span)}>
-                          <FieldInput field={f} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-
-                <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
-                  <div className="px-3 py-2 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
-                    <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
-                      Line Items
-                    </h3>
-                    <button className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent/10 rounded-md">
-                      <Plus className="size-3" /> Add Row
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto scrollbar-elegant">
-                    <table className="w-full text-[11.5px]">
-                      <thead>
-                        <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
-                          {LINE_ITEM_COLUMNS.map((c) => (
-                            <th key={c} className="px-2 py-1 text-left">
-                              {c}
-                            </th>
-                          ))}
-                          <th className="px-2 py-1 w-12 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-hairline/60" />
-                    </table>
-                  </div>
-                </div>
-
-                <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/95 backdrop-blur border-t border-hairline px-6 py-3 flex items-center justify-end gap-2 z-10">
-                  <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
-                    <ChevronLeft className="size-3.5" /> Save and Previous
-                  </button>
-                  <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
-                    <Save className="size-3.5" /> Save
-                  </button>
-                  <button className="inline-flex items-center gap-1.5 px-4 h-9 text-[12px] font-semibold text-primary-foreground bg-gradient-primary rounded-lg shadow-cta hover:-translate-y-0.5 transition-transform">
-                    Save and Next <ChevronRight className="size-3.5" />
-                  </button>
-                </div>
-              </>
-            )}
+            {direction === "outward" && sap && <SegmentInfoSapCreate mode={sap} />}
           </TabsContent>
 
           {/* ───────── Filter & Download tab ───────── */}
@@ -328,7 +458,13 @@ function SegmentInfoPage() {
                     Filter Options
                   </h3>
                 </div>
-                <SearchSapToggle value={searchSap} onChange={setSearchSap} />
+                <SearchSapToggle
+                  value={searchSap}
+                  onChange={(v) => {
+                    setSearchSap(v);
+                    resetFilters();
+                  }}
+                />
               </div>
 
               {!searchSap && (
@@ -343,24 +479,54 @@ function SegmentInfoPage() {
                   <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
                     <DateField label="From Date" value={fromDate} onChange={setFromDate} />
                     <DateField label="To Date" value={toDate} onChange={setToDate} />
-                    <SelectField label="Plant" value={fPlant} onChange={setFPlant} options={PLANTS} placeholder="Select Plant" />
-                    <SelectField label="Division" value={fDivision} onChange={setFDivision} options={DIVISIONS} placeholder="Select Division" />
-                    <SelectField label="Transporter" value={fTransporter} onChange={setFTransporter} options={TRANSPORTERS} placeholder="Select Transporter" />
-                    <SelectField label="Vehicle Type" value={fVehicleType} onChange={setFVehicleType} options={VEHICLE_TYPES} placeholder="Select Vehicle Type" />
-                    <SelectField label="Status" value={fStatus} onChange={setFStatus} options={[...STATUS_OPTIONS]} placeholder="Select Status" />
+                    <SelectField
+                      label="Plant"
+                      value={fPlant}
+                      onChange={setFPlant}
+                      options={plantList.map((p: any) => ({ value: p.PLANT_DESC, label: p.PLANT_TEXT }))}
+                      placeholder="Select Plant"
+                    />
+                    <SelectField
+                      label="Division"
+                      value={fDivision}
+                      onChange={setFDivision}
+                      options={divisionList.map((d: any) => ({ value: d.DIVISION, label: d.DIV_TEXT }))}
+                      placeholder="Select Division"
+                    />
+                    <SelectField
+                      label="Transporter"
+                      value={fTransporter}
+                      onChange={setFTransporter}
+                      options={transporterList.map((t: any) => ({ value: t.TRANSPORTER, label: t.TRANSPORTER }))}
+                      placeholder="Select Transporter"
+                    />
+                    <SelectField
+                      label="Vehicle Type"
+                      value={fVehicleType}
+                      onChange={setFVehicleType}
+                      options={VEHICLE_TYPES.map((v) => ({ value: v, label: v }))}
+                      placeholder="Select Vehicle Type"
+                    />
+                    <SelectField
+                      label="Status"
+                      value={fStatus}
+                      onChange={setFStatus}
+                      options={[...STATUS_OPTIONS].map((v) => ({ value: v, label: v }))}
+                      placeholder="Select Status"
+                    />
                   </div>
 
                   <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={resetFilters}>
                       Reset
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-1.5">
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadPDF} disabled={!applied || isFilterLoading}>
                       <FileText className="size-3.5" /> Download PDF
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-1.5">
+                    <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadExcel} disabled={!applied || isFilterLoading}>
                       <FileDown className="size-3.5 text-emerald-600" /> Download Excel
                     </Button>
-                    <Button size="sm" onClick={() => setApplied(true)} className="gap-1.5">
+                    <Button size="sm" onClick={onApply} className="gap-1.5" disabled={isFilterLoading}>
                       <Filter className="size-3.5" /> Apply Filter
                     </Button>
                   </div>
@@ -378,79 +544,131 @@ function SegmentInfoPage() {
                   Choose your filters above and click <span className="font-semibold">Apply Filter</span> to load records.
                 </p>
               </div>
-            ) : (
+            ) : fStatus === "Completed" ? (
               <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
                 <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
                   <div>
-                    <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Results</h3>
+                    <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+                      Segment Info Results — Completed
+                    </h3>
                     <p className="text-[11.5px] text-muted-foreground mt-0.5">
-                      {filteredRows.length} row{filteredRows.length === 1 ? "" : "s"}
+                      {segmentData.length} row{segmentData.length === 1 ? "" : "s"}
                     </p>
                   </div>
                 </div>
-                <div className="overflow-x-auto scrollbar-elegant">
+                <div className="overflow-x-auto max-h-[560px]">
                   <table className="w-full text-left border-collapse text-[12px]">
-                    <thead>
-                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.14em] text-primary-foreground">
-                        <th className="px-2 py-1.5 w-10 text-center">
-                          <input type="checkbox" className="accent-accent" />
-                        </th>
-                        {columns.map((c) => (
-                          <th key={c.key as string} className={"px-2 py-1.5 whitespace-nowrap " + (c.className ?? "")}>
-                            {c.header}
-                          </th>
-                        ))}
-                        <th className="px-2 py-1.5 w-28 text-right">Actions</th>
+                    <thead className="sticky top-0 z-30">
+                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                        {["SI.No", "Line No", "REFNO", "Invoice No", "Odn Number", "SO Number", "Sales Person", "Segment",
+                          "Application Type", "Customer Profile", "Branch", "Branch Zone", "TAT Type", "TAT Days", "ETA",
+                          "Plant", "Division", "Work Order", "LR No", "Transporter", "Created date", "Vehicle Type"].map((h) => (
+                            <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
+                          ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-hairline/60">
-                      {filteredRows.map((r) => (
-                        <tr
-                          key={r.id}
-                          className={
-                            "group cursor-pointer transition-colors " +
-                            (selectedId === r.id ? "bg-accent/[0.06]" : "hover:bg-accent/[0.04]")
-                          }
-                          onClick={() => setSelectedId(r.id)}
-                        >
-                          <td className="px-2 py-1 text-center">
-                            <input
-                              type="radio"
-                              checked={selectedId === r.id}
-                              onChange={() => setSelectedId(r.id)}
-                              className="accent-accent"
-                            />
-                          </td>
-                          {columns.map((c) => (
-                            <td key={c.key as string} className="px-2 py-1 whitespace-nowrap">
-                              {c.render ? c.render(r) : ((r as Record<string, unknown>)[c.key as string] as ReactNode)}
-                            </td>
-                          ))}
-                          <td className="px-2 py-1 text-right">
-                            <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button className="size-6 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="View">
-                                <Eye className="size-3.5" />
-                              </button>
-                              <button className="size-6 grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Edit">
-                                <Pencil className="size-3.5" />
-                              </button>
-                              <button className="size-6 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10" aria-label="Delete">
-                                <Trash2 className="size-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {filteredRows.length === 0 && (
+                    <tbody className="divide-y divide-hairline/70">
+                      {segmentData.length === 0 ? (
                         <tr>
-                          <td colSpan={columns.length + 2} className="px-3 py-10 text-center text-[12px] text-muted-foreground">
-                            No records match your filters.
+                          <td colSpan={22} className="px-3 py-10 text-center text-[12px] text-muted-foreground">
+                            No records found.
                           </td>
                         </tr>
+                      ) : (
+                        segmentData.map((item, i) => (
+                          <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
+                            <td className="px-3 py-2 whitespace-nowrap">{i + 1}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZLINE_NO}</td>
+                            <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZREFNO}</td>
+                            <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZINV_NUM}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZODN_NO}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZSO_NO}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZSALE_PERSON}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZSEGMENT}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZAPPTYP}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZCUST_PROFILE}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZBRANCH}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZBRANCH_ZONE}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZTAT_TYPE}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZTAT}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZETA}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZPLANT}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZLRNO}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZTRANSPORTER}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : ""}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
+                          </tr>
+                        ))
                       )}
                     </tbody>
                   </table>
                 </div>
+              </div>
+            ) : fStatus === "Pending" ? (
+              <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
+                <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+                      Dispatch Results — Pending
+                    </h3>
+                    <p className="text-[11.5px] text-muted-foreground mt-0.5">
+                      {dispatchData.length} row{dispatchData.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                </div>
+                <div className="overflow-x-auto max-h-[560px]">
+                  <table className="w-full text-left border-collapse text-[12px]">
+                    <thead className="sticky top-0 z-30">
+                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                        {["SI.No", "Reference No", "Line No", "Date", "Plant", "Division", "Vehicle Type", "No. of Trucks",
+                          "Work Order", "Vendor Code", "Transporter", "No. of LRs", "LR Number", "Loading Point", "Unloading Point"].map((h) => (
+                            <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
+                          ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-hairline/70">
+                      {dispatchData.length === 0 ? (
+                        <tr>
+                          <td colSpan={15} className="px-3 py-10 text-center text-[12px] text-muted-foreground">
+                            No records found.
+                          </td>
+                        </tr>
+                      ) : (
+                        dispatchData.map((item, i) => (
+                          <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
+                            <td className="px-3 py-2 whitespace-nowrap">{i + 1}</td>
+                            <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZREFNO}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZLINE_NO}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : ""}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZWERKS}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
+                            <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZNO_TRUCKS}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>
+                            <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZVENDOR_CD}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZTRANSPORTER}</td>
+                            <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZNO_LRS}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZLR_NO}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZLOAD_PT}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZUNLOAD_PT}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-surface border border-dashed border-hairline rounded-2xl p-10 text-center">
+                <p className="text-[12px] text-muted-foreground">
+                  Select <span className="font-semibold">Pending</span> or <span className="font-semibold">Completed</span> status and click Apply Filter to see results.
+                </p>
               </div>
             )}
           </TabsContent>
@@ -460,259 +678,7 @@ function SegmentInfoPage() {
   );
 }
 
-// ─────────────── Inlined SAP create body ───────────────
-const GREEN_INPUT =
-  "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
-const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
-
-const SAP_SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
-
-const BASE_FIELDS: FieldDef[] = [
-  { label: "Sales Person", value: "", type: "select", options: ["Ravi Kumar", "Suresh Reddy", "Anita Sharma"] },
-  { label: "Segment", value: "", type: "select", options: ["Industrial", "Defence", "Telecom", "Retail"] },
-  { label: "Application Type", value: "", type: "select", options: ["UPS", "Solar", "Telecom Tower", "Railway"] },
-  { label: "Customer Profile", value: "PVT INDUSTRY" },
-  { label: "Branch", value: "", type: "select", options: ["Hyderabad", "Mumbai", "Delhi", "Chennai"] },
-  { label: "Branch Zone", value: "" },
-  { label: "Destination State", value: "" },
-  { label: "Destination Zone", value: "North" },
-  {
-    label: "TAT Type",
-    value: "",
-    type: "select",
-    options: [
-      "Direct Truck TAT(Vizag)",
-      "Direct Truck TAT(Hyd)",
-      "Revised TAT",
-      "Safe Express TAT",
-      "Delivery TAT",
-      "GATI TAT",
-    ],
-  },
-  { label: "TAT (Days)", value: "0", type: "number" },
-  { label: "ETA", value: "", type: "date" },
-];
-
-function SegmentInfoSapCreateInline({ mode }: { mode: SapMode }) {
-  const isWithout = mode === "without";
-  const [checked, setChecked] = useState(true);
-  const [searchType, setSearchType] = useState("");
-  const [searchValue, setSearchValue] = useState("");
-  const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [revealed, setRevealed] = useState(false);
-  const showFields = isWithout || revealed;
-  const fields = isWithout
-    ? ([{ label: "Invoice Number", value: "" }, ...BASE_FIELDS] as FieldDef[])
-    : BASE_FIELDS;
-
-  return (
-    <div className="space-y-2">
-      {/* Selection table */}
-      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
-        <table className="w-full text-[12px]">
-          <thead>
-            <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-              <th className="px-3 py-0.5 text-center w-16">Select</th>
-              <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
-              <th className="px-3 py-0.5 text-center">Reference Number</th>
-              <th className="px-3 py-0.5 text-center">Work Order Number</th>
-              <th className="px-3 py-0.5 text-center">LR Number</th>
-              <th className="px-3 py-0.5 text-center">Transporter</th>
-              <th className="px-3 py-0.5 text-center w-20">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="px-3 py-0.5 text-center">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={(e) => setChecked(e.target.checked)}
-                  className="size-4 accent-sky-600"
-                />
-              </td>
-              <td className="px-3 py-0.5 text-center">1</td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Ref. No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Work Order No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter LR No." className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5">
-                <input placeholder="Enter Transporter" className={GREEN_INPUT + " text-center"} />
-              </td>
-              <td className="px-3 py-0.5 text-center">
-                <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
-                  <MoreVertical className="size-4" />
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Lookup bar */}
-      <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
-        <div className="flex flex-wrap items-end gap-3">
-          {!isWithout && (
-            <>
-              <div className="flex-1 min-w-[220px]">
-                <label className={LABEL}>Invoice Number</label>
-                <input
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                  className={GREEN_INPUT}
-                />
-              </div>
-              <button
-                onClick={() => {
-                  if (invoiceNumber.trim()) setRevealed(true);
-                }}
-                disabled={!invoiceNumber.trim()}
-                className="h-7 px-4 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
-              >
-                GET
-              </button>
-            </>
-          )}
-          <div className="min-w-[160px]">
-            <select
-              value={searchType}
-              onChange={(e) => setSearchType(e.target.value)}
-              className="h-7 w-full rounded-md border border-hairline bg-surface px-2 text-[12px] outline-none focus:border-accent"
-            >
-              <option value="">Select</option>
-              {SAP_SEARCH_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-[2] min-w-[260px] flex items-stretch gap-0">
-            <input
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              placeholder="Enter Reference / Invoice / ODN / SO Number"
-              className="h-7 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
-            />
-            <button className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta">
-              <Search className="size-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {!isWithout && !revealed && (
-        <p className="text-[12px] text-muted-foreground px-1">
-          Enter an Invoice Number and click <span className="font-semibold">GET</span> to load fields.
-        </p>
-      )}
-
-      {showFields && (
-        <>
-          <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
-              {fields.map((f) => (
-                <SapField key={f.label} field={f} />
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm">
-              <Save className="size-3.5" /> Save
-            </button>
-            <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-[12px] font-semibold shadow-sm">
-              Save and Next <ChevronRight className="size-3.5" />
-            </button>
-            <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold shadow-sm">
-              <ChevronLeft className="size-3.5" /> Save and Previous
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function SapField({ field }: { field: FieldDef }) {
-  const { label, value, type = "text", options } = field;
-  return (
-    <div>
-      <label className={LABEL}>{label}</label>
-      {type === "select" ? (
-        <select defaultValue={value as string} className={GREEN_INPUT}>
-          <option value="" disabled>
-            Select {label}
-          </option>
-          {(options ?? []).map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
-      ) : type === "date" ? (
-        <input type="datetime-local" defaultValue={value as string} className={GREEN_INPUT} />
-      ) : type === "number" ? (
-        <input type="number" defaultValue={value as string | number} className={GREEN_INPUT} />
-      ) : (
-        <input defaultValue={value as string} placeholder={`Enter ${label}`} className={GREEN_INPUT} />
-      )}
-    </div>
-  );
-}
-
 // ─────────────── Helpers ───────────────
-function spanClass(span?: 1 | 2 | 3 | 4) {
-  switch (span) {
-    case 2:
-      return "md:col-span-2";
-    case 3:
-      return "md:col-span-2 lg:col-span-3";
-    case 4:
-      return "md:col-span-2 lg:col-span-4";
-    default:
-      return "";
-  }
-}
-
-function FieldInput({ field }: { field: FieldDef }) {
-  const { label, value, type = "text", options } = field;
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </label>
-      {type === "select" ? (
-        <select
-          defaultValue={value as string}
-          className="bg-surface border border-input rounded-md px-2 h-9 text-[12px] outline-none focus:border-focus-ring focus:ring-2 focus:ring-focus-ring/30"
-        >
-          {(options ?? [String(value ?? "Select")]).map((o) => (
-            <option key={o}>{o}</option>
-          ))}
-        </select>
-      ) : type === "textarea" ? (
-        <textarea
-          defaultValue={value as string}
-          rows={2}
-          className="bg-surface border border-input rounded-md px-2 py-1.5 text-[12px] outline-none focus:border-focus-ring focus:ring-2 focus:ring-focus-ring/30"
-        />
-      ) : (
-        <input
-          type={type === "date" ? "datetime-local" : type}
-          defaultValue={value as string | number}
-          className="bg-surface border border-input rounded-md px-2 h-9 text-[12px] outline-none focus:border-focus-ring focus:ring-2 focus:ring-focus-ring/30 font-mono"
-        />
-      )}
-    </div>
-  );
-}
-
 function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: SapMode) => void }) {
   const idx = value === "without" ? 1 : 0;
   return (
@@ -859,7 +825,7 @@ function SelectField({
   label: string;
   value: string;
   onChange: (v: string) => void;
-  options: string[];
+  options: { value: string; label: string }[];
   placeholder: string;
 }) {
   return (
@@ -873,8 +839,8 @@ function SelectField({
         </SelectTrigger>
         <SelectContent>
           {options.map((o) => (
-            <SelectItem key={o} value={o}>
-              {o}
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
             </SelectItem>
           ))}
         </SelectContent>

@@ -1309,7 +1309,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
               </div>
 
               {/* Incoterms (highlighted yellow) */}
-              <div>
+              {/* <div>
                 <label className={LABEL_YELLOW}>Incoterms</label>
                 {isSap ? (
                   <input value={form.Incoterms} readOnly className={INPUT_YELLOW} />
@@ -1327,6 +1327,21 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                     ))}
                   </select>
                 )}
+              </div> */}
+              <div>
+                <label className={LABEL_YELLOW}>Incoterms</label>
+                <select
+                  value={form.Incoterms}
+                  onChange={(e) => setField("Incoterms", e.target.value)}
+                  className={INPUT_YELLOW}
+                >
+                  <option value="">Select Incoterm</option>
+                  {incotermsList.map((i, idx) => (
+                    <option key={idx} value={i.INCO1}>
+                      {i.INCO1} - {i.BEZEI}
+                    </option>
+                  ))}
+                </select>
               </div>
 
             </div>
@@ -1359,9 +1374,9 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
           </div>
         </>
 
-        
+
       )}
-      
+
     </div>
   );
 }

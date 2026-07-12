@@ -231,9 +231,9 @@ function ShipmentDetailsPage() {
         "Map ID": record.ZMAPID || "",
         "ODN No": record.ZODN_NO || "",
         "SO No": record.ZSO_NO || "",
-        Incoterms: record.ZINCO || "",
-        "Insurance Scope": record.ZINS_SCPOE || "",
-        KM: record.ZKM || "",
+        // Incoterms: record.ZINCO || "",
+        // "Insurance Scope": record.ZINS_SCPOE || "",
+        // KM: record.ZKM || "",
         "Product Code": record.ZPRODUCT || "",
         "Type of Material": record.MTART || "",
         "Material Description": record.MAKTX || "",
@@ -316,9 +316,9 @@ function ShipmentDetailsPage() {
           "Map ID",
           "ODN No",
           "SO No",
-          "Incoterms",
-          "Insurance Scope",
-          "KM",
+          // "Incoterms",
+          // "Insurance Scope",
+          // "KM",
           "Product",
           "Type of Material",
           "Material Description",
@@ -342,9 +342,9 @@ function ShipmentDetailsPage() {
         record.ZMAPID || "",
         record.ZODN_NO || "",
         record.ZSO_NO || "",
-        record.ZINCO || "",
-        record.ZINS_SCPOE || "",
-        record.ZKM || "",
+        // record.ZINCO || "",
+        // record.ZINS_SCPOE || "",
+        // record.ZKM || "",
         record.ZPRODUCT || "",
         record.MTART || "",
         record.MAKTX || "",
@@ -626,9 +626,9 @@ function CompletedTable({ rows }: { rows: any[] }) {
                 "Map ID",
                 "ODN No",
                 "SO No",
-                "Incoterms",
-                "Insurance Scope",
-                "KM",
+                // "Incoterms",
+                // "Insurance Scope",
+                // "KM",
                 "Product",
                 "Material Type",
                 "Description",
@@ -659,9 +659,9 @@ function CompletedTable({ rows }: { rows: any[] }) {
                 <td className="px-2 py-1 whitespace-nowrap">{r.ZMAPID}</td>
                 <td className="px-2 py-1 whitespace-nowrap">{r.ZODN_NO}</td>
                 <td className="px-2 py-1 whitespace-nowrap">{r.ZSO_NO}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZINCO}</td>
+                {/* <td className="px-2 py-1 whitespace-nowrap">{r.ZINCO}</td>
                 <td className="px-2 py-1 whitespace-nowrap">{r.ZINS_SCPOE}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZKM}</td>
+                <td className="px-2 py-1 whitespace-nowrap">{r.ZKM}</td> */}
                 <td className="px-2 py-1 whitespace-nowrap">{r.ZPRODUCT}</td>
                 <td className="px-2 py-1 whitespace-nowrap">{r.MTART}</td>
                 <td className="px-2 py-1 whitespace-nowrap">{r.MAKTX}</td>
@@ -724,15 +724,15 @@ function PendingTable({ rows }: { rows: any[] }) {
                 "Loading Point",
                 "Unloading Point",
               ].map((h) => (
-                <th key={h} className="px-2 py-1.5 whitespace-nowrap">
+                <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left bg-gradient-primary shadow-soft">
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-hairline/60">
+          <tbody className="divide-y divide-hairline/70">
             {rows.map((r, i) => (
-              <tr key={i} className="hover:bg-accent/[0.04]">
+              <tr key={i} className="px-3 py-10 text-center text-[12px] text-muted-foreground">
                 <td className="px-2 py-1">{i + 1}</td>
                 <td className="px-2 py-1 font-mono whitespace-nowrap">{r.ZREFNO}</td>
                 <td className="px-2 py-1 whitespace-nowrap">{r.ZLINE_NO}</td>
