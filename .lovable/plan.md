@@ -1,44 +1,42 @@
+# Give each Report screen its own self-contained file
 
-# Replace Sales Person popover-search with a standard dropdown
+## Current state
+All 8 report routes (`src/routes/reports.*.tsx`) render a shared `src/components/report-placeholder.tsx`. They differ only in title/description/icon, so every screen looks identical and any change to one requires editing the shared file.
 
-## Scope
-- File touched: `src/components/segment-info-sap-create.tsx` only.
-- No API, payload, or state-shape changes. `form.SALE_PERSON` continues to hold the selected supplier name and flows into the existing save payload (`SALES_EMP: form.SALE_PERSON`) unchanged.
+## Goal
+Each report screen owns its full implementation in its own route file — no shared `ReportPlaceholder` import. Screens remain independent and can diverge later without touching siblings.
 
-## What changes
-Replace the current Sales Person block (the `Popover` + `Command`/`CommandInput`/`CommandItem` combobox with the `Search` icon) with a native `<select>`, mirroring the Segment field directly below it.
+## Files touched
 
-New shape:
+Rewrite each of these route files to inline the full page (header card + filters card + empty-state card), keeping the current visual design and filter set:
 
-```tsx
-{isWithout || showF4.SALE_PERSON ? (
-  <select
-    value={form.SALE_PERSON}
-    onChange={(e) => setField("SALE_PERSON", e.target.value)}
-    className={GREEN_INPUT}
-  >
-    <option value="" disabled>Select Sales Person</option>
-    {supplierList.map((s: any, idx: number) => (
-      <option key={idx} value={s.SUPPLIER_NAME}>
-        {s.SUPPLIER} - {s.SUPPLIER_NAME}
-      </option>
-    ))}
-  </select>
-) : (
-  <input value={form.SALE_PERSON} readOnly className={READONLY_INPUT} />
-)}
-```
+1. `src/routes/reports.transit-eway-bill.tsx`
+2. `src/routes/reports.pending-pods.tsx`
+3. `src/routes/reports.freight-bills.tsx`
+4. `src/routes/reports.loading-factor-cost.tsx`
+5. `src/routes/reports.business-share-matrix.tsx`
+6. `src/routes/reports.damage-list.tsx`
+7. `src/routes/reports.insurance.tsx`
+8. `src/routes/reports.service-level-report.tsx`
 
-Notes on "new search behavior": a native `<select>` already supports type-ahead search (typing letters jumps to matching options) with no custom icon or popover, which matches the "standard input/dropdown while still supporting search" requirement.
+Delete after migration:
+- `src/components/report-placeholder.tsx` (no longer imported anywhere)
 
-## Cleanup in the same file
-- Remove the now-unused `salePersonOpen` state and its `setSalePersonOpen` setter.
-- Remove imports that are no longer used *only if* nothing else in the file still uses them:
-  - `Popover`, `PopoverContent`, `PopoverTrigger`
-  - `Command`, `CommandInput`, `CommandList`, `CommandEmpty`, `CommandGroup`, `CommandItem`
-  - `Search` from `lucide-react` — keep it if it's still used by the global search bar button (line ~817). Verify before removing.
+Unchanged:
+- `src/routes/reports.index.tsx` (hub page)
+- `src/lib/reports-nav.ts` (nav metadata)
+
+## Per-file shape
+
+Each route file will contain:
+- `createFileRoute(...)` with its current path
+- A local `Page` component rendering the same three cards (header, filters, empty state) currently produced by `ReportPlaceholder`
+- Local `SelectField` and `DateField` helpers (or inline JSX) — kept file-local so each screen is truly independent
+- Its own filter list constant (currently identical across screens: Inward/Outward, SAP/Non-SAP, From/To Date, Transporter Group, Transporter, Plant, Product, Division, Customer Name, Branch, Branch Zone, Destination Location, Destination State, Destination Zone, Incoterms)
+
+Yes, this duplicates markup across 8 files by design — that's the point of the request (independence over DRY). Screens can now diverge freely.
 
 ## Out of scope
-- The inlined shell in `src/routes/segment-info.tsx` (no Sales Person input there).
-- Any other screen or field.
-- Save/fetch logic, validation, styling tokens.
+- No logic changes, no new fields, no API wiring
+- Reports hub (`reports.index.tsx`) and `REPORTS_NAV` untouched
+- No styling changes beyond what's already in `ReportPlaceholder`
