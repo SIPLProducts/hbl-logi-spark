@@ -650,7 +650,10 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
     // A row's ZMAPID may have arrived pre-filled from the invoice fetch, which never
     // carries reference/work-order/LR/transporter data. Fall back to the matching
     // reference-table row (the one the user checked off) for those fields, by MAPID.
-    const refForRow = (mapId: string) => selectedItems.find((r) => r.MAPID === mapId);
+    // If the row's ZMAPID doesn't match any checked reference (e.g. it's blank, or it
+    // came from a different id space via the invoice fetch), fall back to the single
+    // reference row the user checked off instead of leaving these fields blank.
+    const refForRow = (mapId: string) => selectedItems.find((r) => r.MAPID === mapId) || selectedItems[0];
 
     // Helper: some fields can come back from the API as numbers (or null/undefined)
     // rather than strings, which breaks .trim(). Normalize to a string first.
