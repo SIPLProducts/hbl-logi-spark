@@ -1,29 +1,44 @@
-# Self-contain the Segment Info screen
 
-Mirror the approach already used for Shipment Details: inline everything the Segment Info route needs so it no longer imports `LeScreenShell` or `SegmentInfoSapCreate`.
+# Replace Sales Person popover-search with a standard dropdown
 
 ## Scope
-- File touched: `src/routes/segment-info.tsx` (only).
-- No changes to `LeScreenShell`, `SegmentInfoSapCreate`, or any other screen.
-- Existing files remain in place (other screens still use them); we simply stop importing them here.
+- File touched: `src/components/segment-info-sap-create.tsx` only.
+- No API, payload, or state-shape changes. `form.SALE_PERSON` continues to hold the selected supplier name and flows into the existing save payload (`SALES_EMP: form.SALE_PERSON`) unchanged.
 
-## What goes into `src/routes/segment-info.tsx`
-1. Route definition (unchanged export).
-2. Inlined shell:
-   - Sticky header with title, Refresh button, and the Create / Filter & Download tab strip.
-   - Direction card (Inward / Outward radios) with the Pending / Completed count chips embedded, matching the current shared shell.
-   - Progressive disclosure: on Outward, reveal the With SAP / Without SAP toggle; on With SAP, reveal the reference table, Invoice Number field, and the `#8f1e42` GET button; then reveal the field grid and Save / Save & Next / Save & Previous buttons.
-   - Filter & Download tab reusing the same layout currently rendered by the shared shell.
-   - Line items table section using the existing `segment-info` groups/rows definition.
-3. Inlined SAP create body (current `SegmentInfoSapCreate`) with its selection table, lookup bar, 4-column field grid, and footer action buttons — Outward only, as today.
-4. Local styling constants (`GREEN_INPUT`, `LABEL`, gradient header classes) copied in so no shared UI helpers beyond shadcn primitives and lucide icons are needed.
+## What changes
+Replace the current Sales Person block (the `Popover` + `Command`/`CommandInput`/`CommandItem` combobox with the `Search` icon) with a native `<select>`, mirroring the Segment field directly below it.
 
-## Behaviour parity checklist
-- Same title, tabs, direction gating, SAP gating, GET button color, table header gradient, and button heights as today.
-- Same field list and line-items columns already defined in `segment-info.tsx`.
-- Inward direction renders no create body (unchanged).
-- No logic or visual regressions elsewhere — other routes keep using `LeScreenShell`.
+New shape:
+
+```tsx
+{isWithout || showF4.SALE_PERSON ? (
+  <select
+    value={form.SALE_PERSON}
+    onChange={(e) => setField("SALE_PERSON", e.target.value)}
+    className={GREEN_INPUT}
+  >
+    <option value="" disabled>Select Sales Person</option>
+    {supplierList.map((s: any, idx: number) => (
+      <option key={idx} value={s.SUPPLIER_NAME}>
+        {s.SUPPLIER} - {s.SUPPLIER_NAME}
+      </option>
+    ))}
+  </select>
+) : (
+  <input value={form.SALE_PERSON} readOnly className={READONLY_INPUT} />
+)}
+```
+
+Notes on "new search behavior": a native `<select>` already supports type-ahead search (typing letters jumps to matching options) with no custom icon or popover, which matches the "standard input/dropdown while still supporting search" requirement.
+
+## Cleanup in the same file
+- Remove the now-unused `salePersonOpen` state and its `setSalePersonOpen` setter.
+- Remove imports that are no longer used *only if* nothing else in the file still uses them:
+  - `Popover`, `PopoverContent`, `PopoverTrigger`
+  - `Command`, `CommandInput`, `CommandList`, `CommandEmpty`, `CommandGroup`, `CommandItem`
+  - `Search` from `lucide-react` — keep it if it's still used by the global search bar button (line ~817). Verify before removing.
 
 ## Out of scope
-- Backend/service changes.
-- Refactoring other screens to follow the same pattern.
+- The inlined shell in `src/routes/segment-info.tsx` (no Sales Person input there).
+- Any other screen or field.
+- Save/fetch logic, validation, styling tokens.
