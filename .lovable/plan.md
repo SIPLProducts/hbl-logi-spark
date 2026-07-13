@@ -1,42 +1,19 @@
-# Give each Report screen its own self-contained file
+## Add radio option groups to two report screens
 
-## Current state
-All 8 report routes (`src/routes/reports.*.tsx`) render a shared `src/components/report-placeholder.tsx`. They differ only in title/description/icon, so every screen looks identical and any change to one requires editing the shared file.
+### 1. `src/routes/reports.business-share-matrix.tsx`
+Inside the filters card, below the filter grid and above the Reset/Export XLS button row, add a horizontal group of 4 radio buttons (name=`view-mode`) with default selection on "All Records":
+- All Records
+- Header
+- Header with Plant
+- Header with Inward/Outward
 
-## Goal
-Each report screen owns its full implementation in its own route file — no shared `ReportPlaceholder` import. Screens remain independent and can diverge later without touching siblings.
+Styling: small radio inputs paired with `text-[12.5px]` labels, using the app's `accent`/primary color, laid out with `flex flex-wrap gap-x-5 gap-y-2` and a top border/padding separator (`border-t border-hairline pt-4 mt-4`) to visually separate from filters.
 
-## Files touched
+### 2. `src/routes/reports.service-level-report.tsx`
+Same treatment — add a group of 2 radio buttons (name=`report-mode`) in the same position, default "Detailed":
+- Detailed
+- Summary for Audit
 
-Rewrite each of these route files to inline the full page (header card + filters card + empty-state card), keeping the current visual design and filter set:
-
-1. `src/routes/reports.transit-eway-bill.tsx`
-2. `src/routes/reports.pending-pods.tsx`
-3. `src/routes/reports.freight-bills.tsx`
-4. `src/routes/reports.loading-factor-cost.tsx`
-5. `src/routes/reports.business-share-matrix.tsx`
-6. `src/routes/reports.damage-list.tsx`
-7. `src/routes/reports.insurance.tsx`
-8. `src/routes/reports.service-level-report.tsx`
-
-Delete after migration:
-- `src/components/report-placeholder.tsx` (no longer imported anywhere)
-
-Unchanged:
-- `src/routes/reports.index.tsx` (hub page)
-- `src/lib/reports-nav.ts` (nav metadata)
-
-## Per-file shape
-
-Each route file will contain:
-- `createFileRoute(...)` with its current path
-- A local `Page` component rendering the same three cards (header, filters, empty state) currently produced by `ReportPlaceholder`
-- Local `SelectField` and `DateField` helpers (or inline JSX) — kept file-local so each screen is truly independent
-- Its own filter list constant (currently identical across screens: Inward/Outward, SAP/Non-SAP, From/To Date, Transporter Group, Transporter, Plant, Product, Division, Customer Name, Branch, Branch Zone, Destination Location, Destination State, Destination Zone, Incoterms)
-
-Yes, this duplicates markup across 8 files by design — that's the point of the request (independence over DRY). Screens can now diverge freely.
-
-## Out of scope
-- No logic changes, no new fields, no API wiring
-- Reports hub (`reports.index.tsx`) and `REPORTS_NAV` untouched
-- No styling changes beyond what's already in `ReportPlaceholder`
+### Out of scope
+- No new export logic, no state wiring beyond native `defaultChecked` — purely a UI addition.
+- No changes to other report screens.

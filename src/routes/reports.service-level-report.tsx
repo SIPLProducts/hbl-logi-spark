@@ -56,6 +56,22 @@ function ServiceLevelReport() {
           )}
         </div>
 
+        <div className="mt-4 pt-4 border-t border-hairline">
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {["Detailed", "Summary for Audit"].map((opt, i) => (
+              <label key={opt} className="inline-flex items-center gap-2 text-[12.5px] text-foreground cursor-pointer">
+                <input
+                  type="radio"
+                  name="report-mode"
+                  defaultChecked={i === 0}
+                  className="size-3.5 accent-primary"
+                />
+                {opt}
+              </label>
+            ))}
+          </div>
+        </div>
+
         <div className="mt-5 flex justify-end gap-2.5">
           <button className="h-9 px-4 rounded-md border border-input bg-background text-foreground text-[12.5px] font-semibold hover:bg-muted inline-flex items-center justify-center gap-2">
             <RotateCcw className="size-3.5" />
