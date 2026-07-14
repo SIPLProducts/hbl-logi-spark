@@ -34,6 +34,10 @@ import { PLANTS, DIVISIONS, TRANSPORTERS, VEHICLE_TYPES } from "@/lib/dispatch-m
 import { counts, type WorklistRow } from "@/lib/le-mock-data";
 import { cn } from "@/lib/utils";
 import { TransitDamageInfoSapCreate } from "@/components/transit-damage-info-sap-create";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
 
 export const Route = createFileRoute("/transit-damage-info")({
   component: TransitDamageInfoPage,
@@ -131,12 +135,12 @@ const PAGE_GROUPS: FieldGroup[] = [
   },
 ];
 
-function renderDirectionExtras() {
+function renderDirectionExtras(casesCount: number) {
   return (
     <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-indigo-300/60 bg-indigo-100 dark:bg-indigo-500/15 text-[11px] font-semibold text-indigo-800 dark:text-indigo-200">
       <ClipboardList className="size-3" />
       No. of Cases Reported
-      <span className="font-mono">0</span>
+      <span className="font-mono">{casesCount}</span>
     </span>
   );
 }
@@ -174,6 +178,9 @@ function TransitDamageInfoPage() {
   const [dispatchData, setDispatchData] = useState<any[]>([]);
   const [transitDamageInfoHeader, setTransitDamageInfoHeader] = useState<any[]>([]);
   const [transitDamageInfoItems, setTransitDamageInfoItems] = useState<any[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [casesCount, setCasesCount] = useState(0);
 
   function getLoggedInUser(): string {
     try {
@@ -183,6 +190,17 @@ function TransitDamageInfoPage() {
     } catch { return ""; }
   }
 
+  const clearSearchData = () => {
+    setApplied(false);
+
+
+    setDispatchData([]);
+    setTransitDamageInfoHeader([]);
+    setTransitDamageInfoItems([]);
+
+    setLoading(false);
+  };
+
   const resetFilters = () => {
     setFromDate(undefined);
     setToDate(undefined);
@@ -191,8 +209,21 @@ function TransitDamageInfoPage() {
     setFTransporter("");
     setFVehicleType("");
     setFStatus("");
+
+    setDispatchData([]);
+    setTransitDamageInfoHeader([]);
+    setTransitDamageInfoItems([]);
+
     setApplied(false);
-    setSearchSap(null);
+  };
+
+  const handleDirectionChange = (dir: "outward" | "inward") => {
+    setDirection(dir);
+    setSap(null);
+
+    setPendingCount(0);
+    setCompletedCount(0);
+    setCasesCount(0);
   };
 
   const filteredRows = searchValue.trim()
@@ -202,6 +233,31 @@ function TransitDamageInfoPage() {
       return v.includes(searchValue.trim().toLowerCase());
     })
     : PAGE_ROWS;
+
+  const handleSearchSapChange = (value: SapMode) => {
+    // Change SAP
+    setSearchSap(value);
+
+    // Clear loaded data
+    setDispatchData([]);
+    setTransitDamageInfoHeader([]);
+    setTransitDamageInfoItems([]);
+
+    // Hide result section
+    setApplied(false);
+
+    // Clear loading
+    setLoading(false);
+
+    // Reset filter values
+    setFromDate(undefined);
+    setToDate(undefined);
+    setFPlant("");
+    setFDivision("");
+    setFTransporter("");
+    setFVehicleType("");
+    setFStatus("");
+  };
 
   const applyFilter = async () => {
     if (!fromDate || !toDate) {
@@ -214,6 +270,9 @@ function TransitDamageInfoPage() {
     }
 
     setApplied(false);
+    setDispatchData([]);
+    setTransitDamageInfoHeader([]);
+    setTransitDamageInfoItems([]);
 
     const payload = {
       GLOBAL: "TRANSIT DAMAGE INFO",
@@ -320,6 +379,418 @@ function TransitDamageInfoPage() {
     }
   };
 
+  const downloadExcel = () => {
+    let exportSource: any[] = [];
+    let fileName = "";
+
+    // ---------------- Completed ----------------
+    if (fStatus === "Completed") {
+      const combinedData: any[] = [];
+
+      transitDamageInfoItems.forEach((item) => {
+        const header = transitDamageInfoHeader.find(
+          (h) => h.ZREFNO === item.ZREFNO
+        );
+
+        combinedData.push({
+          ...(header || {}),
+          ...item,
+        });
+      });
+
+      exportSource = combinedData;
+
+      fileName =
+        searchSap === "with"
+          ? "TransitDamageInfo_Completed_SAP.xlsx"
+          : "TransitDamageInfo_Completed_NonSAP.xlsx";
+    }
+
+    // ---------------- Pending ----------------
+    else if (fStatus === "Pending") {
+      exportSource = dispatchData;
+
+      fileName =
+        searchSap === "with"
+          ? "Dispatch_Pending_SAP.xlsx"
+          : "Dispatch_Pending_NonSAP.xlsx";
+    } else {
+      Swal.fire({
+        icon: "warning",
+        title: "Warning",
+        text: "Please select valid status before download.",
+      });
+      return;
+    }
+
+    if (!exportSource.length) {
+      Swal.fire({
+        icon: "warning",
+        title: "Warning",
+        text: "No data available to download.",
+      });
+      return;
+    }
+
+    let exportData: any[] = [];
+
+    // ================= COMPLETED =================
+    if (fStatus === "Completed") {
+      exportData = exportSource.map((record) => ({
+        "Map ID": record.ZMAPID || "",
+        REFNO: record.ZREFNO || "",
+        "Invoice No": record.ZINV_NO || "",
+        "Line No": record.ZLINE_NO || "",
+        "ODN Number": record.ZODN_NO || "",
+        "SO Number": record.ZSONO || "",
+
+        "Invoice Date": record.ZINV_DATE
+          ? new Date(record.ZINV_DATE).toLocaleDateString("en-GB")
+          : "",
+
+        "FSR Report Date": record.ZFSR_RPT_DT
+          ? new Date(record.ZFSR_RPT_DT).toLocaleDateString("en-GB")
+          : "",
+
+        "Invoice Base Value": record.ZBASIC_VALUE || "",
+
+        "Incident Date": record.ZINC_DATE
+          ? new Date(record.ZINC_DATE).toLocaleDateString("en-GB")
+          : "",
+
+        Images: record.ZDIMAGES || "",
+        "FSR Report": record.ZFSRREP || "",
+        "FIR Report": record.ZFIRREP || "",
+        COF: record.ZCOF || "",
+
+        Customer: record.ZCUSTOMER || "",
+        "Consignee Name": record.ZCONSIGN_NAME || "",
+        "Damage Remarks": record.ZDAMAGE_RMK || "",
+        Settlement: record.ZSETTLEMENT || "",
+
+        "Closing Date": record.ZCLOSING_DT
+          ? new Date(record.ZCLOSING_DT).toLocaleDateString("en-GB")
+          : "",
+
+        "Sale Person": record.ZSALE_PERSON || "",
+        Location: record.ZLOCATION || "",
+        Route: record.ZROUTE || "",
+        Plant: record.ZPLANT || "",
+        Division: record.ZDIVISION || "",
+
+        "Created Date": record.ZCREATED_DT
+          ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB")
+          : "",
+
+        "Vehicle Type": record.ZVEH_TYPE || "",
+
+        "Vehicle Line": record.ZVEH_LINE || "",
+        "Vehicle Number": record.ZTRUCK_NO || "",
+        "LR No": record.ZLRNO || "",
+        "Work Order": record.ZWORK_ORDER || "",
+        Transporter: record.ZTRANSPORTER || "",
+        "Bill No": record.ZBILLNO || "",
+        Product: record.ZPRODUCT || "",
+      }));
+    }
+
+    // ================= PENDING =================
+    else {
+      exportData = exportSource.map((record) => ({
+        "Reference No": record.ZREFNO || "",
+
+        Date: record.ZCREATED_DT
+          ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB")
+          : "",
+
+        Plant: record.ZWERKS || "",
+        Division: record.ZDIVISION || "",
+        "Vehicle Type": record.ZVEH_TYPE || "",
+        "No. of Trucks": record.ZNO_TRUCKS || "",
+        "Work Order": record.ZWORK_ORDER || "",
+        "Vendor Code": record.ZVENDOR_CD || "",
+        Transporter: record.ZTRANSPORTER || "",
+        "No. of LRs": record.ZNO_LRS || "",
+        "LR Number": record.ZLR_NO || "",
+        "Loading Point": record.ZLOAD_PT || "",
+        "Unloading Point": record.ZUNLOAD_PT || "",
+      }));
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Records");
+
+    worksheet["!cols"] = Object.keys(exportData[0]).map((key) => ({
+      wch: Math.max(key.length + 5, 18),
+    }));
+
+    XLSX.writeFile(workbook, fileName);
+
+    Swal.fire({
+      icon: "success",
+      title: "Success",
+      text: `${fileName} downloaded successfully.`,
+    });
+  };
+
+  const downloadPDF = () => {
+    let exportSource: any[] = [];
+    let fileName = "";
+    let reportTitle = "";
+
+    // ================= COMPLETED =================
+    if (fStatus === "Completed") {
+      const combinedData: any[] = [];
+
+      transitDamageInfoItems.forEach((item) => {
+        const header = transitDamageInfoHeader.find(
+          (h) => h.ZREFNO === item.ZREFNO
+        );
+
+        combinedData.push({
+          ...(header || {}),
+          ...item,
+        });
+      });
+
+      exportSource = combinedData;
+
+      fileName =
+        searchSap === "with"
+          ? "TransitDamageInfo_Completed_SAP.pdf"
+          : "TransitDamageInfo_Completed_NonSAP.pdf";
+
+      reportTitle = "Transit Damage Info Records (Completed)";
+    }
+
+    // ================= PENDING =================
+    else if (fStatus === "Pending") {
+      exportSource = dispatchData;
+
+      fileName =
+        searchSap === "with"
+          ? "Dispatch_Pending_SAP.pdf"
+          : "Dispatch_Pending_NonSAP.pdf";
+
+      reportTitle = "Dispatch Records (Pending)";
+    } else {
+      Swal.fire({
+        icon: "warning",
+        title: "Warning",
+        text: "Please select valid status.",
+      });
+      return;
+    }
+
+    if (!exportSource.length) {
+      Swal.fire({
+        icon: "warning",
+        title: "Warning",
+        text: "No data available.",
+      });
+      return;
+    }
+
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a3",
+    });
+
+    // ---------------- Title ----------------
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+
+    doc.text(
+      reportTitle,
+      doc.internal.pageSize.getWidth() / 2,
+      12,
+      {
+        align: "center",
+      }
+    );
+
+    doc.setFontSize(10);
+
+    doc.setFont("helvetica", "normal");
+
+    doc.text(
+      `Generated on : ${new Date().toLocaleDateString()}`,
+      doc.internal.pageSize.getWidth() / 2,
+      18,
+      {
+        align: "center",
+      }
+    );
+
+    let headers: any[] = [];
+    let rows: any[] = [];
+
+    // ================= COMPLETED =================
+    if (fStatus === "Completed") {
+      headers = [[
+        "SI.No",
+        "Map ID",
+        "REF No",
+        "Invoice No",
+        "ODN No",
+        "SO No",
+        "Invoice Date",
+        "FSR Date",
+        "Invoice Value",
+        "Incident Date",
+        "Customer",
+        "Consignee",
+        "Damage Remarks",
+        "Settlement",
+        "Closing Date",
+        "Sale Person",
+        "Location",
+        "Route",
+        "Plant",
+        "Division",
+        "Created Date",
+        "Vehicle Type",
+        "Vehicle Line",
+        "Vehicle Number",
+        "LR No",
+        "Work Order",
+        "Transporter",
+        "Bill No",
+        "Product",
+      ]];
+
+      rows = exportSource.map((record, index) => [
+        index + 1,
+        record.ZMAPID || "",
+        record.ZREFNO || "",
+        record.ZINV_NO || "",
+        record.ZODN_NO || "",
+        record.ZSONO || "",
+        record.ZINV_DATE || "",
+        record.ZFSR_RPT_DT || "",
+        record.ZBASIC_VALUE || "",
+        record.ZINC_DATE || "",
+        record.ZCUSTOMER || "",
+        record.ZCONSIGN_NAME || "",
+        record.ZDAMAGE_RMK || "",
+        record.ZSETTLEMENT || "",
+        record.ZCLOSING_DT || "",
+        record.ZSALE_PERSON || "",
+        record.ZLOCATION || "",
+        record.ZROUTE || "",
+        record.ZPLANT || "",
+        record.ZDIVISION || "",
+        record.ZCREATED_DT
+          ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB")
+          : "",
+        record.ZVEH_TYPE || "",
+        record.ZVEH_LINE || "",
+        record.ZTRUCK_NO || "",
+        record.ZLRNO || "",
+        record.ZWORK_ORDER || "",
+        record.ZTRANSPORTER || "",
+        record.ZBILLNO || "",
+        record.ZPRODUCT || "",
+      ]);
+    }
+
+    // ================= PENDING =================
+    else {
+      headers = [[
+        "SI.No",
+        "Reference No",
+        "Date",
+        "Plant",
+        "Division",
+        "Vehicle Type",
+        "No. Trucks",
+        "Work Order",
+        "Vendor Code",
+        "Transporter",
+        "No. LRs",
+        "LR Number",
+        "Loading Point",
+        "Unloading Point",
+      ]];
+
+      rows = exportSource.map((record, index) => [
+        index + 1,
+        record.ZREFNO || "",
+        record.ZCREATED_DT
+          ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB")
+          : "",
+        record.ZWERKS || "",
+        record.ZDIVISION || "",
+        record.ZVEH_TYPE || "",
+        record.ZNO_TRUCKS || "",
+        record.ZWORK_ORDER || "",
+        record.ZVENDOR_CD || "",
+        record.ZTRANSPORTER || "",
+        record.ZNO_LRS || "",
+        record.ZLR_NO || "",
+        record.ZLOAD_PT || "",
+        record.ZUNLOAD_PT || "",
+      ]);
+    }
+
+    autoTable(doc, {
+      head: headers,
+      body: rows,
+      startY: 25,
+      theme: "grid",
+
+      styles: {
+        fontSize: 6,
+        cellPadding: 1.5,
+      },
+
+      headStyles: {
+        fillColor: [52, 152, 219],
+        textColor: 255,
+        fontStyle: "bold",
+        fontSize: 6,
+      },
+
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+    });
+
+    doc.save(fileName);
+
+    Swal.fire({
+      icon: "success",
+      title: "Success",
+      text: `${fileName} downloaded successfully.`,
+    });
+  };
+
+  const fetchPendingAndCompletedCounts = async (sapMode: SapMode) => {
+    try {
+      const payload = {
+        INOUT: "OUTWARD",
+        TRANS_TYPE: sapMode === "with" ? "WITHSAP" : "WITHOUTSAP",
+        SCREEN: "TRANSIT DAMAGE INFO",
+      };
+
+      const response = await service.OutwardCountGlobalWithSap(payload);
+
+      setPendingCount(response?.ZPEND_CNT || 0);
+      setCompletedCount(response?.ZCONF_CNT || 0);
+      setCasesCount(response?.ZCASE_REP || 0);
+    } catch (error) {
+      console.error("Error fetching counts:", error);
+
+      setPendingCount(0);
+      setCompletedCount(0);
+      setCasesCount(0);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-full">
       <Tabs
@@ -379,25 +850,31 @@ function TransitDamageInfoPage() {
                 <PremiumRadio
                   label="Outward"
                   checked={direction === "outward"}
-                  onSelect={() => setDirection("outward")}
+                  onSelect={() => handleDirectionChange("outward")}
                 />
                 {direction && (
                   <>
                     <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
-                    <SapToggle value={sap} onChange={setSap} />
+                    <SapToggle
+                      value={sap}
+                      onChange={(value) => {
+                        setSap(value);
+                        fetchPendingAndCompletedCounts(value);
+                      }}
+                    />
                   </>
                 )}
                 <div className="ml-auto flex items-center gap-1.5">
-                  {direction && sap && renderDirectionExtras()}
+                  {direction && sap && renderDirectionExtras(casesCount)}
                   <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-amber-300/60 bg-amber-100 dark:bg-amber-500/15 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
                     <span className="size-1.5 rounded-full bg-warning" />
                     Pending
-                    <span className="font-mono">{counts.pending}</span>
+                    <span className="font-mono">{pendingCount}</span>
                   </span>
                   <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-emerald-300/60 bg-emerald-100 dark:bg-emerald-500/15 text-[11px] font-semibold text-emerald-800 dark:text-emerald-200">
                     <span className="size-1.5 rounded-full bg-success" />
                     Completed
-                    <span className="font-mono">{counts.completed}</span>
+                    <span className="font-mono">{completedCount}</span>
                   </span>
                 </div>
               </div>
@@ -465,7 +942,10 @@ function TransitDamageInfoPage() {
                     Filter Options
                   </h3>
                 </div>
-                <SearchSapToggle value={searchSap} onChange={setSearchSap} />
+                <SearchSapToggle
+                  value={searchSap}
+                  onChange={handleSearchSapChange}
+                />
               </div>
 
               {!searchSap && (
@@ -521,18 +1001,48 @@ function TransitDamageInfoPage() {
                     <Button variant="ghost" size="sm" onClick={resetFilters}>
                       Reset
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-1.5">
-                      <FileText className="size-3.5" /> Download PDF
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={downloadPDF}
+                      disabled={
+                        !applied ||
+                        (fStatus === "Completed" &&
+                          (transitDamageInfoHeader.length === 0 ||
+                            transitDamageInfoItems.length === 0)) ||
+                        (fStatus === "Pending" &&
+                          dispatchData.length === 0)
+                      }
+                    >
+                      <FileText className="size-3.5 text-red-600" />
+                      Download PDF
                     </Button>
-                    <Button variant="outline" size="sm" className="gap-1.5">
-                      <FileDown className="size-3.5 text-emerald-600" /> Download Excel
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={downloadExcel}
+                      disabled={
+                        !applied ||
+                        (fStatus === "Completed" &&
+                          (transitDamageInfoHeader.length === 0 ||
+                            transitDamageInfoItems.length === 0)) ||
+                        (fStatus === "Pending" &&
+                          dispatchData.length === 0)
+                      }
+                    >
+                      <FileDown className="size-3.5 text-emerald-600" />
+                      Download Excel
                     </Button>
                     <Button
                       size="sm"
                       onClick={applyFilter}
+                      disabled={loading}
                       className="gap-1.5"
                     >
-                      <Filter className="size-3.5" /> Apply Filter
+                      <Filter className="size-3.5" />
+                      {loading ? "Loading..." : "Apply Filter"}
                     </Button>
                   </div>
                 </>
@@ -753,6 +1263,118 @@ function TransitDamageInfoPage() {
                     </div>
                   </>
                 )}
+                {applied &&
+                  fStatus === "Pending" &&
+                  dispatchData.length > 0 && (
+                    <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
+                      <div className="px-4 py-3 border-b border-hairline bg-surface-2/60">
+                        <h3 className="font-semibold">
+                          Pending Dispatch Records
+                        </h3>
+                      </div>
+
+                      <div className="overflow-x-auto max-h-[550px]">
+                        <table className="w-full text-left border-collapse text-[12px]">
+                          <thead className="sticky top-0 z-30">
+                            <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+
+                              <th className="px-3 py-2">SI.No</th>
+                              <th className="px-3 py-2">Reference No</th>
+                              <th className="px-3 py-2">Date</th>
+                              <th className="px-3 py-2">Plant</th>
+                              <th className="px-3 py-2">Division</th>
+                              <th className="px-3 py-2">Vehicle Type</th>
+                              <th className="px-3 py-2">No. of Trucks</th>
+                              <th className="px-3 py-2">Work Order</th>
+                              <th className="px-3 py-2">Vendor Code</th>
+                              <th className="px-3 py-2">Transporter</th>
+                              <th className="px-3 py-2">No. of LRs</th>
+                              <th className="px-3 py-2">LR Number</th>
+                              <th className="px-3 py-2">Loading Point</th>
+                              <th className="px-3 py-2">Unloading Point</th>
+                              <th className="px-3 py-2">No Of Invoices</th>
+
+                            </tr>
+                          </thead>
+
+                          <tbody className="divide-y divide-hairline/70">
+                            {dispatchData.map((item, index) => (
+                              <tr
+                                key={index}
+                                className={
+                                  index % 2 === 0
+                                    ? "bg-surface hover:bg-muted/50"
+                                    : "bg-surface-2/40 hover:bg-muted/50"
+                                }
+                              >
+                                <td className="px-3 py-2">{index + 1}</td>
+
+                                <td className="px-3 py-2 font-mono">
+                                  {item.ZREFNO}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZCREATED_DT
+                                    ? new Date(item.ZCREATED_DT).toLocaleDateString(
+                                      "en-GB"
+                                    )
+                                    : ""}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZWERKS}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZDIVISION}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZVEH_TYPE}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZNO_TRUCKS}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZWORK_ORDER}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZVENDOR_CD}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZTRANSPORTER}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZNO_LRS}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZLR_NO}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZLOAD_PT}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZUNLOAD_PT}
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  {item.ZNO_INVOICES}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
               </div>
             )}
           </TabsContent>
@@ -930,7 +1552,7 @@ function DateField({
           <Button
             variant="outline"
             className={cn(
-              "h-10 justify-start text-left font-normal",
+              "h-8 justify-start text-left font-normal",
               !value && "text-muted-foreground",
             )}
           >
@@ -971,7 +1593,7 @@ function SelectField({
         {label}
       </label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-10">
+        <SelectTrigger className="h-8">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>

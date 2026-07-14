@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -180,6 +180,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedItem, setSelectedItem] = useState<any>({});
+
   const editSearchRow = () => {
     setHeaderData((prev: any) => ({
       ...prev,
@@ -222,6 +223,31 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
     setItemData(rows);
   };
+  useEffect(() => {
+  setChecked(!isWithout);
+  setSearchType("");
+  setSearchValue("");
+  setLookupValue("");
+  setTableData([EMPTY_ROW()]);
+  setRevealed(false);
+  setHeaderData({});
+  setItemData([]);
+  setSelectedItems([]);
+  setImagesBase64("");
+  setImagesPath("");
+  setFsrReportBase64("");
+  setFsrReportPath("");
+  setFirReportBase64("");
+  setFirReportPath("");
+  setCofBase64("");
+  setCofPath("");
+  setShowForm(false);
+  setInvoiceF4List([]);
+  setFullReferenceData([]);
+  setIsGlobalSearch(false);
+  setSearchResults([]);
+  setSelectedItem({});
+}, [mode]);
 
   const handleHeaderChange = (key: string, value: any) => {
     setHeaderData((prev: any) => ({
@@ -327,38 +353,63 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     const checked = event.target.checked;
     const rowValue = tableData[index];
 
-    // Update tableData
     const updatedTable = [...tableData];
     updatedTable[index].selected = checked;
     setTableData(updatedTable);
 
+    let updatedSelectedItems: TableRow[];
+
     if (checked) {
-      const exists = selectedItems.some(
-        (item) => item.MAPID === rowValue.MAPID
-      );
-
-      if (!exists) {
-        const updatedSelectedItems = [...selectedItems, rowValue];
-
-        setSelectedItems(updatedSelectedItems);
-
-        console.log("Selected:", updatedSelectedItems);
-      }
+      const exists = selectedItems.some((item) => item.MAPID === rowValue.MAPID);
+      updatedSelectedItems = exists ? selectedItems : [...selectedItems, rowValue];
     } else {
-      const updatedSelectedItems = selectedItems.filter(
-        (item) => item.MAPID !== rowValue.MAPID
-      );
-
-      setSelectedItems(updatedSelectedItems);
-
-      console.log("Selected:", updatedSelectedItems);
+      updatedSelectedItems = selectedItems.filter((item) => item.MAPID !== rowValue.MAPID);
     }
+
+    setSelectedItems(updatedSelectedItems);
+
+    // Recompute the F4 list scoped to only the currently-checked reference rows
+    const mapIds = new Set(updatedSelectedItems.map((i) => i.MAPID));
+    const f4: string[] = [];
+
+    fullReferenceData.forEach((ref: any) => {
+      if (mapIds.has(ref.MAPID) && Array.isArray(ref.INV_NO)) {
+        ref.INV_NO.forEach((inv: any) => {
+          if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
+        });
+      }
+    });
+
+    setInvoiceF4List(f4);
+    setLookupValue("");
   };
 
 
 
-  const updateInvoiceListForSelectedItems = () => {
-    console.log("Selected Items:", selectedItems);
+  const updateInvoiceListForSelectedItems = (items: TableRow[]) => {
+    if (items.length === 0) {
+      setInvoiceF4List([]);
+      setLookupValue("");
+      return;
+    }
+
+    const selectedMapIds = [...new Set(items.map((i) => i.MAPID))];
+    const list: string[] = [];
+
+    fullReferenceData.forEach((refItem: any) => {
+      if (selectedMapIds.includes(refItem.MAPID) && Array.isArray(refItem.INV_NO)) {
+        refItem.INV_NO.forEach((inv: any) => {
+          if (inv.VBELN && !list.includes(inv.VBELN)) {
+            list.push(inv.VBELN);
+          }
+        });
+      }
+    });
+
+    setInvoiceF4List(list);
+    setLookupValue("");
+
+    console.log("📋 Filtered Invoice List:", list);
   };
 
   const populateReferenceRows = (data: any[]) => {
@@ -679,6 +730,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
         } else if (action === "previous") {
 
           // navigate("/freight-billing")
+            resetAll(); 
 
         }
 
@@ -703,6 +755,31 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
     }
   };
+
+  const resetAll = () => {
+  setSearchType("");
+  setSearchValue("");
+  setLookupValue("");
+  setTableData([EMPTY_ROW()]);
+  setRevealed(false);
+  setHeaderData({});
+  setItemData([]);
+  setSelectedItems([]);
+  setImagesBase64("");
+  setImagesPath("");
+  setFsrReportBase64("");
+  setFsrReportPath("");
+  setFirReportBase64("");
+  setFirReportPath("");
+  setCofBase64("");
+  setCofPath("");
+  setShowForm(false);
+  setInvoiceF4List([]);
+  setFullReferenceData([]);
+  setIsGlobalSearch(false);
+  setSearchResults([]);
+  setSelectedItem({});
+};
 
 
   const onSearchReference = async () => {
@@ -815,110 +892,112 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   };
 
 
-  const fetchInvoiceDetailsNonSap = async () => {
-    // Validation
-    if (!lookupValue.trim()) {
-      Swal.fire({
-        icon: "warning",
-        title: "Warning",
-        text: "Please enter DC Reference Number",
-      });
-      return;
-    }
+ const fetchInvoiceDetailsNonSap = async (valueOverride?: string) => {
+  const dcRef = (valueOverride ?? lookupValue).trim();
 
-    // Get selected reference row
-    const selectedRow = tableData.find((row) => row.selected);
+  // Validation
+  if (!dcRef) {
+    Swal.fire({
+      icon: "warning",
+      title: "Warning",
+      text: "Please enter DC Reference Number",
+    });
+    return;
+  }
 
-    if (!selectedRow) {
-      Swal.fire({
-        icon: "warning",
-        title: "Warning",
-        text: "Please select one reference row",
-      });
-      return;
-    }
+  // Get selected reference row
+  const selectedRow = tableData.find((row) => row.selected);
 
-    // Payload
-    const payload = {
-      VBELN: lookupValue.trim(),
-      ZREFNO: selectedRow.REF_NO || "",
-      ZMAPID: selectedRow.MAPID || "",
-    };
+  if (!selectedRow) {
+    Swal.fire({
+      icon: "warning",
+      title: "Warning",
+      text: "Please select one reference row",
+    });
+    return;
+  }
 
-    console.log("Non-SAP Payload:", payload);
-
-    try {
-      const res: any = await service.TransitDamageinfofetchNonsap(payload);
-
-      console.log("Non-SAP Response:", res);
-
-      if (!res || res.STATUS === "False") {
-        Swal.fire({
-          icon: "info",
-          title: "Info",
-          text: res?.MESSAGE || "No Data Found",
-        });
-        return;
-      }
-
-      const header = res?.[0]?.HEADER || {};
-      const items = res?.[0]?.ITEM || [];
-
-      // Header
-      setHeaderData({
-        ...header,
-        INV_NO: header.INV_NO || lookupValue,
-        REFNO: selectedRow.REF_NO,
-        LINE_NO: selectedRow.LINE_NO,
-      });
-
-      // Item Table
-      const updatedItems = items.map((item: any) => ({
-        ...item,
-
-        selected: false,
-
-        // Reference Details
-        ZMAPID: selectedRow.MAPID,
-        REFNO: selectedRow.REF_NO,
-        ZLINE_NO: selectedRow.LINE_NO,
-
-        // Display Columns (Only API values)
-        VEHICLE_NO: item.TRUCK_NO ?? "",
-        LR_NO: item.LR_NO ?? "",
-        TRANSPORTER: item.TRANSPORTER ?? "",
-        WORK_ORDER: item.WORK_ORDER ?? "",
-
-        PRODUCT: item.PRODUCT ?? "",
-        BILLNO: item.BILLNO ?? "",
-        INV_NO: lookupValue,
-      }));
-
-      console.log("Updated Items:", updatedItems);
-
-      setItemData(updatedItems);
-
-      setShowForm(true);
-      setRevealed(true);
-      setIsGlobalSearch(false);
-
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Invoice Details fetched successfully.",
-        timer: 1200,
-        showConfirmButton: false,
-      });
-    } catch (error) {
-      console.error("Non-SAP Fetch Error:", error);
-
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Failed to fetch Invoice Details.",
-      });
-    }
+  // Payload
+  const payload = {
+    VBELN: dcRef,
+    ZREFNO: selectedRow.REF_NO || "",
+    ZMAPID: selectedRow.MAPID || "",
   };
+
+  console.log("Non-SAP Payload:", payload);
+
+  try {
+    const res: any = await service.TransitDamageinfofetchNonsap(payload);
+
+    console.log("Non-SAP Response:", res);
+
+    if (!res || res.STATUS === "False") {
+      Swal.fire({
+        icon: "info",
+        title: "Info",
+        text: res?.MESSAGE || "No Data Found",
+      });
+      return;
+    }
+
+    const header = res?.[0]?.HEADER || {};
+    const items = res?.[0]?.ITEM || [];
+
+    // Header
+    setHeaderData({
+      ...header,
+      INV_NO: header.INV_NO || dcRef,
+      REFNO: selectedRow.REF_NO,
+      LINE_NO: selectedRow.LINE_NO,
+    });
+
+    // Item Table
+    const updatedItems = items.map((item: any) => ({
+      ...item,
+
+      selected: false,
+
+      // Reference Details
+      ZMAPID: selectedRow.MAPID,
+      REFNO: selectedRow.REF_NO,
+      ZLINE_NO: selectedRow.LINE_NO,
+
+      // Display Columns (Only API values)
+      VEHICLE_NO: item.TRUCK_NO ?? "",
+      LR_NO: item.LR_NO ?? "",
+      TRANSPORTER: item.TRANSPORTER ?? "",
+      WORK_ORDER: item.WORK_ORDER ?? "",
+
+      PRODUCT: item.PRODUCT ?? "",
+      BILLNO: item.BILLNO ?? "",
+      INV_NO: dcRef,
+    }));
+
+    console.log("Updated Items:", updatedItems);
+
+    setItemData(updatedItems);
+
+    setShowForm(true);
+    setRevealed(true);
+    setIsGlobalSearch(false);
+
+    Swal.fire({
+      icon: "success",
+      title: "Success",
+      text: "Invoice Details fetched successfully.",
+      timer: 1200,
+      showConfirmButton: false,
+    });
+  } catch (error) {
+    console.error("Non-SAP Fetch Error:", error);
+
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "Failed to fetch Invoice Details.",
+    });
+  }
+};
 
   const handleSaveNonSap = async (
     action: "stay" | "next" | "previous" = "stay"
@@ -1006,6 +1085,8 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
           title: "Success",
           text: "Data Saved Successfully",
         });
+
+         resetAll();  
 
         // reset form if required
         // resetForm();
@@ -1274,31 +1355,32 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex items-end gap-2 max-w-md">
-            <div className="w-full max-w-xs">
+            <div className="flex-1 min-w-[220px]">
               <label className={LABEL}>
                 {isWithout ? "DC Reference Number" : "Invoice Number"}
               </label>
 
-              <input
+              <select
                 value={lookupValue}
-                onChange={(e) => setLookupValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    if (isWithout) {
-                      fetchInvoiceDetailsNonSap();
-                    } else {
-                      fetchInvoiceDetails();
-                      setRevealed(true);
-                    }
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setLookupValue(value);
+                  if (isWithout) {
+                    fetchInvoiceDetailsNonSap(value);
+                    setRevealed(true);
                   }
                 }}
                 className={GREEN_INPUT}
-                placeholder={
-                  isWithout
-                    ? "Enter DC Reference Number"
-                    : "Enter Invoice Number"
-                }
-              />
+              >
+                <option value="" disabled>
+                  {isWithout ? "Select DC Reference" : "Select Invoice"}
+                </option>
+                {invoiceF4List.map((inv) => (
+                  <option key={inv} value={inv}>
+                    {inv}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {!isWithout && (
