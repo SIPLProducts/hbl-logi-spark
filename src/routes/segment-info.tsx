@@ -41,9 +41,9 @@ const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
 
 function getLoggedInUser(): string {
   try {
-    const raw = localStorage.getItem("currentUser") || "{}";
+    const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
     const u = JSON.parse(raw) as Record<string, unknown>;
-    return String(u?.USER ?? "");
+    return String(u?.USER ?? u?.USERNAME ?? u?.USER_ID ?? "");
   } catch {
     return "";
   }
@@ -54,9 +54,9 @@ function getLoggedInUser(): string {
 // comes from the F4 vendor-code API — mirrored here rather than unified.
 function getLoginPlantsDivisions(): { plants: any[]; divisions: any[] } {
   try {
-    const raw = localStorage.getItem("currentUser") || "{}";
+    const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
     const u = JSON.parse(raw) as Record<string, any>;
-    return { plants: u?.PLANTS || [], divisions: u?.DIV || [] };
+    return { plants: u?.PLANTS || u?.PLANT || [], divisions: u?.DIV || u?.DIVISION || [] };
   } catch {
     return { plants: [], divisions: [] };
   }
@@ -795,7 +795,7 @@ function DateField({
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={cn("h-10 justify-start text-left font-normal", !value && "text-muted-foreground")}
+            className={cn("h-8 justify-start text-left font-normal", !value && "text-muted-foreground")}
           >
             <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
             {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
@@ -834,7 +834,7 @@ function SelectField({
         {label}
       </label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-10">
+        <SelectTrigger className="h-8">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>

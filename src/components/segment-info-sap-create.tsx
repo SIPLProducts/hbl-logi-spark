@@ -9,7 +9,27 @@ const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 const READONLY_INPUT =
   "h-7 w-full rounded-md bg-muted/60 border border-input px-2 text-[12px] text-foreground font-medium outline-none cursor-not-allowed";
+// SAP fetched & has value → GREEN, readonly (matches order-info-sap-create.tsx)
+const INPUT_SAP_FILLED =
+  "h-7 w-full rounded-md bg-emerald-50 border-2 border-emerald-400 px-2 text-[12px] text-emerald-900 font-semibold outline-none cursor-not-allowed";
+// SAP fetched but empty → RED, editable (matches order-info-sap-create.tsx)
+const INPUT_SAP_EMPTY =
+  "h-7 w-full rounded-md bg-red-50 border-2 border-red-400 px-2 text-[12px] text-foreground font-medium outline-none focus:border-red-500 focus:ring-2 focus:ring-red-300";
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
+
+/** Label with optional green "From SAP" badge (matches order-info-sap-create.tsx) */
+function FieldLabel({ label, fromSap }: { label: string; fromSap: boolean }) {
+  return (
+    <label className={LABEL}>
+      {label}
+      {fromSap && (
+        <span className="ml-1.5 inline-flex items-center px-1.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300 leading-tight align-middle">
+          From SAP
+        </span>
+      )}
+    </label>
+  );
+}
 
 // Matches Angular's segmentInfo.searchOptions exactly (key -> API payload key)
 const SEARCH_OPTIONS = [
@@ -140,6 +160,9 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [showForm, setShowForm] = useState(isWithout);
   const [showF4, setShowF4] = useState<ShowF4>(isWithout ? ALL_F4_ON : ALL_F4_OFF);
+  // Snapshot of which secondary fields SAP's GET response actually filled — used only for
+  // "From SAP" (green) vs "manually entered" (red) colouring, mirrors order-info-sap-create.tsx.
+  const [sapAuxFilled, setSapAuxFilled] = useState<Set<string>>(new Set());
 
   // ── F4 master data ──
   const [supplierList, setSupplierList] = useState<any[]>([]);
@@ -166,6 +189,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setInvoiceTouched(false);
     setSearchType("");
     setSearchValue("");
+    setSapAuxFilled(new Set());
     if (isWithout) {
       setShowF4(ALL_F4_ON);
       setShowForm(true);
@@ -330,6 +354,14 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       CUST_PROF: !data.CUST_PROFILE,
       APPTYP: !data.APPTYP,
     });
+    const auxFilled = new Set<string>();
+    if (data.BRANCH) auxFilled.add("BRANCH");
+    if (data.BRANCH_ZONE) auxFilled.add("BRANCH_ZONE");
+    if (data.ZSTATE) auxFilled.add("ZSTATE");
+    if (data.TAT_TYPE) auxFilled.add("TAT_Type");
+    if (data.TAT) auxFilled.add("TAT_DAYS");
+    if (data.ETA) auxFilled.add("ETA_DATE");
+    setSapAuxFilled(auxFilled);
     setShowForm(true);
   };
 
@@ -821,26 +853,47 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         </p>
       )}
 
+      {/* ── Colour legend (only shown after SAP GET) ── */}
+      {isSap && showForm && (
+        <div className="flex items-center gap-4 px-1 py-1">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-sm border-2 border-emerald-400 bg-emerald-50" />
+            <span className="text-[11px] text-muted-foreground">Fetched from SAP (readonly)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-sm border-2 border-red-400 bg-red-50" />
+            <span className="text-[11px] text-muted-foreground">Not provided by SAP (fill manually)</span>
+          </div>
+        </div>
+      )}
+
       {/* Search results table */}
       {searchResults.length > 0 && (
-        <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
-          <div className="overflow-x-auto max-h-[560px]">
-            <table className="w-full text-left border-collapse text-[12px]">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+        <div className="max-h-[560px] overflow-auto">
+          <div className="max-h-[560px] overflow-auto">
+            <table className="w-full text-left border-collapse text-[12.5px]">
+              <thead className="sticky top-0 z-30">
+                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
                   {["Ref No", "Invoice No", "Line No", "ODN No", "SO NO", "Sales Person", "Segment", "Application Type",
                     "Customer Profile", "Branch", "Branch Zone", "TAT Type", "TAT Days", "ETA", "Work Order", "LR No",
                     "Transporter", "Plant", "Division", "Created Date", "Vehicle Type", "Action"].map((h) => (
-                      <th key={h} className="px-2 py-1.5 whitespace-nowrap text-left">{h}</th>
+                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
                     ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-hairline/60">
+              <tbody className="divide-y divide-hairline/70">
                 {searchResults.map((item, i) => (
-                  <tr key={i} className={i % 2 === 0 ? "bg-surface" : "bg-surface-2/40"}>
-                    <td className="px-2 py-1 whitespace-nowrap">{item.ZREFNO}</td>
-                    <td className="px-2 py-1 whitespace-nowrap">{item.ZINV_NUM}</td>
-                    <td className="px-2 py-1 whitespace-nowrap">{item.ZLINE_NO}</td>
+                  <tr
+                    key={i}
+                    className={
+                      i % 2 === 0
+                        ? "bg-surface hover:bg-muted/50"
+                        : "bg-surface-2/40 hover:bg-muted/50"
+                    }
+                  >
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZREFNO}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZINV_NUM}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
                     {[
                       { field: "ZODN_NO", type: "text" },
                       { field: "ZSO_NO", type: "text" },
@@ -878,7 +931,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                     ))}
                     <td className="px-2 py-1 text-center">
                       {!item.isEdit ? (
-                        <div className="inline-flex items-center gap-1">
+                        <div className="flex items-center gap-1 justify-center">
                           <button onClick={() => editSearchRow(i)} className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100">
                             <Pencil className="size-3.5" />
                           </button>
@@ -933,12 +986,12 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
               {/* Sales Person */}
               <div>
-                <label className={LABEL}>Sales Person</label>
+                <FieldLabel label="Sales Person" fromSap={!isWithout && !showF4.SALE_PERSON} />
                 {isWithout || showF4.SALE_PERSON ? (
                   <select
                     value={form.SALE_PERSON}
                     onChange={(e) => setField("SALE_PERSON", e.target.value)}
-                    className={GREEN_INPUT}
+                    className={isWithout ? GREEN_INPUT : INPUT_SAP_EMPTY}
                   >
                     <option value="" disabled>Select Sales Person</option>
                     {supplierList.map((s: any, idx: number) => (
@@ -948,28 +1001,28 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                     ))}
                   </select>
                 ) : (
-                  <input value={form.SALE_PERSON} readOnly className={READONLY_INPUT} />
+                  <input value={form.SALE_PERSON} readOnly className={INPUT_SAP_FILLED} />
                 )}
               </div>
 
               {/* Segment */}
               <div>
-                <label className={LABEL}>Segment</label>
+                <FieldLabel label="Segment" fromSap={!isWithout && !showF4.SEGMENT} />
                 {isWithout || showF4.SEGMENT ? (
-                  <select value={form.SEGMENT} onChange={(e) => setField("SEGMENT", e.target.value)} className={GREEN_INPUT}>
+                  <select value={form.SEGMENT} onChange={(e) => setField("SEGMENT", e.target.value)} className={isWithout ? GREEN_INPUT : INPUT_SAP_EMPTY}>
                     <option value="" disabled>Select Segment</option>
                     {segmentList.map((seg: any, idx: number) => (
                       <option key={idx} value={seg.SEGMENT_DESC}>{seg.SEGMENT} - {seg.SEGMENT_DESC}</option>
                     ))}
                   </select>
                 ) : (
-                  <input value={form.SEGMENT} readOnly className={READONLY_INPUT} />
+                  <input value={form.SEGMENT} readOnly className={INPUT_SAP_FILLED} />
                 )}
               </div>
 
               {/* Application Type */}
               <div>
-                <label className={LABEL}>Application Type</label>
+                <FieldLabel label="Application Type" fromSap={!isWithout && !showF4.APPTYP} />
                 {isWithout || showF4.APPTYP ? (
                   <select
                     value={form.APPTYP && typeof form.APPTYP === "object" ? JSON.stringify(form.APPTYP) : ""}
@@ -977,7 +1030,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       const app = appTypeList.find((a: any) => JSON.stringify(a) === e.target.value);
                       setField("APPTYP", app || "");
                     }}
-                    className={GREEN_INPUT}
+                    className={isWithout ? GREEN_INPUT : INPUT_SAP_EMPTY}
                   >
                     <option value="">Select Application Type</option>
                     {appTypeList.map((app: any, idx: number) => (
@@ -985,75 +1038,155 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                     ))}
                   </select>
                 ) : (
-                  <input value={typeof form.APPTYP === "string" ? form.APPTYP : ""} readOnly className={READONLY_INPUT} />
+                  <input value={typeof form.APPTYP === "string" ? form.APPTYP : ""} readOnly className={INPUT_SAP_FILLED} />
                 )}
               </div>
 
               {/* Customer Profile */}
               <div>
-                <label className={LABEL}>Customer Profile</label>
+                <FieldLabel label="Customer Profile" fromSap={!isWithout && !showF4.CUST_PROF} />
                 {isWithout || showF4.CUST_PROF ? (
-                  <select value={form.CUST_PROF} onChange={(e) => setField("CUST_PROF", e.target.value)} className={GREEN_INPUT}>
+                  <select value={form.CUST_PROF} onChange={(e) => setField("CUST_PROF", e.target.value)} className={isWithout ? GREEN_INPUT : INPUT_SAP_EMPTY}>
                     <option value="">Select Customer Profile</option>
                     {custGrpList.map((c: any, idx: number) => (
                       <option key={idx} value={c.CUST_PROF_DESC}>{c.CUST_PROF} - {c.CUST_PROF_DESC}</option>
                     ))}
                   </select>
                 ) : (
-                  <input value={form.CUST_PROF} readOnly className={READONLY_INPUT} />
+                  <input value={form.CUST_PROF} readOnly className={INPUT_SAP_FILLED} />
                 )}
               </div>
 
               {/* Branch */}
               <div>
-                <label className={LABEL}>Branch</label>
-                <select value={form.BRANCH} onChange={(e) => fetchZoneChange(e.target.value)} className={GREEN_INPUT}>
-                  <option value="">Select Branch (State)</option>
-                  {branchList.map((b: any, idx: number) => (
-                    <option key={idx} value={b.BRANCH_DESC}>{b.BRANCH_DESC}</option>
-                  ))}
-                </select>
+                <FieldLabel label="Branch" fromSap={!isWithout && sapAuxFilled.has("BRANCH")} />
+                {!isWithout && sapAuxFilled.has("BRANCH") ? (
+                  <input value={form.BRANCH} readOnly className={INPUT_SAP_FILLED} />
+                ) : (
+                  <select
+                    value={form.BRANCH}
+                    onChange={(e) => fetchZoneChange(e.target.value)}
+                    className={!isWithout && showForm ? INPUT_SAP_EMPTY : GREEN_INPUT}
+                  >
+                    <option value="">Select Branch (State)</option>
+                    {branchList.map((b: any, idx: number) => (
+                      <option key={idx} value={b.BRANCH_DESC}>{b.BRANCH_DESC}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* Branch Zone */}
               <div>
-                <label className={LABEL}>Branch Zone</label>
-                <input value={form.BRANCH_ZONE} onChange={(e) => setField("BRANCH_ZONE", e.target.value)} className={GREEN_INPUT} />
+                <label className={LABEL}>
+                  Branch Zone
+                  {form.BRANCH_ZONE && (
+                    <span className="ml-1.5 inline-flex items-center px-1.5 rounded text-[9px] font-bold bg-violet-100 text-violet-700 border border-violet-300 leading-tight align-middle">
+                      From Logic
+                    </span>
+                  )}
+                </label>
+                <input
+                  value={form.BRANCH_ZONE}
+                  onChange={(e) => setField("BRANCH_ZONE", e.target.value)}
+                  className={
+                    form.BRANCH_ZONE
+                      ? "h-7 w-full rounded-md bg-violet-50 border-2 border-violet-400 px-2 text-[12px] text-violet-900 font-semibold outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-300"
+                      : GREEN_INPUT
+                  }
+                />
               </div>
 
               {/* Destination State */}
               <div>
-                <label className={LABEL}>Destination State</label>
-                <input value={form.ZSTATE} onChange={(e) => setField("ZSTATE", e.target.value)} className={GREEN_INPUT} />
+                <FieldLabel label="Destination State" fromSap={!isWithout && sapAuxFilled.has("ZSTATE")} />
+                <input
+                  value={form.ZSTATE}
+                  readOnly={!isWithout && sapAuxFilled.has("ZSTATE")}
+                  onChange={(e) => setField("ZSTATE", e.target.value)}
+                  className={
+                    !isWithout && sapAuxFilled.has("ZSTATE")
+                      ? INPUT_SAP_FILLED
+                      : !isWithout && showForm
+                        ? INPUT_SAP_EMPTY
+                        : GREEN_INPUT
+                  }
+                />
               </div>
 
               {/* Destination Zone */}
               <div>
-                <label className={LABEL}>Destination Zone</label>
-                <input value={form.ZZONE} onChange={(e) => setField("ZZONE", e.target.value)} className={GREEN_INPUT} />
+                <label className={LABEL}>
+                  Destination Zone
+                  {form.ZZONE && (
+                    <span className="ml-1.5 inline-flex items-center px-1.5 rounded text-[9px] font-bold bg-violet-100 text-violet-700 border border-violet-300 leading-tight align-middle">
+                      From Logic
+                    </span>
+                  )}
+                </label>
+                <input
+                  value={form.ZZONE}
+                  onChange={(e) => setField("ZZONE", e.target.value)}
+                  className={
+                    form.ZZONE
+                      ? "h-7 w-full rounded-md bg-violet-50 border-2 border-violet-400 px-2 text-[12px] text-violet-900 font-semibold outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-300"
+                      : GREEN_INPUT
+                  }
+                />
               </div>
 
               {/* TAT Type */}
               <div>
-                <label className={LABEL}>TAT Type</label>
-                <select value={form.TAT_Type} onChange={(e) => onTatTypeChange(e.target.value)} className={GREEN_INPUT}>
-                  <option value="">Select TAT Type</option>
-                  {TAT_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <FieldLabel label="TAT Type" fromSap={!isWithout && sapAuxFilled.has("TAT_Type")} />
+                {!isWithout && sapAuxFilled.has("TAT_Type") ? (
+                  <input value={form.TAT_Type} readOnly className={INPUT_SAP_FILLED} />
+                ) : (
+                  <select
+                    value={form.TAT_Type}
+                    onChange={(e) => onTatTypeChange(e.target.value)}
+                    className={!isWithout && showForm ? INPUT_SAP_EMPTY : GREEN_INPUT}
+                  >
+                    <option value="">Select TAT Type</option>
+                    {TAT_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* TAT Days */}
               <div>
-                <label className={LABEL}>TAT (Days)</label>
-                <input value={form.TAT_DAYS} onChange={(e) => setField("TAT_DAYS", e.target.value)} className={GREEN_INPUT} />
+                <FieldLabel label="TAT (Days)" fromSap={!isWithout && sapAuxFilled.has("TAT_DAYS")} />
+                <input
+                  value={form.TAT_DAYS}
+                  readOnly={!isWithout && sapAuxFilled.has("TAT_DAYS")}
+                  onChange={(e) => setField("TAT_DAYS", e.target.value)}
+                  className={
+                    !isWithout && sapAuxFilled.has("TAT_DAYS")
+                      ? INPUT_SAP_FILLED
+                      : !isWithout && showForm
+                        ? INPUT_SAP_EMPTY
+                        : GREEN_INPUT
+                  }
+                />
               </div>
 
               {/* ETA */}
               <div>
-                <label className={LABEL}>ETA</label>
-                <input type="date" value={form.ETA_DATE} onChange={(e) => setField("ETA_DATE", e.target.value)} className={GREEN_INPUT} />
+                <FieldLabel label="ETA" fromSap={!isWithout && sapAuxFilled.has("ETA_DATE")} />
+                <input
+                  type="date"
+                  value={form.ETA_DATE}
+                  readOnly={!isWithout && sapAuxFilled.has("ETA_DATE")}
+                  onChange={(e) => setField("ETA_DATE", e.target.value)}
+                  className={
+                    !isWithout && sapAuxFilled.has("ETA_DATE")
+                      ? INPUT_SAP_FILLED
+                      : !isWithout && showForm
+                        ? INPUT_SAP_EMPTY
+                        : GREEN_INPUT
+                  }
+                />
               </div>
             </div>
           </div>
