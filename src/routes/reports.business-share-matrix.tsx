@@ -1094,6 +1094,7 @@ function BusinessShareMatrixReport() {
         )}
       </div>
     </div>
+    </div>
   );
 }
 

@@ -750,6 +750,7 @@ function LoadingFactorCostReport() {
         )}
       </div>
     </div>
+    </div>
   );
 }
 

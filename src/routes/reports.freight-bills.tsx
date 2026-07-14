@@ -679,6 +679,7 @@ function FreightBillsReport() {
         )}
       </div>
     </div>
+    </div>
   );
 }
 

@@ -699,6 +699,7 @@ function PendingPodsReport() {
         )}
       </div>
     </div>
+    </div>
   );
 }
 

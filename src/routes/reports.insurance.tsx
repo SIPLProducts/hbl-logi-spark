@@ -81,6 +81,7 @@ function InsuranceReport() {
         </p>
       </div>
     </div>
+    </div>
   );
 }
 

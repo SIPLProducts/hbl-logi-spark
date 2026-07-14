@@ -692,6 +692,7 @@ function TransitEwayBillReport() {
         )}
       </div>
     </div>
+    </div>
   );
 }
 

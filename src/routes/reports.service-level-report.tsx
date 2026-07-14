@@ -97,6 +97,7 @@ function ServiceLevelReport() {
         </p>
       </div>
     </div>
+    </div>
   );
 }
 

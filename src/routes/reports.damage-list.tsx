@@ -81,6 +81,7 @@ function DamageListReport() {
         </p>
       </div>
     </div>
+    </div>
   );
 }
 
