@@ -740,7 +740,7 @@ function BusinessShareMatrixReport() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-5">
+    <div className="flex flex-col h-full"><div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-3 shrink-0">
       <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5 flex items-start gap-4">
         <div className="size-12 rounded-xl bg-gradient-to-br from-sky-500 to-teal-500 grid place-items-center text-white shadow-cta shrink-0">
           <Grid3x3 className="size-6" />
@@ -756,7 +756,8 @@ function BusinessShareMatrixReport() {
       </div>
 
       {/* FILTER CARD */}
-      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5">
+      </div><div className="flex-1 overflow-y-auto scrollbar-elegant px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 space-y-5">
+            <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-5">
           <MultiSelectField
             label="Inward/Outward"
@@ -1092,6 +1093,7 @@ function BusinessShareMatrixReport() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

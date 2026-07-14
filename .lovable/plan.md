@@ -1,19 +1,30 @@
-## Add radio option groups to two report screens
+## Goal
+On every Reports screen, keep the title/header card fixed at the top and make only the filters + results area scrollable.
 
-### 1. `src/routes/reports.business-share-matrix.tsx`
-Inside the filters card, below the filter grid and above the Reset/Export XLS button row, add a horizontal group of 4 radio buttons (name=`view-mode`) with default selection on "All Records":
-- All Records
-- Header
-- Header with Plant
-- Header with Inward/Outward
+## Affected files
+All 8 report route files:
+- reports.index.tsx
+- reports.business-share-matrix.tsx
+- reports.damage-list.tsx
+- reports.freight-bills.tsx
+- reports.insurance.tsx
+- reports.loading-factor-cost.tsx
+- reports.pending-pods.tsx
+- reports.service-level-report.tsx
+- reports.transit-eway-bill.tsx
 
-Styling: small radio inputs paired with `text-[12.5px]` labels, using the app's `accent`/primary color, laid out with `flex flex-wrap gap-x-5 gap-y-2` and a top border/padding separator (`border-t border-hairline pt-4 mt-4`) to visually separate from filters.
+## Change
+Replace each screen's outer `<div className="p-4 sm:p-6 lg:p-8 space-y-5">` wrapper with a flex column that fills the parent height:
 
-### 2. `src/routes/reports.service-level-report.tsx`
-Same treatment — add a group of 2 radio buttons (name=`report-mode`) in the same position, default "Detailed":
-- Detailed
-- Summary for Audit
+```
+<div className="flex flex-col h-full">
+  <div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-3 shrink-0">
+    {/* title/header card — stays fixed */}
+  </div>
+  <div className="flex-1 overflow-y-auto scrollbar-elegant px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 space-y-5">
+    {/* filters card + empty-state / results card — scrolls */}
+  </div>
+</div>
+```
 
-### Out of scope
-- No new export logic, no state wiring beyond native `defaultChecked` — purely a UI addition.
-- No changes to other report screens.
+No logic changes; presentation only. Relies on `main` in `app-shell.tsx` already providing a bounded scroll container.

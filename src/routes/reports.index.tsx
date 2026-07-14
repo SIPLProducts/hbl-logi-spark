@@ -23,6 +23,7 @@ function ReportsHubPage() {
         </div>
       </div>
 
+      </div><div className="flex-1 overflow-y-auto scrollbar-elegant px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {REPORTS_NAV.map((r) => {
           const Icon = r.icon;
@@ -43,6 +44,7 @@ function ReportsHubPage() {
           );
         })}
       </div>
+    </div>
     </div>
   );
 }
