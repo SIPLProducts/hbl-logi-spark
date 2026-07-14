@@ -8,7 +8,8 @@ export const Route = createFileRoute("/reports/")({
 
 function ReportsHubPage() {
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-5">
+    <div className="flex flex-col h-full">
+      <div className="shrink-0 p-4 sm:p-6 lg:p-8">
       <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5 flex items-start gap-4">
         <div className="size-12 rounded-xl bg-gradient-to-br from-sky-500 to-teal-500 grid place-items-center text-white shadow-cta shrink-0">
           <FileBarChart className="size-6" />
@@ -22,7 +23,6 @@ function ReportsHubPage() {
           </p>
         </div>
       </div>
-
       </div><div className="flex-1 overflow-y-auto scrollbar-elegant px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {REPORTS_NAV.map((r) => {
