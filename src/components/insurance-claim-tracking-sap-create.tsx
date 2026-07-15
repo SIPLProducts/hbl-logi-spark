@@ -38,6 +38,15 @@ const EMPTY_ROW = (): TableRow => ({
   selected: false,
 });
 
+const SEARCH_FIELD_MAP: Record<string, string> = {
+  Reference: "REF_NO",
+  Invoice: "INV_NO",
+  ODN: "ODN_NO",
+  "SO Number": "SO_NO",
+  "Work Order": "WORKORDER_NO",
+  "LR Number": "LR_NO",
+};
+
 function getLoggedInUser(): string {
   try {
     const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
@@ -104,6 +113,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
   const [approvePath, setApprovePath] = useState("");
 
 
+
   const onCheckboxChange = (
     event: React.ChangeEvent<HTMLInputElement>,
     index: number
@@ -117,7 +127,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     const selected = updated.filter((x) => x.selected);
     setSelectedItems(selected);
 
-    setLookupValue("");
+    // setLookupValue("");
   };
 
   const populateReferenceRows = (data: any[]) => {
@@ -153,6 +163,11 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     setInvoiceF4List(invoiceList);
 
     console.log("Invoice F4:", invoiceList);
+  };
+  const formatDate = (value: string) => {
+    if (!value) return "";
+
+    return value.substring(0, 10);
   };
 
   const fetchGlobalReferences = async (row: TableRow, index: number, fieldKey: string) => {
@@ -326,10 +341,10 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         LINE_NO:
           selectedRef.LINE_NO ||
           filtered[0]?.LINE_NO ||
-          0,
+          "",
 
         REFNO:
-          selectedRef.REF_NO || 0,
+          selectedRef.REF_NO || "",
 
         SO_NO: headerData.SO_NO || "",
 
@@ -414,6 +429,324 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         title: "Error",
         text: "Error while saving.",
       });
+    }
+  };
+
+  const fetchInvoiceDetailsNonSap = async (invoiceNo: string) => {
+
+    if (!invoiceNo) {
+      Swal.fire(
+        "Warning",
+        "Please select DC Reference Number",
+        "warning"
+      );
+      return;
+    }
+
+    if (selectedItems.length === 0) {
+      Swal.fire(
+        "Warning",
+        "Please select a reference row first.",
+        "warning"
+      );
+      return;
+    }
+
+    const selectedRef = selectedItems[0];
+
+    const payload = {
+      VBELN: invoiceNo,
+      ZREFNO: selectedRef.REF_NO || "",
+      ZMAPID: selectedRef.MAPID || "",
+    };
+
+    console.log("Payload:", payload);
+
+    try {
+      setLoading(true);
+
+      const res = await service.fetchinvoicelistnonsap(payload);
+
+      console.log("Response:", res);
+
+      setLoading(false);
+
+      if (!res || res.STATUS === "False") {
+        Swal.fire(
+          "Info",
+          res?.MESSAGE || "No data found",
+          "info"
+        );
+        return;
+      }
+
+      const header = res?.[0]?.HEADER || {};
+      const items = res?.[0]?.ITEM || [];
+
+      setRevealed(true);
+
+      setHeaderData({
+        INV_NO: invoiceNo,
+        FI: header.FI || "",
+        REP_DATE: formatDate(header.REP_DATE),
+        CLAIM_REF: header.CLAIM_REF || "",
+        INV_DATE: formatDate(header.INV_DATE),
+        INV_BV: header.INV_BV || "",
+        LOSS_DCL: header.LOSS_DCL || "",
+        CLM_RF: formatDate(header.CLM_RF),
+        SOL_VAL: header.SOL_VAL || "",
+        CUSTOMER: header.CUSTOMER || "",
+        SO_NO: header.SO_NO || "",
+        LOCATION: header.LOCATION || "",
+        DAMAGE_RMK: header.DAMAGE_RMK || "",
+        CLM_INF: header.CLM_INF || "",
+        CLM_ST: header.CLM_ST || "",
+        CLM_DOC_ST: header.CLM_DOC_ST || "",
+        COURIER_DET: header.COURIER_DET || "",
+        PAY_ST: header.PAY_ST || "",
+        PAY_INFO: header.PAY_INFO || "",
+        UTR: header.UTR || "",
+        CLM_SET_DT: formatDate(header.CLM_SET_DT),
+        SALE_PERSON: header.SALE_PERSON || "",
+      });
+
+      setItemData(
+        items.map((x: any) => ({
+          selected: false,
+          ZMAPID: x.ZMAPID || x.MAPID || "",
+          ZREFNO: x.ZREFNO || x.REFNO || "",
+          ZLINE_NO: x.ZLINE_NO || x.LINE_NO || "",
+          INV_NO: invoiceNo,
+          POSNR: x.POSNR || "",
+          VEH_LINE: x.VEH_LINE || "",
+          VEHICLE: x.VEHICLE || "",
+          TRUCK_NO: x.TRUCK_NO || "",
+          LR_NO: x.LR_NO || "",
+          AH: x.AH || "",
+          NO_SETS: x.NO_SETS || "",
+          TRANSPORTER: x.TRANSPORTER || "",
+          WORK_ORDER: x.WORK_ORDER || "",
+          BILLNO: x.BILLNO || "",
+        }))
+      );
+
+      Swal.fire(
+        "Success",
+        "Invoice details fetched successfully.",
+        "success"
+      );
+
+    } catch (err: any) {
+      setLoading(false);
+
+      console.error(err);
+
+      Swal.fire(
+        "Error",
+        err?.response?.data?.MESSAGE ||
+        err?.message ||
+        "Error fetching Non-SAP data",
+        "error"
+      );
+    }
+  };
+
+  const onSaveActionNonSap = async (
+    action: "stay" | "next" | "previous" = "stay"
+  ) => {
+    try {
+      // Reference row validation
+      if (selectedItems.length === 0) {
+        Swal.fire({
+          icon: "warning",
+          text: "Please select at least one reference row before saving",
+        });
+        return;
+      }
+
+      // Item selection validation
+      const filtered = itemData
+        .filter((row: any) => row.selected)
+        .map(({ selected, ...row }: any) => ({
+          ...row,
+        }));
+
+      if (filtered.length === 0) {
+        Swal.fire({
+          icon: "warning",
+          text: "Please select at least one item row.",
+        });
+        return;
+      }
+
+      const selectedRef = selectedItems[0];
+
+      const headerValue = {
+        ...headerData,
+
+        INV_NO: lookupValue,
+
+        REFNO: selectedRef.REF_NO || "",
+
+        LINE_NO: selectedRef.LINE_NO || "",
+
+        ZUSER: getLoggedInUser(),
+
+        ZSUPT_DOC: supportingBase64 || "",
+
+        ZSUPT_PATH: supportingPath || "",
+
+        ZAPP_DOC: approveBase64 || "",
+
+        ZAPP_PATH: approvePath || "",
+
+        ZUSER_CH: "",
+      };
+
+      const itemsPayload = filtered.map((row: any) => ({
+        ...row,
+        INV_NO: lookupValue,
+        REFNO: selectedRef.REF_NO || "",
+        LINE_NO: selectedRef.LINE_NO || "",
+      }));
+
+      const payload = {
+        HEADER: headerValue,
+        ITEM: itemsPayload,
+      };
+
+      console.log("📤 Non-SAP Save Payload:", payload);
+
+      setLoading(true);
+
+      const res = await service.Nonsapsave(payload);
+
+      setLoading(false);
+
+      if (res?.STATUS === "TRUE" || res?.STATUS === true) {
+        Swal.fire({
+          icon: "success",
+          text: "Data Saved Successfully!",
+        });
+
+        if (action === "next") {
+          console.log("Navigate Next");
+        } else if (action === "previous") {
+          console.log("Navigate Previous");
+        } else {
+          console.log("Stay");
+        }
+      } else {
+        Swal.fire({
+          icon: "warning",
+          text: res?.MESSAGE || "Save Failed",
+        });
+      }
+    } catch (err: any) {
+      setLoading(false);
+
+      console.error(err);
+
+      Swal.fire({
+        icon: "error",
+        text:
+          err?.response?.data?.MESSAGE ||
+          err?.message ||
+          "Error while saving data",
+      });
+    }
+  };
+
+  const onSearchReference = async () => {
+    setHeaderData({});
+    setItemData([]);
+    setRevealed(false);
+
+    if (!searchValue.trim()) {
+      Swal.fire("Please enter a value", "", "warning");
+      return;
+    }
+
+    if (!searchType) {
+      Swal.fire("Please select a search type", "", "info");
+      return;
+    }
+
+    const payload: any = {
+      global: "INSURANCE CLAIM STATUS",
+      ZUSER: getLoggedInUser(),
+      data: {
+        REF_NO: "",
+        INV_NO: "",
+        SO_NO: "",
+        TRANSPORTER: "",
+        LR_NO: "",
+        WORKORDER_NO: "",
+        SALES_PERSON: "",
+        LOCATION: "",
+        ODN_NO: "",
+        VEHICLE_NO: "",
+        FREIGHT_BILLNO: "",
+        PRODUCT: "",
+        ROUTE: "",
+        NATURE_DAMAGE: "",
+        CLAIM_STATUS: "",
+      },
+    };
+
+    payload.data[SEARCH_FIELD_MAP[searchType]] = searchValue.trim();
+
+    console.log("Search Payload", payload);
+
+    try {
+      setLoading(true);
+
+      const res = isSap
+        ? await service.global_Fields_SearchOption(payload)
+        : await service.global_Fields_SearchOption_WithoutSap(payload);
+
+      setLoading(false);
+
+      console.log("Search Response", res);
+
+      if (res.NUMBER === "100" && res.STATUS === "FALSE") {
+        Swal.fire("", res.MESSAGE, "warning");
+        return;
+      }
+
+      if (!res.HEADER || res.HEADER.length === 0) {
+        Swal.fire("No records found", "", "info");
+        return;
+      }
+
+      const header = res.HEADER[0];
+
+      setHeaderData(header);
+
+      setItemData(
+        (res.ITEMS || []).map((item: any) => ({
+          ...item,
+          selected: false,
+        }))
+      );
+
+      setRevealed(true);
+
+      Swal.fire(
+        "Success",
+        "Data fetched successfully!",
+        "success"
+      );
+    } catch (err) {
+      setLoading(false);
+
+      console.error(err);
+
+      Swal.fire(
+        "Error",
+        "Error fetching data",
+        "error"
+      );
     }
   };
 
@@ -552,33 +885,50 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
       {/* Lookup bar */}
       <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
         <div className="flex flex-wrap items-end gap-3">
-          {!isWithout && (
-            <div className="flex items-end gap-2 max-w-md">
-              <div className="w-full max-w-xs">
-                <label className={LABEL}>Invoice Number</label>
-                <select
-                  value={lookupValue}
-                  onChange={(e) => setLookupValue(e.target.value)}
-                  className={GREEN_INPUT}
-                >
-                  <option value="">Select Invoice Number</option>
+          <div className="flex items-end gap-2">
+            <div className="w-64">
+              <label className={LABEL}>
+                {isWithout ? "DC Reference Number" : "Invoice Number"}
+              </label>
 
-                  {invoiceF4List.map((inv) => (
-                    <option key={inv} value={inv}>
-                      {inv}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={lookupValue}
+                onChange={(e) => {
+                  const value = e.target.value;
+
+                  setLookupValue(value);
+
+                  if (isWithout) {
+                    fetchInvoiceDetailsNonSap(value);
+                  }
+                }}
+                className={GREEN_INPUT}
+              >
+                <option value="">
+                  {isWithout
+                    ? "Select DC Reference Number"
+                    : "Select Invoice Number"}
+                </option>
+
+                {invoiceF4List.map((item, index) => (
+                  <option key={index} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {isSap && (
               <button
                 onClick={fetchInvoiceDetails}
                 disabled={!lookupValue}
-                className="h-7 px-4 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] text-white"
+                className="h-7 px-4 rounded-md bg-[#8f1e42] text-white"
               >
                 GET
               </button>
-            </div>
-          )}
+            )}
+          </div>
+
           <div className="min-w-[160px]">
             <select
               value={searchType}
@@ -600,7 +950,10 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
               placeholder="Enter Reference / Invoice / ODN / SO Number"
               className="h-7 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
             />
-            <button className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta">
+            <button
+              onClick={onSearchReference}
+              className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta"
+            >
               <Search className="size-4" />
             </button>
           </div>
@@ -625,6 +978,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                     ...f,
                     value: headerData?.[f.key] ?? "",
                   }}
+                  setHeaderData={setHeaderData}
                 />
               ))}
             </div>
@@ -754,7 +1108,11 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
           {/* Footer */}
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
             <button
-              onClick={() => onSaveActionSap("stay")}
+              onClick={() =>
+                isWithout
+                  ? onSaveActionNonSap("stay")
+                  : onSaveActionSap("stay")
+              }
               className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 text-white"
             >
               <Save className="size-3.5" />
@@ -762,14 +1120,22 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
             </button>
 
             <button
-              onClick={() => onSaveActionSap("next")}
+              onClick={() =>
+                isWithout
+                  ? onSaveActionNonSap("next")
+                  : onSaveActionSap("next")
+              }
               className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 text-white"
             >
               Save and Next
             </button>
 
             <button
-              onClick={() => onSaveActionSap("previous")}
+              onClick={() =>
+                isWithout
+                  ? onSaveActionNonSap("previous")
+                  : onSaveActionSap("previous")
+              }
               className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 text-white"
             >
               Save and Previous
@@ -781,7 +1147,13 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
   );
 }
 
-function SapField({ field }: { field: FieldSpec }) {
+function SapField({
+  field,
+  setHeaderData,
+}: {
+  field: FieldSpec;
+  setHeaderData: React.Dispatch<React.SetStateAction<any>>;
+}) {
   const {
     label,
     value = "",
@@ -797,7 +1169,12 @@ function SapField({ field }: { field: FieldSpec }) {
       {type === "select" ? (
         <select
           value={value ?? ""}
-          onChange={() => { }}
+          onChange={(e) =>
+            setHeaderData((prev: any) => ({
+              ...prev,
+              [field.key]: e.target.value,
+            }))
+          }
           className={GREEN_INPUT}
         >
           <option value="">
@@ -813,8 +1190,13 @@ function SapField({ field }: { field: FieldSpec }) {
       ) : type === "date" ? (
         <input
           type="date"
-          value={value ?? ""}
-          readOnly
+          value={value || ""}
+          onChange={(e) =>
+            setHeaderData((prev: any) => ({
+              ...prev,
+              [field.key]: e.target.value,
+            }))
+          }
           className={GREEN_INPUT}
         />
       ) : type === "file" ? (
@@ -825,9 +1207,14 @@ function SapField({ field }: { field: FieldSpec }) {
       ) : (
         <input
           type="text"
-          value={value ?? ""}
-          readOnly
+          value={value || ""}
           placeholder={placeholder ?? `Enter ${label}`}
+          onChange={(e) =>
+            setHeaderData((prev: any) => ({
+              ...prev,
+              [field.key]: e.target.value,
+            }))
+          }
           className={GREEN_INPUT}
         />
       )}
