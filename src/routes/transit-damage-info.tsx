@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
+import { Search } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import Swal from "sweetalert2";
 // @ts-ignore
@@ -181,6 +182,14 @@ function TransitDamageInfoPage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [casesCount, setCasesCount] = useState(0);
+ type PlantData = { PLANT: string; PLANT_DESC: string };
+  type DivData = { DIVISION: string; DIV_TEXT: string };
+  type TransporterData = { code: string; name: string };
+
+  const [plantList, setPlantList] = useState<PlantData[]>([]);
+  const [divisionList, setDivisionList] = useState<DivData[]>([]);
+  const [transporterOptions, setTransporterOptions] = useState<TransporterData[]>([]);
+  const [transporterLoading, setTransporterLoading] = useState(false);
 
   function getLoggedInUser(): string {
     try {
@@ -258,6 +267,57 @@ function TransitDamageInfoPage() {
     setFVehicleType("");
     setFStatus("");
   };
+
+    useEffect(() => {
+      const loadF4Data = async () => {
+        setTransporterLoading(true);
+        try {
+          const res: any = await service.fetchVendorCode();
+          const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+  
+          // Plant
+          const plants: PlantData[] = Array.isArray(data.PLANT)
+            ? data.PLANT.map((p: any) => ({
+              PLANT: p.PLANT,
+              PLANT_DESC: p.PLANT_DESC,
+            }))
+            : [];
+  
+          // Division (de-duped from PLANT array)
+          const divisions: DivData[] = Array.isArray(data.PLANT)
+            ? Array.from(
+              new Map<string, DivData>(
+                data.PLANT.map((p: any) => [
+                  p.DIVISION,
+                  { DIVISION: p.DIVISION, DIV_TEXT: p.DIV_TEXT || p.DIVISION } as DivData,
+                ])
+              ).values()
+            )
+            : [];
+  
+          // Transporter — from VEND_CODE array
+          const transporters: TransporterData[] = Array.isArray(data.VEND_CODE)
+            ? data.VEND_CODE.map((v: any) => ({
+              code: String(v.VENDOR_CODE ?? ""),
+              name: v.TRANSPORTER || "",
+            }))
+            : [];
+  
+          setPlantList(plants);
+          setDivisionList(divisions);
+          setTransporterOptions(transporters);
+        } catch (err) {
+          console.error("F4 fetch error:", err);
+          setPlantList([]);
+          setDivisionList([]);
+          setTransporterOptions([]);
+        } finally {
+          setTransporterLoading(false);
+        }
+      };
+  
+      void loadF4Data();
+    }, []);
 
   const applyFilter = async () => {
     if (!fromDate || !toDate) {
@@ -960,26 +1020,13 @@ function TransitDamageInfoPage() {
                   <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
                     <DateField label="From Date" value={fromDate} onChange={setFromDate} />
                     <DateField label="To Date" value={toDate} onChange={setToDate} />
-                    <SelectField
-                      label="Plant"
-                      value={fPlant}
-                      onChange={setFPlant}
-                      options={PLANTS}
-                      placeholder="Select Plant"
-                    />
-                    <SelectField
-                      label="Division"
-                      value={fDivision}
-                      onChange={setFDivision}
-                      options={DIVISIONS}
-                      placeholder="Select Division"
-                    />
-                    <SelectField
-                      label="Transporter"
+                   <PlantF4Field value={fPlant} onChange={setFPlant} options={plantList} />
+                    <DivisionF4Field value={fDivision} onChange={setFDivision} options={divisionList} />
+                    <TransporterF4Field
                       value={fTransporter}
                       onChange={setFTransporter}
-                      options={TRANSPORTERS}
-                      placeholder="Select Transporter"
+                      options={transporterOptions}
+                      loading={transporterLoading}
                     />
                     <SelectField
                       label="Vehicle Type"
@@ -1604,6 +1651,198 @@ function SelectField({
           ))}
         </SelectContent>
       </Select>
+    </div>
+  );
+}
+
+function PlantF4Field({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { PLANT: string; PLANT_DESC: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.PLANT === value);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        Plant
+      </label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn("h-8 justify-between font-normal", !value && "text-muted-foreground")}
+          >
+            <span className="truncate">
+              {selected ? `${selected.PLANT} - ${selected.PLANT_DESC}` : "Select Plant"}
+            </span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-0" align="start">
+          <div className="max-h-56 overflow-y-auto">
+            {options.length === 0 ? (
+              <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">No plants available</div>
+            ) : (
+              options.map((o) => (
+                <button
+                  key={o.PLANT}
+                  type="button"
+                  onClick={() => {
+                    onChange(o.PLANT);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "w-full text-left px-3 py-2 text-[12px] hover:bg-muted",
+                    value === o.PLANT && "bg-accent/10 font-semibold",
+                  )}
+                >
+                  <span className="font-mono">{o.PLANT}</span> — {o.PLANT_DESC}
+                </button>
+              ))
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function DivisionF4Field({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { DIVISION: string; DIV_TEXT: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.DIVISION === value);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        Division
+      </label>
+
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "h-8 justify-between font-normal",
+              !value && "text-muted-foreground"
+            )}
+          >
+            <span className="truncate">
+              {selected ? selected.DIVISION : "Select Division"}
+            </span>
+          </Button>
+        </PopoverTrigger>
+
+        <PopoverContent className="w-72 p-0" align="start">
+          <div className="max-h-56 overflow-y-auto">
+            {options.length === 0 ? (
+              <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">
+                No divisions available
+              </div>
+            ) : (
+              options.map((o) => (
+                <button
+                  key={o.DIVISION}
+                  type="button"
+                  onClick={() => {
+                    onChange(o.DIVISION);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "w-full text-left px-3 py-2 text-[12px] hover:bg-muted",
+                    value === o.DIVISION && "bg-accent/10 font-semibold"
+                  )}
+                >
+                  {o.DIVISION}
+                </button>
+              ))
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function TransporterF4Field({
+  value,
+  onChange,
+  options,
+  loading,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { code: string; name: string }[];
+  loading: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const selected = options.find((o) => o.code === value);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        Transporter
+      </label>
+
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "h-8 justify-between font-normal w-full",
+              !value && "text-muted-foreground"
+            )}
+          >
+            <span className="truncate">
+              {selected ? selected.name : "Select Transporter"}
+            </span>
+          </Button>
+        </PopoverTrigger>
+
+        <PopoverContent className="w-80 p-0" align="start">
+          <div className="max-h-60 overflow-y-auto">
+            {loading ? (
+              <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">
+                Loading…
+              </div>
+            ) : options.length === 0 ? (
+              <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">
+                No transporters found
+              </div>
+            ) : (
+              options.map((o) => (
+                <button
+                  key={o.code}
+                  type="button"
+                  onClick={() => {
+                    onChange(o.code);
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    "w-full text-left px-3 py-2 text-[12px] hover:bg-muted",
+                    value === o.code && "bg-accent/10 font-semibold"
+                  )}
+                >
+                  {o.name}
+                </button>
+              ))
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }

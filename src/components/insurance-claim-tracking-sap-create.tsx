@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -84,94 +84,147 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
   const isWithout = mode === "without";
   const isSap = !isWithout;
+
   const [checked, setChecked] = useState(!isWithout);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [lookupValue, setLookupValue] = useState("");
-  const [revealed, setRevealed] = useState(false);
-  const showFields = isWithout || revealed;
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
-  const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
-  const fields: FieldSpec[] = isWithout
-    ? [
-      {
-        label: "DC Reference Number",
-        key: "DC_REF_NO",
-        type: "text",
-      },
-      ...BASE_FIELDS,
-    ]
-    : BASE_FIELDS;
+  const [revealed, setRevealed] = useState(false);
+
   const [headerData, setHeaderData] = useState<any>({});
   const [itemData, setItemData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState<TableRow[]>([]);
+
   const [supportingBase64, setSupportingBase64] = useState("");
   const [supportingPath, setSupportingPath] = useState("");
-
   const [approveBase64, setApproveBase64] = useState("");
   const [approvePath, setApprovePath] = useState("");
 
+  const [showForm, setShowForm] = useState(false);
+  const showFields = isWithout || revealed;
+  const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
+  const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
+  const [isGlobalSearch, setIsGlobalSearch] = useState(false);
+  const [loading, setLoading] = useState(false);
 
+  const fields: FieldSpec[] = isWithout
+    ? [{ label: "DC Reference Number", key: "DC_REF_NO", type: "text" }, ...BASE_FIELDS]
+    : BASE_FIELDS;
+
+  // Reset everything whenever the mode (With SAP / Without SAP) changes
+  useEffect(() => {
+    setChecked(!isWithout);
+    setSearchType("");
+    setSearchValue("");
+    setLookupValue("");
+    setTableData([EMPTY_ROW()]);
+    setRevealed(false);
+    setHeaderData({});
+    setItemData([]);
+    setSelectedItems([]);
+    setSupportingBase64("");
+    setSupportingPath("");
+    setApproveBase64("");
+    setApprovePath("");
+    setShowForm(false);
+    setInvoiceF4List([]);
+    setFullReferenceData([]);
+    setIsGlobalSearch(false);
+  }, [mode]);
+
+  const handleHeaderChange = (key: string, value: any) => {
+    setHeaderData((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  // ---------------------------------------------------------------------
+  // Reference table (top) — multi-select, drives the F4 invoice list
+  // ---------------------------------------------------------------------
 
   const onCheckboxChange = (
     event: React.ChangeEvent<HTMLInputElement>,
     index: number
   ) => {
     const checked = event.target.checked;
+    const rowValue = tableData[index];
 
-    const updated = [...tableData];
-    updated[index].selected = checked;
-    setTableData(updated);
+    const updatedTable = [...tableData];
+    updatedTable[index].selected = checked;
+    setTableData(updatedTable);
 
-    const selected = updated.filter((x) => x.selected);
-    setSelectedItems(selected);
+    let updatedSelectedItems: TableRow[];
 
-    // setLookupValue("");
+    if (checked) {
+      const exists = selectedItems.some((item) => item.MAPID === rowValue.MAPID);
+      updatedSelectedItems = exists ? selectedItems : [...selectedItems, rowValue];
+    } else {
+      updatedSelectedItems = selectedItems.filter((item) => item.MAPID !== rowValue.MAPID);
+    }
+
+    setSelectedItems(updatedSelectedItems);
+
+    // Recompute F4 list scoped to only the currently-checked reference rows
+    const mapIds = new Set(updatedSelectedItems.map((i) => i.MAPID));
+    const f4: string[] = [];
+
+    fullReferenceData.forEach((ref: any) => {
+      if (mapIds.has(ref.MAPID) && Array.isArray(ref.INV_NO)) {
+        ref.INV_NO.forEach((inv: any) => {
+          if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
+        });
+      }
+    });
+
+    setInvoiceF4List(f4);
+    setLookupValue("");
   };
 
   const populateReferenceRows = (data: any[]) => {
-    if (!data || data.length === 0) {
+    setInvoiceF4List([]);
+    setFullReferenceData([]);
+
+    if (data && data.length > 0) {
+      setFullReferenceData(data);
+
+      const invoiceList: string[] = [];
+
+      const rows = data.map((d: any) => {
+        if (d.INV_NO && Array.isArray(d.INV_NO)) {
+          d.INV_NO.forEach((inv: any) => {
+            if (inv.VBELN && !invoiceList.includes(inv.VBELN)) {
+              invoiceList.push(inv.VBELN);
+            }
+          });
+        }
+
+        return {
+          MAPID: d.MAPID || "",
+          REF_NO: d.REF_NO || "",
+          WORK_ORDER_NO: d.WORK_ORDER_NO || "",
+          LR_NO: d.LR_NO || "",
+          TRANSPORTER: d.TRANSPORTER || "",
+          LINE_NO: d.LINE_NO || "",
+          selected: false,
+        };
+      });
+
+      setInvoiceF4List(invoiceList);
+      setLookupValue("");
+      setTableData(rows);
+    } else {
+      Swal.fire({
+        icon: "info",
+        title: "No Records Found",
+        text: "No matching reference details were found.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
       setTableData([EMPTY_ROW()]);
-      setInvoiceF4List([]);
-      return;
     }
-
-    const invoiceList: string[] = [];
-
-    const rows = data.map((d: any) => {
-      if (Array.isArray(d.INV_NO)) {
-        d.INV_NO.forEach((inv: any) => {
-          if (inv.VBELN && !invoiceList.includes(inv.VBELN)) {
-            invoiceList.push(inv.VBELN);
-          }
-        });
-      }
-
-      return {
-        MAPID: d.MAPID ?? "",
-        REF_NO: String(d.REF_NO ?? ""),
-        WORK_ORDER_NO: d.WORK_ORDER_NO ?? "",
-        LR_NO: d.LR_NO ?? "",
-        TRANSPORTER: d.TRANSPORTER ?? "",
-        LINE_NO: d.LINE_NO ?? "",
-        selected: false,
-      };
-    });
-
-    setTableData(rows);
-    setInvoiceF4List(invoiceList);
-
-    console.log("Invoice F4:", invoiceList);
-  };
-  const formatDate = (value: string) => {
-    if (!value) return "";
-
-    return value.substring(0, 10);
   };
 
   const fetchGlobalReferences = async (row: TableRow, index: number, fieldKey: string) => {
-    // if (index !== 0) return;
+    if (index !== 0) return;
     const value = (row as any)[fieldKey]?.trim();
     if (!value) return;
 
@@ -206,21 +259,71 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     }
   };
 
+  // ---------------------------------------------------------------------
+  // GET screen — secondary Line Items table's Map ID dropdown handler
+  // ---------------------------------------------------------------------
+
+  const onchangeMAPID = (index: number, selectedMapId: any) => {
+    const selectedObj = selectedItems.find((item) => item.MAPID == selectedMapId);
+    if (!selectedObj) return;
+
+    const updatedItems = [...itemData];
+    updatedItems[index] = {
+      ...updatedItems[index],
+      ZMAPID: selectedObj.MAPID || "",
+      ZREFNO: selectedObj.REF_NO || "",
+      WORK_ORDER: selectedObj.WORK_ORDER_NO || "",
+      LR_NO: selectedObj.LR_NO || "",
+      TRANSPORTER: selectedObj.TRANSPORTER || "",
+      ZLINE_NO: selectedObj.LINE_NO,
+    };
+    setItemData(updatedItems);
+  };
+
+  const addItemRow = () => {
+    setItemData((prev: any[]) => [
+      ...prev,
+      {
+        selected: false,
+        ZMAPID: "",
+        ZREFNO: "",
+        ZLINE_NO: "",
+        INV_NO: lookupValue,
+        TRUCK_NO: "",
+        LR_NO: "",
+        TRANSPORTER: "",
+        WORK_ORDER: "",
+        BILLNO: "",
+      },
+    ]);
+  };
+
+  const removeItemRow = (index: number) => {
+    setItemData((prev: any[]) => prev.filter((_, i) => i !== index));
+  };
+
+  // ---------------------------------------------------------------------
+  // GET flow — With SAP
+  // ---------------------------------------------------------------------
+
   const fetchInvoiceDetails = async () => {
-    if (!lookupValue) {
-      Swal.fire("Warning", "Please enter Invoice number", "warning");
+    if (!lookupValue.trim()) {
+      Swal.fire({ icon: "warning", title: "Warning", text: "Please enter Invoice Number" });
       return;
     }
 
-    const selectedRef = selectedItems[0] || {};
+    const selectedRow = tableData.find((row) => row.selected);
+
+    if (!selectedRow) {
+      Swal.fire({ icon: "warning", title: "Warning", text: "Please select one reference row" });
+      return;
+    }
 
     const payload = {
       VBELN: lookupValue,
-      ZREFNO: selectedRef.REF_NO || "",
-      ZMAPID: selectedRef.MAPID || "",
+      ZREFNO: selectedRow.REF_NO || "",
+      ZMAPID: selectedRow.MAPID || "",
     };
-
-    console.log("With SAP Invoice Fetch Payload:", payload);
 
     try {
       setLoading(true);
@@ -229,29 +332,16 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
       setLoading(false);
 
-      console.log("With SAP Invoice Fetch Response:", res);
-
       if (res?.STATUS === "False") {
-        Swal.fire("Info", res.MESSAGE, "info");
+        Swal.fire({ icon: "info", text: res.MESSAGE });
         return;
       }
 
-      Swal.fire(
-        "Success",
-        "Invoice Details fetched successfully!",
-        "success"
-      );
+      Swal.fire({ icon: "success", title: "Success", text: "Invoice Details fetched successfully" });
 
       const header = res?.[0]?.HEADER || {};
       const items = res?.[0]?.ITEM || [];
 
-      console.log("Header:", header);
-      console.log("Items:", items);
-
-      // Show the form
-      setRevealed(true);
-
-      // Header data
       setHeaderData({
         INV_NO: header.INV_NO || "",
         FI: header.FI || "",
@@ -278,397 +368,264 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         CLM_SET_DT: header.CLM_SET_DT || "",
       });
 
-      // Item table
-      const tableRows = items.map((x: any) => ({
-        selected: false,
-        ZMAPID: x.ZMAPID || x.MAPID || "",
-        ZREFNO: x.ZREFNO || "",
-        ZLINE_NO: x.ZLINE_NO || "",
-        INV_NO: x.INV_NO || "",
-        POSNR: x.POSNR || "",
-        VEH_LINE: x.VEH_LINE || "",
-        VEHICLE: x.VEHICLE || "",
-        TRUCK_NO: x.TRUCK_NO || "",
-        LR_NO: x.LR_NO || "",
-        AH: x.AH || "",
-        NO_SETS: x.NO_SETS || "",
-        TRANSPORTER: x.TRANSPORTER || "",
-        WORK_ORDER: x.WORK_ORDER || "",
-        BILLNO: x.BILLNO || "",
-      }));
-
-      setItemData(tableRows);
-      console.log("Item Data:", tableRows);
-
-    } catch (err) {
-      setLoading(false);
-      console.error(err);
-      Swal.fire("Error", "Error fetching data", "error");
-    }
-  };
-
-  const onSaveActionSap = async (
-    action: "stay" | "next" | "previous" = "stay"
-  ) => {
-    try {
-      // Selected Rows
-      const filtered = itemData
-        .filter((row: any) => row.selected)
-        .map(({ selected, ...row }: any) => ({
-          ...row,
-        }));
-
-      if (filtered.length === 0) {
-        Swal.fire({
-          icon: "warning",
-          title: "Warning",
-          text: "Please select at least one product row.",
-        });
-        return;
-      }
-
-      const selectedRef = selectedItems[0] || {};
-
-      //------------------------------------
-      // Header
-      //------------------------------------
-
-      const headerValue = {
-        ...headerData,
-
-        INV_NO: lookupValue,
-
-        LINE_NO:
-          selectedRef.LINE_NO ||
-          filtered[0]?.LINE_NO ||
-          "",
-
-        REFNO:
-          selectedRef.REF_NO || "",
-
-        SO_NO: headerData.SO_NO || "",
-
-        ODN_NO: headerData.ODN_NO || "",
-
-        SALE_PERSON: headerData.SALE_PERSON || "",
-
-        ZSUPT_DOC: supportingBase64,
-
-        ZSUPT_PATH: supportingPath,
-
-        ZAPP_DOC: approveBase64,
-
-        ZAPP_PATH: approvePath,
-
-        ZUSER: getLoggedInUser(),
-
-        ZUSER_CH: "",
-      };
-
-      //------------------------------------
-      // Items
-      //------------------------------------
-
-      filtered.forEach((row: any) => {
-        row.INV_NO = lookupValue;
-
-        row.LINE_NO =
-          selectedRef.LINE_NO ||
-          row.LINE_NO ||
-          0;
-
-        row.REFNO = headerValue.REFNO;
-      });
-
-      //------------------------------------
-      // Payload
-      //------------------------------------
-
-      const payload = {
-        HEADER: headerValue,
-        ITEM: filtered,
-      };
-
-      console.log("Save Payload", payload);
-
-      setLoading(true);
-
-      const res: any =
-        await service.InsuranceClaimTrackingSave(payload);
-
-      setLoading(false);
-
-      if (res?.STATUS === "TRUE") {
-        Swal.fire({
-          icon: "success",
-          title: "Success",
-          text: res?.MESSAGE || "Saved Successfully",
-        });
-
-        if (action === "next") {
-          console.log("Navigate Next");
-        } else if (action === "previous") {
-          console.log("Navigate Previous");
-        } else {
-          console.log("Stay");
-        }
-      } else {
-        Swal.fire({
-          icon: "warning",
-          title: "Warning",
-          text: res?.MESSAGE || "Save Failed",
-        });
-      }
-    } catch (err) {
-      setLoading(false);
-
-      console.error(err);
-
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Error while saving.",
-      });
-    }
-  };
-
-  const fetchInvoiceDetailsNonSap = async (invoiceNo: string) => {
-
-    if (!invoiceNo) {
-      Swal.fire(
-        "Warning",
-        "Please select DC Reference Number",
-        "warning"
-      );
-      return;
-    }
-
-    if (selectedItems.length === 0) {
-      Swal.fire(
-        "Warning",
-        "Please select a reference row first.",
-        "warning"
-      );
-      return;
-    }
-
-    const selectedRef = selectedItems[0];
-
-    const payload = {
-      VBELN: invoiceNo,
-      ZREFNO: selectedRef.REF_NO || "",
-      ZMAPID: selectedRef.MAPID || "",
-    };
-
-    console.log("Payload:", payload);
-
-    try {
-      setLoading(true);
-
-      const res = await service.fetchinvoicelistnonsap(payload);
-
-      console.log("Response:", res);
-
-      setLoading(false);
-
-      if (!res || res.STATUS === "False") {
-        Swal.fire(
-          "Info",
-          res?.MESSAGE || "No data found",
-          "info"
-        );
-        return;
-      }
-
-      const header = res?.[0]?.HEADER || {};
-      const items = res?.[0]?.ITEM || [];
-
-      setRevealed(true);
-
-      setHeaderData({
-        INV_NO: invoiceNo,
-        FI: header.FI || "",
-        REP_DATE: formatDate(header.REP_DATE),
-        CLAIM_REF: header.CLAIM_REF || "",
-        INV_DATE: formatDate(header.INV_DATE),
-        INV_BV: header.INV_BV || "",
-        LOSS_DCL: header.LOSS_DCL || "",
-        CLM_RF: formatDate(header.CLM_RF),
-        SOL_VAL: header.SOL_VAL || "",
-        CUSTOMER: header.CUSTOMER || "",
-        SO_NO: header.SO_NO || "",
-        LOCATION: header.LOCATION || "",
-        DAMAGE_RMK: header.DAMAGE_RMK || "",
-        CLM_INF: header.CLM_INF || "",
-        CLM_ST: header.CLM_ST || "",
-        CLM_DOC_ST: header.CLM_DOC_ST || "",
-        COURIER_DET: header.COURIER_DET || "",
-        PAY_ST: header.PAY_ST || "",
-        PAY_INFO: header.PAY_INFO || "",
-        UTR: header.UTR || "",
-        CLM_SET_DT: formatDate(header.CLM_SET_DT),
-        SALE_PERSON: header.SALE_PERSON || "",
-      });
-
       setItemData(
         items.map((x: any) => ({
           selected: false,
           ZMAPID: x.ZMAPID || x.MAPID || "",
-          ZREFNO: x.ZREFNO || x.REFNO || "",
-          ZLINE_NO: x.ZLINE_NO || x.LINE_NO || "",
-          INV_NO: invoiceNo,
-          POSNR: x.POSNR || "",
-          VEH_LINE: x.VEH_LINE || "",
-          VEHICLE: x.VEHICLE || "",
+          ZREFNO: x.ZREFNO || "",
+          ZLINE_NO: x.ZLINE_NO || "",
+          INV_NO: x.INV_NO || "",
           TRUCK_NO: x.TRUCK_NO || "",
           LR_NO: x.LR_NO || "",
-          AH: x.AH || "",
-          NO_SETS: x.NO_SETS || "",
           TRANSPORTER: x.TRANSPORTER || "",
           WORK_ORDER: x.WORK_ORDER || "",
           BILLNO: x.BILLNO || "",
         }))
       );
 
-      Swal.fire(
-        "Success",
-        "Invoice details fetched successfully.",
-        "success"
-      );
-
-    } catch (err: any) {
+      setShowForm(true);
+      setIsGlobalSearch(false);
+    } catch (err) {
       setLoading(false);
-
       console.error(err);
-
-      Swal.fire(
-        "Error",
-        err?.response?.data?.MESSAGE ||
-        err?.message ||
-        "Error fetching Non-SAP data",
-        "error"
-      );
+      Swal.fire({ icon: "error", text: "Error fetching invoice details" });
     }
   };
 
-  const onSaveActionNonSap = async (
-    action: "stay" | "next" | "previous" = "stay"
-  ) => {
-    try {
-      // Reference row validation
-      if (selectedItems.length === 0) {
-        Swal.fire({
-          icon: "warning",
-          text: "Please select at least one reference row before saving",
-        });
-        return;
-      }
+  const handleSave = async (action: "stay" | "next" | "previous" = "stay") => {
+    const selectedRow = tableData.find((r) => r.selected);
 
-      // Item selection validation
-      const filtered = itemData
-        .filter((row: any) => row.selected)
-        .map(({ selected, ...row }: any) => ({
-          ...row,
-        }));
+    if (!selectedRow) {
+      Swal.fire({ icon: "warning", title: "Warning", text: "Please select one reference row" });
+      return;
+    }
 
-      if (filtered.length === 0) {
-        Swal.fire({
-          icon: "warning",
-          text: "Please select at least one item row.",
-        });
-        return;
-      }
+    if (!lookupValue.trim()) {
+      Swal.fire({ icon: "warning", title: "Warning", text: "Invoice Number is required" });
+      return;
+    }
 
-      const selectedRef = selectedItems[0];
+    const header = {
+      ...headerData,
+      INV_NO: lookupValue,
+      REFNO: selectedRow.REF_NO,
+      LINE_NO: selectedRow.LINE_NO,
+      ZSUPT_DOC: supportingBase64,
+      ZSUPT_PATH: supportingPath,
+      ZAPP_DOC: approveBase64,
+      ZAPP_PATH: approvePath,
+      ZUSER: getLoggedInUser(),
+      ZUSER_CH: "",
+    };
 
-      const headerValue = {
-        ...headerData,
-
-        INV_NO: lookupValue,
-
-        REFNO: selectedRef.REF_NO || "",
-
-        LINE_NO: selectedRef.LINE_NO || "",
-
-        ZUSER: getLoggedInUser(),
-
-        ZSUPT_DOC: supportingBase64 || "",
-
-        ZSUPT_PATH: supportingPath || "",
-
-        ZAPP_DOC: approveBase64 || "",
-
-        ZAPP_PATH: approvePath || "",
-
-        ZUSER_CH: "",
-      };
-
-      const itemsPayload = filtered.map((row: any) => ({
+    const items = itemData
+      .filter((x: any) => x.selected)
+      .map((row: any) => ({
         ...row,
         INV_NO: lookupValue,
-        REFNO: selectedRef.REF_NO || "",
-        LINE_NO: selectedRef.LINE_NO || "",
+        REFNO: selectedRow.REF_NO,
+        ZLINE_NO: row.ZLINE_NO || selectedRow.LINE_NO,
       }));
 
-      const payload = {
-        HEADER: headerValue,
-        ITEM: itemsPayload,
-      };
+    if (items.length === 0) {
+      Swal.fire({ icon: "warning", title: "Warning", text: "Please select at least one item" });
+      return;
+    }
 
-      console.log("📤 Non-SAP Save Payload:", payload);
+    const payload = { HEADER: header, ITEM: items };
 
+    try {
       setLoading(true);
-
-      const res = await service.Nonsapsave(payload);
-
+      const res: any = await service.InsuranceClaimTrackingSave(payload);
       setLoading(false);
 
-      if (res?.STATUS === "TRUE" || res?.STATUS === true) {
-        Swal.fire({
-          icon: "success",
-          text: "Data Saved Successfully!",
-        });
+      if (res?.STATUS === "TRUE") {
+        Swal.fire({ icon: "success", text: res.MESSAGE || "Saved Successfully" });
 
-        if (action === "next") {
-          console.log("Navigate Next");
-        } else if (action === "previous") {
-          console.log("Navigate Previous");
-        } else {
-          console.log("Stay");
+        if (action === "previous") {
+          resetAll();
         }
       } else {
-        Swal.fire({
-          icon: "warning",
-          text: res?.MESSAGE || "Save Failed",
-        });
+        Swal.fire({ icon: "warning", title: "Save Failed", text: res?.MESSAGE || "" });
       }
-    } catch (err: any) {
+    } catch (err) {
       setLoading(false);
-
       console.error(err);
-
-      Swal.fire({
-        icon: "error",
-        text:
-          err?.response?.data?.MESSAGE ||
-          err?.message ||
-          "Error while saving data",
-      });
+      Swal.fire({ icon: "error", text: "Save Failed" });
     }
   };
+
+  // ---------------------------------------------------------------------
+  // GET flow — Without SAP
+  // ---------------------------------------------------------------------
+
+  const fetchInvoiceDetailsNonSap = async (valueOverride?: string) => {
+    const dcRef = (valueOverride ?? lookupValue).trim();
+
+    if (!dcRef) {
+      Swal.fire({ icon: "warning", title: "Warning", text: "Please enter DC Reference Number" });
+      return;
+    }
+
+    const selectedRow = tableData.find((row) => row.selected);
+
+    if (!selectedRow) {
+      Swal.fire({ icon: "warning", title: "Warning", text: "Please select one reference row" });
+      return;
+    }
+
+    const payload = {
+      VBELN: dcRef,
+      ZREFNO: selectedRow.REF_NO || "",
+      ZMAPID: selectedRow.MAPID || "",
+    };
+
+    try {
+      setLoading(true);
+      const res: any = await service.fetchinvoicelistnonsap(payload);
+      setLoading(false);
+
+      if (!res || res.STATUS === "False") {
+        Swal.fire({ icon: "info", title: "Info", text: res?.MESSAGE || "No Data Found" });
+        return;
+      }
+
+      const header = res?.[0]?.HEADER || {};
+      const items = res?.[0]?.ITEM || [];
+
+      setHeaderData({
+        ...header,
+        INV_NO: header.INV_NO || dcRef,
+        REFNO: selectedRow.REF_NO,
+        LINE_NO: selectedRow.LINE_NO,
+      });
+
+      setItemData(
+        items.map((item: any) => ({
+          ...item,
+          selected: false,
+          ZMAPID: selectedRow.MAPID,
+          REFNO: selectedRow.REF_NO,
+          ZLINE_NO: selectedRow.LINE_NO,
+          TRUCK_NO: item.TRUCK_NO ?? "",
+          LR_NO: item.LR_NO ?? "",
+          TRANSPORTER: item.TRANSPORTER ?? "",
+          WORK_ORDER: item.WORK_ORDER ?? "",
+          BILLNO: item.BILLNO ?? "",
+          INV_NO: dcRef,
+        }))
+      );
+
+      setShowForm(true);
+      setIsGlobalSearch(false);
+
+      Swal.fire({ icon: "success", title: "Success", text: "Invoice Details fetched successfully.", timer: 1200, showConfirmButton: false });
+    } catch (error) {
+      setLoading(false);
+      console.error("Non-SAP Fetch Error:", error);
+      Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch Invoice Details." });
+    }
+  };
+
+  const handleSaveNonSap = async (action: "stay" | "next" | "previous" = "stay") => {
+    const selectedRow = tableData.find((row) => row.selected);
+
+    if (!selectedRow) {
+      Swal.fire({ icon: "warning", title: "Warning", text: "Please select one reference row" });
+      return;
+    }
+
+    if (!lookupValue.trim()) {
+      Swal.fire({ icon: "warning", title: "Warning", text: "Please enter DC Reference Number" });
+      return;
+    }
+
+    const header = {
+      ...headerData,
+      INV_NO: lookupValue,
+      REFNO: selectedRow.REF_NO,
+      LINE_NO: selectedRow.LINE_NO,
+      ZUSER: getLoggedInUser(),
+      ZUSER_CH: "",
+      ZSUPT_DOC: supportingBase64 || "",
+      ZSUPT_PATH: supportingPath || "",
+      ZAPP_DOC: approveBase64 || "",
+      ZAPP_PATH: approvePath || "",
+    };
+
+    const items = itemData
+      .filter((item: any) => item.selected)
+      .map((item: any) => ({
+        ...item,
+        INV_NO: lookupValue,
+        REFNO: selectedRow.REF_NO,
+        ZUSER: getLoggedInUser(),
+        ZUSER_CH: "",
+        ZLINE_NO: selectedRow.LINE_NO,
+      }));
+
+    if (items.length === 0) {
+      Swal.fire({ icon: "warning", title: "Warning", text: "Please select at least one item" });
+      return;
+    }
+
+    const payload = { HEADER: header, ITEM: items };
+
+    try {
+      setLoading(true);
+      const res: any = await service.Nonsapsave(payload);
+      setLoading(false);
+
+      if (res?.STATUS === true || res?.STATUS === "TRUE") {
+        Swal.fire({ icon: "success", title: "Success", text: "Data Saved Successfully" });
+        resetAll();
+      } else {
+        Swal.fire({ icon: "warning", title: "Save Failed", text: res?.MESSAGE || "" });
+      }
+    } catch (err) {
+      setLoading(false);
+      console.error(err);
+      Swal.fire({ icon: "error", title: "Error", text: "Save Failed" });
+    }
+  };
+
+  const resetAll = () => {
+    setSearchType("");
+    setSearchValue("");
+    setLookupValue("");
+    setTableData([EMPTY_ROW()]);
+    setRevealed(false);
+    setHeaderData({});
+    setItemData([]);
+    setSelectedItems([]);
+    setSupportingBase64("");
+    setSupportingPath("");
+    setApproveBase64("");
+    setApprovePath("");
+    setShowForm(false);
+    setInvoiceF4List([]);
+    setFullReferenceData([]);
+    setIsGlobalSearch(false);
+  };
+
+  // ---------------------------------------------------------------------
+  // Global Search flow
+  // ---------------------------------------------------------------------
 
   const onSearchReference = async () => {
     setHeaderData({});
     setItemData([]);
+    setShowForm(false);
     setRevealed(false);
+    setIsGlobalSearch(true);
 
     if (!searchValue.trim()) {
-      Swal.fire("Please enter a value", "", "warning");
+      Swal.fire({ icon: "warning", title: "Warning", text: "Please enter a value" });
       return;
     }
 
     if (!searchType) {
-      Swal.fire("Please select a search type", "", "info");
+      Swal.fire({ icon: "info", title: "Info", text: "Please select a search type" });
       return;
     }
 
@@ -676,93 +633,155 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
       global: "INSURANCE CLAIM STATUS",
       ZUSER: getLoggedInUser(),
       data: {
-        REF_NO: "",
-        INV_NO: "",
-        SO_NO: "",
-        TRANSPORTER: "",
-        LR_NO: "",
-        WORKORDER_NO: "",
-        SALES_PERSON: "",
-        LOCATION: "",
-        ODN_NO: "",
-        VEHICLE_NO: "",
-        FREIGHT_BILLNO: "",
-        PRODUCT: "",
-        ROUTE: "",
-        NATURE_DAMAGE: "",
-        CLAIM_STATUS: "",
+        REF_NO: "", INV_NO: "", SO_NO: "", TRANSPORTER: "", LR_NO: "",
+        WORKORDER_NO: "", SALES_PERSON: "", LOCATION: "", ODN_NO: "",
+        VEHICLE_NO: "", FREIGHT_BILLNO: "", PRODUCT: "", ROUTE: "",
+        NATURE_DAMAGE: "", CLAIM_STATUS: "",
       },
     };
 
-    payload.data[SEARCH_FIELD_MAP[searchType]] = searchValue.trim();
-
-    console.log("Search Payload", payload);
+    const apiField = SEARCH_FIELD_MAP[searchType];
+    if (apiField) payload.data[apiField] = searchValue.trim();
 
     try {
       setLoading(true);
 
-      const res = isSap
+      const res: any = isSap
         ? await service.global_Fields_SearchOption(payload)
         : await service.global_Fields_SearchOption_WithoutSap(payload);
 
       setLoading(false);
 
-      console.log("Search Response", res);
-
-      if (res.NUMBER === "100" && res.STATUS === "FALSE") {
-        Swal.fire("", res.MESSAGE, "warning");
+      if (res?.NUMBER === "100" && res?.STATUS === "FALSE") {
+        Swal.fire({ icon: "warning", text: res.MESSAGE });
         return;
       }
 
-      if (!res.HEADER || res.HEADER.length === 0) {
-        Swal.fire("No records found", "", "info");
+      if (!res?.HEADER || res.HEADER.length === 0) {
+        Swal.fire({ icon: "info", text: "No records found" });
         return;
       }
 
       const header = res.HEADER[0];
+      const items = (res.ITEMS || []).map((item: any) => ({ ...item, selected: false }));
 
       setHeaderData(header);
-
-      setItemData(
-        (res.ITEMS || []).map((item: any) => ({
-          ...item,
-          selected: false,
-        }))
-      );
-
+      setItemData(items);
+      setShowForm(true);
       setRevealed(true);
 
-      Swal.fire(
-        "Success",
-        "Data fetched successfully!",
-        "success"
-      );
+      Swal.fire({ icon: "success", text: "Data fetched successfully!", timer: 1200, showConfirmButton: false });
     } catch (err) {
       setLoading(false);
-
       console.error(err);
-
-      Swal.fire(
-        "Error",
-        "Error fetching data",
-        "error"
-      );
+      Swal.fire({ icon: "error", title: "Error", text: "Error fetching data" });
     }
   };
 
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
+  const editHeaderRow = () => {
+    setHeaderData((prev: any) => ({ ...prev, _backup: { ...prev }, isEdit: true }));
+  };
 
-      reader.readAsDataURL(file);
-
-      reader.onload = () => {
-        const result = reader.result as string;
-        resolve(result.split(",")[1]);
-      };
-
-      reader.onerror = reject;
+  const cancelHeaderEdit = () => {
+    setHeaderData((prev: any) => {
+      if (!prev._backup) return prev;
+      return { ...prev._backup, isEdit: false };
     });
+  };
+
+  const editItemRow = (index: number) => {
+    const rows = [...itemData];
+    rows[index] = { ...rows[index], _backup: { ...rows[index] }, isEdit: true };
+    setItemData(rows);
+  };
+
+  const cancelItemEdit = (index: number) => {
+    const rows = [...itemData];
+    if (rows[index]._backup) {
+      rows[index] = { ...rows[index]._backup, isEdit: false };
+    }
+    setItemData(rows);
+  };
+
+  const updateSearchRow = async () => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to update this record?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Update",
+    });
+
+    if (!result.isConfirmed) return;
+
+    const payload = {
+      ZSUPT_DOC: supportingBase64 || "",
+      ZSUPT_PATH: supportingPath || "",
+      ZAPP_DOC: approveBase64 || "",
+      ZAPP_PATH: approvePath || "",
+      HEAD: { ...headerData, ZUSER_CH: getLoggedInUser() },
+      ITEM: itemData.map((item: any) => ({ ...item, ZUSER_CH: getLoggedInUser() })),
+    };
+
+    try {
+      const res: any = isSap
+        ? await service.InsuranceClaimTrackingChangeWithSap(payload)
+        : await service.InsuranceClaimTrackingChangeWithoutSap(payload);
+
+      if (res.STATUS === "TRUE" || res.NUMBER === "200") {
+        Swal.fire("Success", res.MESSAGE || "Updated Successfully", "success");
+
+        setHeaderData((prev: any) => ({ ...prev, isEdit: false }));
+        setItemData((prev: any[]) => prev.map((x) => ({ ...x, isEdit: false })));
+
+        onSearchReference();
+      } else {
+        Swal.fire("Error", res.MESSAGE || "Update Failed", "error");
+      }
+    } catch {
+      Swal.fire("Error", "Internal Server Error", "error");
+    }
+  };
+
+  const deleteRow = async (row: any) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to delete this record?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Delete",
+    });
+
+    if (!result.isConfirmed) return;
+
+    const payload = {
+      DELETE: [{ ZREFNO: row.ZREFNO, ZINV_NO: row.ZINV_NO, ZLINE_NO: row.ZLINE_NO || "" }],
+    };
+
+    try {
+      const res: any = isSap
+        ? await service.InsuranceClaimTrackingDeleteWithSap(payload)
+        : await service.InsuranceClaimTrackingDeleteWithoutSap(payload);
+
+      if (res.STATUS === "TRUE" || res.NUMBER === "200") {
+        Swal.fire("Deleted", "Record deleted successfully", "success");
+
+        setItemData((prev) =>
+          prev.filter(
+            (x) => !(x.ZREFNO === row.ZREFNO && x.ZINV_NO === row.ZINV_NO && x.ZLINE_NO === row.ZLINE_NO)
+          )
+        );
+
+        if (headerData.ZREFNO === row.ZREFNO && headerData.ZINV_NO === row.ZINV_NO) {
+          setHeaderData({});
+          setShowForm(false);
+        }
+      } else {
+        Swal.fire("Failed", res.MESSAGE || "Delete failed", "error");
+      }
+    } catch {
+      Swal.fire("Error", "Delete failed", "error");
+    }
   };
 
   return (
@@ -796,7 +815,6 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
                 <td className="px-3 py-0.5 text-center">{index + 1}</td>
 
-                {/* MAP ID */}
                 <td className="px-3 py-0.5">
                   <input
                     value={row.MAPID}
@@ -811,7 +829,6 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                   />
                 </td>
 
-                {/* Reference Number */}
                 <td className="px-3 py-0.5">
                   <input
                     value={row.REF_NO}
@@ -826,7 +843,6 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                   />
                 </td>
 
-                {/* Work Order */}
                 <td className="px-3 py-0.5">
                   <input
                     value={row.WORK_ORDER_NO}
@@ -841,7 +857,6 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                   />
                 </td>
 
-                {/* LR Number */}
                 <td className="px-3 py-0.5">
                   <input
                     value={row.LR_NO}
@@ -856,7 +871,6 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                   />
                 </td>
 
-                {/* Transporter */}
                 <td className="px-3 py-0.5">
                   <input
                     value={row.TRANSPORTER}
@@ -885,8 +899,8 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
       {/* Lookup bar */}
       <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="flex items-end gap-2">
-            <div className="w-64">
+          <div className="flex items-end gap-2 max-w-md">
+            <div className="flex-1 min-w-[220px]">
               <label className={LABEL}>
                 {isWithout ? "DC Reference Number" : "Invoice Number"}
               </label>
@@ -895,34 +909,33 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                 value={lookupValue}
                 onChange={(e) => {
                   const value = e.target.value;
-
                   setLookupValue(value);
-
                   if (isWithout) {
                     fetchInvoiceDetailsNonSap(value);
+                    setRevealed(true);
                   }
                 }}
                 className={GREEN_INPUT}
               >
-                <option value="">
-                  {isWithout
-                    ? "Select DC Reference Number"
-                    : "Select Invoice Number"}
+                <option value="" disabled>
+                  {isWithout ? "Select DC Reference" : "Select Invoice"}
                 </option>
-
-                {invoiceF4List.map((item, index) => (
-                  <option key={index} value={item}>
-                    {item}
+                {invoiceF4List.map((inv) => (
+                  <option key={inv} value={inv}>
+                    {inv}
                   </option>
                 ))}
               </select>
             </div>
 
-            {isSap && (
+            {!isWithout && (
               <button
-                onClick={fetchInvoiceDetails}
-                disabled={!lookupValue}
-                className="h-7 px-4 rounded-md bg-[#8f1e42] text-white"
+                onClick={() => {
+                  fetchInvoiceDetails();
+                  setRevealed(true);
+                }}
+                disabled={!lookupValue.trim()}
+                className="h-7 px-4 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm"
               >
                 GET
               </button>
@@ -943,13 +956,18 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
               ))}
             </select>
           </div>
+
           <div className="flex-[2] min-w-[260px] flex items-stretch gap-0">
             <input
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onSearchReference();
+              }}
               placeholder="Enter Reference / Invoice / ODN / SO Number"
               className="h-7 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
             />
+
             <button
               onClick={onSearchReference}
               className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta"
@@ -968,179 +986,379 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
       {showFields && (
         <>
-          {/* Field grid */}
-          <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
-              {fields.map((f) => (
-                <SapField
-                  key={f.key}
-                  field={{
-                    ...f,
-                    value: headerData?.[f.key] ?? "",
-                  }}
-                  setHeaderData={setHeaderData}
-                />
-              ))}
-            </div>
-          </div>
+          {/* ================= GLOBAL SEARCH ================= */}
 
-          {/* Secondary table */}
-          <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
-            <table className="w-full text-[12px]">
-              <thead>
-                <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-                  <th className="px-3 py-0.5 text-center w-12">
-                    <input type="checkbox" className="size-4 accent-white" />
-                  </th>
-                  <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
-                  <th className="px-3 py-0.5 text-center">Map ID</th>
-                  <th className="px-3 py-0.5 text-center">Vehicle Line</th>
-                  <th className="px-3 py-0.5 text-center">Vehicle Type</th>
-                  <th className="px-3 py-0.5 text-center">Truck Number</th>
-                  <th className="px-3 py-0.5 text-center">LR Number</th>
-                  <th className="px-3 py-0.5 text-center">AH</th>
-                  <th className="px-3 py-0.5 text-center">No. of Sets</th>
-                  <th className="px-3 py-0.5 text-center">Transporter</th>
-                  <th className="px-3 py-0.5 text-center w-24">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {itemData.map((row: any, index: number) => (
-                  <tr key={index}>
-                    <td className="px-3 py-0.5 text-center">
-                      <input
-                        type="checkbox"
-                        checked={row.selected}
-                        onChange={(e) => {
-                          const data = [...itemData];
-                          data[index].selected = e.target.checked;
-                          setItemData(data);
-                        }}
-                        className="size-4 accent-sky-600"
-                      />
-                    </td>
+          {showForm && isGlobalSearch && Object.keys(headerData).length > 0 && (
+            <div className="max-h-[500px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant">
+              <div className="p-2 font-semibold">Header Details</div>
 
-                    <td className="px-3 py-0.5 text-center">
-                      {index + 1}
-                    </td>
+              <table className="w-full text-left border-collapse text-[12.5px]">
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                    {[
+                      "Ref No", "Line No", "Invoice No", "ODN No", "SO No",
+                      "Fiscal Year", "Reported Date", "Claim Ref", "Invoice Date",
+                      "Base Value", "Loss Declared", "Customer", "Location",
+                      "Damage", "Claim Status", "Payment Status", "Plant",
+                      "Division", "Action",
+                    ].map((h) => (
+                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
 
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.ZMAPID ?? ""}
-                        readOnly
-                        className={GREEN_INPUT + " text-center"}
-                      />
-                    </td>
+                <tbody className="divide-y divide-hairline/70">
+                  <tr className="bg-surface hover:bg-muted/50">
+                    {[
+                      { field: "REFNO", alt: "ZREFNO", type: "text" },
+                      { field: "LINE_NO", alt: "ZLINE_NO", type: "text" },
+                      { field: "INV_NO", alt: "ZINV_NO", type: "text" },
+                      { field: "ODN_NO", alt: "ZODN_NO", type: "text" },
+                      { field: "SO_NO", alt: "ZSO_NO", type: "text" },
+                      { field: "FI", alt: "ZFI", type: "text" },
+                      { field: "REP_DATE", alt: "ZREP_DATE", type: "date" },
+                      { field: "CLAIM_REF", alt: "ZCLAIM_REF", type: "text" },
+                      { field: "INV_DATE", alt: "ZINV_DATE", type: "date" },
+                      { field: "INV_BV", alt: "ZINV_BV", type: "number" },
+                      { field: "LOSS_DCL", alt: "ZLOSS_DCL", type: "text" },
+                      { field: "CUSTOMER", alt: "ZCUSTOMER", type: "text" },
+                      { field: "LOCATION", alt: "ZLOCATION", type: "text" },
+                      { field: "DAMAGE_RMK", alt: "ZDAMAGE_RMK", type: "textarea" },
+                      { field: "CLM_ST", alt: "ZCLM_ST", type: "text" },
+                      { field: "PAY_ST", alt: "ZPAY_ST", type: "text" },
+                      { field: "PLANT", alt: "ZPLANT", type: "text" },
+                      { field: "DIVISION", alt: "ZDIVISION", type: "text" },
+                    ].map(({ field, alt, type }) => {
+                      const value = headerData[field] ?? headerData[alt];
+                      return (
+                        <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
+                          {headerData.isEdit ? (
+                            type === "textarea" ? (
+                              <textarea
+                                className={`${GREEN_INPUT} h-16`}
+                                value={value || ""}
+                                onChange={(e) =>
+                                  setHeaderData((prev: any) => ({ ...prev, [field]: e.target.value }))
+                                }
+                              />
+                            ) : (
+                              <input
+                                type={type}
+                                className={GREEN_INPUT}
+                                value={value || ""}
+                                onChange={(e) =>
+                                  setHeaderData((prev: any) => ({ ...prev, [field]: e.target.value }))
+                                }
+                              />
+                            )
+                          ) : (
+                            <span>
+                              {type === "date" && value
+                                ? new Date(value).toLocaleDateString("en-GB")
+                                : value || "-"}
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
 
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.VEH_LINE ?? ""}
-                        readOnly
-                        className={GREEN_INPUT + " text-center"}
-                      />
-                    </td>
+                    <td className="px-2 py-2 text-center">
+                      {!headerData.isEdit ? (
+                        <div className="flex items-center gap-1 justify-center">
+                          <button
+                            onClick={editHeaderRow}
+                            className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                          >
+                            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
 
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.VEHICLE ?? ""}
-                        readOnly
-                        className={GREEN_INPUT + " text-center"}
-                      />
-                    </td>
+                          <button
+                            onClick={() => deleteRow(headerData)}
+                            className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+                          >
+                            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 justify-center">
+                          <button
+                            onClick={updateSearchRow}
+                            className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                          >
+                            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
 
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.TRUCK_NO ?? ""}
-                        readOnly
-                        className={GREEN_INPUT + " text-center"}
-                      />
-                    </td>
-
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.LR_NO ?? ""}
-                        readOnly
-                        className={GREEN_INPUT + " text-center"}
-                      />
-                    </td>
-
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.AH ?? ""}
-                        readOnly
-                        className={GREEN_INPUT + " text-center"}
-                      />
-                    </td>
-
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.NO_SETS ?? ""}
-                        readOnly
-                        className={GREEN_INPUT + " text-center"}
-                      />
-                    </td>
-
-                    <td className="px-3 py-0.5">
-                      <input
-                        value={row.TRANSPORTER ?? ""}
-                        readOnly
-                        className={GREEN_INPUT + " text-center"}
-                      />
-                    </td>
-
-                    <td className="px-3 py-0.5 text-center">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button className="inline-grid place-items-center size-7 rounded-md bg-emerald-500 text-white">
-                          <Plus className="size-3.5" />
-                        </button>
-
-                        <button className="inline-grid place-items-center size-7 rounded-md bg-rose-500 text-white">
-                          <X className="size-3.5" />
-                        </button>
-                      </div>
+                          <button
+                            onClick={cancelHeaderEdit}
+                            className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          >
+                            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+          )}
 
-          {/* Footer */}
-          <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-            <button
-              onClick={() =>
-                isWithout
-                  ? onSaveActionNonSap("stay")
-                  : onSaveActionSap("stay")
-              }
-              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 text-white"
-            >
-              <Save className="size-3.5" />
-              Save
-            </button>
+          {showForm && isGlobalSearch && itemData.length > 0 && (
+            <div className="max-h-[400px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant mt-3">
+              <div className="p-2 font-semibold">Line Items</div>
 
-            <button
-              onClick={() =>
-                isWithout
-                  ? onSaveActionNonSap("next")
-                  : onSaveActionSap("next")
-              }
-              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 text-white"
-            >
-              Save and Next
-            </button>
+              <table className="w-full text-left border-collapse text-[12.5px]">
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                    {[
+                      "Map ID", "Ref No", "Line No", "Invoice No", "Vehicle No",
+                      "Bill No", "Work Order", "LR No", "Transporter", "Action",
+                    ].map((h) => (
+                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
 
-            <button
-              onClick={() =>
-                isWithout
-                  ? onSaveActionNonSap("previous")
-                  : onSaveActionSap("previous")
-              }
-              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 text-white"
-            >
-              Save and Previous
-            </button>
-          </div>
+                <tbody className="divide-y divide-hairline/70">
+                  {itemData.map((item: any, index: number) => (
+                    <tr
+                      key={index}
+                      className={index % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}
+                    >
+                      {[
+                        { field: "ZMAPID", type: "text" },
+                        { field: "ZREFNO", type: "text" },
+                        { field: "ZLINE_NO", type: "text" },
+                        { field: "ZINV_NO", type: "text" },
+                        { field: "ZTRUCK_NO", type: "text" },
+                        { field: "ZBILLNO", type: "text" },
+                        { field: "ZWORK_ORDER", type: "text" },
+                        { field: "ZLRNO", type: "text" },
+                        { field: "ZTRANSPORTER", type: "text" },
+                      ].map(({ field, type }) => (
+                        <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
+                          {item.isEdit ? (
+                            <input
+                              type={type}
+                              className={GREEN_INPUT}
+                              value={item[field] || ""}
+                              onChange={(e) => {
+                                const rows = [...itemData];
+                                rows[index] = { ...rows[index], [field]: e.target.value };
+                                setItemData(rows);
+                              }}
+                            />
+                          ) : (
+                            <span>{item[field] || "-"}</span>
+                          )}
+                        </td>
+                      ))}
+
+                      <td className="px-2 py-2 text-center">
+                        {!item.isEdit ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => editItemRow(index)}
+                              className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                            >
+                              ✏️
+                            </button>
+
+                            <button
+                              onClick={() => deleteRow(item)}
+                              className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={updateSearchRow}
+                              className="size-6 grid place-items-center rounded bg-green-50 text-green-600 hover:bg-green-100"
+                            >
+                              ✔
+                            </button>
+
+                            <button
+                              onClick={() => cancelItemEdit(index)}
+                              className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            >
+                              ✖
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* ================= GET SCREEN ================= */}
+
+          {!isGlobalSearch && (
+            <>
+              {/* Field Grid */}
+              <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
+                  {fields.map((f) => (
+                    <SapField
+                      key={f.key}
+                      field={{ ...f, value: headerData?.[f.key] ?? "" }}
+                      setHeaderData={setHeaderData}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Secondary Table — selectable Line Items for Save */}
+              <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+                      <th className="px-3 py-0.5 text-center w-12">
+                        <input
+                          type="checkbox"
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            const updated = itemData.map((item) => ({ ...item, selected: checked }));
+                            setItemData(updated);
+                          }}
+                          className="size-4 accent-sky-600"
+                        />
+                      </th>
+
+                      <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
+                      <th className="px-3 py-0.5 text-center">Map ID</th>
+                      <th className="px-3 py-0.5 text-center">Vehicle Number</th>
+                      <th className="px-3 py-0.5 text-center">LR Number</th>
+                      <th className="px-3 py-0.5 text-center">Transporter</th>
+                      <th className="px-3 py-0.5 text-center">Bill No</th>
+                      <th className="px-3 py-0.5 text-center">Work Order</th>
+                      <th className="px-3 py-0.5 text-center w-24">Action</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {itemData.map((row: any, index: number) => (
+                      <tr key={index}>
+                        <td className="px-3 py-0.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={row.selected || false}
+                            onChange={(e) => {
+                              const updated = [...itemData];
+                              updated[index].selected = e.target.checked;
+                              setItemData(updated);
+                            }}
+                            className="size-4 accent-sky-600"
+                          />
+                        </td>
+
+                        <td className="px-3 py-0.5 text-center">{index + 1}</td>
+
+                        <td className="px-3 py-0.5">
+                          <select
+                            value={row.ZMAPID || ""}
+                            onChange={(e) => onchangeMAPID(index, e.target.value)}
+                            className={GREEN_INPUT}
+                          >
+                            <option value="">Select</option>
+                            {selectedItems.map((item) => (
+                              <option key={item.MAPID} value={item.MAPID}>
+                                {item.MAPID}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
+                        <td className="px-3 py-0.5">
+                          <input value={row.TRUCK_NO || ""} className={GREEN_INPUT + " text-center"} readOnly />
+                        </td>
+
+                        <td className="px-3 py-0.5">
+                          <input value={row.LR_NO || ""} className={GREEN_INPUT + " text-center"} readOnly />
+                        </td>
+
+                        <td className="px-3 py-0.5">
+                          <input value={row.TRANSPORTER || ""} className={GREEN_INPUT + " text-center"} readOnly />
+                        </td>
+
+                        <td className="px-3 py-0.5">
+                          <input value={row.BILLNO || ""} className={GREEN_INPUT + " text-center"} readOnly />
+                        </td>
+
+                        <td className="px-3 py-0.5">
+                          <input value={row.WORK_ORDER || ""} className={GREEN_INPUT + " text-center"} readOnly />
+                        </td>
+
+                        <td className="px-3 py-0.5 text-center">
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              onClick={addItemRow}
+                              className="inline-grid place-items-center size-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm"
+                            >
+                              <Plus className="size-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => removeItemRow(index)}
+                              className="inline-grid place-items-center size-7 rounded-md bg-rose-500 hover:bg-rose-600 text-white shadow-sm"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Footer */}
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                <button
+                  onClick={() => (isWithout ? handleSaveNonSap("stay") : handleSave("stay"))}
+                  className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
+                >
+                  <Save className="size-3.5" />
+                  Save
+                </button>
+
+                <button
+                  onClick={() => (isWithout ? handleSaveNonSap("next") : handleSave("next"))}
+                  className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 text-white text-[12px] font-semibold shadow-sm"
+                >
+                  Save and Next
+                  <ChevronRight className="size-3.5" />
+                </button>
+
+                <button
+                  onClick={() => (isWithout ? handleSaveNonSap("previous") : handleSave("previous"))}
+                  className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-semibold shadow-sm"
+                >
+                  <ChevronLeft className="size-3.5" />
+                  Save and Previous
+                </button>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
@@ -1154,13 +1372,7 @@ function SapField({
   field: FieldSpec;
   setHeaderData: React.Dispatch<React.SetStateAction<any>>;
 }) {
-  const {
-    label,
-    value = "",
-    type = "text",
-    options = [],
-    placeholder,
-  } = field;
+  const { label, value = "", type = "text", options = [], placeholder } = field;
 
   return (
     <div>
@@ -1169,18 +1381,10 @@ function SapField({
       {type === "select" ? (
         <select
           value={value ?? ""}
-          onChange={(e) =>
-            setHeaderData((prev: any) => ({
-              ...prev,
-              [field.key]: e.target.value,
-            }))
-          }
+          onChange={(e) => setHeaderData((prev: any) => ({ ...prev, [field.key]: e.target.value }))}
           className={GREEN_INPUT}
         >
-          <option value="">
-            {placeholder ?? "Select"}
-          </option>
-
+          <option value="">{placeholder ?? "Select"}</option>
           {options.map((o) => (
             <option key={o} value={o}>
               {o}
@@ -1191,30 +1395,17 @@ function SapField({
         <input
           type="date"
           value={value || ""}
-          onChange={(e) =>
-            setHeaderData((prev: any) => ({
-              ...prev,
-              [field.key]: e.target.value,
-            }))
-          }
+          onChange={(e) => setHeaderData((prev: any) => ({ ...prev, [field.key]: e.target.value }))}
           className={GREEN_INPUT}
         />
       ) : type === "file" ? (
-        <input
-          type="file"
-          className={GREEN_INPUT + " py-1.5"}
-        />
+        <input type="file" className={GREEN_INPUT + " py-1.5"} />
       ) : (
         <input
           type="text"
           value={value || ""}
           placeholder={placeholder ?? `Enter ${label}`}
-          onChange={(e) =>
-            setHeaderData((prev: any) => ({
-              ...prev,
-              [field.key]: e.target.value,
-            }))
-          }
+          onChange={(e) => setHeaderData((prev: any) => ({ ...prev, [field.key]: e.target.value }))}
           className={GREEN_INPUT}
         />
       )}
