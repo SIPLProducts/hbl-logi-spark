@@ -6,6 +6,15 @@ import Swal from "sweetalert2";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+
+// SAP fetched & has value → GREEN, readonly (same pattern as Order Info screen)
+const INPUT_SAP_FILLED =
+  "h-7 w-full rounded-md bg-emerald-50 border-2 border-emerald-400 px-2 text-[12px] text-emerald-900 font-semibold outline-none cursor-not-allowed";
+
+// SAP fetched but empty → RED, EDITABLE (user must fill)
+const INPUT_SAP_EMPTY =
+  "h-7 w-full rounded-md bg-red-50 border-2 border-red-400 px-2 text-[12px] text-foreground font-medium outline-none focus:border-red-500 focus:ring-2 focus:ring-red-300";
+
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
 const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
@@ -108,6 +117,15 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  /**
+   * SAP colouring — same pattern as Order Info screen.
+   * - sapFilledKeys: header keys that came back NON-EMPTY from SAP → GREEN + readonly
+   * - key NOT in set (but sapFetched=true) → SAP returned empty → RED + editable
+   * - sapFetched=false (Non-SAP or before GET) → normal styling
+   */
+  const [sapFetched, setSapFetched] = useState(false);
+  const [sapFilledKeys, setSapFilledKeys] = useState<Set<string>>(new Set());
+
   const fields: FieldSpec[] = isWithout
     ? [{ label: "DC Reference Number", key: "DC_REF_NO", type: "text" }, ...BASE_FIELDS]
     : BASE_FIELDS;
@@ -131,6 +149,8 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     setInvoiceF4List([]);
     setFullReferenceData([]);
     setIsGlobalSearch(false);
+    setSapFetched(false);
+    setSapFilledKeys(new Set());
   }, [mode]);
 
   const handleHeaderChange = (key: string, value: any) => {
@@ -383,6 +403,17 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         }))
       );
 
+      // Track only header keys that have a NON-EMPTY value from SAP (for colouring)
+      setSapFilledKeys(
+        new Set(
+          Object.keys(header).filter((k) => {
+            const v = (header as any)[k];
+            return v !== null && v !== undefined && String(v).trim() !== "";
+          })
+        )
+      );
+      setSapFetched(true);
+
       setShowForm(true);
       setIsGlobalSearch(false);
     } catch (err) {
@@ -606,6 +637,8 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     setInvoiceF4List([]);
     setFullReferenceData([]);
     setIsGlobalSearch(false);
+    setSapFetched(false);
+    setSapFilledKeys(new Set());
   };
 
   // ---------------------------------------------------------------------
@@ -984,6 +1017,20 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         </p>
       )}
 
+      {/* ── Colour legend (only shown after SAP GET) ── */}
+      {isSap && sapFetched && !isGlobalSearch && (
+        <div className="flex items-center gap-4 px-1 py-1">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-sm border-2 border-emerald-400 bg-emerald-50" />
+            <span className="text-[11px] text-muted-foreground">Fetched from SAP (readonly)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-sm border-2 border-red-400 bg-red-50" />
+            <span className="text-[11px] text-muted-foreground">Not provided by SAP (fill manually)</span>
+          </div>
+        </div>
+      )}
+
       {showFields && (
         <>
           {/* ================= GLOBAL SEARCH ================= */}
@@ -1222,6 +1269,8 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       key={f.key}
                       field={{ ...f, value: headerData?.[f.key] ?? "" }}
                       setHeaderData={setHeaderData}
+                      sapFetched={sapFetched}
+                      sapFilledKeys={sapFilledKeys}
                     />
                   ))}
                 </div>
@@ -1368,35 +1417,59 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 function SapField({
   field,
   setHeaderData,
+  sapFetched = false,
+  sapFilledKeys,
 }: {
   field: FieldSpec;
   setHeaderData: React.Dispatch<React.SetStateAction<any>>;
+  sapFetched?: boolean;
+  sapFilledKeys?: Set<string>;
 }) {
   const { label, value = "", type = "text", options = [], placeholder } = field;
 
+  // SAP-aware colouring (same pattern as Order Info screen):
+  // - SAP filled  → green + readonly
+  // - SAP empty   → red + editable
+  // - No SAP yet  → normal (file inputs are never coloured)
+  const filled = type !== "file" && sapFetched && !!sapFilledKeys?.has(field.key);
+  const unfilled = type !== "file" && sapFetched && !sapFilledKeys?.has(field.key);
+  const cls = filled ? INPUT_SAP_FILLED : unfilled ? INPUT_SAP_EMPTY : GREEN_INPUT;
+
   return (
     <div>
-      <label className={LABEL}>{label}</label>
+      <label className={LABEL}>
+        {label}
+        {filled && (
+          <span className="ml-1.5 inline-flex items-center px-1.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300 leading-tight align-middle">
+            From SAP
+          </span>
+        )}
+      </label>
 
       {type === "select" ? (
-        <select
-          value={value ?? ""}
-          onChange={(e) => setHeaderData((prev: any) => ({ ...prev, [field.key]: e.target.value }))}
-          className={GREEN_INPUT}
-        >
-          <option value="">{placeholder ?? "Select"}</option>
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
+        filled ? (
+          <input value={value || ""} readOnly className={INPUT_SAP_FILLED} />
+        ) : (
+          <select
+            value={value ?? ""}
+            onChange={(e) => setHeaderData((prev: any) => ({ ...prev, [field.key]: e.target.value }))}
+            className={cls}
+          >
+            <option value="">{placeholder ?? "Select"}</option>
+            {options.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+        )
       ) : type === "date" ? (
         <input
           type="date"
           value={value || ""}
-          onChange={(e) => setHeaderData((prev: any) => ({ ...prev, [field.key]: e.target.value }))}
-          className={GREEN_INPUT}
+          readOnly={filled}
+          onChange={(e) => !filled && setHeaderData((prev: any) => ({ ...prev, [field.key]: e.target.value }))}
+          className={cls}
         />
       ) : type === "file" ? (
         <input type="file" className={GREEN_INPUT + " py-1.5"} />
@@ -1404,9 +1477,10 @@ function SapField({
         <input
           type="text"
           value={value || ""}
+          readOnly={filled}
           placeholder={placeholder ?? `Enter ${label}`}
-          onChange={(e) => setHeaderData((prev: any) => ({ ...prev, [field.key]: e.target.value }))}
-          className={GREEN_INPUT}
+          onChange={(e) => !filled && setHeaderData((prev: any) => ({ ...prev, [field.key]: e.target.value }))}
+          className={cls}
         />
       )}
     </div>
