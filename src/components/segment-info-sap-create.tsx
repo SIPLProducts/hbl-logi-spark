@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, Trash2, Save, ChevronLeft, ChevronRight, Loader2, Pencil, Check, X as XIcon } from "lucide-react";
+import { Search, Trash2, Save, ChevronLeft, ChevronRight, ChevronDown, Loader2, Pencil, Check, X as XIcon } from "lucide-react";
 import Swal from "sweetalert2";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -16,6 +16,109 @@ const INPUT_SAP_FILLED =
 const INPUT_SAP_EMPTY =
   "h-7 w-full rounded-md bg-red-50 border-2 border-red-400 px-2 text-[12px] text-foreground font-medium outline-none focus:border-red-500 focus:ring-2 focus:ring-red-300";
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
+
+/* Reports-style multi-select dropdown (checkboxes + search) for the F4 lists.
+   `value` stays the screen's existing single string (comma-joined when more
+   than one is ticked), so all existing handlers keep working unchanged. */
+function F4MultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select",
+  className,
+  onBlur,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  onBlur?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selected = value ? value.split(",").filter(Boolean) : [];
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+        onBlur?.();
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [onBlur]);
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={
+          (className ? className + " " : "") +
+          "flex items-center justify-between gap-2 text-left" +
+          (selected.length === 0 ? " text-muted-foreground" : "")
+        }
+      >
+        <span className="truncate">{displayLabel() || placeholder}</span>
+        <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+          <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o}
+                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  onChange={() => toggle(o)}
+                  className="size-3.5"
+                />
+                <span className="truncate">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Label with optional green "From SAP" badge (matches order-info-sap-create.tsx) */
 function FieldLabel({ label, fromSap }: { label: string; fromSap: boolean }) {
@@ -794,17 +897,14 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
             <>
               <div className="flex-1 min-w-[220px]">
                 <label className={LABEL}>Invoice Number</label>
-                <select
+                <F4MultiSelect
+                  options={invoiceF4List}
                   value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  onChange={setInvoiceNumber}
                   onBlur={() => setInvoiceTouched(true)}
+                  placeholder="Select Invoice"
                   className={GREEN_INPUT}
-                >
-                  <option value="" disabled>Select Invoice</option>
-                  {invoiceF4List.map((inv) => (
-                    <option key={inv} value={inv}>{inv}</option>
-                  ))}
-                </select>
+                />
               </div>
               <button
                 onClick={handleGet}
@@ -967,17 +1067,14 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               {isWithout && (
                 <div>
                   <label className={LABEL}>Invoice Number</label>
-                  <select
+                  <F4MultiSelect
+                    options={invoiceF4List}
                     value={form.INV_VBELN}
-                    onChange={(e) => onInvoiceChange(e.target.value)}
+                    onChange={(value) => onInvoiceChange(value)}
                     onBlur={() => setInvoiceTouched(true)}
+                    placeholder="Select Invoice Number"
                     className={GREEN_INPUT}
-                  >
-                    <option value="" disabled>Select Invoice Number</option>
-                    {invoiceF4List.map((inv) => (
-                      <option key={inv} value={inv}>{inv}</option>
-                    ))}
-                  </select>
+                  />
                   {invoiceTouched && !form.INV_VBELN && (
                     <span className="text-[10px] text-destructive">Invoice Number is required</span>
                   )}

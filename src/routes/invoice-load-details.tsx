@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import Swal from "sweetalert2";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -26,6 +26,7 @@ import {
   CalendarIcon,
   X,
   Check,
+  ChevronDown,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,109 @@ function fireAlert(tone: BannerTone, text: string, title?: string) {
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
+
+/* Reports-style multi-select dropdown (checkboxes + search) for the F4 lists.
+   `value` stays the screen's existing single string (comma-joined when more
+   than one is ticked), so all existing handlers keep working unchanged. */
+function F4MultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select",
+  className,
+  onBlur,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  onBlur?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selected = value ? value.split(",").filter(Boolean) : [];
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+        onBlur?.();
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [onBlur]);
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          className,
+          "flex items-center justify-between gap-2 text-left",
+          selected.length === 0 && "text-muted-foreground",
+        )}
+      >
+        <span className="truncate">{displayLabel() || placeholder}</span>
+        <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+          <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o}
+                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  onChange={() => toggle(o)}
+                  className="size-3.5"
+                />
+                <span className="truncate">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Angular's searchOptions -> payload key mapping (global_Fields_SearchOption "data" object)
 const SEARCH_OPTIONS: { label: string; key: string }[] = [
@@ -956,20 +1060,13 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
             <>
               <div className="flex-1 min-w-[220px]">
                 <label className={LABEL}>Invoice Number</label>
-                <select
+                <F4MultiSelect
+                  options={invoiceF4List}
                   value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  onChange={setInvoiceNumber}
+                  placeholder="Select Invoice"
                   className={GREEN_INPUT}
-                >
-                  <option value="" disabled>
-                    Select Invoice
-                  </option>
-                  {invoiceF4List.map((inv) => (
-                    <option key={inv} value={inv}>
-                      {inv}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <button
                 onClick={handleGetInvoice}
@@ -1013,24 +1110,17 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
           {isWithout && searchResults.length === 0 && (
             <div className="w-full">
               <label className={LABEL}>DC Reference Number</label>
-              <select
+              <F4MultiSelect
+                options={invoiceF4List}
                 value={dcRef}
-                onChange={(e) => {
+                onChange={(value) => {
                   setDcTouched(true);
-                  handleDcRefChange(e.target.value);
+                  handleDcRefChange(value);
                 }}
                 onBlur={() => setDcTouched(true)}
+                placeholder="Select DC Reference"
                 className={GREEN_INPUT}
-              >
-                <option value="" disabled>
-                  Select DC Reference
-                </option>
-                {invoiceF4List.map((inv) => (
-                  <option key={inv} value={inv}>
-                    {inv}
-                  </option>
-                ))}
-              </select>
+              />
               {dcTouched && !dcRef.trim() && (
                 <p className="mt-1 text-[11px] text-red-500 font-medium">DC Reference Number is required</p>
               )}
