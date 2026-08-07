@@ -1832,7 +1832,7 @@ function InvoiceFilterDownload({
         ) : (
           <>
             <div className="overflow-x-auto scrollbar-elegant animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="p-4 grid grid-cols-6 min-w-[1100px] gap-x-3 gap-y-2">
+            <div className="p-4 grid grid-cols-3 min-w-[620px] gap-x-3 gap-y-2">
               <DateField label="From Date" value={fromDate} onChange={setFromDate} />
               <DateField label="To Date" value={toDate} onChange={setToDate} />
               <PlantField value={fPlant} onChange={setFPlant} />
