@@ -1,30 +1,27 @@
 ## Goal
-On every Reports screen, keep the title/header card fixed at the top and make only the filters + results area scrollable.
-
-## Affected files
-All 8 report route files:
-- reports.index.tsx
-- reports.business-share-matrix.tsx
-- reports.damage-list.tsx
-- reports.freight-bills.tsx
-- reports.insurance.tsx
-- reports.loading-factor-cost.tsx
-- reports.pending-pods.tsx
-- reports.service-level-report.tsx
-- reports.transit-eway-bill.tsx
+In Invoice Load Details > Filter & Download, keep the filter fields in the same 6-across grid layout when the window narrows, instead of reflowing to 3 / 2 / 1 columns.
 
 ## Change
-Replace each screen's outer `<div className="p-4 sm:p-6 lg:p-8 space-y-5">` wrapper with a flex column that fills the parent height:
+File: `src/routes/invoice-load-details.tsx` — the filter grid only (presentation, no logic).
 
+Replace the breakpoint-based grid:
+
+```text
+grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6
 ```
-<div className="flex flex-col h-full">
-  <div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-3 shrink-0">
-    {/* title/header card — stays fixed */}
-  </div>
-  <div className="flex-1 overflow-y-auto scrollbar-elegant px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 space-y-5">
-    {/* filters card + empty-state / results card — scrolls */}
+
+with a fixed 6-column grid that has a minimum width, inside a horizontally scrollable wrapper:
+
+```text
+<div className="overflow-x-auto scrollbar-elegant">
+  <div className="p-4 grid grid-cols-6 min-w-[1100px] gap-x-3 gap-y-2">
+    ...same 7 fields, unchanged...
   </div>
 </div>
 ```
 
-No logic changes; presentation only. Relies on `main` in `app-shell.tsx` already providing a bounded scroll container.
+Result: alignment stays identical at every width — From Date, To Date, Plant, Division, Transporter, Vehicle Type on row 1 and Status on row 2. On narrow screens the filter card scrolls sideways instead of re-stacking.
+
+## Notes
+- No state, data-binding, or filter logic changes.
+- The action bar (Reset / Download PDF / Download Excel / Apply Filter) stays as-is.
