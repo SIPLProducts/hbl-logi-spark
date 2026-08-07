@@ -6,8 +6,12 @@ import Swal from "sweetalert2";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+const RED_INPUT =
+  "h-7 w-full rounded-md bg-red-50 dark:bg-red-900/20 border border-red-500 px-2 text-[12px] text-red-600 font-medium outline-none focus:border-red-600 focus:ring-2 focus:ring-red-500/30 placeholder:text-red-300";
 const LABEL =
   "block text-[11px] font-semibold text-muted-foreground mb-0.5";
+const RED_LABEL =
+  "block text-[11px] font-semibold text-red-600 mb-0.5";
 
 const SEARCH_OPTIONS = [
   "Reference",
@@ -1585,11 +1589,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
             )}
 
             <div className="animate-in fade-in slide-in-from-top-2">
-              <label className={LABEL}>Finance Details</label>
+              <label className={RED_LABEL}>Finance Details</label>
               <select
                 value={financeDetails}
                 onChange={(e) => setFinanceDetails(e.target.value)}
-                className={GREEN_INPUT}
+                className={RED_INPUT}
               >
                 <option value="" disabled>
                   Select Finance Details
@@ -1602,39 +1606,39 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
             {financeDetails === "Yes" && (
               <>
                 <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>JV Number</label>
+                  <label className={RED_LABEL}>JV Number</label>
                   <input
                     value={jvNumber}
                     onChange={(e) => setJvNumber(e.target.value)}
                     placeholder="Enter JV Number"
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>JV Date</label>
+                  <label className={RED_LABEL}>JV Date</label>
                   <input
                     type="date"
                     value={jvDate}
                     onChange={(e) => setJvDate(e.target.value)}
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>UTR Number</label>
+                  <label className={RED_LABEL}>UTR Number</label>
                   <input
                     value={utrNumber}
                     onChange={(e) => setUtrNumber(e.target.value)}
                     placeholder="Enter UTR Number"
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>UTR Date</label>
+                  <label className={RED_LABEL}>UTR Date</label>
                   <input
                     type="date"
                     value={utrDate}
                     onChange={(e) => setUtrDate(e.target.value)}
-                    className={GREEN_INPUT}
+                    className={RED_INPUT}
                   />
                 </div>
               </>
