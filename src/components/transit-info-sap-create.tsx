@@ -1,23 +1,24 @@
 import { useState, useEffect } from "react";
 import {
   Search,
-  MoreVertical,
   Save,
   ChevronLeft,
   ChevronRight,
-  Pencil,
-  Trash2,
-  Check,
-  X
+  Loader2,
 } from "lucide-react";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
 
-const GREEN_INPUT =
+// ── Style constants (mirrors OrderInfoSapCreate) ────────────────────────────
+const INPUT_NORMAL =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
-const LABEL =
-  "block text-[11px] font-semibold text-muted-foreground mb-0.5";
+const INPUT_READONLY =
+  "h-7 w-full rounded-md bg-muted/60 border border-input px-2 text-[12px] text-foreground font-medium outline-none cursor-not-allowed";
+const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
+// Small inline-table edit input (matches OrderInfo's search-results edit cells)
+const EDIT_CELL_INPUT =
+  "h-6 w-28 rounded border border-input px-1 text-[11px] bg-white outline-none focus:border-ring focus:ring-1 focus:ring-ring/40";
 
 const SEARCH_OPTIONS = [
   "Reference",
@@ -55,6 +56,7 @@ function getLoggedInUser(): string {
     return String(u?.USER ?? u?.USERNAME ?? u?.USER_ID ?? "");
   } catch { return ""; }
 }
+
 const FIELDS: FieldSpec[] = [
   { label: "Invoice Number" },
   { label: "Physical arrived at destination date", type: "datetime" },
@@ -67,6 +69,71 @@ const FIELDS: FieldSpec[] = [
   },
   { label: "POD Scan", type: "file" },
 ];
+
+// ── Field/type maps for inline table editing (OrderInfo pattern) ───────────
+const HEADER_FIELDS: { field: string; label: string; type: string }[] = [
+  { field: "ZREFNO", label: "Ref No", type: "text" },
+  { field: "ZINV_NO", label: "Invoice No", type: "text" },
+  { field: "ZODN_NO", label: "ODN No", type: "text" },
+  { field: "ZSONO", label: "SO No", type: "text" },
+  { field: "ZSALE_PERSON", label: "Sales Person", type: "text" },
+  { field: "ZPY_ARRIVED_DEST", label: "Physical Arrived", type: "datetime-local" },
+  { field: "ZUNLOADING_DT", label: "Unloading DT", type: "datetime-local" },
+  { field: "ZPOD_SCAN", label: "POD Scan", type: "datetime-local" },
+  { field: "ZSIT_SALE", label: "SIT/SALE", type: "text" },
+  { field: "ZLOCATION", label: "Location", type: "text" },
+  { field: "ZPLANT", label: "Plant", type: "text" },
+  { field: "ZDIVISION", label: "Division", type: "text" },
+  { field: "ZCREATED_DT", label: "Created Date", type: "date" },
+  { field: "ZVEH_TYPE", label: "Vehicle Type", type: "text" },
+];
+
+const ITEM_FIELDS: { field: string; label: string; type: string }[] = [
+  { field: "ZREFNO", label: "Reference Number", type: "text" },
+  { field: "ZINV_NO", label: "Invoice Number", type: "text" },
+  { field: "ZVEH_NUM", label: "Vehicle Number", type: "text" },
+  { field: "ZVEH_LINE", label: "Vehicle Line", type: "number" },
+  { field: "ZWORK_ORDER", label: "Work Order", type: "text" },
+  { field: "ZLRNO", label: "LR No", type: "text" },
+  { field: "ZTRANSPORTER", label: "Transporter", type: "text" },
+];
+
+// Small reusable icon-button set (matches OrderInfoSapCreate's search-results action cell)
+function IconButton({
+  variant,
+  onClick,
+  title,
+  path,
+}: {
+  variant: "blue" | "red" | "emerald" | "gray";
+  onClick: () => void;
+  title?: string;
+  path: string;
+}) {
+  const styles: Record<string, string> = {
+    blue: "bg-blue-50 text-blue-600 hover:bg-blue-100",
+    red: "bg-red-50 text-red-600 hover:bg-red-100",
+    emerald: "bg-emerald-50 text-emerald-600 hover:bg-emerald-100",
+    gray: "bg-gray-100 text-gray-600 hover:bg-gray-200",
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`size-6 grid place-items-center rounded ${styles[variant]}`}
+    >
+      <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} />
+      </svg>
+    </button>
+  );
+}
+
+const EDIT_PATH = "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z";
+const DELETE_PATH = "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16";
+const CHECK_PATH = "M5 13l4 4L19 7";
+const X_PATH = "M6 18L18 6M6 6l12 12";
 
 export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" }) {
 
@@ -82,7 +149,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [unloadingDate, setUnloadingDate] = useState("");
   const [podScanDate, setPodScanDate] = useState("");
   const [sitSale, setSitSale] = useState("");
-  const [headerData, setHeaderData] = useState<any[]>([]);
+  const [headerData, setHeaderData] = useState<any>(null);
   const [itemsList, setItemsList] = useState<any[]>([]);
   const [showTable, setShowTable] = useState(false);
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
@@ -95,6 +162,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       lineNumber: "",
     },
   ]);
+
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [loadingSave, setLoadingSave] = useState(false);
 
   useEffect(() => {
     // Reset search fields
@@ -109,7 +179,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setSitSale("");
 
     // Reset table data
-    setHeaderData([]);
+    setHeaderData(null);
     setItemsList([]);
     setShowTable(false);
     setTableData([EMPTY_ROW()]);
@@ -171,7 +241,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setPodScanDate("");
     setSitSale("");
 
-    setHeaderData([]);
+    setHeaderData(null);
     setItemsList([]);
     setShowTable(false);
 
@@ -231,23 +301,46 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     }
   };
 
+  // ── Table helpers (matches OrderInfoSapCreate's reference table) ──
+  const toggleRowSelect = (index: number) =>
+    setTableData((prev) => prev.map((r, i) => i === index ? { ...r, selected: !r.selected } : r));
+
+  const removeRow = (index: number) => {
+    if (tableData.length === 1) return;
+    setTableData((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const saveTransitInfo = async (
     action: "stay" | "next" | "previous" = "stay"
   ) => {
+    const selectedRows = tableData.filter((r) => r.selected);
+
+    if (selectedRows.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        text: "Please select at least one reference row before saving",
+      });
+      return;
+    }
+
+    setLoadingSave(true);
     try {
       const HEAD = {
-        REFNO: tableData[0]?.REF_NO || "",
-        INV_NO: invoiceNumber,
+        REFNO: selectedRows[0]?.REF_NO || "",
+        INV_NO: invoiceNumber || "",
 
         PY_ARRIVED_DEST: physicalArrivedDate,
         UNLOADING_DT: unloadingDate,
         POD_SCAN: podScanDate,
+        SIT_SALE: sitSale || "",
 
-        SIT_SALE: sitSale,
+        ZUSER: getLoggedInUser(),
+        ZUSER_CH: "",
+        // ZPOD_FNAME: podFileBase64 || "",
+        // ZPATH: podFilePath || "",
       };
 
-      console.log("REFERENCE ITEMS BEFORE SAVE:", referenceItems);
-      const ITEM = tableData.map((item, idx) => ({
+      const ITEM = selectedRows.map((item, idx) => ({
         REFNO: item.REF_NO,
         INV_NO: invoiceNumber,
         POSNR: (idx + 1) * 10,
@@ -291,6 +384,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
         // Clear all fields after clicking OK
         resetAll();
+        // action === "next" / "previous": parent handles navigation
       } else {
         Swal.fire({
           icon: "error",
@@ -307,6 +401,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         text: "Error while saving",
         confirmButtonText: "OK",
       });
+    } finally {
+      setLoadingSave(false);
     }
   };
 
@@ -314,7 +410,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     console.log("SEARCH BUTTON CLICKED");
 
     // Reset old data
-    setHeaderData([]);
+    setHeaderData(null);
     setItemsList([]);
     setShowTable(false);
 
@@ -370,6 +466,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       payload.data[selectedField] = searchValue.trim();
     }
 
+    setLoadingSearch(true);
     try {
 
       let res: any;
@@ -404,8 +501,13 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         return;
       }
 
-      setHeaderData(res.HEADER);
-      setItemsList(res.ITEMS || []);
+      // Matches the Angular reference exactly: headerData is a single object
+      // built from HEADER[0] (not an array). The header/item Save buttons
+      // always submit the CURRENT headerData together with the full
+      // itemsList — so header and items must stay in sync as one unit,
+      // exactly like TransitInfoComponent.updateSearchRow(headerData, itemsList).
+      setHeaderData({ ...res.HEADER[0], isEdit: false });
+      setItemsList((res.ITEMS || []).map((item: any) => ({ ...item, isEdit: false })));
       setShowTable(true);
 
       const firstHeader = res.HEADER[0];
@@ -430,6 +532,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         icon: "success",
         title: "Success",
         text: "Data fetched successfully",
+        timer: 1200,
+        showConfirmButton: false,
       });
 
     } catch (err) {
@@ -440,17 +544,19 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         title: "Error",
         text: "Error fetching data",
       });
+    } finally {
+      setLoadingSearch(false);
     }
   };
 
   const editSearchRow = (type: "header" | "item", index: number) => {
     if (type === "header") {
-      const updated = [...headerData];
-      updated[index].isEdit = !updated[index].isEdit;
-      setHeaderData(updated);
+      if (!headerData) return;
+      setHeaderData({ ...headerData, _backup: { ...headerData }, isEdit: true });
     } else {
       const updated = [...itemsList];
-      updated[index].isEdit = !updated[index].isEdit;
+      updated[index]._backup = { ...updated[index] };
+      updated[index].isEdit = true;
       setItemsList(updated);
     }
   };
@@ -505,7 +611,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       ZDIVISION: headerRow.ZDIVISION || "",
       ZVEH_TYPE: headerRow.ZVEH_TYPE || "",
       ZUSER: headerRow.ZUSER || "",
-      ZUSER_CH: getLoggedInUser,
+      ZUSER_CH: getLoggedInUser(),
     };
 
     const itemPayload = itemRows.map((item: any) => ({
@@ -519,7 +625,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       ZWORK_ORDER: item.ZWORK_ORDER || "",
       ZTRANSPORTER: item.ZTRANSPORTER || "",
       ZUSER: item.ZUSER || "",
-      ZUSER_CH: getLoggedInUser,
+      ZUSER_CH: getLoggedInUser(),
     }));
 
     const payload = {
@@ -547,20 +653,15 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           "success"
         );
 
-        setHeaderData((prev) =>
-          prev.map((h) => ({
-            ...h,
-            isEdit: false,
-          }))
-        );
-
         setItemsList((prev) =>
-          prev.map((i) => ({
-            ...i,
-            isEdit: false,
-          }))
+          prev.map((i) => {
+            const { _backup, ...rest } = i;
+            return { ...rest, isEdit: false };
+          })
         );
 
+        // Refresh from the server — this also repopulates headerData with
+        // the freshly saved values.
         onSearchReference();
       } else {
         Swal.fire(
@@ -576,33 +677,85 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
   const cancelSearchEdit = (type: "header" | "item", index: number) => {
     if (type === "header") {
-      const updated = [...headerData];
-      updated[index].isEdit = false;
-      setHeaderData(updated);
+      if (!headerData) return;
+      if (headerData._backup) {
+        setHeaderData({ ...headerData._backup, isEdit: false });
+      } else {
+        setHeaderData({ ...headerData, isEdit: false });
+      }
     } else {
       const updated = [...itemsList];
-      updated[index].isEdit = false;
+      if (updated[index]._backup) {
+        updated[index] = { ...updated[index]._backup, isEdit: false };
+      } else {
+        updated[index].isEdit = false;
+      }
       setItemsList(updated);
     }
   };
 
 
-  const deleteRow = (type: "header" | "item", index: number) => {
-    Swal.fire({
-      title: "Delete?",
-      text: "Are you sure you want to delete this record?",
+  const deleteRow = async (type: "header" | "item", index: number) => {
+    const row = type === "header" ? headerData : itemsList[index];
+    if (!row) return;
+
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to delete this record? This action cannot be undone.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        if (type === "header") {
-          setHeaderData(headerData.filter((_, i) => i !== index));
-        } else {
-          setItemsList(itemsList.filter((_, i) => i !== index));
-        }
-      }
+      confirmButtonText: "Yes, Delete",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#d33",
     });
+    if (!result.isConfirmed) return;
+
+    const payload = {
+      DELETE: [
+        {
+          ZREFNO: row.ZREFNO,
+          ZINV_NO: row.ZINV_NO,
+          ZLINE_NO: row.ZLINE_NO || "",
+        },
+      ],
+    };
+
+    try {
+      const res: any = isSap
+        ? await service.TransitInfoDeleteWithSap(payload)
+        : await service.TransitInfoDeleteWithOutSap(payload);
+
+      if (res?.STATUS === "TRUE" || res?.STATUS === true || res?.NUMBER === "200") {
+        await Swal.fire({
+          icon: "success",
+          title: "Deleted",
+          text: res.MSG || res.MESSAGE || "Record deleted successfully",
+          confirmButtonText: "Ok",
+        });
+
+        if (type === "header") {
+          // Deleting the header removes the whole record — clear everything.
+          setHeaderData(null);
+          setItemsList([]);
+          setShowTable(false);
+        } else {
+          setItemsList((prev) => prev.filter((_, i) => i !== index));
+        }
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Failed",
+          text: res?.MSG || res?.MESSAGE || "Delete failed",
+        });
+      }
+    } catch (err: any) {
+      console.error("Delete Error:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: err?.error?.MESSAGE || "Something went wrong while deleting",
+      });
+    }
   };
 
   return (
@@ -626,7 +779,12 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
             {tableData.map((row, index) => (
               <tr key={index}>
                 <td className="px-3 py-0.5 text-center">
-                  <input type="checkbox" />
+                  <input
+                    type="checkbox"
+                    checked={row.selected}
+                    onChange={() => toggleRowSelect(index)}
+                    className="size-4 accent-sky-600"
+                  />
                 </td>
 
                 <td className="px-3 py-0.5 text-center">
@@ -636,6 +794,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                 <td className="px-3 py-0.5">
                   <input
                     value={row.REF_NO}
+                    readOnly={index !== 0}
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -644,13 +803,14 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
-                    className={GREEN_INPUT + " text-center"}
+                    className={(index !== 0 ? INPUT_READONLY : INPUT_NORMAL) + " text-center"}
                   />
                 </td>
 
                 <td className="px-3 py-0.5">
                   <input
                     value={row.WORK_ORDER_NO}
+                    readOnly={index !== 0}
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -659,13 +819,14 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
-                    className={GREEN_INPUT + " text-center"}
+                    className={(index !== 0 ? INPUT_READONLY : INPUT_NORMAL) + " text-center"}
                   />
                 </td>
 
                 <td className="px-3 py-0.5">
                   <input
                     value={row.LR_NO}
+                    readOnly={index !== 0}
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -674,13 +835,14 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
-                    className={GREEN_INPUT + " text-center"}
+                    className={(index !== 0 ? INPUT_READONLY : INPUT_NORMAL) + " text-center"}
                   />
                 </td>
 
                 <td className="px-3 py-0.5">
                   <input
                     value={row.TRANSPORTER}
+                    readOnly={index !== 0}
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -689,14 +851,21 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
-                    className={GREEN_INPUT + " text-center"}
+                    className={(index !== 0 ? INPUT_READONLY : INPUT_NORMAL) + " text-center"}
                   />
                 </td>
 
                 <td className="px-3 py-0.5 text-center">
-                  <button>
-                    <MoreVertical className="size-4" />
-                  </button>
+                  {tableData.length > 1 && (
+                    <button
+                      onClick={() => removeRow(index)}
+                      className="size-6 grid place-items-center rounded-md text-red-500 hover:bg-red-50 mx-auto"
+                    >
+                      <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={DELETE_PATH} />
+                      </svg>
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -726,18 +895,17 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
             <input
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") onSearchReference(); }}
               placeholder="Enter Reference / Invoice / ODN / SO Number"
               className="h-7 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
             />
             <button
               type="button"
-              onClick={() => {
-                console.log("BUTTON CLICK");
-                onSearchReference();
-              }}
-              className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta"
+              onClick={onSearchReference}
+              disabled={loadingSearch}
+              className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta disabled:opacity-50"
             >
-              <Search className="size-4" />
+              {loadingSearch ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
             </button>
           </div>
         </div>
@@ -785,573 +953,216 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         </div>
       )}
 
-      {showTable && headerData.length > 0 && (
-        <div className="mt-4 rounded-xl border border-hairline bg-surface shadow-elegant overflow-hidden">
-          <div className="bg-gradient-primary text-primary-foreground px-4 py-2 font-semibold">
+      {showTable && headerData && (
+        <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+          <div className="bg-gradient-primary text-primary-foreground px-4 py-2 font-semibold text-[13px]">
             Header Details
           </div>
 
-          <div className="overflow-x-auto w-full">
-            <table className="min-w-[1800px] text-[12px] border-collapse">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="border px-2 py-2">Ref No</th>
-                  <th className="border px-2 py-2">Invoice No</th>
-                  <th className="border px-2 py-2">ODN No</th>
-                  <th className="border px-2 py-2">SO No</th>
-                  <th className="border px-2 py-2">Sales Person</th>
-                  <th className="border px-2 py-2">Physical Arrived</th>
-                  <th className="border px-2 py-2">Unloading DT</th>
-                  <th className="border px-2 py-2">POD Scan</th>
-                  <th className="border px-2 py-2">SIT/SALE</th>
-                  <th className="border px-2 py-2">Location</th>
-                  <th className="border px-2 py-2">Plant</th>
-                  <th className="border px-2 py-2">Division</th>
-                  <th className="border px-2 py-2">Created Date</th>
-                  <th className="border px-2 py-2">Vehicle Type</th>
-                  <th className="border px-2 py-2">POD Name</th>
-                  <th className="border px-2 py-2">Action</th>
-                </tr>
-              </thead>
+          <div className="max-h-[560px] overflow-auto">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-[12.5px]">
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                    {HEADER_FIELDS.map(({ label }) => (
+                      <th key={label} className="px-3 py-2.5 whitespace-nowrap text-left">{label}</th>
+                    ))}
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">POD Name</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Action</th>
+                  </tr>
+                </thead>
 
-              <tbody>
-                {headerData.map((header: any, index: number) => (
-                  <tr key={index}>
-
-                    {/* Ref No */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="text"
-                          value={header.ZREFNO || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZREFNO = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1 w-28"
-                        />
-                      ) : (
-                        header.ZREFNO
-                      )}
-                    </td>
-
-                    {/* Invoice No */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="text"
-                          value={header.ZINV_NO || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZINV_NO = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1 w-32"
-                        />
-                      ) : (
-                        header.ZINV_NO
-                      )}
-                    </td>
-
-                    {/* ODN No */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="text"
-                          value={header.ZODN_NO || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZODN_NO = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1 w-32"
-                        />
-                      ) : (
-                        header.ZODN_NO
-                      )}
-                    </td>
-
-                    {/* SO No */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="text"
-                          value={header.ZSONO || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZSONO = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1 w-32"
-                        />
-                      ) : (
-                        header.ZSONO
-                      )}
-                    </td>
-
-                    {/* Sales Person */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="text"
-                          value={header.ZSALE_PERSON || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZSALE_PERSON = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1 w-36"
-                        />
-                      ) : (
-                        header.ZSALE_PERSON
-                      )}
-                    </td>
-
-                    {/* Physical Arrived */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="datetime-local"
-                          value={header.ZPY_ARRIVED_DEST || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZPY_ARRIVED_DEST = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1"
-                        />
-                      ) : (
-                        header.ZPY_ARRIVED_DEST
-                      )}
-                    </td>
-
-                    {/* Unloading DT */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="datetime-local"
-                          value={header.ZUNLOADING_DT || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZUNLOADING_DT = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1"
-                        />
-                      ) : (
-                        header.ZUNLOADING_DT
-                      )}
-                    </td>
-
-                    {/* POD Scan */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="datetime-local"
-                          value={header.ZPOD_SCAN || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZPOD_SCAN = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1"
-                        />
-                      ) : (
-                        header.ZPOD_SCAN
-                      )}
-                    </td>
-
-                    {/* SIT / SALE */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="text"
-                          value={header.ZSIT_SALE || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZSIT_SALE = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1 w-24"
-                        />
-                      ) : (
-                        header.ZSIT_SALE
-                      )}
-                    </td>
-
-                    {/* Location */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="text"
-                          value={header.ZLOCATION || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZLOCATION = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1 w-28"
-                        />
-                      ) : (
-                        header.ZLOCATION
-                      )}
-                    </td>
-
-                    {/* Plant */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="text"
-                          value={header.ZPLANT || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZPLANT = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1 w-24"
-                        />
-                      ) : (
-                        header.ZPLANT
-                      )}
-                    </td>
-
-                    {/* Division */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="text"
-                          value={header.ZDIVISION || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZDIVISION = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1 w-24"
-                        />
-                      ) : (
-                        header.ZDIVISION
-                      )}
-                    </td>
-
-                    {/* Created Date */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="date"
-                          value={header.ZCREATED_DT || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZCREATED_DT = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1"
-                        />
-                      ) : (
-                        header.ZCREATED_DT
-                      )}
-                    </td>
-
-                    {/* Vehicle Type */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="text"
-                          value={header.ZVEH_TYPE || ""}
-                          onChange={(e) => {
-                            const data = [...headerData];
-                            data[index].ZVEH_TYPE = e.target.value;
-                            setHeaderData(data);
-                          }}
-                          className="border rounded px-2 py-1 w-24"
-                        />
-                      ) : (
-                        header.ZVEH_TYPE
-                      )}
-                    </td>
+                <tbody className="divide-y divide-hairline/70">
+                  <tr className="bg-surface hover:bg-muted/50">
+                    {HEADER_FIELDS.map(({ field, type }) => (
+                      <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
+                        {headerData.isEdit ? (
+                          <input
+                            type={type}
+                            value={headerData[field] || ""}
+                            onChange={(e) =>
+                              setHeaderData((prev: any) => ({ ...prev, [field]: e.target.value }))
+                            }
+                            className={EDIT_CELL_INPUT}
+                          />
+                        ) : (type === "date" || type === "datetime-local") && headerData[field] ? (
+                          new Date(headerData[field]).toLocaleDateString("en-GB")
+                        ) : (
+                          headerData[field] || "-"
+                        )}
+                      </td>
+                    ))}
 
                     {/* POD Name */}
-                    <td>
-                      {header.isEdit ? (
-                        <input
-                          type="file"
-                          accept=".jpg,.jpeg,.png"
-                          //  onChange={handleFileChange}
-                          className="border rounded px-2 py-1"
-                        />
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {headerData.isEdit ? (
+                        <input type="file" accept=".jpg,.jpeg,.png" className={EDIT_CELL_INPUT + " py-0.5"} />
                       ) : (
-                        header.ZPODNAME || "-"
+                        headerData.ZPODNAME || "-"
                       )}
                     </td>
 
                     {/* Action */}
-                    <td className="border px-2 py-2 text-center">
-                      {!header.isEdit ? (
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => editSearchRow("header", index)}
-                            className="rounded bg-blue-600 p-1 text-white hover:bg-blue-700"
-                          >
-                            <Pencil size={15} />
-                          </button>
-
-                          <button
-                            onClick={() => deleteRow("header", index)}
-                            className="rounded bg-red-600 p-1 text-white hover:bg-red-700"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {!headerData.isEdit ? (
+                        <div className="flex gap-2 justify-center">
+                          <IconButton variant="blue" title="Edit" path={EDIT_PATH} onClick={() => editSearchRow("header", 0)} />
+                          <IconButton variant="red" title="Delete" path={DELETE_PATH} onClick={() => deleteRow("header", 0)} />
                         </div>
                       ) : (
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => updateSearchRow(header, itemsList)}
-                            className="rounded bg-green-600 p-1 text-white hover:bg-green-700"
-                          >
-                            <Check size={15} />
-                          </button>
-
-                          <button
-                            onClick={() => cancelSearchEdit("header", index)}
-                            className="rounded bg-gray-600 p-1 text-white hover:bg-gray-700"
-                          >
-                            <X size={15} />
-                          </button>
+                        <div className="flex gap-2 justify-center">
+                          <IconButton
+                            variant="emerald"
+                            title="Save"
+                            path={CHECK_PATH}
+                            onClick={() => updateSearchRow(headerData, itemsList)}
+                          />
+                          <IconButton variant="gray" title="Cancel" path={X_PATH} onClick={() => cancelSearchEdit("header", 0)} />
                         </div>
                       )}
                     </td>
-
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
       {showTable && itemsList.length > 0 && (
-        <div className="mt-4 rounded-xl border border-hairline bg-surface shadow-elegant overflow-hidden">
-          <div className="bg-gradient-primary text-primary-foreground px-4 py-2 font-semibold">
+        <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+          <div className="bg-gradient-primary text-primary-foreground px-4 py-2 font-semibold text-[13px]">
             Line Items
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-[12px]">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="border px-2 py-2">Ref No</th>
-                  <th className="border px-2 py-2">Line No</th>
-                  <th className="border px-2 py-2">Invoice No</th>
-                  <th className="border px-2 py-2">Vehicle No</th>
-                  <th className="border px-2 py-2">Work Order</th>
-                  <th className="border px-2 py-2">LR No</th>
-                  <th className="border px-2 py-2">Transporter</th>
-                  <th className="border px-2 py-2">Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {itemsList.map((item: any, index: number) => (
-                  <tr key={index} className={item.isEdit ? "bg-blue-50" : ""}>
-
-                    {/* Ref No */}
-                    <td className="border px-2 py-2">
-                      {item.isEdit ? (
-                        <input
-                          type="text"
-                          value={item.ZREFNO || ""}
-                          onChange={(e) => {
-                            const data = [...itemsList];
-                            data[index].ZREFNO = e.target.value;
-                            setItemsList(data);
-                          }}
-                          className="w-28 rounded border px-2 py-1"
-                        />
-                      ) : (
-                        item.ZREFNO
-                      )}
-                    </td>
-
-                    {/* Line No (Not Editable) */}
-                    <td className="border px-2 py-2 text-center">
-                      {item.ZLINE_NO}
-                    </td>
-
-                    {/* Invoice No */}
-                    <td className="border px-2 py-2">
-                      {item.isEdit ? (
-                        <input
-                          type="text"
-                          value={item.ZINV_NO || ""}
-                          onChange={(e) => {
-                            const data = [...itemsList];
-                            data[index].ZINV_NO = e.target.value;
-                            setItemsList(data);
-                          }}
-                          className="w-32 rounded border px-2 py-1"
-                        />
-                      ) : (
-                        item.ZINV_NO
-                      )}
-                    </td>
-
-                    {/* Vehicle No */}
-                    <td className="border px-2 py-2">
-                      {item.isEdit ? (
-                        <input
-                          type="text"
-                          value={item.ZVEH_NUM || ""}
-                          onChange={(e) => {
-                            const data = [...itemsList];
-                            data[index].ZVEH_NUM = e.target.value;
-                            setItemsList(data);
-                          }}
-                          className="w-32 rounded border px-2 py-1"
-                        />
-                      ) : (
-                        item.ZVEH_NUM
-                      )}
-                    </td>
-
-                    {/* Vehicle Line */}
-                    <td className="border px-2 py-2">
-                      {item.isEdit ? (
-                        <input
-                          type="number"
-                          value={item.ZVEH_LINE || ""}
-                          onChange={(e) => {
-                            const data = [...itemsList];
-                            data[index].ZVEH_LINE = e.target.value;
-                            setItemsList(data);
-                          }}
-                          className="w-24 rounded border px-2 py-1"
-                        />
-                      ) : (
-                        item.ZVEH_LINE
-                      )}
-                    </td>
-
-                    {/* Work Order */}
-                    <td className="border px-2 py-2">
-                      {item.isEdit ? (
-                        <input
-                          type="text"
-                          value={item.ZWORK_ORDER || ""}
-                          onChange={(e) => {
-                            const data = [...itemsList];
-                            data[index].ZWORK_ORDER = e.target.value;
-                            setItemsList(data);
-                          }}
-                          className="w-32 rounded border px-2 py-1"
-                        />
-                      ) : (
-                        item.ZWORK_ORDER
-                      )}
-                    </td>
-
-                    {/* LR No */}
-                    <td className="border px-2 py-2">
-                      {item.isEdit ? (
-                        <input
-                          type="text"
-                          value={item.ZLRNO || ""}
-                          onChange={(e) => {
-                            const data = [...itemsList];
-                            data[index].ZLRNO = e.target.value;
-                            setItemsList(data);
-                          }}
-                          className="w-32 rounded border px-2 py-1"
-                        />
-                      ) : (
-                        item.ZLRNO
-                      )}
-                    </td>
-
-                    {/* Transporter */}
-                    <td className="border px-2 py-2">
-                      {item.isEdit ? (
-                        <input
-                          type="text"
-                          value={item.ZTRANSPORTER || ""}
-                          onChange={(e) => {
-                            const data = [...itemsList];
-                            data[index].ZTRANSPORTER = e.target.value;
-                            setItemsList(data);
-                          }}
-                          className="w-40 rounded border px-2 py-1"
-                        />
-                      ) : (
-                        item.ZTRANSPORTER
-                      )}
-                    </td>
-
-                    {/* Action */}
-                    <td className="border px-2 py-2 text-center">
-                      {!item.isEdit ? (
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => editSearchRow("item", index)}
-                            className="rounded bg-blue-600 p-1 text-white hover:bg-blue-700"
-                          >
-                            <Pencil size={15} />
-                          </button>
-
-                          <button
-                            onClick={() => deleteRow("item", index)}
-                            className="rounded bg-red-600 p-1 text-white hover:bg-red-700"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => updateSearchRow(headerData[0], itemsList)}
-                            className="rounded bg-green-600 p-1 text-white hover:bg-green-700"
-                          >
-                            <Check size={15} />
-                          </button>
-
-                          <button
-                            onClick={() => cancelSearchEdit("item", index)}
-                            className="rounded bg-gray-600 p-1 text-white hover:bg-gray-700"
-                          >
-                            <X size={15} />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-
+          <div className="max-h-[560px] overflow-auto">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-[12.5px]">
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Reference Number</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Line No</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Invoice Number</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Vehicle Number</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Vehicle Line</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Work Order</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">LR No</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Transporter</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody className="divide-y divide-hairline/70">
+                  {itemsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">
+                        No Records Found
+                      </td>
+                    </tr>
+                  ) : (
+                    itemsList.map((item: any, index: number) => (
+                      <tr
+                        key={index}
+                        className={index % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}
+                      >
+                        {/* Reference Number */}
+                        <td className="px-3 py-2 whitespace-nowrap text-center">
+                          {item.isEdit ? (
+                            <input
+                              type="text"
+                              value={item.ZREFNO ?? ""}
+                              onChange={(e) => {
+                                const data = [...itemsList];
+                                data[index] = { ...data[index], ZREFNO: e.target.value };
+                                setItemsList(data);
+                              }}
+                              className={EDIT_CELL_INPUT}
+                            />
+                          ) : (
+                            item.ZREFNO || "-"
+                          )}
+                        </td>
+
+                        {/* Line No — always readonly */}
+                        <td className="px-3 py-2 whitespace-nowrap text-center">
+                          {item.ZLINE_NO ?? "-"}
+                        </td>
+
+                        {ITEM_FIELDS.slice(1).map(({ field, type }) => (
+                          <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
+                            {item.isEdit ? (
+                              <input
+                                type={type}
+                                value={item[field] ?? ""}
+                                onChange={(e) => {
+                                  const data = [...itemsList];
+                                  data[index] = {
+                                    ...data[index],
+                                    [field]: type === "number" ? Number(e.target.value) : e.target.value,
+                                  };
+                                  setItemsList(data);
+                                }}
+                                className={EDIT_CELL_INPUT}
+                              />
+                            ) : (
+                              item[field] ?? "-"
+                            )}
+                          </td>
+                        ))}
+
+                        {/* Action */}
+                        <td className="px-3 py-2 whitespace-nowrap text-center">
+                          {!item.isEdit ? (
+                            <div className="flex gap-2 justify-center">
+                              <IconButton variant="blue" title="Edit" path={EDIT_PATH} onClick={() => editSearchRow("item", index)} />
+                              <IconButton variant="red" title="Delete" path={DELETE_PATH} onClick={() => deleteRow("item", index)} />
+                            </div>
+                          ) : (
+                            <div className="flex gap-2 justify-center">
+                              <IconButton
+                                variant="emerald"
+                                title="Save"
+                                path={CHECK_PATH}
+                                onClick={() => updateSearchRow(headerData, itemsList)}
+                              />
+                              <IconButton variant="gray" title="Cancel" path={X_PATH} onClick={() => cancelSearchEdit("item", index)} />
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
       {/* Footer action bar */}
-      <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-        {/* <button className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm">
-          <Save className="size-3.5" /> Save
-        </button> */}
+      <div className="flex flex-wrap items-center justify-end gap-2 pt-2">        
         <button
           onClick={() => saveTransitInfo("stay")}
-          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
+          disabled={loadingSave}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
         >
-          <Save className="size-3.5" /> Save
+          {loadingSave ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+          Save
         </button>
         <button
           onClick={() => saveTransitInfo("next")}
-          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
+          disabled={loadingSave}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
         >
           Save and Next
+          <ChevronRight className="size-3.5" />
         </button>
-
         <button
           onClick={() => saveTransitInfo("previous")}
-          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
+          disabled={loadingSave}
+          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
         >
+          <ChevronLeft className="size-3.5" />
           Save and Previous
         </button>
       </div>
@@ -1384,20 +1195,20 @@ function SapField({
           type="datetime-local"
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
-          className={GREEN_INPUT}
+          className={INPUT_NORMAL}
         />
       ) : type === "date" ? (
         <input
           type="date"
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
-          className={GREEN_INPUT}
+          className={INPUT_NORMAL}
         />
       ) : type === "select" ? (
         <select
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
-          className={GREEN_INPUT}
+          className={INPUT_NORMAL}
         >
           <option value="">Select</option>
           {options?.map((option) => (
@@ -1409,14 +1220,14 @@ function SapField({
       ) : type === "file" ? (
         <input
           type="file"
-          className={GREEN_INPUT + " py-1.5"}
+          className={INPUT_NORMAL + " py-1.5"}
         />
       ) : (
         <input
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
           placeholder={placeholder ?? `Enter ${label}`}
-          className={GREEN_INPUT}
+          className={INPUT_NORMAL}
         />
       )}
     </div>

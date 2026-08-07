@@ -141,18 +141,43 @@ function PendingPodsReport() {
 
   // ngOnInit equivalent
   useEffect(() => {
-    // getTransporters()
+    // getTransporters() — also derives Plant + Division from the same F4 payload
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
-        setTransporterList(res?.[0]?.VEND_CODE || []);
+        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+
+        setTransporterList(data?.VEND_CODE || []);
+
+        const plants = Array.isArray(data.PLANT)
+          ? data.PLANT.map((p: any) => ({
+              PLANT: p.WERKS || p.PLANT,
+              PLANT_TEXT: p.PLANT_DESC || p.PLANT_TEXT || p.PLANT,
+            }))
+          : [];
+
+        const divisions = Array.isArray(data.PLANT)
+          ? Array.from(
+              new Map(
+                data.PLANT.map((p: any) => [
+                  p.DIVISION,
+                  { DIVISION: p.DIVISION, DIV_TEXT: p.DIV_TEXT || p.DIVISION },
+                ]),
+              ).values(),
+            )
+          : [];
+
+        setPlantList(plants);
+        setDivisionList(divisions);
       } catch (err) {
-        console.error("Error fetching transporters", err);
+        console.error("Error fetching transporters/plant/division", err);
         setTransporterList([]);
+        setPlantList([]);
+        setDivisionList([]);
       }
     })();
 
-    // fetchpdb()
+    // fetchpdb() — Customer F4
     (async () => {
       try {
         const res: any = await service.getpdb();
@@ -191,20 +216,26 @@ function PendingPodsReport() {
         console.error("Error fetching Incoterms:", err);
       }
     })();
-
-    const userData = getLoggedInUser();
-    setPlantList(userData.PLANTS || []);
-    setDivisionList(userData.DIV || []);
   }, []);
 
+  // Plant option label shows "CODE - Description" (e.g. "1101 - Plant Name"),
+  // matching Transit Eway Bill / OrderInfoSapCreate's Plant dropdown.
   const plantOptions: Option[] = useMemo(
-    () => plantList.map((p: any) => ({ label: p.PLANT_TEXT, value: p.PLANT_TEXT })),
+    () =>
+      plantList.map((p: any) => ({
+        label: `${p.PLANT} - ${p.PLANT_TEXT}`,
+        value: p.PLANT_TEXT,
+      })),
     [plantList],
   );
+
+  // Division option label shows description only (e.g. "NCPP", "Common Service"),
+  // sourced from the F4 payload's DIV_TEXT (falls back to code if description missing).
   const divisionOptions: Option[] = useMemo(
-    () => divisionList.map((d: any) => ({ label: d.DIV_TEXT, value: d.DIVISION })),
+    () => divisionList.map((d: any) => ({ label: d.DIVISION, value: d.DIVISION })),
     [divisionList],
   );
+
   const transporterOptions: Option[] = useMemo(
     () => transporterList.map((t: any) => ({ label: t.TRANSPORTER, value: t.TRANSPORTER })),
     [transporterList],
@@ -551,7 +582,6 @@ function PendingPodsReport() {
             value={division}
             onChange={setDivision}
             searchable
-            renderOption={(o) => `${o.value} - ${o.label}`}
           />
 
           <MultiSelectField
@@ -710,7 +740,6 @@ function MultiSelectField({
   onChange,
   searchable = false,
   error,
-  renderOption,
 }: {
   label: string;
   options: Option[];
@@ -718,7 +747,6 @@ function MultiSelectField({
   onChange: (v: string[]) => void;
   searchable?: boolean;
   error?: string;
-  renderOption?: (o: Option) => string;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -797,7 +825,7 @@ function MultiSelectField({
                   onChange={() => toggle(o.value)}
                   className="size-3.5"
                 />
-                <span className="truncate">{renderOption ? renderOption(o) : o.label}</span>
+                <span className="truncate">{o.label}</span>
               </label>
             ))
           )}

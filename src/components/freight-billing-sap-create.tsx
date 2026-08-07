@@ -40,6 +40,31 @@ const EMPTY_ROW = (): TableRow => ({
   REF_NO: "", WORK_ORDER_NO: "", LR_NO: "", TRANSPORTER: "", LINE_NO: "", selected: false,
 });
 
+// Columns rendered before the "P/A Check" (View) button — kept editable already
+const PRE_PA_EDITABLE_FIELDS: { field: string; type: string }[] = [
+  { field: "ZODN_NO", type: "text" },
+  { field: "ZSONO", type: "text" },
+  { field: "ZSALE_PERSON", type: "text" },
+];
+
+// Columns rendered after the "P/A Check" (View) button — now editable like OrderInfoSapCreate
+const POST_PA_EDITABLE_FIELDS: { field: string; type: string }[] = [
+  { field: "ZPROVAMT", type: "number" },
+  { field: "ZPROVDT", type: "date" },
+  { field: "ZBILLNO", type: "text" },
+  { field: "ZBILLDATE", type: "date" },
+  { field: "ZPHY_DATE", type: "date" },
+  { field: "ZFRT_CHARGES", type: "number" },
+  { field: "ZWORK_ORDER", type: "text" },
+  { field: "ZBILL_SUBMISSION", type: "date" },
+  { field: "ZLRNO", type: "text" },
+  { field: "ZTRANSPORTER", type: "text" },
+  { field: "ZLOCATION", type: "text" },
+  { field: "ZVEH_NUM", type: "text" },
+  { field: "ZCREATED_DT", type: "date" },
+  { field: "ZVEH_LINE", type: "text" },
+];
+
 
 function getLoggedInUser(): string {
   try {
@@ -185,6 +210,204 @@ function ChargesBreakdownDialog({
   );
 }
 
+// ── P/A Check modal (mirrors the Angular `pACheckModal` template) ──────────
+type PAFormData = {
+  provisionChecked: boolean;
+  provisionAmount: number | "";
+  provisionDate: string;
+  accountChecked: boolean;
+  freightBillNumber: string;
+  freightBillDate: string;
+  physicalSubmissionDate: string;
+  freightCharges: number | "";
+  billSubmission: string;
+};
+
+const EMPTY_PA_FORM: PAFormData = {
+  provisionChecked: false,
+  provisionAmount: "",
+  provisionDate: "",
+  accountChecked: false,
+  freightBillNumber: "",
+  freightBillDate: "",
+  physicalSubmissionDate: "",
+  freightCharges: "",
+  billSubmission: "",
+};
+
+function PACheckDialog({
+  open,
+  onOpenChange,
+  formData,
+  setFormData,
+  onOpenFreightBreakdown,
+  onOpenProvisionBreakdown,
+  onUpdate,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  formData: PAFormData;
+  setFormData: React.Dispatch<React.SetStateAction<PAFormData>>;
+  onOpenFreightBreakdown: () => void;
+  onOpenProvisionBreakdown: () => void;
+  onUpdate: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 animate-in fade-in">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl overflow-x-hidden bg-surface border border-hairline shadow-elegant animate-in zoom-in-95">
+        <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-3 flex items-center justify-between sticky top-0 z-10">
+          <h3 className="text-white text-[14px] font-semibold tracking-wide">
+            Provision / Account Details - Update
+          </h3>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="text-white/80 hover:text-white"
+            aria-label="Close"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Provision section */}
+          <div className="rounded-lg border border-hairline p-4">
+            <h4 className="text-[13px] font-bold text-foreground mb-3">Provision Details</h4>
+            <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300 mb-1">
+              <input
+                type="checkbox"
+                checked={formData.provisionChecked}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, provisionChecked: e.target.checked }))
+                }
+                className="size-4 accent-emerald-600"
+              />
+              Provision
+            </label>
+
+            {formData.provisionChecked && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
+                <div>
+                  <label className={LABEL}>Provision Amount</label>
+                  <input
+                    readOnly
+                    value={formData.provisionAmount === "" ? "" : String(formData.provisionAmount)}
+                    onClick={onOpenProvisionBreakdown}
+                    placeholder="Click to enter amount"
+                    className={GREEN_INPUT + " cursor-pointer"}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Provision Date</label>
+                  <input
+                    type="date"
+                    value={formData.provisionDate}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, provisionDate: e.target.value }))
+                    }
+                    className={GREEN_INPUT}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Account section */}
+          <div className="rounded-lg border border-hairline p-4">
+            <h4 className="text-[13px] font-bold text-foreground mb-3">Account Details</h4>
+            <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300 mb-1">
+              <input
+                type="checkbox"
+                checked={formData.accountChecked}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, accountChecked: e.target.checked }))
+                }
+                className="size-4 accent-emerald-600"
+              />
+              Account
+            </label>
+
+            {formData.accountChecked && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
+                <div>
+                  <label className={LABEL}>Freight Bill Number</label>
+                  <input
+                    value={formData.freightBillNumber}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, freightBillNumber: e.target.value }))
+                    }
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Freight Bill Date</label>
+                  <input
+                    type="date"
+                    value={formData.freightBillDate}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, freightBillDate: e.target.value }))
+                    }
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Physical Submission Date</label>
+                  <input
+                    type="date"
+                    value={formData.physicalSubmissionDate}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, physicalSubmissionDate: e.target.value }))
+                    }
+                    className={GREEN_INPUT}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Freight Charges</label>
+                  <input
+                    readOnly
+                    value={formData.freightCharges === "" ? "" : String(formData.freightCharges)}
+                    onClick={onOpenFreightBreakdown}
+                    placeholder="Click to enter charges"
+                    className={GREEN_INPUT + " cursor-pointer"}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Bill Submission To F&amp;A</label>
+                  <input
+                    type="date"
+                    value={formData.billSubmission}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, billSubmission: e.target.value }))
+                    }
+                    className={GREEN_INPUT}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="px-6 pb-5 flex items-center justify-end gap-2">
+          <button
+            onClick={() => onOpenChange(false)}
+            className="inline-flex items-center px-5 h-9 rounded-md bg-gray-500 hover:bg-gray-600 text-white text-[12px] font-semibold shadow-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onUpdate}
+            className="inline-flex items-center gap-1.5 px-5 h-9 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] text-white text-[12px] font-semibold shadow-sm"
+          >
+            <Save className="size-3.5" />
+            Update
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "without" }) {
 
   const isWithout = mode === "without";
@@ -262,6 +485,16 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(true);
 
+  // ── P/A Check modal state ──
+  const [paModalOpen, setPaModalOpen] = useState(false);
+  const [paModalItem, setPaModalItem] = useState<any>(null);
+  const [paModalIndex, setPaModalIndex] = useState<number>(-1);
+  const [paFormData, setPaFormData] = useState<PAFormData>(EMPTY_PA_FORM);
+  const [paFreightBreakdown, setPaFreightBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
+  const [paProvisionBreakdown, setPaProvisionBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
+  const [paFreightOpen, setPaFreightOpen] = useState(false);
+  const [paProvisionOpen, setPaProvisionOpen] = useState(false);
+
   const [financeDetails, setFinanceDetails] = useState(() => {
     if (typeof window === "undefined") return "";
     try {
@@ -330,6 +563,12 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setJvDate("");
     setUtrNumber("");
     setUtrDate("");
+    setPaModalOpen(false);
+    setPaModalItem(null);
+    setPaModalIndex(-1);
+    setPaFormData(EMPTY_PA_FORM);
+    setPaFreightBreakdown(EMPTY_BREAKDOWN);
+    setPaProvisionBreakdown(EMPTY_BREAKDOWN);
 
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("freight-billing-provision");
@@ -618,6 +857,325 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     }
   };
 
+
+  const updateSearchRow = async (row: any, index: number) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to update this Freight Billing record?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Update",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
+    if (!row.ZREFNO || !row.ZINV_NO || !row.ZLINE_NO) {
+      Swal.fire("Error", "Primary key missing", "error");
+      return;
+    }
+
+    const payload = {
+      CHANGE: [
+        {
+          ZREFNO: row.ZREFNO,
+          ZINV_NO: row.ZINV_NO,
+          ZBILLNO: row.ZBILLNO,
+          ZLINE_NO: row.ZLINE_NO,
+
+          ZODN_NO: row.ZODN_NO,
+          ZSONO: row.ZSONO,
+          ZSALE_PERSON: row.ZSALE_PERSON,
+          ZBILLDATE: row.ZBILLDATE,
+          ZPHY_DATE: row.ZPHY_DATE,
+          ZFRT_CHARGES: row.ZFRT_CHARGES,
+          ZWORKORDER: row.ZWORKORDER,
+          ZBILL_SUBMISSION: row.ZBILL_SUBMISSION,
+          ZWORK_ORDER: row.ZWORK_ORDER,
+          ZLRNO: row.ZLRNO,
+          ZTRANSPORTER: row.ZTRANSPORTER,
+          ZLOCATION: row.ZLOCATION,
+          ZVEH_LINE: row.ZVEH_LINE,
+          ZVEH_NUM: row.ZVEH_NUM,
+          ZCREATED_DT: row.ZCREATED_DT,
+          ZPLANT: row.ZPLANT,
+          ZDIVISION: row.ZDIVISION,
+          ZVEH_TYPE: row.ZVEH_TYPE,
+
+          ZPRO_CHK: row.ZPRO_CHK,
+          ZACC_CHK: row.ZACC_CHK,
+
+          ZPROVDT: row.ZPROVDT,
+          ZPROVAMT: row.ZPROVAMT,
+
+          ZFRBILLUP: row.ZFRBILLUP,
+          ZUNLOADAPP: row.ZUNLOADAPP,
+          ZDETENTUP: row.ZDETENTUP,
+          ZWORDUP: row.ZWORDUP,
+
+          ZFRB_PATH: row.ZFRB_PATH,
+          ZUNAPP_PATH: row.ZUNAPP_PATH,
+          ZDUP_PATH: row.ZDUP_PATH,
+          ZWORDUP_PATH: row.ZWORDUP_PATH,
+
+          ZUSER: row.ZUSER,
+          ZUSER_CH: getLoggedInUser(),
+
+          ZFC_BASIC: row.ZFC_BASIC || 0,
+          ZFC_DELOAD: row.ZFC_DELOAD || 0,
+          ZFC_DEUNLOAD: row.ZFC_DEUNLOAD || 0,
+          ZFC_LOAD: row.ZFC_LOAD || 0,
+          ZFC_UNLOAD: row.ZFC_UNLOAD || 0,
+          ZFC_ROUTE: row.ZFC_ROUTE || 0,
+          ZFC_TSHIP: row.ZFC_TSHIP || 0,
+          ZFC_OTHER: row.ZFC_OTHER || 0,
+          ZFC_DEDUCT: row.ZFC_DEDUCT || 0,
+
+          ZPR_BASIC: row.ZPR_BASIC || 0,
+          ZPR_DELOAD: row.ZPR_DELOAD || 0,
+          ZPR_DEUNLOAD: row.ZPR_DEUNLOAD || 0,
+          ZPR_LOAD: row.ZPR_LOAD || 0,
+          ZPR_UNLOAD: row.ZPR_UNLOAD || 0,
+          ZPR_ROUTE: row.ZPR_ROUTE || 0,
+          ZPR_TSHIP: row.ZPR_TSHIP || 0,
+          ZPR_OTHER: row.ZPR_OTHER || 0,
+          ZPR_DEDUCT: row.ZPR_DEDUCT || 0,
+        },
+      ],
+    };
+
+    console.log("UPDATE PAYLOAD", payload);
+
+    try {
+      const res = isSap
+        ? await service.FreightBillingChangeWithSap(payload)
+        : await service.FreightBillingChangeWithoutSap(payload);
+
+      if (res?.NUMBER === "200" || res?.STATUS === "TRUE") {
+        await Swal.fire({
+          icon: "success",
+          text: res.MESSAGE || "Freight Billing updated successfully",
+        });
+
+        const list = [...searchOptionsList];
+        list[index].isEdit = false;
+        delete list[index]._backup;
+        setSearchOptionsList(list);
+
+        onSearchReference();
+      } else {
+        Swal.fire({
+          icon: "error",
+          text: res.MESSAGE || "Update Failed",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+
+      Swal.fire({
+        icon: "error",
+        text: "Server Error",
+      });
+    }
+  };
+
+
+  const deleteRow = async (row: any, index: number) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to delete this record? This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Delete",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#d33",
+    });
+
+    if (!result.isConfirmed) return;
+
+    const payload = {
+      DELETE: [
+        {
+          ZREFNO: row.ZREFNO,
+          ZINV_NO: row.ZINV_NO,
+          ZLINE_NO: row.ZLINE_NO,
+        },
+      ],
+    };
+
+    console.log("DELETE PAYLOAD", payload);
+
+    try {
+      const res = isSap
+        ? await service.FreightBillingDeleteWithSap(payload)
+        : await service.FreightBillingDeleteWithOutSap(payload);
+
+      if (
+        res?.STATUS === "TRUE" ||
+        res?.STATUS === true ||
+        res?.NUMBER === "200"
+      ) {
+        const list = [...searchOptionsList];
+        list.splice(index, 1);
+        setSearchOptionsList(list);
+
+        Swal.fire({
+          icon: "success",
+          text: res.MSG || res.MESSAGE || "Record deleted successfully",
+        });
+
+        // Optional: refresh search
+        // onSearchReference();
+      } else {
+        Swal.fire({
+          icon: "error",
+          text: res.MSG || res.MESSAGE || "Delete failed",
+        });
+      }
+    } catch (err: any) {
+      console.error(err);
+
+      Swal.fire({
+        icon: "error",
+        text: err?.error?.MESSAGE || "Something went wrong while deleting",
+      });
+    }
+  };
+
+  // ── P/A Check modal handlers (mirrors Angular openPACheckModal / updatePADetails) ──
+  const openPACheckModal = (item: any, index: number) => {
+    if (!item.isEdit) {
+      Swal.fire({
+        icon: "info",
+        title: "Edit Required",
+        text: "If you want to edit, please click the Edit button first.",
+        confirmButtonText: "Ok",
+        timer: 3000,
+      });
+      return;
+    }
+
+    setPaModalItem(item);
+    setPaModalIndex(index);
+
+    setPaFormData({
+      provisionChecked: item.ZPRO_CHK === "X",
+      provisionAmount: item.ZPROVAMT || "",
+      provisionDate: item.ZPROVDT || "",
+      accountChecked: item.ZACC_CHK === "X",
+      freightBillNumber: item.ZBILLNO || "",
+      freightBillDate: item.ZBILLDATE || "",
+      physicalSubmissionDate: item.ZPHY_DATE || "",
+      freightCharges: item.ZFRT_CHARGES || "",
+      billSubmission: item.ZBILL_SUBMISSION || "",
+    });
+
+    setPaFreightBreakdown({
+      "Basic Freight": item.ZFC_BASIC || 0,
+      "Detention Loading": item.ZFC_DELOAD || 0,
+      "Detention Unloading": item.ZFC_DEUNLOAD || 0,
+      "Loading Charges": item.ZFC_LOAD || 0,
+      "Unloading Charges": item.ZFC_UNLOAD || 0,
+      "Route Change": item.ZFC_ROUTE || 0,
+      "Transhipment Charges": item.ZFC_TSHIP || 0,
+      "Other Charges": item.ZFC_OTHER || 0,
+      "Deduction": item.ZFC_DEDUCT || 0,
+    });
+
+    setPaProvisionBreakdown({
+      "Basic Freight": item.ZPR_BASIC || 0,
+      "Detention Loading": item.ZPR_DELOAD || 0,
+      "Detention Unloading": item.ZPR_DEUNLOAD || 0,
+      "Loading Charges": item.ZPR_LOAD || 0,
+      "Unloading Charges": item.ZPR_UNLOAD || 0,
+      "Route Change": item.ZPR_ROUTE || 0,
+      "Transhipment Charges": item.ZPR_TSHIP || 0,
+      "Other Charges": item.ZPR_OTHER || 0,
+      "Deduction": item.ZPR_DEDUCT || 0,
+    });
+
+    setPaModalOpen(true);
+  };
+
+  const updatePADetails = () => {
+    if (!paModalItem || paModalIndex < 0) return;
+
+    const updatedItem = { ...paModalItem };
+
+    if (paFormData.provisionChecked) {
+      updatedItem.ZPRO_CHK = "X";
+      updatedItem.ZPROVAMT = paFormData.provisionAmount;
+      updatedItem.ZPROVDT = paFormData.provisionDate;
+
+      updatedItem.ZPR_BASIC = paProvisionBreakdown["Basic Freight"] || 0;
+      updatedItem.ZPR_DELOAD = paProvisionBreakdown["Detention Loading"] || 0;
+      updatedItem.ZPR_DEUNLOAD = paProvisionBreakdown["Detention Unloading"] || 0;
+      updatedItem.ZPR_LOAD = paProvisionBreakdown["Loading Charges"] || 0;
+      updatedItem.ZPR_UNLOAD = paProvisionBreakdown["Unloading Charges"] || 0;
+      updatedItem.ZPR_ROUTE = paProvisionBreakdown["Route Change"] || 0;
+      updatedItem.ZPR_TSHIP = paProvisionBreakdown["Transhipment Charges"] || 0;
+      updatedItem.ZPR_OTHER = paProvisionBreakdown["Other Charges"] || 0;
+      updatedItem.ZPR_DEDUCT = paProvisionBreakdown["Deduction"] || 0;
+    } else {
+      updatedItem.ZPRO_CHK = "";
+      updatedItem.ZPROVAMT = "";
+      updatedItem.ZPROVDT = "";
+      updatedItem.ZPR_BASIC = 0;
+      updatedItem.ZPR_DELOAD = 0;
+      updatedItem.ZPR_DEUNLOAD = 0;
+      updatedItem.ZPR_LOAD = 0;
+      updatedItem.ZPR_UNLOAD = 0;
+      updatedItem.ZPR_ROUTE = 0;
+      updatedItem.ZPR_TSHIP = 0;
+      updatedItem.ZPR_OTHER = 0;
+      updatedItem.ZPR_DEDUCT = 0;
+    }
+
+    if (paFormData.accountChecked) {
+      updatedItem.ZACC_CHK = "X";
+      updatedItem.ZBILLNO = paFormData.freightBillNumber;
+      updatedItem.ZBILLDATE = paFormData.freightBillDate;
+      updatedItem.ZPHY_DATE = paFormData.physicalSubmissionDate;
+      updatedItem.ZFRT_CHARGES = paFormData.freightCharges;
+      updatedItem.ZBILL_SUBMISSION = paFormData.billSubmission;
+
+      updatedItem.ZFC_BASIC = paFreightBreakdown["Basic Freight"] || 0;
+      updatedItem.ZFC_DELOAD = paFreightBreakdown["Detention Loading"] || 0;
+      updatedItem.ZFC_DEUNLOAD = paFreightBreakdown["Detention Unloading"] || 0;
+      updatedItem.ZFC_LOAD = paFreightBreakdown["Loading Charges"] || 0;
+      updatedItem.ZFC_UNLOAD = paFreightBreakdown["Unloading Charges"] || 0;
+      updatedItem.ZFC_ROUTE = paFreightBreakdown["Route Change"] || 0;
+      updatedItem.ZFC_TSHIP = paFreightBreakdown["Transhipment Charges"] || 0;
+      updatedItem.ZFC_OTHER = paFreightBreakdown["Other Charges"] || 0;
+      updatedItem.ZFC_DEDUCT = paFreightBreakdown["Deduction"] || 0;
+    } else {
+      updatedItem.ZACC_CHK = "";
+      updatedItem.ZBILLNO = "";
+      updatedItem.ZBILLDATE = "";
+      updatedItem.ZPHY_DATE = "";
+      updatedItem.ZFRT_CHARGES = "";
+      updatedItem.ZBILL_SUBMISSION = "";
+      updatedItem.ZFC_BASIC = 0;
+      updatedItem.ZFC_DELOAD = 0;
+      updatedItem.ZFC_DEUNLOAD = 0;
+      updatedItem.ZFC_LOAD = 0;
+      updatedItem.ZFC_UNLOAD = 0;
+      updatedItem.ZFC_ROUTE = 0;
+      updatedItem.ZFC_TSHIP = 0;
+      updatedItem.ZFC_OTHER = 0;
+      updatedItem.ZFC_DEDUCT = 0;
+    }
+
+    setSearchOptionsList((prev) =>
+      prev.map((r, i) => (i === paModalIndex ? updatedItem : r))
+    );
+
+    setPaModalOpen(false);
+
+    // Reuses the existing update flow (confirmation dialog + API call)
+    updateSearchRow(updatedItem, paModalIndex);
+  };
+
   return (
     <div className="space-y-2">
 
@@ -807,88 +1365,73 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZINV_NO}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
 
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          className={GREEN_INPUT}
-                          value={item.ZODN_NO || ""}
-                          onChange={(e) => {
-                            const list = [...searchOptionsList];
-                            list[index].ZODN_NO = e.target.value;
-                            setSearchOptionsList(list);
-                          }}
-                        />
-                      ) : (
-                        item.ZODN_NO
-                      )}
-                    </td>
+                    {PRE_PA_EDITABLE_FIELDS.map(({ field, type }) => (
+                      <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
+                        {item.isEdit ? (
+                          <input
+                            type={type}
+                            className={GREEN_INPUT}
+                            value={item[field] || ""}
+                            onChange={(e) => {
+                              const list = [...searchOptionsList];
+                              list[index] = { ...list[index], [field]: e.target.value };
+                              setSearchOptionsList(list);
+                            }}
+                          />
+                        ) : (
+                          item[field]
+                        )}
+                      </td>
+                    ))}
 
                     <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          className={GREEN_INPUT}
-                          value={item.ZSONO || ""}
-                          onChange={(e) => {
-                            const list = [...searchOptionsList];
-                            list[index].ZSONO = e.target.value;
-                            setSearchOptionsList(list);
-                          }}
-                        />
-                      ) : (
-                        item.ZSONO
-                      )}
-                    </td>
-
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          className={GREEN_INPUT}
-                          value={item.ZSALE_PERSON || ""}
-                          onChange={(e) => {
-                            const list = [...searchOptionsList];
-                            list[index].ZSALE_PERSON = e.target.value;
-                            setSearchOptionsList(list);
-                          }}
-                        />
-                      ) : (
-                        item.ZSALE_PERSON
-                      )}
-                    </td>
-
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      <button className="bg-blue-500 text-white px-2 rounded">
+                      <button
+                        className="bg-blue-500 text-white px-2 rounded"
+                        onClick={() => openPACheckModal(item, index)}
+                      >
                         View
                       </button>
                     </td>
 
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZPROVAMT}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZPROVDT}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZBILLNO}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZBILLDATE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZPHY_DATE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZFRT_CHARGES}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZWORK_ORDER}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZBILL_SUBMISSION}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLRNO}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZTRANSPORTER}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLOCATION}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZVEH_NUM}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZCREATED_DT}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZVEH_LINE}</td>
+                    {POST_PA_EDITABLE_FIELDS.map(({ field, type }) => (
+                      <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
+                        {item.isEdit ? (
+                          <input
+                            type={type}
+                            className={GREEN_INPUT}
+                            value={item[field] || ""}
+                            onChange={(e) => {
+                              const list = [...searchOptionsList];
+                              list[index] = { ...list[index], [field]: e.target.value };
+                              setSearchOptionsList(list);
+                            }}
+                          />
+                        ) : type === "date" && item[field] ? (
+                          new Date(item[field]).toLocaleDateString("en-GB")
+                        ) : (
+                          item[field]
+                        )}
+                      </td>
+                    ))}
 
                     <td className="px-3 py-2 whitespace-nowrap text-center">
                       {!item.isEdit ? (
                         <div className="flex gap-2 justify-center">
                           <button
                             className="bg-blue-500 text-white px-2 rounded"
-                          // onClick={() => editSearchRow(index)}
+                            onClick={() => {
+                              const list = [...searchOptionsList];
+                              list[index]._backup = { ...list[index] };
+                              list[index].isEdit = true;
+                              setSearchOptionsList(list);
+                            }}
                           >
                             Edit
                           </button>
 
                           <button
                             className="bg-red-500 text-white px-2 rounded"
-                          // onClick={() => deleteRow(index)}
+                            onClick={() => deleteRow(item, index)}
                           >
                             Delete
                           </button>
@@ -897,14 +1440,22 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                         <div className="flex gap-2 justify-center">
                           <button
                             className="bg-green-500 text-white px-2 rounded"
-                          // onClick={() => updateSearchRow(index)}
+                            onClick={() => updateSearchRow(item, index)}
                           >
                             Save
                           </button>
 
                           <button
                             className="bg-gray-500 text-white px-2 rounded"
-                          // onClick={() => cancelSearchEdit(index)}
+                            onClick={() => {
+                              const list = [...searchOptionsList];
+                              list[index] = {
+                                ...list[index]._backup,
+                                isEdit: false,
+                              };
+                              delete list[index]._backup;
+                              setSearchOptionsList(list);
+                            }}
                           >
                             Cancel
                           </button>
@@ -1154,6 +1705,39 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         onSave={(b, total) => {
           setFreightBreakdown(b);
           setFreightTotal(total);
+        }}
+      />
+
+      {/* P/A Check modal (View button) */}
+      <PACheckDialog
+        open={paModalOpen}
+        onOpenChange={setPaModalOpen}
+        formData={paFormData}
+        setFormData={setPaFormData}
+        onOpenFreightBreakdown={() => setPaFreightOpen(true)}
+        onOpenProvisionBreakdown={() => setPaProvisionOpen(true)}
+        onUpdate={updatePADetails}
+      />
+      <ChargesBreakdownDialog
+        open={paFreightOpen}
+        onOpenChange={setPaFreightOpen}
+        title="Detailed Freight Charges Input"
+        totalLabel="Total Freight"
+        value={paFreightBreakdown}
+        onSave={(b, total) => {
+          setPaFreightBreakdown(b);
+          setPaFormData((p) => ({ ...p, freightCharges: total }));
+        }}
+      />
+      <ChargesBreakdownDialog
+        open={paProvisionOpen}
+        onOpenChange={setPaProvisionOpen}
+        title="Detailed Provision Amount Input"
+        totalLabel="Total Provision"
+        value={paProvisionBreakdown}
+        onSave={(b, total) => {
+          setPaProvisionBreakdown(b);
+          setPaFormData((p) => ({ ...p, provisionAmount: total }));
         }}
       />
     </div>

@@ -145,18 +145,39 @@ function TransitEwayBillReport() {
 
   // ngOnInit equivalent
   useEffect(() => {
-    const userData = getLoggedInUser();
-    setPlantList(userData.PLANTS || []);
-    setDivisionList(userData.DIV || []);
-
-    // getTransporters()
+    // getTransporters() — also derives Plant + Division from the same F4 payload
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
-        setTransporterList(res?.[0]?.VEND_CODE || []);
+        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+
+        setTransporterList(data?.VEND_CODE || []);
+
+        const plants = Array.isArray(data.PLANT)
+          ? data.PLANT.map((p: any) => ({
+              PLANT: p.WERKS || p.PLANT,
+              PLANT_TEXT: p.PLANT_DESC || p.PLANT_TEXT || p.PLANT,
+            }))
+          : [];
+
+        const divisions = Array.isArray(data.PLANT)
+          ? Array.from(
+              new Map(
+                data.PLANT.map((p: any) => [
+                  p.DIVISION,
+                  { DIVISION: p.DIVISION, DIV_TEXT: p.DIV_TEXT || p.DIVISION },
+                ]),
+              ).values(),
+            )
+          : [];
+
+        setPlantList(plants);
+        setDivisionList(divisions);
       } catch (err) {
-        console.error("Error fetching transporters", err);
+        console.error("Error fetching transporters/plant/division", err);
         setTransporterList([]);
+        setPlantList([]);
+        setDivisionList([]);
       }
     })();
 
@@ -201,12 +222,19 @@ function TransitEwayBillReport() {
     })();
   }, []);
 
+  // ── CHANGED: Plant option label now shows "CODE - Description" (e.g. "1101 - Plant Name"),
+  //    matching OrderInfoSapCreate's Plant dropdown. Value is unchanged (still description text)
+  //    so the search payload / selected filter behavior is not affected.
   const plantOptions: Option[] = useMemo(
-    () => plantList.map((p: any) => ({ label: p.PLANT_TEXT, value: p.PLANT_TEXT })),
+    () =>
+      plantList.map((p: any) => ({
+        label: `${p.PLANT} - ${p.PLANT_TEXT}`,
+        value: p.PLANT_TEXT,
+      })),
     [plantList],
   );
   const divisionOptions: Option[] = useMemo(
-    () => divisionList.map((d: any) => ({ label: d.DIV_TEXT, value: d.DIVISION })),
+    () => divisionList.map((d: any) => ({ label: d.DIVISION, value: d.DIVISION })),
     [divisionList],
   );
   const transporterOptions: Option[] = useMemo(
