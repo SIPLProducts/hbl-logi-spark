@@ -1831,7 +1831,8 @@ function InvoiceFilterDownload({
           </div>
         ) : (
           <>
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-x-3 gap-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="overflow-x-auto scrollbar-elegant animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="p-4 grid grid-cols-6 min-w-[1100px] gap-x-3 gap-y-2">
               <DateField label="From Date" value={fromDate} onChange={setFromDate} />
               <DateField label="To Date" value={toDate} onChange={setToDate} />
               <PlantField value={fPlant} onChange={setFPlant} />
@@ -1857,6 +1858,7 @@ function InvoiceFilterDownload({
                 options={["Pending", "Completed"]}
                 placeholder="Select Status Type"
               />
+            </div>
             </div>
 
             <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
