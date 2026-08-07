@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { format } from "date-fns";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -16,6 +16,7 @@ import {
   Save,
   Search,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -63,8 +64,8 @@ function GateInOutProcessPage() {
   const [direction, setDirection] = useState<"outward" | null>(null);
   const [sap, setSap] = useState<SapMode | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
-  const [pendingCount] = useState(0);
-  const [completedCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
   // Filter results — mirrors Angular's orderInfoData / dispatchData
   const [orderInfoData, setOrderInfoData] = useState<any[]>([]);
   const [dispatchData, setDispatchData] = useState<any[]>([]);
@@ -82,6 +83,23 @@ function GateInOutProcessPage() {
   const [applied, setApplied] = useState(false);
 
   const rows: WorklistRow[] = [];
+
+  useEffect(() => {
+    if (!sap) return;
+    (async () => {
+      try {
+        const res: any = await service.OutwardCountGlobalWithSap({
+          INOUT: "OUTWARD",
+          TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
+          SCREEN: "GATE IN OUT",
+        });
+        setPendingCount(res?.ZPEND_CNT ?? 0);
+        setCompletedCount(res?.ZCONF_CNT ?? 0);
+      } catch (err) {
+        console.error("Count fetch failed:", err);
+      }
+    })();
+  }, [sap]);
 
   const resetFilters = () => {
     setFromDate(undefined);
@@ -825,6 +843,7 @@ const GATE_COLUMNS = [
 // NOTE: presentational only. No API/service calls are wired up here.
 
 type GateRefRow = {
+  MAPID: string;
   REF_NO: string;
   WORK_ORDER_NO: string;
   LR_NO: string;
@@ -834,6 +853,7 @@ type GateRefRow = {
 };
 
 const EMPTY_GATE_REF_ROW = (): GateRefRow => ({
+  MAPID: "",
   REF_NO: "",
   WORK_ORDER_NO: "",
   LR_NO: "",
@@ -858,7 +878,107 @@ const GATE_INPUT_READONLY =
 
 const GATE_LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
+/* Multi-select dropdown for the Invoice Number field — mirrors F4MultiSelect
+   in ShipmentDetailsSapCreate. `value` stays a comma-joined string so existing
+   handlers (invoiceNumber state) keep working unchanged. */
+function GateF4MultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select",
+  className,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selected = value ? value.split(",").filter(Boolean) : [];
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={
+          (className ? className + " " : "") +
+          "flex items-center justify-between gap-2 text-left" +
+          (selected.length === 0 ? " text-muted-foreground" : "")
+        }
+      >
+        <span className="truncate">{displayLabel() || placeholder}</span>
+        <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+          <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o}
+                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  onChange={() => toggle(o)}
+                  className="size-3.5"
+                />
+                <span className="truncate">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type GateRow = {
+  selected: boolean;
+  mapId: string;
   requiredDateTime: string;
   reportedDateTime: string;
   physicalDispatchDateTime: string;
@@ -877,6 +997,8 @@ type GateRow = {
 };
 
 const EMPTY_GATE_ROW = (): GateRow => ({
+  selected: false,
+  mapId: "",
   requiredDateTime: "",
   reportedDateTime: "",
   physicalDispatchDateTime: "",
@@ -902,6 +1024,14 @@ function getMinPhysicalDispatch(row: GateRow): string {
   return dates.reduce((a, b) => (a > b ? a : b));
 }
 
+function getLoggedInUser(): string {
+  try {
+    const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
+    const u = JSON.parse(raw) as Record<string, unknown>;
+    return String(u?.USER ?? u?.USERNAME ?? u?.USER_ID ?? "");
+  } catch { return ""; }
+}
+
 type VehicleTypeOption = { code: string; label: string };
 
 function GateInOutCreate({ mode }: { mode: SapMode }) {
@@ -913,6 +1043,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const [ewayApplicable, setEwayApplicable] = useState("");
   const [insuranceScope, setInsuranceScope] = useState("");
   const [kilometres, setKilometres] = useState("");
+  const [dcReferenceNumber, setDcReferenceNumber] = useState(""); // DC reference (non-SAP)
 
   // ── Truck Type F4 (gettypeofvehicle) ──
   const [gateRows, setGateRows] = useState<GateRow[]>([EMPTY_GATE_ROW()]);
@@ -947,14 +1078,97 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
   // ── Reference table state ──
   const [refTableData, setRefTableData] = useState<GateRefRow[]>([EMPTY_GATE_REF_ROW()]);
+  const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
+  const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
 
   // ── Invoice lookup + search bar state ──
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
 
+  // Recompute invoice options from the reference rows the user has checked
+  // (mirrors ShipmentDetailsSapCreate.updateInvoiceListForSelectedItems).
+  useEffect(() => {
+    const selectedMapIds = refTableData
+      .filter((r) => r.selected && r.MAPID)
+      .map((r) => String(r.MAPID));
+
+    if (selectedMapIds.length === 0) {
+      setInvoiceF4List([]);
+      return;
+    }
+
+    const f4: string[] = [];
+    fullReferenceData.forEach((refItem: any) => {
+      if (selectedMapIds.includes(String(refItem.MAPID)) && Array.isArray(refItem.INV_NO)) {
+        refItem.INV_NO.forEach((inv: any) => {
+          if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
+        });
+      }
+    });
+    setInvoiceF4List(f4);
+  }, [refTableData, fullReferenceData]);
+
   const handleRefRowChange = (index: number, field: keyof GateRefRow, value: string) =>
     setRefTableData((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+
+  // ── Row blur → global reference fetch (mirrors ShipmentDetailsSapCreate.onFieldBlur) ──
+  const fetchGlobalReferences = async (index: number, fieldKey: "REF_NO" | "WORK_ORDER_NO" | "LR_NO" | "TRANSPORTER") => {
+    if (index !== 0) return;
+    const row = refTableData[0];
+    const value = ((row as any)[fieldKey] || "").trim();
+    if (!value) return;
+
+    const payload = {
+      global_scr: "GATE IN OUT",
+      REF_NO: fieldKey === "REF_NO" ? row.REF_NO : "",
+      WORK_ORDER_NO: fieldKey === "WORK_ORDER_NO" ? row.WORK_ORDER_NO : "",
+      LR_NO: fieldKey === "LR_NO" ? row.LR_NO : "",
+      TRANSPORTER: fieldKey === "TRANSPORTER" ? row.TRANSPORTER : "",
+      LINE_NO: row.LINE_NO || "",
+      ZUSER: getLoggedInUser(),
+    };
+
+    try {
+      const res: any = isSap
+        ? await service.GlobalReferenceNoFetch(payload)
+        : await service.GlobalReferenceNoFetchwithoutsap(payload);
+
+      setInvoiceF4List([]);
+      setFullReferenceData([]);
+
+      if (res?.STATUS === "FALSE") {
+        Swal.fire({
+          icon: "info",
+          title: "No Records Found",
+          text: "No matching reference details were found.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        setRefTableData([EMPTY_GATE_REF_ROW()]);
+        return;
+      }
+      if (Array.isArray(res) && res.length > 0) {
+        setFullReferenceData(res);
+        setRefTableData(
+          res.map((item: any) => ({
+            MAPID: item.MAPID || "",
+            REF_NO: item.REF_NO || "",
+            WORK_ORDER_NO: item.WORK_ORDER_NO || "",
+            LR_NO: item.LR_NO || "",
+            TRANSPORTER: item.TRANSPORTER || "",
+            LINE_NO: item.LINE_NO || "",
+            selected: false,
+          }))
+        );
+      } else {
+        setRefTableData([EMPTY_GATE_REF_ROW()]);
+      }
+    } catch (err) {
+      console.error("GlobalReference fetch error:", err);
+      Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch reference details." });
+    }
+  };
 
   const toggleRefRowSelect = (index: number) =>
     setRefTableData((prev) => prev.map((r, i) => (i === index ? { ...r, selected: !r.selected } : r)));
@@ -975,6 +1189,27 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
   const addGateRow = () => setGateRows((prev) => [...prev, EMPTY_GATE_ROW()]);
   const removeGateRow = (index: number) => setGateRows((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+
+  // ── Row select + Map ID (mirrors ShipmentDetailsSapCreate's toggleAllSelection / onRowCheckboxChange / onChangeMapId) ──
+  const [isAllGateSelected, setIsAllGateSelected] = useState(false);
+
+  const toggleAllGateSelection = (checked: boolean) => {
+    setIsAllGateSelected(checked);
+    setGateRows((prev) => prev.map((r) => ({ ...r, selected: checked })));
+  };
+
+  const onGateRowCheckboxChange = (index: number, checked: boolean) => {
+    setGateRows((prev) => {
+      const next = prev.map((r, i) => (i === index ? { ...r, selected: checked } : r));
+      setIsAllGateSelected(next.length > 0 && next.every((r) => r.selected));
+      return next;
+    });
+  };
+
+  const onChangeGateMapId = (index: number, mapId: string) => {
+    updateGateRow(index, "mapId", mapId);
+  };
+
   const updateGateRow = (index: number, field: keyof GateRow, value: string) => {
     setGateRows((prev) =>
       prev.map((r, i) => {
@@ -1002,7 +1237,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         <table className="w-full text-[12px]">
           <thead>
             <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-              {["Select", "Sl.No", "Reference Number", "Work Order Number", "LR Number", "Transporter", "Action"].map((h) => (
+              {["Select", "Sl.No", "Map ID", "Reference Number", "Work Order Number", "LR Number", "Transporter", "Action"].map((h) => (
                 <th key={h} className="px-3 py-1 text-center">
                   {h}
                 </th>
@@ -1021,12 +1256,16 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                   />
                 </td>
                 <td className="px-3 py-1 text-center">{i + 1}</td>
+                <td className="px-3 py-1">
+                  <input value={row.MAPID || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
+                </td>
                 {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
                   <td key={field} className="px-3 py-1">
                     <input
                       value={(row as any)[field] || ""}
                       readOnly={i !== 0}
                       onChange={(e) => handleRefRowChange(i, field, e.target.value)}
+                      onBlur={() => fetchGlobalReferences(i, field)}
                       className={i !== 0 ? GATE_INPUT_READONLY : GATE_INPUT_NORMAL}
                     />
                   </td>
@@ -1061,14 +1300,12 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
             <>
               <div className="flex-1 min-w-[220px]">
                 <label className={GATE_LABEL}>Invoice Number</label>
-                <input
+                <GateF4MultiSelect
+                  options={invoiceF4List}
                   value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleGet();
-                  }}
+                  onChange={setInvoiceNumber}
+                  placeholder="Select Invoice"
                   className={GATE_INPUT_NORMAL}
-                  placeholder="Enter invoice number"
                 />
               </div>
               <button
@@ -1126,6 +1363,18 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       {/* ── E-Way Bill fields ── */}
       <div className="bg-surface border border-hairline rounded-lg p-3 shadow-soft">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          {!isSap && (
+            <div className="space-y-1">
+              <Label>DC Reference Number</Label>
+              <GateF4MultiSelect
+                options={invoiceF4List}
+                value={dcReferenceNumber}
+                onChange={setDcReferenceNumber}
+                placeholder="Select DC Reference"
+                className={GATE_INPUT_NORMAL}
+              />
+            </div>
+          )}
           <div className="space-y-1">
             <Label>E-way Bill Applicable</Label>
             <select
@@ -1187,8 +1436,17 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-8 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllGateSelected}
+                    onChange={(e) => toggleAllGateSelection(e.target.checked)}
+                    className="size-3.5 accent-white"
+                  />
+                </TableHead>
                 <TableHead className="w-10">Sl.No</TableHead>
+                <TableHead className="whitespace-nowrap">Map ID</TableHead>
                 {GATE_COLUMNS.map((c) => (
                   <TableHead key={c} className="whitespace-nowrap">
                     {c}
@@ -1200,9 +1458,32 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
             <TableBody>
               {gateRows.map((row, i) => {
                 const minPd = getMinPhysicalDispatch(row);
+                const selectedRefRows = refTableData.filter((r) => r.selected && r.MAPID);
                 return (
                   <TableRow key={i}>
+                    <TableCell className="text-center">
+                      <input
+                        type="checkbox"
+                        checked={row.selected}
+                        onChange={(e) => onGateRowCheckboxChange(i, e.target.checked)}
+                        className="size-3.5 accent-sky-600"
+                      />
+                    </TableCell>
                     <TableCell className="text-center text-muted-foreground">{i + 1}</TableCell>
+                    <TableCell className="p-1">
+                      <select
+                        value={row.mapId}
+                        onChange={(e) => onChangeGateMapId(i, e.target.value)}
+                        className="h-7 min-w-[110px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                      >
+                        <option value="">Select</option>
+                        {selectedRefRows.map((r) => (
+                          <option key={r.MAPID} value={r.MAPID}>
+                            {r.MAPID}
+                          </option>
+                        ))}
+                      </select>
+                    </TableCell>
                     {GATE_COLUMNS.map((c) => {
                       if (c === "Truck Type") {
                         return (
@@ -1254,7 +1535,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           </TableCell>
                         );
                       }
-                      const fieldMap: Record<string, keyof GateRow> = {
+                      const fieldMap: Record<string, Exclude<keyof GateRow, "selected" | "mapId">> = {
                         "Required Date and Time": "requiredDateTime",
                         "Reported Date and Time": "reportedDateTime",
                         "Physical Dispatch Date and Time": "physicalDispatchDateTime",
