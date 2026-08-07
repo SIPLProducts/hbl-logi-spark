@@ -6,8 +6,12 @@ import Swal from "sweetalert2";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+const RED_INPUT =
+  "h-7 w-full rounded-md bg-white dark:bg-surface border border-red-500 px-2 text-[12px] text-red-600 font-medium outline-none focus:border-red-600 focus:ring-2 focus:ring-red-500/30";
 const LABEL =
   "block text-[11px] font-semibold text-muted-foreground mb-0.5";
+const RED_LABEL =
+  "block text-[11px] font-semibold text-red-600 mb-0.5";
 
 const SEARCH_OPTIONS = [
   "Reference",
