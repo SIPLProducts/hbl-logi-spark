@@ -243,6 +243,7 @@ type LoadRow = {
   id: number;
   checked: boolean;
   ZMAPID: string;
+  MANDT: string;
   VBELN: string;
   POSNR: string;
   ZTRUC_TYPE: string;
@@ -268,6 +269,7 @@ const newRow = (id: number, patch: Partial<LoadRow> = {}): LoadRow => ({
   id,
   checked: false,
   ZMAPID: "",
+  MANDT: "234",
   VBELN: "",
   POSNR: "",
   ZTRUC_TYPE: "",
