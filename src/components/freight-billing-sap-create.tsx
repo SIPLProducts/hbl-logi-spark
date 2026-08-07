@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
 const RED_INPUT =
-  "h-7 w-full rounded-md bg-white dark:bg-surface border border-red-500 px-2 text-[12px] text-red-600 font-medium outline-none focus:border-red-600 focus:ring-2 focus:ring-red-500/30";
+  "h-7 w-full rounded-md bg-red-50 dark:bg-red-900/20 border border-red-500 px-2 text-[12px] text-red-600 font-medium outline-none focus:border-red-600 focus:ring-2 focus:ring-red-500/30 placeholder:text-red-300";
 const LABEL =
   "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 const RED_LABEL =
