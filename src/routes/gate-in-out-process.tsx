@@ -979,6 +979,8 @@ function GateF4MultiSelect({
 type GateRow = {
   selected: boolean;
   mapId: string;
+  invoiceNumber: string;
+  invoiceLineNo: string;
   requiredDateTime: string;
   reportedDateTime: string;
   physicalDispatchDateTime: string;
@@ -999,6 +1001,8 @@ type GateRow = {
 const EMPTY_GATE_ROW = (): GateRow => ({
   selected: false,
   mapId: "",
+  invoiceNumber: "",
+  invoiceLineNo: "",
   requiredDateTime: "",
   reportedDateTime: "",
   physicalDispatchDateTime: "",
@@ -1044,6 +1048,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const [insuranceScope, setInsuranceScope] = useState("");
   const [kilometres, setKilometres] = useState("");
   const [dcReferenceNumber, setDcReferenceNumber] = useState(""); // DC reference (non-SAP)
+  const [showDetails, setShowDetails] = useState(false); // Header/Item tables + Save actions gated behind GET
+  const [zplant, setZplant] = useState(""); // ZPLANT — carried from FetchGateInOutInvoiceData for the Save payload
 
   // ── Truck Type F4 (gettypeofvehicle) ──
   const [gateRows, setGateRows] = useState<GateRow[]>([EMPTY_GATE_ROW()]);
@@ -1178,9 +1184,82 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     setRefTableData((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Placeholder handlers — no API wired up per requirement, UI only.
-  const handleGet = () => {
-    // TODO: integrate API when ready
+  // ── GET → FetchGateInOutInvoiceData (With SAP) ──
+  const handleGet = async () => {
+    const refRow = refTableData[0];
+    const payload = {
+      SAP_INV: [
+        {
+          INV_NO: invoiceNumber,
+          REFNO: refRow?.REF_NO || "",
+          REF_LINE: refRow?.LINE_NO || "",
+        },
+      ],
+    };
+
+    try {
+      const res: any = await service.FetchGateInOutInvoiceData(payload);
+
+      if (!Array.isArray(res) || res.length === 0 || !res[0]?.HEADER) {
+        Swal.fire({
+          icon: "info",
+          title: "No Records Found",
+          text: "No invoice details were found for the selected Invoice Number.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        return;
+      }
+
+      const { HEADER, ITEMS } = res[0];
+
+      setEwayApplicable(HEADER.EWAY_BILL_APPLICABLE || "");
+      setEwayDate(HEADER.EWAY_BILL_DATE || "");
+      setEwayNumber(HEADER.EWAY_BILL_NUMBER || "");
+      setEwayExpireDate(HEADER.EWAY_BILL_EXPIRE_DATE || "");
+      setInsuranceScope(HEADER.INSURANCE_SCOPE || "");
+      setKilometres(HEADER.KILLOMETERS != null ? String(HEADER.KILLOMETERS) : "");
+      setZplant(HEADER.ZPLANT || "");
+
+      const mappedRows: GateRow[] =
+        Array.isArray(ITEMS) && ITEMS.length > 0
+          ? ITEMS.map((item: any) => ({
+              selected: false,
+              mapId: "",
+              invoiceNumber: item.ZINV_NO || "",
+              invoiceLineNo: item.INVOICE_LINE_ITEM != null ? String(item.INVOICE_LINE_ITEM) : "",
+              requiredDateTime: item.REQUIRED_DATE_AND_TIME || "",
+              reportedDateTime: item.REPORTED_DATE_AND_TIME || "",
+              physicalDispatchDateTime: item.PHYSICAL_DISPATCH_DATE_TIME || "",
+              truckType: item.TRUCK_TYPE || "",
+              typeOfTransporter: item.TYPE_OF_TRANSPORTER || "",
+              vehicleNumber: item.VEHICLE_NUMBER || "",
+              noOfVehicles: item.NO_OF_VEHICLES != null ? String(item.NO_OF_VEHICLES) : "",
+              driverNumber: item.DRIVER_NUMBER || "",
+              driverName: item.DRIVER_NAME || "",
+              customerEmailId: Array.isArray(item.CUSTOMER_EMAIL_DETAILS) ? item.CUSTOMER_EMAIL_DETAILS.join(",") : "",
+              salespersonEmailId: Array.isArray(item.SALESPERSON_EMAIL_DETAILS) ? item.SALESPERSON_EMAIL_DETAILS.join(",") : "",
+              gpsLiveLocation: item.GPS_LIVE_LOCATION || "",
+              tatType: item.TAT_TYPE || "",
+              tatDays: item.TAT_DAYS != null ? String(item.TAT_DAYS) : "",
+              eta: item.ETA || "",
+            }))
+          : [EMPTY_GATE_ROW()];
+
+      setGateRows(mappedRows);
+      setShowDetails(true);
+
+      Swal.fire({
+        icon: "success",
+        title: "Invoice Details Loaded",
+        text: "Invoice details have been fetched successfully.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      console.error("FetchGateInOutInvoiceData failed:", err);
+      Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch invoice details." });
+    }
   };
 
   const handleSearch = () => {
@@ -1226,9 +1305,95 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     );
   };
 
-  function handleSave(arg0: string): void {
-    throw new Error("Function not implemented.");
-  }
+  // ── Save → SaveGateInOutWithSap (With SAP) ──
+  const handleSave = async (action: string) => {
+    if (!isSap) {
+      // TODO: integrate Without SAP save API when ready
+      return;
+    }
+
+    const refRow = refTableData[0];
+    const payload = {
+      CREATE: "X",
+      CHANGE: "",
+      DELETE: "",
+      DATA: [
+        {
+          HEADER: {
+            ZINV_NO: invoiceNumber,
+            REFERENCE_NUMBER: refRow?.REF_NO || "",
+            REFERENCE_LINE_ITEM: refRow?.LINE_NO || "",
+            ZPLANT: zplant,
+            EWAY_BILL_APPLICABLE: ewayApplicable,
+            EWAY_BILL_DATE: ewayDate,
+            EWAY_BILL_NUMBER: ewayNumber,
+            EWAY_BILL_EXPIRE_DATE: ewayExpireDate,
+            INSURANCE_SCOPE: insuranceScope,
+            KILLOMETERS: kilometres,
+            ZWORK_ORDER: refRow?.WORK_ORDER_NO || "",
+            ZLRNO: refRow?.LR_NO || "",
+            ZTRANSPORTER: refRow?.TRANSPORTER || "",
+            ZCREATED_DT: "",
+            ZUSER: getLoggedInUser(),
+            ZUSER_CH: "",
+          },
+          ITEMS: gateRows.map((row, i) => ({
+            ZINV_NO: invoiceNumber,
+            INVOICE_LINE_ITEM: row.invoiceLineNo || "",
+            REFERENCE_NUMBER: refRow?.REF_NO || "",
+            REFERENCE_LINE_ITEM: refRow?.LINE_NO || "",
+            SL_NO: i + 1,
+            REQUIRED_DATE_AND_TIME: row.requiredDateTime,
+            REPORTED_DATE_AND_TIME: row.reportedDateTime,
+            PHYSICAL_DISPATCH_DATE_TIME: row.physicalDispatchDateTime,
+            TRUCK_TYPE: row.truckType,
+            TYPE_OF_TRANSPORTER: row.typeOfTransporter,
+            VEHICLE_NUMBER: row.vehicleNumber,
+            NO_OF_VEHICLES: row.noOfVehicles,
+            DRIVER_NUMBER: row.driverNumber,
+            DRIVER_NAME: row.driverName,
+            CUSTOMER_EMAIL_DETAILS: row.customerEmailId
+              ? row.customerEmailId.split(",").filter(Boolean).map((email) => ({ CUSTOMER_EMAIL_ID: email }))
+              : [],
+            SALESPERSON_EMAIL_DETAILS: row.salespersonEmailId
+              ? row.salespersonEmailId.split(",").filter(Boolean).map((email) => ({ SALESPERSON_EMAIL_ID: email }))
+              : [],
+            GPS_LIVE_LOCATION: row.gpsLiveLocation,
+            TAT_TYPE: row.tatType,
+            TAT_DAYS: row.tatDays,
+            ETA: row.eta,
+          })),
+        },
+      ],
+    };
+
+    setLoadingSave(true);
+    try {
+      const res: any = await service.SaveGateInOutWithSap(payload);
+
+      if (res?.NUMBER === "200") {
+        Swal.fire({
+          title: "Success",
+          text: res.MSG || "Record(s) Saved Successfully",
+          icon: "success",
+          timer: 3000,
+          showConfirmButton: true,
+        });
+      } else {
+        Swal.fire({
+          title: "Error",
+          text: res?.MSG || "Failed to save data",
+          icon: "error",
+          confirmButtonText: "Ok",
+        });
+      }
+    } catch (err) {
+      console.error("SaveGateInOutWithSap failed:", err);
+      Swal.fire({ title: "Error", text: "Internal Server Error. Please try again later.", icon: "error" });
+    } finally {
+      setLoadingSave(false);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -1239,7 +1404,6 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
             <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
               <th className="px-3 py-0.5 text-center w-16">Select</th>
               <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
-              <th className="px-3 py-0.5 text-center">Map ID</th>
               <th className="px-3 py-0.5 text-center">Reference Number</th>
               <th className="px-3 py-0.5 text-center">Work Order Number</th>
               <th className="px-3 py-0.5 text-center">LR Number</th>
@@ -1259,9 +1423,6 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                   />
                 </td>
                 <td className="px-3 py-0.5 text-center">{i + 1}</td>
-                <td className="px-3 py-0.5">
-                  <input value={row.MAPID || ""} readOnly className={GATE_INPUT_NORMAL + " text-center"} />
-                </td>
                 {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
                   <td key={field} className="px-3 py-0.5">
                     <input
@@ -1358,78 +1519,109 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         )}
       </div>
 
-      {/* ── E-Way Bill fields ── */}
-      <div className="bg-surface border border-hairline rounded-lg p-3 shadow-soft">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-          {!isSap && (
-            <div className="space-y-1">
-              <Label>DC Reference Number</Label>
-              <GateF4MultiSelect
-                options={invoiceF4List}
-                value={dcReferenceNumber}
-                onChange={setDcReferenceNumber}
-                placeholder="Select DC Reference"
-                className={GATE_INPUT_NORMAL}
-              />
-            </div>
-          )}
-          <div className="space-y-1">
-            <Label>E-way Bill Applicable</Label>
-            <select
-              value={ewayApplicable}
-              onChange={(e) => setEwayApplicable(e.target.value)}
-              className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-            >
-              <option value="">Select</option>
-              <option value="No">No</option>
-              <option value="Yes">Yes</option>
-            </select>
-          </div>
-          {ewayApplicable === "Yes" && (
-            <>
-              <div className="space-y-1">
-                <Label>E-Way Bill Date</Label>
-                <Input type="date" value={ewayDate} onChange={(e) => setEwayDate(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <Label>E-Way Bill Number</Label>
-                <Input
-                  type="text"
-                  placeholder="Enter E-Way Bill Number"
-                  value={ewayNumber}
-                  onChange={(e) => setEwayNumber(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>E-Way Bill Expire Date</Label>
-                <Input type="date" value={ewayExpireDate} onChange={(e) => setEwayExpireDate(e.target.value)} />
-              </div>
-            </>
-          )}
-          <div className="space-y-1">
-            <Label>Insurance Scope</Label>
-            <select
-              value={insuranceScope}
-              onChange={(e) => setInsuranceScope(e.target.value)}
-              className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-            >
-              <option value="">Select Insurance Scope</option>
-              <option value="Buyer">Buyer</option>
-              <option value="Supplier">Supplier</option>
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label>Kilometres</Label>
-            <Input
-              type="number"
-              placeholder="0"
-              value={kilometres}
-              onChange={(e) => setKilometres(e.target.value)}
-            />
-          </div>
+      {/* ── E-Way Bill / Insurance / Distance — Header table ── */}
+      {/* Visibility gating (hidden until GET is clicked) applies to With SAP only */}
+      {(!isSap || showDetails) && (
+      <>
+      <h3 className="px-1 text-[13px] font-bold text-foreground tracking-tight">Header</h3>
+      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+        <div className="overflow-x-auto">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+                <th className="px-3 py-0.5 text-center">Reference Number</th>
+                <th className="px-3 py-0.5 text-center">Reference Line No</th>
+                <th className="px-3 py-0.5 text-center">Invoice Number</th>
+                {!isSap && <th className="px-3 py-0.5 text-center">DC Reference Number</th>}
+                <th className="px-3 py-0.5 text-center">E-way Bill Applicable</th>
+                {ewayApplicable === "Yes" && (
+                  <>
+                    <th className="px-3 py-0.5 text-center">E-Way Bill Date</th>
+                    <th className="px-3 py-0.5 text-center">E-Way Bill Number</th>
+                    <th className="px-3 py-0.5 text-center">E-Way Bill Expire Date</th>
+                  </>
+                )}
+                <th className="px-3 py-0.5 text-center">Insurance Scope</th>
+                <th className="px-3 py-0.5 text-center">Kilometres</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="px-3 py-0.5">
+                  <input value={refTableData[0]?.REF_NO || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
+                </td>
+                <td className="px-3 py-0.5">
+                  <input value={refTableData[0]?.LINE_NO || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
+                </td>
+                <td className="px-3 py-0.5">
+                  <input value={invoiceNumber || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
+                </td>
+                {!isSap && (
+                  <td className="px-3 py-0.5">
+                    <GateF4MultiSelect
+                      options={invoiceF4List}
+                      value={dcReferenceNumber}
+                      onChange={setDcReferenceNumber}
+                      placeholder="Select DC Reference"
+                      className={GATE_INPUT_NORMAL}
+                    />
+                  </td>
+                )}
+                <td className="px-3 py-0.5">
+                  <select
+                    value={ewayApplicable}
+                    onChange={(e) => setEwayApplicable(e.target.value)}
+                    className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  >
+                    <option value="">Select</option>
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                  </select>
+                </td>
+                {ewayApplicable === "Yes" && (
+                  <>
+                    <td className="px-3 py-0.5">
+                      <Input type="date" value={ewayDate} onChange={(e) => setEwayDate(e.target.value)} />
+                    </td>
+                    <td className="px-3 py-0.5">
+                      <Input
+                        type="text"
+                        placeholder="Enter E-Way Bill Number"
+                        value={ewayNumber}
+                        onChange={(e) => setEwayNumber(e.target.value)}
+                      />
+                    </td>
+                    <td className="px-3 py-0.5">
+                      <Input type="date" value={ewayExpireDate} onChange={(e) => setEwayExpireDate(e.target.value)} />
+                    </td>
+                  </>
+                )}
+                <td className="px-3 py-0.5">
+                  <select
+                    value={insuranceScope}
+                    onChange={(e) => setInsuranceScope(e.target.value)}
+                    className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                  >
+                    <option value="">Select Insurance Scope</option>
+                    <option value="Buyer">Buyer</option>
+                    <option value="Supplier">Supplier</option>
+                  </select>
+                </td>
+                <td className="px-3 py-0.5">
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={kilometres}
+                    onChange={(e) => setKilometres(e.target.value)}
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
+      <h3 className="px-1 text-[13px] font-bold text-foreground tracking-tight">Item</h3>
       <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-soft">
         <div className="overflow-x-auto">
           <Table>
@@ -1444,7 +1636,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                   />
                 </TableHead>
                 <TableHead className="w-10">Sl.No</TableHead>
-                <TableHead className="whitespace-nowrap">Map ID</TableHead>
+                <TableHead className="whitespace-nowrap">Invoice Number</TableHead>
+                <TableHead className="whitespace-nowrap">Invoice Line No</TableHead>
                 {GATE_COLUMNS.map((c) => (
                   <TableHead key={c} className="whitespace-nowrap">
                     {c}
@@ -1456,7 +1649,6 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
             <TableBody>
               {gateRows.map((row, i) => {
                 const minPd = getMinPhysicalDispatch(row);
-                const selectedRefRows = refTableData.filter((r) => r.selected && r.MAPID);
                 return (
                   <TableRow key={i}>
                     <TableCell className="text-center">
@@ -1470,17 +1662,25 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                     <TableCell className="text-center text-muted-foreground">{i + 1}</TableCell>
                     <TableCell className="p-1">
                       <select
-                        value={row.mapId}
-                        onChange={(e) => onChangeGateMapId(i, e.target.value)}
-                        className="h-7 min-w-[110px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                        value={row.invoiceNumber}
+                        onChange={(e) => updateGateRow(i, "invoiceNumber", e.target.value)}
+                        className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
                       >
                         <option value="">Select</option>
-                        {selectedRefRows.map((r) => (
-                          <option key={r.MAPID} value={r.MAPID}>
-                            {r.MAPID}
+                        {invoiceF4List.map((inv) => (
+                          <option key={inv} value={inv}>
+                            {inv}
                           </option>
                         ))}
                       </select>
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <Input
+                        type="text"
+                        className="h-7 min-w-[110px]"
+                        value={row.invoiceLineNo}
+                        onChange={(e) => updateGateRow(i, "invoiceLineNo", e.target.value)}
+                      />
                     </TableCell>
                     {GATE_COLUMNS.map((c) => {
                       if (c === "Truck Type") {
@@ -1624,6 +1824,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           Save &amp; Next <ChevronRight className="size-3.5" />
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }
