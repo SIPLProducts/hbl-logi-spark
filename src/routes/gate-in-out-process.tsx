@@ -1232,22 +1232,25 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
   return (
     <div className="space-y-3">
-      {/* ── Reference table (same UI as Order Info) ── */}
+      {/* ── Reference table (same UI/CSS as Shipment Details) ── */}
       <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-              {["Select", "Sl.No", "Map ID", "Reference Number", "Work Order Number", "LR Number", "Transporter", "Action"].map((h) => (
-                <th key={h} className="px-3 py-1 text-center">
-                  {h}
-                </th>
-              ))}
+              <th className="px-3 py-0.5 text-center w-16">Select</th>
+              <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
+              <th className="px-3 py-0.5 text-center">Map ID</th>
+              <th className="px-3 py-0.5 text-center">Reference Number</th>
+              <th className="px-3 py-0.5 text-center">Work Order Number</th>
+              <th className="px-3 py-0.5 text-center">LR Number</th>
+              <th className="px-3 py-0.5 text-center">Transporter</th>
+              <th className="px-3 py-0.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
             {refTableData.map((row, i) => (
-              <tr key={i} className="border-t border-hairline/60">
-                <td className="px-3 py-1 text-center">
+              <tr key={i}>
+                <td className="px-3 py-0.5 text-center">
                   <input
                     type="checkbox"
                     checked={row.selected}
@@ -1255,35 +1258,30 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                     className="size-4 accent-sky-600"
                   />
                 </td>
-                <td className="px-3 py-1 text-center">{i + 1}</td>
-                <td className="px-3 py-1">
-                  <input value={row.MAPID || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
+                <td className="px-3 py-0.5 text-center">{i + 1}</td>
+                <td className="px-3 py-0.5">
+                  <input value={row.MAPID || ""} readOnly className={GATE_INPUT_NORMAL + " text-center"} />
                 </td>
                 {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
-                  <td key={field} className="px-3 py-1">
+                  <td key={field} className="px-3 py-0.5">
                     <input
                       value={(row as any)[field] || ""}
                       readOnly={i !== 0}
                       onChange={(e) => handleRefRowChange(i, field, e.target.value)}
                       onBlur={() => fetchGlobalReferences(i, field)}
-                      className={i !== 0 ? GATE_INPUT_READONLY : GATE_INPUT_NORMAL}
+                      className={GATE_INPUT_NORMAL + " text-center"}
                     />
                   </td>
                 ))}
-                <td className="px-3 py-1 text-center">
+                <td className="px-3 py-0.5 text-center">
                   {refTableData.length > 1 && (
                     <button
+                      type="button"
                       onClick={() => removeRefRow(i)}
-                      className="size-6 grid place-items-center rounded-md text-red-500 hover:bg-red-50"
+                      aria-label="Remove row"
+                      className="inline-grid place-items-center size-7 rounded-md text-destructive hover:bg-destructive/10"
                     >
-                      <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
+                      <Trash2 className="size-3.5" />
                     </button>
                   )}
                 </td>
