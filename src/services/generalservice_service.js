@@ -153,7 +153,10 @@ export const reportsApi = {
     FetchServiceLevelReports: (data) => request('api/external/LE/Reports/FetchServiceLevelDetails', 'POST', data),
     FetchDispatchOrderFlowData: (data) => request('api/external/LE/DispatchOrderFlow/FetchData', 'POST', data),
     FetchDispatchOrderPendingCounts: () => request('api/external/LE/DispatchOrderFlow/PendingCounts', 'GET'),
-    shipmentdetailsNonSapReports: (data) => request('api/external/LE/ShipmentDetails/Nonsap/Reports', 'POST', data)
+    shipmentdetailsNonSapReports: (data) => request('api/external/LE/ShipmentDetails/Nonsap/Reports', 'POST', data),
+    FetchGateInOutInvoiceData: (data) => request('api/external/LE/GateInOut/InvoiceGet', 'POST', data),
+   SaveGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Save', 'POST', data)
+
 };
  
 // Default export combining everything, similar to your target template pattern
