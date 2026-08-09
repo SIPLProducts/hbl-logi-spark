@@ -320,7 +320,7 @@ function GateInOutProcessPage() {
       return;
     }
 
-    const doc = new jsPDF("landscape", "mm", [420, 297]);
+    const doc = new jsPDF("landscape", "mm", [800, 297]);
 
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
@@ -388,7 +388,7 @@ function GateInOutProcessPage() {
       head: headers,
       body: data,
       startY: 25,
-      styles: { fontSize: 6, cellPadding: 1.5 },
+      styles: { fontSize: 6, cellPadding: 1.5, overflow: "ellipsize", cellWidth: "wrap" },
       headStyles: { fillColor: [52, 152, 219], fontStyle: "bold", fontSize: 6 },
       alternateRowStyles: { fillColor: [245, 245, 245] },
       theme: "grid",
@@ -1665,6 +1665,70 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       setLoadingSave(false);
     }
   };
+  const handleUpdateRecord = async (target: "header" | "item", itemIndex?: number) => {
+    try {
+      const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
+      
+      let cleanItems: any[] = [];
+      if (target === "item" && itemIndex !== undefined) {
+        const { isEdit, _backup, ...cleanItem } = searchResultItems[itemIndex];
+        // Parse email strings to arrays as required by payload
+        const formattedItem = {
+          ...cleanItem,
+          CUSTOMER_EMAIL_DETAILS: cleanItem.CUSTOMER_EMAIL_DETAILS
+            ? (typeof cleanItem.CUSTOMER_EMAIL_DETAILS === "string"
+                ? cleanItem.CUSTOMER_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ CUSTOMER_EMAIL_ID: e.trim() }))
+                : cleanItem.CUSTOMER_EMAIL_DETAILS)
+            : [],
+          SALESPERSON_EMAIL_DETAILS: cleanItem.SALESPERSON_EMAIL_DETAILS
+            ? (typeof cleanItem.SALESPERSON_EMAIL_DETAILS === "string"
+                ? cleanItem.SALESPERSON_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ SALESPERSON_EMAIL_ID: e.trim() }))
+                : cleanItem.SALESPERSON_EMAIL_DETAILS)
+            : []
+        };
+        cleanItems = [formattedItem];
+      } else {
+        cleanItems = [];
+      }
+
+      const payload = {
+        CREATE: "",
+        CHANGE: "X",
+        DELETE: "",
+        DATA: [
+          {
+            HEADER: { ...cleanHeader, ZUSER_CH: getLoggedInUser() },
+            ITEMS: cleanItems,
+          },
+        ],
+      };
+
+      const res: any = await service.ChangeGateInOutWithSap(payload);
+
+      if (res?.NUMBER === "200") {
+        Swal.fire({
+          title: "Success",
+          text: res.MSG || "Record(s) Updated Successfully",
+          icon: "success",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        
+        if (target === "header") {
+          setSearchResultHeader((prev: any) => ({ ...prev, isEdit: false }));
+        } else if (target === "item" && itemIndex !== undefined) {
+          const next = [...searchResultItems];
+          next[itemIndex] = { ...next[itemIndex], isEdit: false };
+          setSearchResultItems(next);
+        }
+      } else {
+        Swal.fire("Error", res?.MSG || "Failed to update record.", "error");
+      }
+    } catch (err) {
+      console.error("Change API failed:", err);
+      Swal.fire("Error", "API Error occurred while updating.", "error");
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -1812,9 +1876,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               <tbody className="divide-y divide-hairline/70">
                 <tr className="bg-surface hover:bg-muted/50">
                   {[
-                    { field: "REFERENCE_NUMBER", type: "text" },
-                    { field: "REFERENCE_LINE_ITEM", type: "text" },
-                    { field: "ZINV_NO", type: "text" },
+                    { field: "REFERENCE_NUMBER", type: "text", readonly: true },
+                    { field: "REFERENCE_LINE_ITEM", type: "text", readonly: true },
+                    { field: "ZINV_NO", type: "text", readonly: true },
                     { field: "ZPLANT", type: "text" },
                     { field: "EWAY_BILL_APPLICABLE", type: "select", options: ["Yes", "No"] },
                     { field: "EWAY_BILL_DATE", type: "date" },
@@ -1822,13 +1886,13 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                     { field: "EWAY_BILL_EXPIRE_DATE", type: "date" },
                     { field: "INSURANCE_SCOPE", type: "select", options: ["Buyer", "Supplier"] },
                     { field: "KILLOMETERS", type: "number" },
-                    { field: "ZWORK_ORDER", type: "text" },
-                    { field: "ZLRNO", type: "text" },
+                    { field: "ZWORK_ORDER", type: "text", readonly: true },
+                    { field: "ZLRNO", type: "text", readonly: true },
                     { field: "ZTRANSPORTER", type: "text" },
                     { field: "ZCREATED_DT", type: "date" },
-                  ].map(({ field, type, options }) => (
+                  ].map(({ field, type, options, readonly }: any) => (
                     <td key={field} className="px-3 py-2 whitespace-nowrap">
-                      {searchResultHeader.isEdit ? (
+                      {searchResultHeader.isEdit && !readonly ? (
                         type === "select" ? (
                           <select
                             className="h-7 w-full rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
@@ -1836,7 +1900,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                             onChange={(e) => setSearchResultHeader((prev: any) => ({ ...prev, [field]: e.target.value }))}
                           >
                             <option value="">Select</option>
-                            {options?.map(o => <option key={o} value={o}>{o}</option>)}
+                            {options?.map((o: string) => <option key={o} value={o}>{o}</option>)}
                           </select>
                         ) : (
                           <input
@@ -1864,14 +1928,54 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                         >
                           <Pencil className="size-3.5" />
                         </button>
+                        <button
+                          onClick={() => {
+                            Swal.fire({
+                              title: "Are you sure?",
+                              text: "Do you want to delete this record?",
+                              icon: "warning",
+                              showCancelButton: true,
+                            }).then(async (result) => {
+                              if (result.isConfirmed) {
+                                try {
+                                  const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
+                                  
+                                  const payload = {
+                                    CREATE: "",
+                                    CHANGE: "",
+                                    DELETE: "X",
+                                    DATA: [
+                                      {
+                                        HEADER: { ...cleanHeader, ZUSER: getLoggedInUser() },
+                                        ITEMS: []
+                                      }
+                                    ]
+                                  };
+
+                                  const res: any = await service.DeleteGateInOutWithSap(payload);
+                                  if (res?.MSG) {
+                                    Swal.fire("Success", res.MSG, "success");
+                                    setSearchResultHeader({});
+                                    setSearchResultItems([]);
+                                  } else {
+                                    Swal.fire("Error", "Failed to delete the record.", "error");
+                                  }
+                                } catch (err) {
+                                  console.error("Delete API failed:", err);
+                                  Swal.fire("Error", "API Error occurred while deleting.", "error");
+                                }
+                              }
+                            });
+                          }}
+                          className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1 justify-center">
                         <button
-                          onClick={() => {
-                            Swal.fire("Update Triggered", "Header updated successfully.", "success");
-                            setSearchResultHeader((prev: any) => ({ ...prev, isEdit: false }));
-                          }}
+                          onClick={() => handleUpdateRecord("header")}
                           className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
                         >
                           <Check className="size-4" strokeWidth={3} />
@@ -2045,12 +2149,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                         ) : (
                           <div className="flex items-center gap-1 justify-center">
                             <button
-                              onClick={() => {
-                                Swal.fire("Update Triggered", "Item updated successfully.", "success");
-                                const next = [...searchResultItems];
-                                next[index] = { ...next[index], isEdit: false };
-                                setSearchResultItems(next);
-                              }}
+                              onClick={() => handleUpdateRecord("item", index)}
                               className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
                             >
                               <Check className="size-4" strokeWidth={3} />

@@ -159,6 +159,7 @@ export const reportsApi = {
     SearchGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Search', 'POST', data),
     DeleteGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Delete', 'POST', data),
     FilterRecordsGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/FilterRecords', 'POST', data),
+    ChangeGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Change', 'POST', data),
 
 
 };
