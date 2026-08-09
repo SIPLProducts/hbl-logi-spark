@@ -156,7 +156,10 @@ export const reportsApi = {
     shipmentdetailsNonSapReports: (data) => request('api/external/LE/ShipmentDetails/Nonsap/Reports', 'POST', data),
     FetchGateInOutInvoiceData: (data) => request('api/external/LE/GateInOut/InvoiceGet', 'POST', data),
     SaveGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Save', 'POST', data),
-    SearchGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Search', 'POST', data)
+    SearchGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Search', 'POST', data),
+    DeleteGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Delete', 'POST', data),
+    FilterRecordsGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/FilterRecords', 'POST', data),
+
 
 };
 

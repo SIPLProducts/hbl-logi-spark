@@ -17,6 +17,8 @@ import {
   Search,
   Loader2,
   ChevronDown,
+  Check,
+  X,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -66,6 +68,9 @@ function GateInOutProcessPage() {
   const [selectedId, setSelectedId] = useState<string>("");
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
+  const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
+  const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
+  const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
   const [orderInfoData, setOrderInfoData] = useState<any[]>([]);
   const [dispatchData, setDispatchData] = useState<any[]>([]);
   const [isFilterLoading, setIsFilterLoading] = useState(false);
@@ -112,14 +117,83 @@ function GateInOutProcessPage() {
     setSearchSap(null);
   };
 
+  useEffect(() => {
+    if (!searchSap) return;
+    (async () => {
+      try {
+        const res: any = await service.fetchVendorCode();
+        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+
+        const plants: string[] = Array.isArray(data.PLANT)
+          ? data.PLANT.map((p: any) => {
+            const desc = String(p.PLANT_DESC || "").split("_")[0].trim();
+            return `${p.PLANT}_${desc}`;
+          })
+          : [];
+
+        const divisions: string[] = Array.isArray(data.PLANT)
+          ? Array.from(new Set(data.PLANT.map((p: any) => String(p.DIVISION || "")).filter(Boolean)))
+          : [];
+
+        const transporters: string[] = Array.isArray(data.VEND_CODE)
+          ? Array.from(new Set(data.VEND_CODE.map((v: any) => String(v.TRANSPORTER)).filter(Boolean)))
+          : [];
+
+        setFetchedPlants(plants);
+        setFetchedDivisions(divisions);
+        setFetchedTransporters(transporters);
+      } catch (err) {
+        console.error("Transporter/Plant/Division fetch failed:", err);
+      }
+    })();
+  }, [searchSap]);
+
   const onApply = async () => {
     if (!fromDate || !toDate) {
       Swal.fire("Warning", "Please select From Date and To Date", "warning");
       return;
     }
-    setApplied(true);
-    setOrderInfoData([]);
-    setDispatchData([]);
+
+    if (searchSap !== "with") {
+      Swal.fire("Info", "Only 'With SAP' is supported for Gate In Out filter.", "info");
+      return;
+    }
+
+    try {
+      setIsFilterLoading(true);
+      const payload = {
+        GLOBAL: "GATE IN OUT",
+        ZUSER: getLoggedInUser(),
+        DATE_FROM: format(fromDate, "yyyyMMdd"),
+        DATE_TO: format(toDate, "yyyyMMdd"),
+        PLANT: fPlant || "",
+        DIVISION: fDivision || "",
+        TRANSPORTER: fTransporter || "",
+        VEHICLE_TYPE: fVehicleType || "",
+        STATUS: fStatus || "",
+      };
+
+      const res: any = await service.FilterRecordsGateInOutWithSap(payload);
+
+      setApplied(true);
+      setOrderInfoData([]);
+      setDispatchData([]);
+
+      if (!res || (Array.isArray(res) && res.length === 0) || res?.STATUS === "FALSE") {
+        Swal.fire("Info", res?.MSG || "No records found.", "info");
+      } else {
+        if (fStatus === "Pending") {
+          setDispatchData(Array.isArray(res) ? res : [res]);
+        } else if (fStatus === "Completed") {
+          setOrderInfoData(Array.isArray(res) ? res : [res]);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error", "Failed to fetch filter records.", "error");
+    } finally {
+      setIsFilterLoading(false);
+    }
   };
 
   const downloadExcel = () => {
@@ -128,10 +202,10 @@ function GateInOutProcessPage() {
 
     if (fStatus === "Completed") {
       exportSource = orderInfoData;
-      fileName = searchSap === "with" ? "Order_Info_Completed_SAP.xls" : "Order_Info_Completed_NonSAP.xls";
+      fileName = searchSap === "with" ? "Gate-In-Out_Completed_SAP.xls" : "Gate-In-Out_Completed_NonSAP.xls";
     } else if (fStatus === "Pending") {
       exportSource = dispatchData;
-      fileName = searchSap === "with" ? "Dispatch_Pending_SAP.xls" : "Dispatch_Pending_NonSAP.xls";
+      fileName = searchSap === "with" ? "Gate-In-Out_Pending_SAP.xls" : "Gate-In-Out_Pending_NonSAP.xls";
     } else {
       Swal.fire("Warning", "Please select valid status before download", "warning");
       return;
@@ -143,39 +217,58 @@ function GateInOutProcessPage() {
     }
 
     if (fStatus === "Completed") {
+      const combinedData: any[] = [];
+      exportSource.forEach((record) => {
+        const header = record.HEADER || {};
+        const items = Array.isArray(record.ITEMS) ? record.ITEMS : [];
+        if (items.length > 0) {
+          items.forEach((item: any) => combinedData.push({ ...header, ...item }));
+        } else {
+          combinedData.push(header);
+        }
+      });
+
       exportRowsToXls(
         fileName,
         [
-          { header: "Reference No", value: (r: any) => r.ZREFNO || "" },
+          // Header Fields
+          { header: "Reference No", value: (r: any) => r.REFERENCE_NUMBER || "" },
+          { header: "Reference Line Item", value: (r: any) => r.REFERENCE_LINE_ITEM || "" },
           { header: "Invoice No", value: (r: any) => r.ZINV_NO || "" },
-          { header: "Line No", value: (r: any) => r.ZLINE_NO || "" },
-          { header: "ODN No", value: (r: any) => r.ZODN_NO || "" },
-          { header: "Invoice Date", value: (r: any) => (r.ZINV_DATE ? new Date(r.ZINV_DATE).toLocaleDateString("en-GB") : "") },
-          { header: "Basic Value", value: (r: any) => r.ZBASIC_VALUE || "" },
-          { header: "Invoice Value (GST)", value: (r: any) => r.ZINV_VALUE_GST || "" },
-          { header: "Physical Dispatch", value: (r: any) => r.ZPHY_DISPATCH || "" },
-          { header: "Fiscal Year", value: (r: any) => r.ZFYEAR || "" },
-          { header: "Fiscal Quarter", value: (r: any) => r.ZFIS_QUARTER || "" },
-          { header: "Fiscal Month", value: (r: any) => r.ZFIS_MONTH || "" },
           { header: "Plant", value: (r: any) => r.ZPLANT || "" },
-          { header: "Transaction Type", value: (r: any) => r.ZTRX_TYPE || "" },
-          { header: "Billing Text", value: (r: any) => r.ZBILL_TRX_TEXT || "" },
-          { header: "Division", value: (r: any) => r.ZDIVISION || "" },
-          { header: "Sub Division", value: (r: any) => r.ZSUB_DIVISION || "" },
-          { header: "SO Ref No", value: (r: any) => r.ZSO_NO || "" },
-          { header: "Customer Name", value: (r: any) => r.ZCUST_NAME || "" },
-          { header: "Customer Group", value: (r: any) => r.ZCUST_GRP || "" },
-          { header: "Consignee Name", value: (r: any) => r.ZCONSIGN_NAME || "" },
-          { header: "Destination Location", value: (r: any) => r.ZDES_LOC || "" },
-          { header: "State", value: (r: any) => r.ZSTATE || "" },
-          { header: "Zone", value: (r: any) => r.ZZONE || "" },
+          { header: "Eway Bill Applicable", value: (r: any) => r.EWAY_BILL_APPLICABLE || "" },
+          { header: "Eway Bill Date", value: (r: any) => r.EWAY_BILL_DATE ? new Date(r.EWAY_BILL_DATE).toLocaleDateString("en-GB") : "" },
+          { header: "Eway Bill Number", value: (r: any) => r.EWAY_BILL_NUMBER || "" },
+          { header: "Eway Bill Expire Date", value: (r: any) => r.EWAY_BILL_EXPIRE_DATE ? new Date(r.EWAY_BILL_EXPIRE_DATE).toLocaleDateString("en-GB") : "" },
+          { header: "Insurance Scope", value: (r: any) => r.INSURANCE_SCOPE || "" },
+          { header: "Kilometers", value: (r: any) => r.KILLOMETERS || "" },
           { header: "Work Order", value: (r: any) => r.ZWORK_ORDER || "" },
           { header: "LR No", value: (r: any) => r.ZLRNO || "" },
           { header: "Transporter", value: (r: any) => r.ZTRANSPORTER || "" },
-          { header: "Vehicle Type", value: (r: any) => r.ZVEH_TYPE || "" },
-          { header: "Created Date", value: (r: any) => r.ZCREATED_DT || "" },
+          { header: "Created Date", value: (r: any) => r.ZCREATED_DT ? new Date(r.ZCREATED_DT).toLocaleDateString("en-GB") : "" },
+          { header: "Created User", value: (r: any) => r.ZUSER || "" },
+          { header: "Changed User", value: (r: any) => r.ZUSER_CH || "" },
+
+          // Item Fields
+          { header: "Line Item", value: (r: any) => r.INVOICE_LINE_ITEM || "" },
+          { header: "Sl No", value: (r: any) => r.SL_NO || "" },
+          { header: "Required Date", value: (r: any) => r.REQUIRED_DATE_AND_TIME ? new Date(r.REQUIRED_DATE_AND_TIME).toLocaleString("en-GB") : "" },
+          { header: "Reported Date", value: (r: any) => r.REPORTED_DATE_AND_TIME ? new Date(r.REPORTED_DATE_AND_TIME).toLocaleString("en-GB") : "" },
+          { header: "Dispatch Date", value: (r: any) => r.PHYSICAL_DISPATCH_DATE_TIME ? new Date(r.PHYSICAL_DISPATCH_DATE_TIME).toLocaleString("en-GB") : "" },
+          { header: "Truck Type", value: (r: any) => r.TRUCK_TYPE || "" },
+          { header: "Type of Transporter", value: (r: any) => r.TYPE_OF_TRANSPORTER || "" },
+          { header: "Vehicle Number", value: (r: any) => r.VEHICLE_NUMBER || "" },
+          { header: "No of Vehicles", value: (r: any) => r.NO_OF_VEHICLES || "" },
+          { header: "Driver Number", value: (r: any) => r.DRIVER_NUMBER || "" },
+          { header: "Driver Name", value: (r: any) => r.DRIVER_NAME || "" },
+          { header: "Customer Emails", value: (r: any) => Array.isArray(r.CUSTOMER_EMAIL_DETAILS) ? r.CUSTOMER_EMAIL_DETAILS.map((e: any) => e.CUSTOMER_EMAIL_ID).join(", ") : "" },
+          { header: "Salesperson Emails", value: (r: any) => Array.isArray(r.SALESPERSON_EMAIL_DETAILS) ? r.SALESPERSON_EMAIL_DETAILS.map((e: any) => e.SALESPERSON_EMAIL_ID).join(", ") : "" },
+          { header: "GPS Loc", value: (r: any) => r.GPS_LIVE_LOCATION || "" },
+          { header: "TAT Type", value: (r: any) => r.TAT_TYPE || "" },
+          { header: "TAT Days", value: (r: any) => r.TAT_DAYS || "" },
+          { header: "ETA", value: (r: any) => r.ETA ? new Date(r.ETA).toLocaleDateString("en-GB") : "" },
         ],
-        exportSource,
+        combinedData,
       );
     } else {
       exportRowsToXls(
@@ -211,8 +304,8 @@ function GateInOutProcessPage() {
 
     if (fStatus === "Completed") {
       exportSource = orderInfoData;
-      fileName = searchSap === "with" ? "Order_Info_Completed_SAP.pdf" : "Order_Info_Completed_NonSAP.pdf";
-      reportTitle = "Order Info Records (Completed)";
+      fileName = searchSap === "with" ? "Gate_In_Out_Completed_SAP.pdf" : "Gate_In_Out_Completed_NonSAP.pdf";
+      reportTitle = "Gate-In-Out Records (Completed)";
     } else if (fStatus === "Pending") {
       exportSource = dispatchData;
       fileName = searchSap === "with" ? "Dispatch_Pending_SAP.pdf" : "Dispatch_Pending_NonSAP.pdf";
@@ -241,25 +334,39 @@ function GateInOutProcessPage() {
     let data: any[] = [];
 
     if (fStatus === "Completed") {
+      const combinedData: any[] = [];
+      exportSource.forEach((record) => {
+        const header = record.HEADER || {};
+        const items = Array.isArray(record.ITEMS) ? record.ITEMS : [];
+        if (items.length > 0) {
+          items.forEach((item: any) => combinedData.push({ ...header, ...item }));
+        } else {
+          combinedData.push(header);
+        }
+      });
+
       headers = [[
-        "SI.No", "REFNO", "Invoice No", "Line No", "ODN No", "Invoice Date", "Basic Value",
-        "Invoice Value (GST)", "Physical Dispatch", "Fiscal Year", "System Date", "Fiscal Quarter",
-        "Fiscal Month", "Plant", "Transaction Type", "Bill Text", "Division", "Sub Division",
-        "SO Ref No", "Customer Name", "Customer Group", "Consignee Name", "Destination Location",
-        "State", "Zone", "Work Order", "LR No", "Transporter", "Created date", "Vehicle Type",
+        "SI.No", "Ref No", "Ref Item", "Invoice No", "Plant", "EWB App", "EWB Date", "EWB No", "EWB Exp", "Ins Scope", "Km", "Work Order", "LR No", "Trans", "Create Dt", "User", "User CH",
+        "Line Item", "Sl No", "Req Dt", "Rep Dt", "Disp Dt", "Truck Type", "Trans Type", "Veh No", "No Veh", "Driver No", "Driver", "Cust Email", "Sales Email", "GPS Loc", "TAT Type", "TAT Days", "ETA",
       ]];
 
-      data = exportSource.map((record, index) => ([
-        index + 1, record.ZREFNO || "", record.ZINV_NO || "", record.ZLINE_NO || "", record.ZODN_NO || "",
-        record.ZINV_DATE ? new Date(record.ZINV_DATE).toLocaleDateString("en-GB") : "",
-        record.ZBASIC_VALUE || "", record.ZINV_VALUE_GST || "", record.ZPHY_DISPATCH || "",
-        record.ZFYEAR || "", record.ZSYS_DATE ? new Date(record.ZSYS_DATE).toLocaleDateString("en-GB") : "",
-        record.ZFIS_QUARTER || "", record.ZFIS_MONTH || "", record.ZPLANT || "", record.ZTRX_TYPE || "",
-        record.ZBILL_TRX_TEXT || "", record.ZDIVISION || "", record.ZSUB_DIVISION || "", record.ZSO_NO || "",
-        record.ZCUST_NAME || "", record.ZCUST_GRP || "", record.ZCONSIGN_NAME || "", record.ZDES_LOC || "",
-        record.ZSTATE || "", record.ZZONE || "", record.ZWORK_ORDER || "", record.ZLRNO || "",
-        record.ZTRANSPORTER || "", record.ZCREATED_DT ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB") : "",
-        record.ZVEH_TYPE || "",
+      data = combinedData.map((record, index) => ([
+        index + 1, record.REFERENCE_NUMBER || "", record.REFERENCE_LINE_ITEM || "", record.ZINV_NO || "", record.ZPLANT || "", record.EWAY_BILL_APPLICABLE || "",
+        record.EWAY_BILL_DATE ? new Date(record.EWAY_BILL_DATE).toLocaleDateString("en-GB") : "", record.EWAY_BILL_NUMBER || "",
+        record.EWAY_BILL_EXPIRE_DATE ? new Date(record.EWAY_BILL_EXPIRE_DATE).toLocaleDateString("en-GB") : "", record.INSURANCE_SCOPE || "",
+        record.KILLOMETERS || "", record.ZWORK_ORDER || "", record.ZLRNO || "", record.ZTRANSPORTER || "",
+        record.ZCREATED_DT ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB") : "", record.ZUSER || "", record.ZUSER_CH || "",
+
+        record.INVOICE_LINE_ITEM || "", record.SL_NO || "",
+        record.REQUIRED_DATE_AND_TIME ? new Date(record.REQUIRED_DATE_AND_TIME).toLocaleString("en-GB") : "",
+        record.REPORTED_DATE_AND_TIME ? new Date(record.REPORTED_DATE_AND_TIME).toLocaleString("en-GB") : "",
+        record.PHYSICAL_DISPATCH_DATE_TIME ? new Date(record.PHYSICAL_DISPATCH_DATE_TIME).toLocaleString("en-GB") : "",
+        record.TRUCK_TYPE || "", record.TYPE_OF_TRANSPORTER || "", record.VEHICLE_NUMBER || "", record.NO_OF_VEHICLES || "",
+        record.DRIVER_NUMBER || "", record.DRIVER_NAME || "",
+        Array.isArray(record.CUSTOMER_EMAIL_DETAILS) ? record.CUSTOMER_EMAIL_DETAILS.map((e: any) => e.CUSTOMER_EMAIL_ID).join(", ") : "",
+        Array.isArray(record.SALESPERSON_EMAIL_DETAILS) ? record.SALESPERSON_EMAIL_DETAILS.map((e: any) => e.SALESPERSON_EMAIL_ID).join(", ") : "",
+        record.GPS_LIVE_LOCATION || "", record.TAT_TYPE || "", record.TAT_DAYS || "",
+        record.ETA ? new Date(record.ETA).toLocaleDateString("en-GB") : "",
       ]));
     } else {
       headers = [[
@@ -430,21 +537,21 @@ function GateInOutProcessPage() {
                       label="Plant"
                       value={fPlant}
                       onChange={setFPlant}
-                      options={PLANTS}   // ← was: PLANTS
+                      options={fetchedPlants.length > 0 ? fetchedPlants : PLANTS}
                       placeholder="Select Plant"
                     />
                     <SelectField
                       label="Division"
                       value={fDivision}
                       onChange={setFDivision}
-                      options={DIVISIONS}  // ← was: DIVISIONS
+                      options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}
                       placeholder="Select Division"
                     />
                     <SelectField
                       label="Transporter"
                       value={fTransporter}
                       onChange={setFTransporter}
-                      options={TRANSPORTERS}  // ← was: TRANSPORTERS
+                      options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}
                       placeholder="Select Transporter"
                     />
                     <SelectField
@@ -499,81 +606,146 @@ function GateInOutProcessPage() {
                 <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
                   <div>
                     <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
-                      Order Info Results — Completed
+                      Gate-In-Out Results — Completed
                     </h3>
                     <p className="text-[11.5px] text-muted-foreground mt-0.5">
                       {orderInfoData.length} row{orderInfoData.length === 1 ? "" : "s"}
                     </p>
                   </div>
                 </div>
-                <div className="overflow-x-auto max-h-[560px]">
-                  <table className="w-full text-left border-collapse text-[12px]">
-                    <thead className="sticky top-0 z-30">
-                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
-                        {["SI.No", "REFNO", "Invoice No", "Line No", "ODN No", "Invoice Date", "Basic Value",
-                          "Invoice Value (GST)", "Physical Dispatch", "Fiscal Year", "System Date", "Fiscal Quarter",
-                          "Fiscal Month", "Plant", "Transaction Type", "Bill Text", "Division", "Sub Division",
-                          "SO Ref No", "Customer Name", "Customer Group", "Consignee Name", "Destination Location",
-                          "State", "Zone", "Work Order", "LR No", "Transporter", "Created Date", "Vehicle Type"].map((h) => (
-                            <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
-                          ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-hairline/70">
-                      {orderInfoData.length === 0 ? (
-                        <tr>
-                          <td colSpan={30} className="px-3 py-10 text-center text-[12px] text-muted-foreground">
-                            No records found.
-                          </td>
-                        </tr>
-                      ) : (
-                        orderInfoData.map((item, i) => (
-                          <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
-                            <td className="px-3 py-2 whitespace-nowrap">{i + 1}</td>
-                            <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZREFNO}</td>
-                            <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZINV_NO}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZLINE_NO}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZODN_NO}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              {item.ZINV_DATE ? new Date(item.ZINV_DATE).toLocaleDateString("en-GB") : ""}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap tabular-nums">
-                              {item.ZBASIC_VALUE ? Number(item.ZBASIC_VALUE).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap tabular-nums">
-                              {item.ZINV_VALUE_GST ? Number(item.ZINV_VALUE_GST).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZPHY_DISPATCH}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZFYEAR}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              {item.ZSYS_DATE ? new Date(item.ZSYS_DATE).toLocaleDateString("en-GB") : ""}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZFIS_QUARTER}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZFIS_MONTH}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZPLANT}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZTRX_TYPE}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZBILL_TRX_TEXT}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZSUB_DIVISION}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZSO_NO}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZCUST_NAME}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZCUST_GRP}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZCONSIGN_NAME}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZDES_LOC}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZSTATE}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZZONE}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZLRNO}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZTRANSPORTER}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              {item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : ""}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                <div className="p-4 space-y-8 max-h-[600px] overflow-y-auto">
+                  {orderInfoData.length === 0 ? (
+                    <div className="text-center py-10 text-[12px] text-muted-foreground">
+                      No records found.
+                    </div>
+                  ) : (
+                    (() => {
+                      const allHeaders = orderInfoData.map(r => r.HEADER).filter(Boolean);
+                      const allItems = orderInfoData.flatMap(r => r.ITEMS || []);
+
+                      return (
+                        <div className="space-y-8">
+                          {/* ================= HEADERS TABLE ================= */}
+                          <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
+                            <div className="px-4 py-3 border-b border-hairline bg-surface-2/60">
+                              <h3 className="font-semibold text-[13px]">Header Records</h3>
+                            </div>
+                            <div className="overflow-x-auto max-h-[350px]">
+                              <table className="w-full text-left border-collapse text-[11px]">
+                                <thead className="sticky top-0 z-30 bg-gradient-primary text-primary-foreground font-semibold uppercase tracking-[0.12em] text-[10px]">
+                                  <tr>
+                                    <th className="px-3 py-2.5 whitespace-nowrap">SI.No</th>
+                                    {["Reference No", "Ref Line Item", "Invoice No", "Plant", "EWB App", "EWB Date", "EWB No", "EWB Exp", "Ins Scope", "Km", "Work Order", "LR No", "Transporter", "Created Date", "User", "User CH"].map((h) => (
+                                      <th key={h} className="px-3 py-2.5 whitespace-nowrap">{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-surface divide-y divide-hairline/70">
+                                  {allHeaders.length === 0 ? (
+                                    <tr>
+                                      <td colSpan={17} className="px-3 py-10 text-center text-muted-foreground">
+                                        No Header Records Found
+                                      </td>
+                                    </tr>
+                                  ) : (
+                                    allHeaders.map((header: any, index: number) => (
+                                      <tr key={index} className={index % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
+                                        <td className="px-3 py-2 whitespace-nowrap">{index + 1}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap font-mono">{header.REFERENCE_NUMBER || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.REFERENCE_LINE_ITEM || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap font-mono">{header.ZINV_NO || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.ZPLANT || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.EWAY_BILL_APPLICABLE || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.EWAY_BILL_DATE ? new Date(header.EWAY_BILL_DATE).toLocaleDateString("en-GB") : "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.EWAY_BILL_NUMBER || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.EWAY_BILL_EXPIRE_DATE ? new Date(header.EWAY_BILL_EXPIRE_DATE).toLocaleDateString("en-GB") : "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.INSURANCE_SCOPE || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{header.KILLOMETERS || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.ZWORK_ORDER || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap font-mono">{header.ZLRNO || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.ZTRANSPORTER || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {header.ZCREATED_DT ? new Date(header.ZCREATED_DT).toLocaleDateString("en-GB") : "-"}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.ZUSER || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{header.ZUSER_CH || "-"}</td>
+                                      </tr>
+                                    ))
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* ================= LINE ITEMS TABLE ================= */}
+                          <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
+                            <div className="px-4 py-3 border-b border-hairline bg-surface-2/60">
+                              <h3 className="font-semibold text-[13px]">Line Items</h3>
+                            </div>
+                            <div className="overflow-x-auto max-h-[350px]">
+                              <table className="w-full text-left border-collapse text-[11px]">
+                                <thead className="sticky top-0 z-30 bg-gradient-primary text-primary-foreground font-semibold uppercase tracking-[0.12em] text-[10px]">
+                                  <tr>
+                                    <th className="px-3 py-2.5 whitespace-nowrap">SI.No</th>
+                                    {["Invoice No", "Line Item", "Ref No", "Ref Item", "Sl No", "Req Date", "Reported Date", "Dispatch Date", "Truck Type", "Trans Type", "Vehicle No", "No Veh", "Driver No", "Driver", "Cust Emails", "Sales Emails", "GPS Loc", "TAT Type", "TAT Days", "ETA"].map((h) => (
+                                      <th key={h} className="px-3 py-2.5 whitespace-nowrap">{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-surface divide-y divide-hairline/70">
+                                  {allItems.length === 0 ? (
+                                    <tr>
+                                      <td colSpan={21} className="px-3 py-10 text-center text-muted-foreground">
+                                        No Line Items Found.
+                                      </td>
+                                    </tr>
+                                  ) : (
+                                    allItems.map((item: any, index: number) => (
+                                      <tr key={index} className={index % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
+                                        <td className="px-3 py-2 whitespace-nowrap">{index + 1}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.ZINV_NO || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.INVOICE_LINE_ITEM || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap font-mono">{item.REFERENCE_NUMBER || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.REFERENCE_LINE_ITEM || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.SL_NO || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {item.REQUIRED_DATE_AND_TIME ? new Date(item.REQUIRED_DATE_AND_TIME).toLocaleString("en-GB") : "-"}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {item.REPORTED_DATE_AND_TIME ? new Date(item.REPORTED_DATE_AND_TIME).toLocaleString("en-GB") : "-"}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {item.PHYSICAL_DISPATCH_DATE_TIME ? new Date(item.PHYSICAL_DISPATCH_DATE_TIME).toLocaleString("en-GB") : "-"}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.TRUCK_TYPE || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.TYPE_OF_TRANSPORTER || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap font-mono">{item.VEHICLE_NUMBER || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.NO_OF_VEHICLES || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.DRIVER_NUMBER || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.DRIVER_NAME || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {Array.isArray(item.CUSTOMER_EMAIL_DETAILS) ? item.CUSTOMER_EMAIL_DETAILS.map((e: any) => e.CUSTOMER_EMAIL_ID).join(", ") : "-"}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {Array.isArray(item.SALESPERSON_EMAIL_DETAILS) ? item.SALESPERSON_EMAIL_DETAILS.map((e: any) => e.SALESPERSON_EMAIL_ID).join(", ") : "-"}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.GPS_LIVE_LOCATION || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.TAT_TYPE || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.TAT_DAYS || "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {item.ETA ? new Date(item.ETA).toLocaleDateString("en-GB") : "-"}
+                                        </td>
+                                      </tr>
+                                    ))
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  )}
                 </div>
               </div>
             ) : fStatus === "Pending" ? (
@@ -1290,26 +1462,33 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
     try {
       const res: any = await service.SearchGateInOutWithSap(payload);
-      if (res?.HEADER && Array.isArray(res.HEADER) && res.HEADER.length > 0) {
-        setSearchResultHeader({ ...res.HEADER[0], isEdit: false });
-        setSearchResultItems(
-          Array.isArray(res.ITEMS)
-            ? res.ITEMS.map((item: any) => ({ ...item, isEdit: false }))
-            : []
-        );
-        setIsGlobalSearch(true);
-        setShowDetails(false);
-        Swal.fire({
-          icon: "success",
-          title: "Success",
-          text: "Search results fetched successfully.",
-          timer: 1500,
-          showConfirmButton: false,
-        });
-      } else {
-        Swal.fire("No Results", "No matching records found.", "info");
-        setIsGlobalSearch(false);
+      const data = Array.isArray(res) && res.length > 0 ? res[0] : res;
+
+      if (data?.HEADER) {
+        const headerData = Array.isArray(data.HEADER) ? data.HEADER[0] : data.HEADER;
+
+        if (headerData) {
+          setSearchResultHeader({ ...headerData, isEdit: false });
+          setSearchResultItems(
+            Array.isArray(data.ITEMS)
+              ? data.ITEMS.map((item: any) => ({ ...item, isEdit: false }))
+              : []
+          );
+          setIsGlobalSearch(true);
+          setShowDetails(false);
+          Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: "Search results fetched successfully.",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+          return;
+        }
       }
+
+      Swal.fire("No Results", "No matching records found.", "info");
+      setIsGlobalSearch(false);
     } catch (err) {
       console.error("Search API error:", err);
       Swal.fire("Error", "Search failed.", "error");
@@ -1695,13 +1874,13 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           }}
                           className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
                         >
-                          <Save className="size-3.5" />
+                          <Check className="size-4" strokeWidth={3} />
                         </button>
                         <button
                           onClick={() => setSearchResultHeader((prev: any) => ({ ...prev._backup, isEdit: false }))}
                           className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
                         >
-                          <Trash2 className="size-3.5" />
+                          <X className="size-4" strokeWidth={3} />
                         </button>
                       </div>
                     )}
@@ -1720,9 +1899,10 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                 <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
                     {[
-                      "Inv Line No", "SL No", "Required Date Time", "Reported Date Time",
+                      "Inv Line No", "SL No", "Invoice No", "Reference No", "Required Date Time", "Reported Date Time",
                       "Physical Dispatch Date Time", "Truck Type", "Transporter Type",
                       "Vehicle No", "No of Vehicles", "Driver Name", "Driver Number",
+                      "Customer Email", "Salesperson Email",
                       "TAT Type", "TAT Days", "ETA", "Action"
                     ].map((h) => (
                       <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
@@ -1733,8 +1913,10 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                   {searchResultItems.map((item, index) => (
                     <tr key={index} className="bg-surface hover:bg-muted/50">
                       {[
-                        { field: "INVOICE_LINE_ITEM", type: "text" },
-                        { field: "SL_NO", type: "text" },
+                        { field: "INVOICE_LINE_ITEM", type: "text", readonly: true },
+                        { field: "SL_NO", type: "text", readonly: true },
+                        { field: "ZINV_NO", type: "text", readonly: true },
+                        { field: "REFERENCE_NUMBER", type: "text", readonly: true },
                         { field: "REQUIRED_DATE_AND_TIME", type: "datetime-local" },
                         { field: "REPORTED_DATE_AND_TIME", type: "datetime-local" },
                         { field: "PHYSICAL_DISPATCH_DATE_TIME", type: "datetime-local" },
@@ -1744,46 +1926,65 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                         { field: "NO_OF_VEHICLES", type: "number" },
                         { field: "DRIVER_NAME", type: "text" },
                         { field: "DRIVER_NUMBER", type: "text" },
+                        { field: "CUSTOMER_EMAIL_DETAILS", type: "text" },
+                        { field: "SALESPERSON_EMAIL_DETAILS", type: "text" },
                         { field: "TAT_TYPE", type: "select", options: ["Direct Truck TAT(Vizag)", "Direct Truck TAT(Hyd)", "Revised TAT", "Safe Express TAT", "Delivery TAT", "GATI TAT"] },
                         { field: "TAT_DAYS", type: "number" },
                         { field: "ETA", type: "date" },
-                      ].map(({ field, type, options }) => (
-                        <td key={field} className="px-3 py-2 whitespace-nowrap">
-                          {item.isEdit ? (
-                            type === "select" ? (
-                              <select
-                                className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
-                                value={item[field] || ""}
-                                onChange={(e) => {
-                                  const next = [...searchResultItems];
-                                  next[index] = { ...next[index], [field]: e.target.value };
-                                  setSearchResultItems(next);
-                                }}
-                              >
-                                <option value="">Select</option>
-                                {options?.map(o => <option key={o} value={o}>{o}</option>)}
-                              </select>
+                      ].map(({ field, type, options, readonly }) => {
+                        const getVal = (val: any) => {
+                          if (Array.isArray(val)) {
+                            return val.map(v => v?.CUSTOMER_EMAIL_ID || v?.SALESPERSON_EMAIL_ID || v).join(",");
+                          }
+                          return val || "";
+                        };
+                        const displayVal = getVal(item[field]);
+
+                        return (
+                          <td key={field} className="px-3 py-2 whitespace-nowrap">
+                            {item.isEdit && !readonly ? (
+                              type === "select" ? (
+                                <select
+                                  className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
+                                  value={displayVal}
+                                  onChange={(e) => {
+                                    const next = [...searchResultItems];
+                                    next[index] = { ...next[index], [field]: e.target.value };
+                                    setSearchResultItems(next);
+                                  }}
+                                >
+                                  <option value="">Select</option>
+                                  {options?.map(o => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                              ) : (
+                                <input
+                                  type={type}
+                                  className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] outline-none"
+                                  value={displayVal}
+                                  onChange={(e) => {
+                                    const next = [...searchResultItems];
+                                    const rawVal = e.target.value;
+                                    let newVal: any = rawVal;
+                                    if (field === "CUSTOMER_EMAIL_DETAILS") {
+                                      newVal = rawVal ? rawVal.split(",").map(v => ({ CUSTOMER_EMAIL_ID: v.trim() })) : [];
+                                    } else if (field === "SALESPERSON_EMAIL_DETAILS") {
+                                      newVal = rawVal ? rawVal.split(",").map(v => ({ SALESPERSON_EMAIL_ID: v.trim() })) : [];
+                                    }
+                                    next[index] = { ...next[index], [field]: newVal };
+                                    setSearchResultItems(next);
+                                  }}
+                                />
+                              )
                             ) : (
-                              <input
-                                type={type}
-                                className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] outline-none"
-                                value={item[field] || ""}
-                                onChange={(e) => {
-                                  const next = [...searchResultItems];
-                                  next[index] = { ...next[index], [field]: e.target.value };
-                                  setSearchResultItems(next);
-                                }}
-                              />
-                            )
-                          ) : (
-                            <span>
-                              {type.includes("date") && item[field]
-                                ? new Date(item[field]).toLocaleString("en-GB")
-                                : item[field] || "-"}
-                            </span>
-                          )}
-                        </td>
-                      ))}
+                              <span>
+                                {type.includes("date") && displayVal
+                                  ? new Date(displayVal).toLocaleString("en-GB")
+                                  : displayVal || "-"}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
                       <td className="px-2 py-2 text-center">
                         {!item.isEdit ? (
                           <div className="flex items-center gap-1 justify-center">
@@ -1804,10 +2005,35 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                   text: "Do you want to delete this record?",
                                   icon: "warning",
                                   showCancelButton: true,
-                                }).then((result) => {
+                                }).then(async (result) => {
                                   if (result.isConfirmed) {
-                                    setSearchResultItems(prev => prev.filter((_, i) => i !== index));
-                                    Swal.fire("Deleted", "Record deleted from view.", "success");
+                                    try {
+                                      const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
+                                      const { isEdit: iEdit, _backup: iBackup, ...cleanItem } = item;
+
+                                      const payload = {
+                                        CREATE: "",
+                                        CHANGE: "",
+                                        DELETE: "X",
+                                        DATA: [
+                                          {
+                                            HEADER: { ...cleanHeader, ZUSER: getLoggedInUser() },
+                                            ITEMS: [cleanItem]
+                                          }
+                                        ]
+                                      };
+
+                                      const res = await service.DeleteGateInOutWithSap(payload);
+                                      if (res?.MSG) {
+                                        Swal.fire("Success", res.MSG, "success");
+                                        setSearchResultItems(prev => prev.filter((_, i) => i !== index));
+                                      } else {
+                                        Swal.fire("Error", "Failed to delete the record.", "error");
+                                      }
+                                    } catch (err) {
+                                      console.error("Delete API failed:", err);
+                                      Swal.fire("Error", "API Error occurred while deleting.", "error");
+                                    }
                                   }
                                 });
                               }}
@@ -1827,7 +2053,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               }}
                               className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
                             >
-                              <Save className="size-3.5" />
+                              <Check className="size-4" strokeWidth={3} />
                             </button>
                             <button
                               onClick={() => {
@@ -1837,7 +2063,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               }}
                               className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
                             >
-                              <Trash2 className="size-3.5" />
+                              <X className="size-4" strokeWidth={3} />
                             </button>
                           </div>
                         )}
