@@ -66,7 +66,6 @@ function GateInOutProcessPage() {
   const [selectedId, setSelectedId] = useState<string>("");
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
-  // Filter results — mirrors Angular's orderInfoData / dispatchData
   const [orderInfoData, setOrderInfoData] = useState<any[]>([]);
   const [dispatchData, setDispatchData] = useState<any[]>([]);
   const [isFilterLoading, setIsFilterLoading] = useState(false);
@@ -865,8 +864,8 @@ const EMPTY_GATE_REF_ROW = (): GateRefRow => ({
 const GATE_SEARCH_OPTIONS = [
   { key: "ref_no", label: "Reference No" },
   { key: "inv_no", label: "Invoice No" },
-  { key: "odn_no", label: "ODN No" },
-  { key: "so_no", label: "SO No" },
+  { key: "transporter", label: "Transporter" },
+  { key: "vehicle_no", label: "Vehicle No" },
   { key: "lr_no", label: "LR No" },
 ];
 
@@ -1051,6 +1050,10 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const [showDetails, setShowDetails] = useState(false); // Header/Item tables + Save actions gated behind GET
   const [zplant, setZplant] = useState(""); // ZPLANT — carried from FetchGateInOutInvoiceData for the Save payload
 
+  const [searchResultHeader, setSearchResultHeader] = useState<any>({});
+  const [searchResultItems, setSearchResultItems] = useState<any[]>([]);
+  const [isGlobalSearch, setIsGlobalSearch] = useState(false);
+
   // ── Truck Type F4 (gettypeofvehicle) ──
   const [gateRows, setGateRows] = useState<GateRow[]>([EMPTY_GATE_ROW()]);
   const [truckTypeList, setTruckTypeList] = useState<VehicleTypeOption[]>([]);
@@ -1186,6 +1189,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
   // ── GET → FetchGateInOutInvoiceData (With SAP) ──
   const handleGet = async () => {
+    setIsGlobalSearch(false);
     const refRow = refTableData[0];
     const payload = {
       SAP_INV: [
@@ -1224,26 +1228,26 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       const mappedRows: GateRow[] =
         Array.isArray(ITEMS) && ITEMS.length > 0
           ? ITEMS.map((item: any) => ({
-              selected: false,
-              mapId: "",
-              invoiceNumber: item.ZINV_NO || "",
-              invoiceLineNo: item.INVOICE_LINE_ITEM != null ? String(item.INVOICE_LINE_ITEM) : "",
-              requiredDateTime: item.REQUIRED_DATE_AND_TIME || "",
-              reportedDateTime: item.REPORTED_DATE_AND_TIME || "",
-              physicalDispatchDateTime: item.PHYSICAL_DISPATCH_DATE_TIME || "",
-              truckType: item.TRUCK_TYPE || "",
-              typeOfTransporter: item.TYPE_OF_TRANSPORTER || "",
-              vehicleNumber: item.VEHICLE_NUMBER || "",
-              noOfVehicles: item.NO_OF_VEHICLES != null ? String(item.NO_OF_VEHICLES) : "",
-              driverNumber: item.DRIVER_NUMBER || "",
-              driverName: item.DRIVER_NAME || "",
-              customerEmailId: Array.isArray(item.CUSTOMER_EMAIL_DETAILS) ? item.CUSTOMER_EMAIL_DETAILS.join(",") : "",
-              salespersonEmailId: Array.isArray(item.SALESPERSON_EMAIL_DETAILS) ? item.SALESPERSON_EMAIL_DETAILS.join(",") : "",
-              gpsLiveLocation: item.GPS_LIVE_LOCATION || "",
-              tatType: item.TAT_TYPE || "",
-              tatDays: item.TAT_DAYS != null ? String(item.TAT_DAYS) : "",
-              eta: item.ETA || "",
-            }))
+            selected: false,
+            mapId: "",
+            invoiceNumber: item.ZINV_NO || "",
+            invoiceLineNo: item.INVOICE_LINE_ITEM != null ? String(item.INVOICE_LINE_ITEM) : "",
+            requiredDateTime: item.REQUIRED_DATE_AND_TIME || "",
+            reportedDateTime: item.REPORTED_DATE_AND_TIME || "",
+            physicalDispatchDateTime: item.PHYSICAL_DISPATCH_DATE_TIME || "",
+            truckType: item.TRUCK_TYPE || "",
+            typeOfTransporter: item.TYPE_OF_TRANSPORTER || "",
+            vehicleNumber: item.VEHICLE_NUMBER || "",
+            noOfVehicles: item.NO_OF_VEHICLES != null ? String(item.NO_OF_VEHICLES) : "",
+            driverNumber: item.DRIVER_NUMBER || "",
+            driverName: item.DRIVER_NAME || "",
+            customerEmailId: Array.isArray(item.CUSTOMER_EMAIL_DETAILS) ? item.CUSTOMER_EMAIL_DETAILS.join(",") : "",
+            salespersonEmailId: Array.isArray(item.SALESPERSON_EMAIL_DETAILS) ? item.SALESPERSON_EMAIL_DETAILS.join(",") : "",
+            gpsLiveLocation: item.GPS_LIVE_LOCATION || "",
+            tatType: item.TAT_TYPE || "",
+            tatDays: item.TAT_DAYS != null ? String(item.TAT_DAYS) : "",
+            eta: item.ETA || "",
+          }))
           : [EMPTY_GATE_ROW()];
 
       setGateRows(mappedRows);
@@ -1262,8 +1266,54 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     }
   };
 
-  const handleSearch = () => {
-    // TODO: integrate API when ready
+  const handleSearch = async () => {
+    if (!isSap) {
+      Swal.fire("Info", "Without SAP search is not implemented.", "info");
+      return;
+    }
+    if (!searchValue.trim()) {
+      Swal.fire("Warning", "Please enter a search value.", "warning");
+      return;
+    }
+
+    const payload = {
+      GLOBAL: "GATE IN OUT",
+      ZUSER: getLoggedInUser(),
+      DATA: {
+        REF_NO: searchType === "ref_no" ? searchValue : "",
+        INV_NO: searchType === "inv_no" ? searchValue : "",
+        TRANSPORTER: searchType === "transporter" ? searchValue : "",
+        LR_NO: searchType === "lr_no" ? searchValue : "",
+        VEHICLE_NO: searchType === "vehicle_no" ? searchValue : "",
+      },
+    };
+
+    try {
+      const res: any = await service.SearchGateInOutWithSap(payload);
+      if (res?.HEADER && Array.isArray(res.HEADER) && res.HEADER.length > 0) {
+        setSearchResultHeader({ ...res.HEADER[0], isEdit: false });
+        setSearchResultItems(
+          Array.isArray(res.ITEMS)
+            ? res.ITEMS.map((item: any) => ({ ...item, isEdit: false }))
+            : []
+        );
+        setIsGlobalSearch(true);
+        setShowDetails(false);
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Search results fetched successfully.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } else {
+        Swal.fire("No Results", "No matching records found.", "info");
+        setIsGlobalSearch(false);
+      }
+    } catch (err) {
+      console.error("Search API error:", err);
+      Swal.fire("Error", "Search failed.", "error");
+    }
   };
 
   const addGateRow = () => setGateRows((prev) => [...prev, EMPTY_GATE_ROW()]);
@@ -1303,6 +1353,29 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         return next;
       })
     );
+  };
+
+  // ── TAT Type -> TAT Days / ETA (mirrors SegmentInfoSapCreate.onTatTypeChange) ──
+  const onGateTatTypeChange = async (index: number, tatType: string) => {
+    updateGateRow(index, "tatType", tatType);
+
+    const row = gateRows[index];
+    const invNo = row?.invoiceNumber || invoiceNumber || "";
+    const payload: any = { BRANCH: "", BRANCH_ZONE: "", TAT_TYPE: tatType };
+    if (isSap) payload.VBELN = invNo;
+    else payload.INV_NO = invNo;
+
+    try {
+      const res: any = isSap ? await service.fetchTAT(payload) : await service.fetchNonSapTAT(payload);
+      if (res?.TAT || res?.ETA) {
+        updateGateRow(index, "tatDays", res.TAT || "");
+        updateGateRow(index, "eta", res.ETA || "");
+      } else {
+        Swal.fire("No TAT data found for selected type", "", "info");
+      }
+    } catch {
+      Swal.fire("Error fetching TAT details", "", "error");
+    }
   };
 
   // ── Save → SaveGateInOutWithSap (With SAP) ──
@@ -1377,8 +1450,27 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           text: res.MSG || "Record(s) Saved Successfully",
           icon: "success",
           timer: 3000,
-          showConfirmButton: true,
+          confirmButtonText: "Ok",
         });
+
+        // Reset screen state
+        setEwayDate("");
+        setEwayExpireDate("");
+        setEwayNumber("");
+        setEwayApplicable("");
+        setInsuranceScope("");
+        setKilometres("");
+        setDcReferenceNumber("");
+        setShowDetails(false);
+        setZplant("");
+        setGateRows([EMPTY_GATE_ROW()]);
+        setRefTableData([EMPTY_GATE_REF_ROW()]);
+        setFullReferenceData([]);
+        setInvoiceF4List([]);
+        setInvoiceNumber("");
+        setSearchType("");
+        setSearchValue("");
+        setIsAllGateSelected(false);
       } else {
         Swal.fire({
           title: "Error",
@@ -1500,7 +1592,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSearch();
               }}
-              placeholder="Enter Reference / Invoice / ODN / SO Number"
+              placeholder="Enter Reference / Invoice / Transporter / Vehicle Number"
               className="h-7 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
             />
             <button
@@ -1519,312 +1611,552 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         )}
       </div>
 
-      {/* ── E-Way Bill / Insurance / Distance — Header table ── */}
-      {/* Visibility gating (hidden until GET is clicked) applies to With SAP only */}
-      {(!isSap || showDetails) && (
-      <>
-      <h3 className="px-1 text-[13px] font-bold text-foreground tracking-tight">Header</h3>
-      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
-        <div className="overflow-x-auto">
-          <table className="w-full text-[12px]">
-            <thead>
-              <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-                <th className="px-3 py-0.5 text-center">Reference Number</th>
-                <th className="px-3 py-0.5 text-center">Reference Line No</th>
-                <th className="px-3 py-0.5 text-center">Invoice Number</th>
-                {!isSap && <th className="px-3 py-0.5 text-center">DC Reference Number</th>}
-                <th className="px-3 py-0.5 text-center">E-way Bill Applicable</th>
-                {ewayApplicable === "Yes" && (
-                  <>
-                    <th className="px-3 py-0.5 text-center">E-Way Bill Date</th>
-                    <th className="px-3 py-0.5 text-center">E-Way Bill Number</th>
-                    <th className="px-3 py-0.5 text-center">E-Way Bill Expire Date</th>
-                  </>
-                )}
-                <th className="px-3 py-0.5 text-center">Insurance Scope</th>
-                <th className="px-3 py-0.5 text-center">Kilometres</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="px-3 py-0.5">
-                  <input value={refTableData[0]?.REF_NO || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
-                </td>
-                <td className="px-3 py-0.5">
-                  <input value={refTableData[0]?.LINE_NO || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
-                </td>
-                <td className="px-3 py-0.5">
-                  <input value={invoiceNumber || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
-                </td>
-                {!isSap && (
-                  <td className="px-3 py-0.5">
-                    <GateF4MultiSelect
-                      options={invoiceF4List}
-                      value={dcReferenceNumber}
-                      onChange={setDcReferenceNumber}
-                      placeholder="Select DC Reference"
-                      className={GATE_INPUT_NORMAL}
-                    />
-                  </td>
-                )}
-                <td className="px-3 py-0.5">
-                  <select
-                    value={ewayApplicable}
-                    onChange={(e) => setEwayApplicable(e.target.value)}
-                    className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                  >
-                    <option value="">Select</option>
-                    <option value="No">No</option>
-                    <option value="Yes">Yes</option>
-                  </select>
-                </td>
-                {ewayApplicable === "Yes" && (
-                  <>
-                    <td className="px-3 py-0.5">
-                      <Input type="date" value={ewayDate} onChange={(e) => setEwayDate(e.target.value)} />
-                    </td>
-                    <td className="px-3 py-0.5">
-                      <Input
-                        type="text"
-                        placeholder="Enter E-Way Bill Number"
-                        value={ewayNumber}
-                        onChange={(e) => setEwayNumber(e.target.value)}
-                      />
-                    </td>
-                    <td className="px-3 py-0.5">
-                      <Input type="date" value={ewayExpireDate} onChange={(e) => setEwayExpireDate(e.target.value)} />
-                    </td>
-                  </>
-                )}
-                <td className="px-3 py-0.5">
-                  <select
-                    value={insuranceScope}
-                    onChange={(e) => setInsuranceScope(e.target.value)}
-                    className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                  >
-                    <option value="">Select Insurance Scope</option>
-                    <option value="Buyer">Buyer</option>
-                    <option value="Supplier">Supplier</option>
-                  </select>
-                </td>
-                <td className="px-3 py-0.5">
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={kilometres}
-                    onChange={(e) => setKilometres(e.target.value)}
-                  />
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <h3 className="px-1 text-[13px] font-bold text-foreground tracking-tight">Item</h3>
-      <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-soft">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-8 text-center">
-                  <input
-                    type="checkbox"
-                    checked={isAllGateSelected}
-                    onChange={(e) => toggleAllGateSelection(e.target.checked)}
-                    className="size-3.5 accent-white"
-                  />
-                </TableHead>
-                <TableHead className="w-10">Sl.No</TableHead>
-                <TableHead className="whitespace-nowrap">Invoice Number</TableHead>
-                <TableHead className="whitespace-nowrap">Invoice Line No</TableHead>
-                {GATE_COLUMNS.map((c) => (
-                  <TableHead key={c} className="whitespace-nowrap">
-                    {c}
-                  </TableHead>
-                ))}
-                <TableHead className="whitespace-nowrap text-center">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {gateRows.map((row, i) => {
-                const minPd = getMinPhysicalDispatch(row);
-                return (
-                  <TableRow key={i}>
-                    <TableCell className="text-center">
-                      <input
-                        type="checkbox"
-                        checked={row.selected}
-                        onChange={(e) => onGateRowCheckboxChange(i, e.target.checked)}
-                        className="size-3.5 accent-sky-600"
-                      />
-                    </TableCell>
-                    <TableCell className="text-center text-muted-foreground">{i + 1}</TableCell>
-                    <TableCell className="p-1">
-                      <select
-                        value={row.invoiceNumber}
-                        onChange={(e) => updateGateRow(i, "invoiceNumber", e.target.value)}
-                        className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                      >
-                        <option value="">Select</option>
-                        {invoiceF4List.map((inv) => (
-                          <option key={inv} value={inv}>
-                            {inv}
-                          </option>
-                        ))}
-                      </select>
-                    </TableCell>
-                    <TableCell className="p-1">
-                      <Input
-                        type="text"
-                        className="h-7 min-w-[110px]"
-                        value={row.invoiceLineNo}
-                        onChange={(e) => updateGateRow(i, "invoiceLineNo", e.target.value)}
-                      />
-                    </TableCell>
-                    {GATE_COLUMNS.map((c) => {
-                      if (c === "Truck Type") {
-                        return (
-                          <TableCell key={c} className="p-1">
-                            <select
-                              value={row.truckType}
-                              onChange={(e) => updateGateRow(i, "truckType", e.target.value)}
-                              disabled={loadingTruckTypes}
-                              className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
-                            >
-                              <option value="">{loadingTruckTypes ? "Loading..." : "Select Truck Type"}</option>
-                              {truckTypeList.map((v) => (
-                                <option key={v.code} value={v.code}>
-                                  {v.code}
-                                </option>
-                              ))}
-                            </select>
-                          </TableCell>
-                        );
-                      }
-                      if (c === "TAT Type") {
-                        return (
-                          <TableCell key={c} className="p-1">
-                            <select
-                              value={row.tatType}
-                              onChange={(e) => updateGateRow(i, "tatType", e.target.value)}
-                              className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                            >
-                              <option value="">Select TAT Type</option>
-                              <option value="Direct Truck TAT(Vizag)">Direct Truck TAT(Vizag)</option>
-                              <option value="Direct Truck TAT(Hyd)">Direct Truck TAT(Hyd)</option>
-                              <option value="Revised TAT">Revised TAT</option>
-                              <option value="Safe Express TAT">Safe Express TAT</option>
-                              <option value="Delivery TAT">Delivery TAT</option>
-                              <option value="GATI TAT">GATI TAT</option>
-                            </select>
-                          </TableCell>
-                        );
-                      }
-                      if (c === "ETA") {
-                        return (
-                          <TableCell key={c} className="p-1">
-                            <Input
-                              type="date"
-                              className="h-7 min-w-[140px]"
-                              value={row.eta}
-                              onChange={(e) => updateGateRow(i, "eta", e.target.value)}
-                            />
-                          </TableCell>
-                        );
-                      }
-                      const fieldMap: Record<string, Exclude<keyof GateRow, "selected" | "mapId">> = {
-                        "Required Date and Time": "requiredDateTime",
-                        "Reported Date and Time": "reportedDateTime",
-                        "Physical Dispatch Date and Time": "physicalDispatchDateTime",
-                        "Type of Transporter": "typeOfTransporter",
-                        "Vehicle Number": "vehicleNumber",
-                        "No of Vehicles": "noOfVehicles",
-                        "Driver Number": "driverNumber",
-                        "Driver Name": "driverName",
-                        "Customer Email Id": "customerEmailId",
-                        "Salesperson Email Id": "salespersonEmailId",
-                        "GPS Live Location": "gpsLiveLocation",
-                        "TAT Days": "tatDays",
-                      };
-                      const field = fieldMap[c];
-                      if (!field) return <TableCell key={c} className="p-1" />;
-                      const isPd = c === "Physical Dispatch Date and Time";
-                      const isDateTime = c.toLowerCase().includes("date");
-                      const val = row[field] || "";
-                      return (
-                        <TableCell key={c} className="p-1">
-                          <Input
-                            type={isDateTime ? "datetime-local" : "text"}
-                            className={cn(
-                              "h-7 min-w-[140px]",
-                              isPd && minPd && val && val < minPd
-                                ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
-                                : ""
-                            )}
-                            value={val}
-                            min={isPd ? minPd : undefined}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              if (isPd && minPd && v && v < minPd) return;
-                              updateGateRow(i, field, v);
-                            }}
+      {/* ── Global Search Results (With SAP) ── */}
+      {isSap && isGlobalSearch && Object.keys(searchResultHeader).length > 0 && (
+        <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="max-h-[500px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant">
+            <div className="px-3 py-2 border-b border-hairline bg-surface-2/60 font-semibold text-[13px] flex items-center justify-between">
+              Header Details
+            </div>
+            <table className="w-full text-left border-collapse text-[12px]">
+              <thead className="sticky top-0 z-30">
+                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                  {[
+                    "Ref No", "Line No", "Invoice No", "Plant", "E-way Bill App",
+                    "E-Way Date", "E-Way No", "Expire Date", "Insurance Scope",
+                    "Kilometres", "Work Order", "LR No", "Transporter", "Created Date", "Action"
+                  ].map((h) => (
+                    <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-hairline/70">
+                <tr className="bg-surface hover:bg-muted/50">
+                  {[
+                    { field: "REFERENCE_NUMBER", type: "text" },
+                    { field: "REFERENCE_LINE_ITEM", type: "text" },
+                    { field: "ZINV_NO", type: "text" },
+                    { field: "ZPLANT", type: "text" },
+                    { field: "EWAY_BILL_APPLICABLE", type: "select", options: ["Yes", "No"] },
+                    { field: "EWAY_BILL_DATE", type: "date" },
+                    { field: "EWAY_BILL_NUMBER", type: "text" },
+                    { field: "EWAY_BILL_EXPIRE_DATE", type: "date" },
+                    { field: "INSURANCE_SCOPE", type: "select", options: ["Buyer", "Supplier"] },
+                    { field: "KILLOMETERS", type: "number" },
+                    { field: "ZWORK_ORDER", type: "text" },
+                    { field: "ZLRNO", type: "text" },
+                    { field: "ZTRANSPORTER", type: "text" },
+                    { field: "ZCREATED_DT", type: "date" },
+                  ].map(({ field, type, options }) => (
+                    <td key={field} className="px-3 py-2 whitespace-nowrap">
+                      {searchResultHeader.isEdit ? (
+                        type === "select" ? (
+                          <select
+                            className="h-7 w-full rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
+                            value={searchResultHeader[field] || ""}
+                            onChange={(e) => setSearchResultHeader((prev: any) => ({ ...prev, [field]: e.target.value }))}
+                          >
+                            <option value="">Select</option>
+                            {options?.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        ) : (
+                          <input
+                            type={type}
+                            className="h-7 w-full min-w-[80px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] outline-none"
+                            value={searchResultHeader[field] || ""}
+                            onChange={(e) => setSearchResultHeader((prev: any) => ({ ...prev, [field]: e.target.value }))}
                           />
-                        </TableCell>
-                      );
-                    })}
-                    <TableCell className="p-1 text-center">
-                      <div className="inline-flex items-center gap-1">
+                        )
+                      ) : (
+                        <span>
+                          {type === "date" && searchResultHeader[field]
+                            ? new Date(searchResultHeader[field]).toLocaleDateString("en-GB")
+                            : searchResultHeader[field] || "-"}
+                        </span>
+                      )}
+                    </td>
+                  ))}
+                  <td className="px-2 py-2 text-center">
+                    {!searchResultHeader.isEdit ? (
+                      <div className="flex items-center gap-1 justify-center">
                         <button
-                          onClick={addGateRow}
-                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-accent hover:bg-accent/10 transition"
-                          aria-label="Add row"
+                          onClick={() => setSearchResultHeader((prev: any) => ({ ...prev, _backup: { ...prev }, isEdit: true }))}
+                          className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
                         >
-                          <Plus className="size-3.5" />
+                          <Pencil className="size-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 justify-center">
+                        <button
+                          onClick={() => {
+                            Swal.fire("Update Triggered", "Header updated successfully.", "success");
+                            setSearchResultHeader((prev: any) => ({ ...prev, isEdit: false }));
+                          }}
+                          className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                        >
+                          <Save className="size-3.5" />
                         </button>
                         <button
-                          onClick={() => removeGateRow(i)}
-                          disabled={gateRows.length === 1}
-                          className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
-                          aria-label="Delete row"
+                          onClick={() => setSearchResultHeader((prev: any) => ({ ...prev._backup, isEdit: false }))}
+                          className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
                         >
                           <Trash2 className="size-3.5" />
                         </button>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                    )}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-        <button
-          onClick={() => handleSave("previous")}
-          disabled={loadingSave}
-          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
-        >
-          <ChevronLeft className="size-3.5" /> Save &amp; Previous
-        </button>
-        <button
-          onClick={() => handleSave("stay")}
-          disabled={loadingSave}
-          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
-        >
-          {loadingSave ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
-          Save
-        </button>
-        <button
-          onClick={() => handleSave("next")}
-          disabled={loadingSave}
-          className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
-        >
-          Save &amp; Next <ChevronRight className="size-3.5" />
-        </button>
-      </div>
-      </>
+          {searchResultItems.length > 0 && (
+            <div className="max-h-[500px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant">
+              <div className="px-3 py-2 border-b border-hairline bg-surface-2/60 font-semibold text-[13px]">
+                Line Items
+              </div>
+              <table className="w-full text-left border-collapse text-[12px]">
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                    {[
+                      "Inv Line No", "SL No", "Required Date Time", "Reported Date Time",
+                      "Physical Dispatch Date Time", "Truck Type", "Transporter Type",
+                      "Vehicle No", "No of Vehicles", "Driver Name", "Driver Number",
+                      "TAT Type", "TAT Days", "ETA", "Action"
+                    ].map((h) => (
+                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline/70">
+                  {searchResultItems.map((item, index) => (
+                    <tr key={index} className="bg-surface hover:bg-muted/50">
+                      {[
+                        { field: "INVOICE_LINE_ITEM", type: "text" },
+                        { field: "SL_NO", type: "text" },
+                        { field: "REQUIRED_DATE_AND_TIME", type: "datetime-local" },
+                        { field: "REPORTED_DATE_AND_TIME", type: "datetime-local" },
+                        { field: "PHYSICAL_DISPATCH_DATE_TIME", type: "datetime-local" },
+                        { field: "TRUCK_TYPE", type: "select", options: truckTypeList.map(t => t.code) },
+                        { field: "TYPE_OF_TRANSPORTER", type: "text" },
+                        { field: "VEHICLE_NUMBER", type: "text" },
+                        { field: "NO_OF_VEHICLES", type: "number" },
+                        { field: "DRIVER_NAME", type: "text" },
+                        { field: "DRIVER_NUMBER", type: "text" },
+                        { field: "TAT_TYPE", type: "select", options: ["Direct Truck TAT(Vizag)", "Direct Truck TAT(Hyd)", "Revised TAT", "Safe Express TAT", "Delivery TAT", "GATI TAT"] },
+                        { field: "TAT_DAYS", type: "number" },
+                        { field: "ETA", type: "date" },
+                      ].map(({ field, type, options }) => (
+                        <td key={field} className="px-3 py-2 whitespace-nowrap">
+                          {item.isEdit ? (
+                            type === "select" ? (
+                              <select
+                                className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
+                                value={item[field] || ""}
+                                onChange={(e) => {
+                                  const next = [...searchResultItems];
+                                  next[index] = { ...next[index], [field]: e.target.value };
+                                  setSearchResultItems(next);
+                                }}
+                              >
+                                <option value="">Select</option>
+                                {options?.map(o => <option key={o} value={o}>{o}</option>)}
+                              </select>
+                            ) : (
+                              <input
+                                type={type}
+                                className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] outline-none"
+                                value={item[field] || ""}
+                                onChange={(e) => {
+                                  const next = [...searchResultItems];
+                                  next[index] = { ...next[index], [field]: e.target.value };
+                                  setSearchResultItems(next);
+                                }}
+                              />
+                            )
+                          ) : (
+                            <span>
+                              {type.includes("date") && item[field]
+                                ? new Date(item[field]).toLocaleString("en-GB")
+                                : item[field] || "-"}
+                            </span>
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-2 py-2 text-center">
+                        {!item.isEdit ? (
+                          <div className="flex items-center gap-1 justify-center">
+                            <button
+                              onClick={() => {
+                                const next = [...searchResultItems];
+                                next[index] = { ...next[index], _backup: { ...next[index] }, isEdit: true };
+                                setSearchResultItems(next);
+                              }}
+                              className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                Swal.fire({
+                                  title: "Are you sure?",
+                                  text: "Do you want to delete this record?",
+                                  icon: "warning",
+                                  showCancelButton: true,
+                                }).then((result) => {
+                                  if (result.isConfirmed) {
+                                    setSearchResultItems(prev => prev.filter((_, i) => i !== index));
+                                    Swal.fire("Deleted", "Record deleted from view.", "success");
+                                  }
+                                });
+                              }}
+                              className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 justify-center">
+                            <button
+                              onClick={() => {
+                                Swal.fire("Update Triggered", "Item updated successfully.", "success");
+                                const next = [...searchResultItems];
+                                next[index] = { ...next[index], isEdit: false };
+                                setSearchResultItems(next);
+                              }}
+                              className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                            >
+                              <Save className="size-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const next = [...searchResultItems];
+                                next[index] = { ...next[index]._backup, isEdit: false };
+                                setSearchResultItems(next);
+                              }}
+                              className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── E-Way Bill / Insurance / Distance — Header table ── */}
+      {/* Visibility gating (hidden until GET is clicked) applies to With SAP only */}
+      {(!isSap || showDetails) && (
+        <>
+          <h3 className="px-1 text-[13px] font-bold text-foreground tracking-tight">Header</h3>
+          <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12px]">
+                <thead>
+                  <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+                    <th className="px-3 py-0.5 text-center">Reference Number</th>
+                    <th className="px-3 py-0.5 text-center">Reference Line No</th>
+                    <th className="px-3 py-0.5 text-center">Invoice Number</th>
+                    {!isSap && <th className="px-3 py-0.5 text-center">DC Reference Number</th>}
+                    <th className="px-3 py-0.5 text-center">E-way Bill Applicable</th>
+                    {ewayApplicable === "Yes" && (
+                      <>
+                        <th className="px-3 py-0.5 text-center">E-Way Bill Date</th>
+                        <th className="px-3 py-0.5 text-center">E-Way Bill Number</th>
+                        <th className="px-3 py-0.5 text-center">E-Way Bill Expire Date</th>
+                      </>
+                    )}
+                    <th className="px-3 py-0.5 text-center">Insurance Scope</th>
+                    <th className="px-3 py-0.5 text-center">Kilometres</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="px-3 py-0.5">
+                      <input value={refTableData[0]?.REF_NO || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
+                    </td>
+                    <td className="px-3 py-0.5">
+                      <input value={refTableData[0]?.LINE_NO || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
+                    </td>
+                    <td className="px-3 py-0.5">
+                      <input value={invoiceNumber || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
+                    </td>
+                    {!isSap && (
+                      <td className="px-3 py-0.5">
+                        <GateF4MultiSelect
+                          options={invoiceF4List}
+                          value={dcReferenceNumber}
+                          onChange={setDcReferenceNumber}
+                          placeholder="Select DC Reference"
+                          className={GATE_INPUT_NORMAL}
+                        />
+                      </td>
+                    )}
+                    <td className="px-3 py-0.5">
+                      <select
+                        value={ewayApplicable}
+                        onChange={(e) => setEwayApplicable(e.target.value)}
+                        className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                      >
+                        <option value="">Select</option>
+                        <option value="No">No</option>
+                        <option value="Yes">Yes</option>
+                      </select>
+                    </td>
+                    {ewayApplicable === "Yes" && (
+                      <>
+                        <td className="px-3 py-0.5">
+                          <Input type="date" value={ewayDate} onChange={(e) => setEwayDate(e.target.value)} />
+                        </td>
+                        <td className="px-3 py-0.5">
+                          <Input
+                            type="text"
+                            placeholder="Enter E-Way Bill Number"
+                            value={ewayNumber}
+                            onChange={(e) => setEwayNumber(e.target.value)}
+                          />
+                        </td>
+                        <td className="px-3 py-0.5">
+                          <Input type="date" value={ewayExpireDate} onChange={(e) => setEwayExpireDate(e.target.value)} />
+                        </td>
+                      </>
+                    )}
+                    <td className="px-3 py-0.5">
+                      <select
+                        value={insuranceScope}
+                        onChange={(e) => setInsuranceScope(e.target.value)}
+                        className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                      >
+                        <option value="">Select Insurance Scope</option>
+                        <option value="Buyer">Buyer</option>
+                        <option value="Supplier">Supplier</option>
+                      </select>
+                    </td>
+                    <td className="px-3 py-0.5">
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={kilometres}
+                        onChange={(e) => setKilometres(e.target.value)}
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <h3 className="px-1 text-[13px] font-bold text-foreground tracking-tight">Item</h3>
+          <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-soft">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-8 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isAllGateSelected}
+                        onChange={(e) => toggleAllGateSelection(e.target.checked)}
+                        className="size-3.5 accent-white"
+                      />
+                    </TableHead>
+                    <TableHead className="w-10">Sl.No</TableHead>
+                    <TableHead className="whitespace-nowrap">Invoice Number</TableHead>
+                    <TableHead className="whitespace-nowrap">Invoice Line No</TableHead>
+                    {GATE_COLUMNS.map((c) => (
+                      <TableHead key={c} className="whitespace-nowrap">
+                        {c}
+                      </TableHead>
+                    ))}
+                    <TableHead className="whitespace-nowrap text-center">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {gateRows.map((row, i) => {
+                    const minPd = getMinPhysicalDispatch(row);
+                    return (
+                      <TableRow key={i}>
+                        <TableCell className="text-center">
+                          <input
+                            type="checkbox"
+                            checked={row.selected}
+                            onChange={(e) => onGateRowCheckboxChange(i, e.target.checked)}
+                            className="size-3.5 accent-sky-600"
+                          />
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground">{i + 1}</TableCell>
+                        <TableCell className="p-1">
+                          <select
+                            value={row.invoiceNumber}
+                            onChange={(e) => updateGateRow(i, "invoiceNumber", e.target.value)}
+                            className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                          >
+                            <option value="">Select</option>
+                            {invoiceF4List.map((inv) => (
+                              <option key={inv} value={inv}>
+                                {inv}
+                              </option>
+                            ))}
+                          </select>
+                        </TableCell>
+                        <TableCell className="p-1">
+                          <Input
+                            type="text"
+                            className="h-7 min-w-[110px]"
+                            value={row.invoiceLineNo}
+                            onChange={(e) => updateGateRow(i, "invoiceLineNo", e.target.value)}
+                          />
+                        </TableCell>
+                        {GATE_COLUMNS.map((c) => {
+                          if (c === "Truck Type") {
+                            return (
+                              <TableCell key={c} className="p-1">
+                                <select
+                                  value={row.truckType}
+                                  onChange={(e) => updateGateRow(i, "truckType", e.target.value)}
+                                  disabled={loadingTruckTypes}
+                                  className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
+                                >
+                                  <option value="">{loadingTruckTypes ? "Loading..." : "Select Truck Type"}</option>
+                                  {truckTypeList.map((v) => (
+                                    <option key={v.code} value={v.code}>
+                                      {v.code}
+                                    </option>
+                                  ))}
+                                </select>
+                              </TableCell>
+                            );
+                          }
+                          if (c === "TAT Type") {
+                            return (
+                              <TableCell key={c} className="p-1">
+                                <select
+                                  value={row.tatType}
+                                  onChange={(e) => onGateTatTypeChange(i, e.target.value)}
+                                  className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                                >
+                                  <option value="">Select TAT Type</option>
+                                  <option value="Direct Truck TAT(Vizag)">Direct Truck TAT(Vizag)</option>
+                                  <option value="Direct Truck TAT(Hyd)">Direct Truck TAT(Hyd)</option>
+                                  <option value="Revised TAT">Revised TAT</option>
+                                  <option value="Safe Express TAT">Safe Express TAT</option>
+                                  <option value="Delivery TAT">Delivery TAT</option>
+                                  <option value="GATI TAT">GATI TAT</option>
+                                </select>
+                              </TableCell>
+                            );
+                          }
+                          if (c === "ETA") {
+                            return (
+                              <TableCell key={c} className="p-1">
+                                <Input
+                                  type="date"
+                                  className="h-7 min-w-[140px]"
+                                  value={row.eta}
+                                  onChange={(e) => updateGateRow(i, "eta", e.target.value)}
+                                />
+                              </TableCell>
+                            );
+                          }
+                          const fieldMap: Record<string, Exclude<keyof GateRow, "selected" | "mapId">> = {
+                            "Required Date and Time": "requiredDateTime",
+                            "Reported Date and Time": "reportedDateTime",
+                            "Physical Dispatch Date and Time": "physicalDispatchDateTime",
+                            "Type of Transporter": "typeOfTransporter",
+                            "Vehicle Number": "vehicleNumber",
+                            "No of Vehicles": "noOfVehicles",
+                            "Driver Number": "driverNumber",
+                            "Driver Name": "driverName",
+                            "Customer Email Id": "customerEmailId",
+                            "Salesperson Email Id": "salespersonEmailId",
+                            "GPS Live Location": "gpsLiveLocation",
+                            "TAT Days": "tatDays",
+                          };
+                          const field = fieldMap[c];
+                          if (!field) return <TableCell key={c} className="p-1" />;
+                          const isPd = c === "Physical Dispatch Date and Time";
+                          const isDateTime = c.toLowerCase().includes("date");
+                          const val = row[field] || "";
+                          return (
+                            <TableCell key={c} className="p-1">
+                              <Input
+                                type={isDateTime ? "datetime-local" : "text"}
+                                className={cn(
+                                  "h-7 min-w-[140px]",
+                                  isPd && minPd && val && val < minPd
+                                    ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
+                                    : ""
+                                )}
+                                value={val}
+                                min={isPd ? minPd : undefined}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  if (isPd && minPd && v && v < minPd) return;
+                                  updateGateRow(i, field, v);
+                                }}
+                              />
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell className="p-1 text-center">
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              onClick={addGateRow}
+                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-accent hover:bg-accent/10 transition"
+                              aria-label="Add row"
+                            >
+                              <Plus className="size-3.5" />
+                            </button>
+                            <button
+                              onClick={() => removeGateRow(i)}
+                              disabled={gateRows.length === 1}
+                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+                              aria-label="Delete row"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+            <button
+              onClick={() => handleSave("previous")}
+              disabled={loadingSave}
+              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
+            >
+              <ChevronLeft className="size-3.5" /> Save &amp; Previous
+            </button>
+            <button
+              onClick={() => handleSave("stay")}
+              disabled={loadingSave}
+              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
+            >
+              {loadingSave ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+              Save
+            </button>
+            <button
+              onClick={() => handleSave("next")}
+              disabled={loadingSave}
+              className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
+            >
+              Save &amp; Next <ChevronRight className="size-3.5" />
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

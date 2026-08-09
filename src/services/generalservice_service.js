@@ -1,5 +1,5 @@
 const BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
- 
+
 // Common helper to reduce repetitive fetch headers & JSON parsing
 const request = async (url, method, data = null) => {
     const options = {
@@ -12,10 +12,10 @@ const request = async (url, method, data = null) => {
     const res = await fetch(`${BASE_URL}${url}`, options);
     return res.json();
 };
- 
 
 
- 
+
+
 // 2. Logistics Execution (LE) & SAP Integration APIs
 export const sapExternalApi = {
     // Order Info
@@ -52,7 +52,7 @@ export const sapExternalApi = {
     fetchTAT: (data) => request('api/external/LE/segmentInfo/Outward/withSap/TAT_Type', 'PUT', data),
     fetchNonSapTAT: (data) => request('api/external/LE/segmentInfo/Outward/NonSap/TAT_Type', 'PUT', data),
     fetchzoneTat: (data) => request('api/external/LE/segmentInfo/Outward/withoutsap/fetchzone', 'PUT', data),
- 
+
     // Transit Info
     TransitInfoSave: (data) => request('api/external/LE/TransitInfo/Outward/WithSap/Save', 'POST', data),
     TransitInfoNonSap: (data) => request('api/external/LE/TransitInfo/NonSap/Save', 'PUT', data),
@@ -60,7 +60,7 @@ export const sapExternalApi = {
     TransitInfoDeleteWithOutSap: (data) => request('api/external/LE/TransitInfo/Outward/WithoutSap/Delete', 'PUT', data),
     TransitInfoChangeWithSap: (data) => request('api/external/LE/TransitInfo/Outward/WithSap/Change', 'POST', data),
     TransitInfoChangeWithoutSap: (data) => request('api/external/LE/TransitInfo/Outward/WithoutSap/Change', 'PUT', data),
- 
+
     // Freight Billing
     FreightBillingSave: (data) => request('api/external/LE/FreightBilling/Outward/WithSap/Save', 'POST', data),
     FreightBillingNonSap: (data) => request('api/external/LE/FreightBilling/Outward/NonSap/Create', 'PUT', data),
@@ -68,7 +68,7 @@ export const sapExternalApi = {
     FreightBillingChangeWithoutSap: (data) => request('api/external/LE/FreightBilling/Outward/ChangeWithoutSap', 'PUT', data),
     FreightBillingDeleteWithSap: (data) => request('api/external/LE/FreightBilling/Outward/WithSap/Delete', 'POST', data),
     FreightBillingDeleteWithOutSap: (data) => request('api/external/LE/FreightBilling/Outward/NonSap/Delete', 'PUT', data),
- 
+
     // Vehicle Info
     VehicleInfofetch: (data) => request('api/external/LE/Vehicleinfo/Outward/fetchInvoiceList', 'POST', data),
     VehicleInfosave: (data) => request('api/external/LE/Vehicleinfo/Outward/Save', 'POST', data),
@@ -80,7 +80,7 @@ export const sapExternalApi = {
     VehicleInfoDeleteWithSap: (data) => request('api/external/LE/Vehicleinfo/Outward/DeleteWithSap', 'POST', data),
     VehicleInfoDeleteWithoutSap: (data) => request('api/external/LE/Vehicleinfo/Outward/DeleteWithoutSap', 'PUT', data),
     DCReferenceNo: (data) => request('api/external/LE/Vehicleinfo/NonSap/DCNO', 'PUT', data),
- 
+
     // Invoice Load Details
     Invoiceloaddetailsfetch: (data) => request('api/external/LE/InvoiceloadDetails/Outward/fetchInvoiceList', 'POST', data),
     sapget: (data) => request('api/external/LE/InvoiceloadDetails/Outward/sapget', 'POST', data),
@@ -89,7 +89,7 @@ export const sapExternalApi = {
     gettypeofvehicle: () => request('api/external/LE/InvoiceloadDetails/f4_getAllDetails', 'GET'),
     InvoiceloaddetailsDeleteWithsap: (data) => request('api/external/LE/InvoiceloadDetails/Outward/DeleteWithsap', 'POST', data),
     InvoiceloaddetailsDeleteWithoutsap: (data) => request('api/external/LE/InvoiceloadDetails/Outward/DeleteWithoutsap', 'PUT', data),
- 
+
     // Insurance Claim Tracking
     InsuranceClaimTrackingfetch: (data) => request('api/external/LE/InsuranceClaimTracking/Outward/fetchinvoicelist', 'POST', data),
     InsuranceClaimTrackingSave: (data) => request('api/external/LE/InsuranceClaimTracking/Outward/save', 'POST', data),
@@ -99,7 +99,7 @@ export const sapExternalApi = {
     InsuranceClaimTrackingDeleteWithoutSap: (data) => request('api/external/LE/InsuranceClaimTracking/NonSap/DeleteWithoutSap', 'PUT', data),
     InsuranceClaimTrackingChangeWithSap: (data) => request('api/external/LE/InsuranceClaimTracking/Outward/ChangeWithSap', 'POST', data),
     InsuranceClaimTrackingChangeWithoutSap: (data) => request('api/external/LE/InsuranceClaimTracking/Outward/ChangeWithoutSap', 'PUT', data),
- 
+
     // Transit Damage Info
     TransitDamageInfofetch: (data) => request('api/external/LE/TransitDamageInfo/Outward/fetchinvoicelist', 'POST', data),
     TransitDamageInfoSave: (data) => request('api/external/LE/TransitDamageInfo/Outward/Save', 'POST', data),
@@ -109,7 +109,7 @@ export const sapExternalApi = {
     TransitDamageInfoDeleteWithoutSap: (data) => request('api/external/LE/TransitDamageInfo/NonSap/DeleteWithoutSap', 'PUT', data),
     TransitDamageInfoChangeWithSap: (data) => request('api/external/LE/TransitDamageInfo/Outward/ChangeWithSap', 'POST', data),
     TransitDamageInfoChangeWithoutSap: (data) => request('api/external/LE/TransitDamageInfo/Outward/Change/WithoutSap', 'PUT', data),
- 
+
     // Dispatch Management
     DispatchSave: (data) => request('api/external/LE/Dispatch/Outward/withsap/Save', 'POST', data),
     DispatchNonSapSave: (data) => request('api/external/LE/Dispatch/Outward/withoutsap/Save', 'PUT', data),
@@ -117,7 +117,7 @@ export const sapExternalApi = {
     fetchReferencenumber: (data) => request('api/external/LE/Dispatch/Outward/ReferenceNumber/fetch', 'POST', data),
     fetchReferencenumberWithoutSap: (data) => request('api/external/LE/Dispatch/Outward/ReferenceNumber/WithoutSap/fetch', 'PUT', data),
     fetchReferencenumberEdit: (data) => request('api/external/LE/Dispatch/Outward/ReferenceNumber/edit', 'POST', data),
- 
+
     // Global Fields & Lookups
     GlobalReferenceNoFetch: (data) => request('api/external/LE/orderinfo/GlobalReferenceNoFetch', 'POST', data),
     GlobalReferenceNoFetchwithoutsap: (data) => request('api/external/LE/orderinfo/GlobalReferenceNoFetchwithoutsap', 'PUT', data),
@@ -133,14 +133,14 @@ export const sapExternalApi = {
     UserCreationDelete: (data) => request('api/external/LE/UserCreationDelete', 'POST', data),
     forgotPassword: (data) => request('api/external/LE/send-credentials', 'PUT', data),
     GlobalFileView: (data) => request('api/external/LE/GlobalFileView', 'PUT', data),
- 
+
     // Feedback
     FeedbackCreationwithsap: (data) => request('api/external/LE/ServiceLevel/Outword/withsap/FeedbackCreation', 'POST', data),
     FeedbackCreationwithoutsap: (data) => request('api/external/LE/ServiceLevel/Outword/WithoutSap/FeedbackCreation', 'PUT', data),
     FeedBackInvoiceDetailsfetchwithsap: (data) => request('api/external/LE/ServiceLevel/Outward/WithSap/InvoiceDetailsfetch', 'POST', data),
     FeedBackInvoiceDetailsfetchwithoutsap: (data) => request('api/external/LE/ServiceLevel/Outward/WithoutSap/InvoiceDetailsfetch', 'PUT', data)
 };
- 
+
 // 3. Analytic Reports APIs
 export const reportsApi = {
     FetchTransitReport: (data) => request('api/external/LE/Reports/FetchTransitReport', 'POST', data),
@@ -155,14 +155,15 @@ export const reportsApi = {
     FetchDispatchOrderPendingCounts: () => request('api/external/LE/DispatchOrderFlow/PendingCounts', 'GET'),
     shipmentdetailsNonSapReports: (data) => request('api/external/LE/ShipmentDetails/Nonsap/Reports', 'POST', data),
     FetchGateInOutInvoiceData: (data) => request('api/external/LE/GateInOut/InvoiceGet', 'POST', data),
-   SaveGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Save', 'POST', data)
+    SaveGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Save', 'POST', data),
+    SearchGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Search', 'POST', data)
 
 };
- 
+
 // Default export combining everything, similar to your target template pattern
 const backendNodejs = {
     ...sapExternalApi,
     ...reportsApi
 };
- 
+
 export default backendNodejs;
