@@ -68,7 +68,7 @@ const MANDATORY_HEADERS = new Set([
   "Invoices",
   "Plant",
   "Division",
-  "LRs QTY",
+  "No.of LRs",
   "LR No",
   "Load Pts",
   "Unload Pts",
@@ -209,6 +209,7 @@ type PlantData = {
 
 function CreateDispatch() {
   const [sap, setSap] = useState<SapMode | null>(null);
+  const [workOrderMode, setWorkOrderMode] = useState<"same" | "different" | null>(null);
   const [fetchedVendors, setFetchedVendors] = useState<{ vendorCode: string; transporter: string }[]>([]);
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
@@ -282,9 +283,9 @@ function CreateDispatch() {
       slNo: index + 1,
 
       vehicleType: firstRow.vehicleType,
-      workOrder: firstRow.workOrder,
-      vendorCode: firstRow.vendorCode,
-      transporter: firstRow.transporter,
+      workOrder: workOrderMode === "different" ? (existingRows[index]?.workOrder ?? "") : firstRow.workOrder,
+      vendorCode: workOrderMode === "different" ? (existingRows[index]?.vendorCode ?? "") : firstRow.vendorCode,
+      transporter: workOrderMode === "different" ? (existingRows[index]?.transporter ?? "") : firstRow.transporter,
       plant: firstRow.plant,
       division: firstRow.division,
       // lrNumber:
@@ -612,6 +613,7 @@ function CreateDispatch() {
     setSearchValue("");
     setSearchNotice(null);
     setSearchReference("");
+    setWorkOrderMode(null);
   }
 
   const handleVehicleTypeChange = (
@@ -766,36 +768,24 @@ function CreateDispatch() {
 
           {sap && (
             <>
-              <div className="h-6 w-px bg-hairline mx-1 hidden lg:block" />
-              <div className="flex flex-wrap items-center gap-1.5 ml-auto w-full lg:w-auto animate-in fade-in slide-in-from-top-1 duration-200">
-                <Select value={searchType} onValueChange={setSearchType}>
-                  <SelectTrigger className="w-[150px] h-7 text-[11px]">
-                    <SelectValue placeholder="Select Search Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SEARCH_TYPES.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="relative flex-1 min-w-[180px]">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
-                  <Input
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    placeholder={`Enter ${searchType}…`}
-                    // placeholder={searchType ? `Enter ${searchType}…` : "Enter Search..."}
-                    className="pl-7 h-7 text-[11px]"
-                  />
-                </div>
-                <Button size="sm" className="h-7 gap-1 text-[11px] px-2.5" onClick={handleSearch}>
-                  <Search className="size-3" /> Search
-                </Button>
-              </div>
+              <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
+              <WorkOrderToggle
+                value={workOrderMode}
+                onChange={(v) => {
+                  if (v !== workOrderMode) {
+                    setWorkOrderMode(v);
+                    setRows([emptyDispatchRow(1)]);
+                    setIsEditMode(false);
+                    setShowErrors(false);
+                    setSearchValue("");
+                    setSearchNotice(null);
+                    setSearchReference("");
+                  }
+                }}
+              />
             </>
           )}
+
         </div>
         {!direction && <p className="mt-1.5 text-[11px] text-muted-foreground">Select a direction to continue.</p>}
         {direction && !sap && (
@@ -804,12 +794,47 @@ function CreateDispatch() {
             to continue.
           </p>
         )}
-        {sap && searchNotice && (
+        {sap && !workOrderMode && (
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Select <span className="font-semibold">Same Work Order</span> or <span className="font-semibold">Different Work Order</span>{" "}
+            to continue.
+          </p>
+        )}
+        {sap && workOrderMode && searchNotice && (
           <p className="mt-1.5 text-[11px] text-amber-600">{searchNotice}</p>
         )}
       </div>
 
-      {sap && (
+      {sap && workOrderMode && (
+        <div className="flex flex-wrap items-center justify-end gap-1.5 w-full animate-in fade-in slide-in-from-top-1 duration-200">
+          <Select value={searchType} onValueChange={setSearchType}>
+            <SelectTrigger className="w-[150px] h-7 text-[11px] bg-surface shadow-sm">
+              <SelectValue placeholder="Select Search Type" />
+            </SelectTrigger>
+            <SelectContent>
+              {SEARCH_TYPES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="relative w-full sm:w-[250px]">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
+            <Input
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              placeholder={`Enter ${searchType}…`}
+              className="pl-7 h-7 text-[11px] bg-surface shadow-sm"
+            />
+          </div>
+          <Button size="sm" className="h-7 gap-1 text-[11px] px-2.5 shadow-sm" onClick={handleSearch}>
+            <Search className="size-3" /> Search
+          </Button>
+        </div>
+      )}
+
+      {sap && workOrderMode && (
         <>
           {showErrors && invalidRowIds.size > 0 && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[11.5px] font-medium text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
@@ -842,7 +867,7 @@ function CreateDispatch() {
                       "Vendor",
                       "Plant",
                       "Division",
-                      "LRs QTY",
+                      "No.of LRs",
                       "LR No",
                       "Load Pts",
                       "Unload Pts",
@@ -886,11 +911,11 @@ function CreateDispatch() {
                         placeholder="WO-…"
 
                         mono
-                        disabled={row.vehicleType !== "FULL TRUCK LOAD"}
+                        disabled={row.vehicleType !== "FULL TRUCK LOAD" || (workOrderMode === "same" && index > 0)}
                       />
                       <CellNumber
                         value={row.noOfTrucks}
-                        onChange={(v) => updateRow(row.id, { noOfTrucks: v })}
+                        onChange={(v) => updateRow(row.id, { noOfTrucks: v, noOfLRs: v })}
 
                         invalid={showErrors && isFieldEmpty(row, "noOfTrucks")}
                       />
@@ -902,7 +927,7 @@ function CreateDispatch() {
                       <CellSelect
                         value={row.transporter}
                         options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}
-                        // disabled={isLockedRow(index)}
+                        disabled={workOrderMode === "same" && index !== 0}
                         onChange={(v) => {
                           const selected = fetchedVendors.find(
                             (item) => item.transporter === v
@@ -919,7 +944,7 @@ function CreateDispatch() {
                         <CellSelect
                           value={row.vendorCode}
                           options={fetchedVendors.map((v) => `${v.vendorCode}`)}
-                          // disabled={isLockedRow(index)}
+                          disabled={workOrderMode === "same" && index !== 0}
                           onChange={(v) => {
                             const selected = fetchedVendors.find(
                               (item) => item.vendorCode === v
@@ -939,6 +964,7 @@ function CreateDispatch() {
 
                           placeholder="V-…"
                           mono
+                          disabled={workOrderMode === "same" && index !== 0}
                         />
                       )}
 
@@ -1074,6 +1100,33 @@ function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: S
           )}
         >
           {m === "with" ? "With SAP" : "Without SAP"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function WorkOrderToggle({ value, onChange }: { value: "same" | "different" | null; onChange: (v: "same" | "different") => void }) {
+  const idx = value === "same" ? 0 : value === "different" ? 1 : -1;
+  return (
+    <div className="relative inline-flex items-center p-0 rounded-full bg-emerald-500/10 text-[12px]">
+      {idx >= 0 && (
+        <span
+          className="absolute top-0 bottom-0 left-0 w-1/2 rounded-full bg-surface shadow-soft transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(${idx * 100}%)` }}
+          aria-hidden
+        />
+      )}
+      {(["same", "different"] as const).map((m) => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          className={cn(
+            "relative z-10 px-3 py-1 rounded-full font-medium transition-colors cursor-pointer",
+            value === m ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400",
+          )}
+        >
+          {m === "same" ? "Same Work Order" : "Different Work Order"}
         </button>
       ))}
     </div>
