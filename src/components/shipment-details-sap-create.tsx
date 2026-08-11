@@ -798,8 +798,8 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
           timer: 1500,
           showConfirmButton: false,
         }).then(() => {
-          if (action === "next") navigate({ to: "/invoice-load-details" });
-          else if (action === "previous") navigate({ to: "/order-info" });
+          if (action === "next") navigate({ to: "/segment-info" });
+          else if (action === "previous") navigate({ to: "/vehicle-info" });
           else resetForm();
         });
       } else {

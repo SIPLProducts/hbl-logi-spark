@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { format } from "date-fns";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   Plus,
   RefreshCw,
@@ -62,6 +62,7 @@ export const Route = createFileRoute("/gate-in-out-process")({
 });
 
 function GateInOutProcessPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<"create" | "search">("create");
   const [direction, setDirection] = useState<"outward" | null>(null);
   const [sap, setSap] = useState<SapMode | null>(null);
@@ -1210,6 +1211,7 @@ function getLoggedInUser(): string {
 type VehicleTypeOption = { code: string; label: string };
 
 function GateInOutCreate({ mode }: { mode: SapMode }) {
+  const navigate = useNavigate();
   const isSap = mode === "with";
 
   const [ewayDate, setEwayDate] = useState("");
@@ -1650,6 +1652,12 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         setSearchType("");
         setSearchValue("");
         setIsAllGateSelected(false);
+        
+        if (action === "next") {
+          navigate({ to: "/invoice-load-details" });
+        } else if (action === "previous") {
+          navigate({ to: "/order-info" });
+        }
       } else {
         Swal.fire({
           title: "Error",

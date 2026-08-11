@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -117,6 +117,7 @@ function getLoggedInUser() {
 }
 
 function DispatchPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<"create" | "search">("create");
 
   return (
@@ -208,6 +209,7 @@ type PlantData = {
 /* ──────────────────────────────────── Mode 1 — Create ──────────────────────────────────── */
 
 function CreateDispatch() {
+  const navigate = useNavigate();
   const [sap, setSap] = useState<SapMode | null>(null);
   const [workOrderMode, setWorkOrderMode] = useState<"same" | "different" | null>(null);
   const [fetchedVendors, setFetchedVendors] = useState<{ vendorCode: string; transporter: string }[]>([]);
@@ -707,9 +709,9 @@ function CreateDispatch() {
         }).then(() => {
           resetForm();
           if (action === "next") {
-            // navigate("/order-info");
+            navigate({ to: "/order-info" });
           } else if (action === "previous") {
-            // navigate("/dashboard");
+            navigate({ to: "/dispatch-orders" });
           }
         });
       } else {

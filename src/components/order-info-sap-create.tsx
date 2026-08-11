@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Search, Save, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 // @ts-ignore
@@ -227,6 +228,7 @@ function FieldLabel({ label, fromSap }: { label: string; fromSap: boolean }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" }) {
+  const navigate = useNavigate();
   const isWithout = mode === "without";
   const isSap = !isWithout;
 
@@ -636,7 +638,11 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
           setSapFetched(false);
           setSapFilledKeys(new Set());
         }
-        // For next/previous: parent handles navigation
+        if (action === "next") {
+          navigate({ to: "/gate-in-out-process" });
+        } else if (action === "previous") {
+          navigate({ to: "/dispatch" });
+        }
       } else {
         Swal.fire({ icon: "error", title: "Error", text: res?.MESSAGE || "Failed to save data" });
       }

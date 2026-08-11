@@ -777,9 +777,9 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       if (res?.STATUS === "true" || res?.NUMBER === "200") {
         await Swal.fire({ title: "Success", text: res.MESSAGE, icon: "success", confirmButtonText: "Ok" });
         if (action === "next") {
-          navigate({ to: "/vehicle-info" });
+          navigate({ to: "/transit-info" });
         } else if (action === "previous") {
-          navigate({ to: "/invoice-load-details" });
+          navigate({ to: "/shipment-details" });
         } else {
           setForm(EMPTY_FORM);
           setTableData([EMPTY_ROW()]);

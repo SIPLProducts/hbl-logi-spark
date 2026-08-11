@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type ReactNode } from "react";
 import Swal from "sweetalert2";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 // @ts-ignore
@@ -292,6 +292,7 @@ const newRow = (id: number, patch: Partial<LoadRow> = {}): LoadRow => ({
 });
 
 function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
+  const navigate = useNavigate();
   const isWithout = mode === "without";
   const user = getCurrentUser();
 
@@ -940,7 +941,13 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
           text: res.MSG || res.MESSAGE || "Saved Successfully",
           confirmButtonText: "Ok",
         });
-        if (action === "stay") resetAll();
+        if (action === "stay") {
+          resetAll();
+        } else if (action === "next") {
+          navigate({ to: "/vehicle-info" });
+        } else if (action === "previous") {
+          navigate({ to: "/gate-in-out-process" });
+        }
       } else {
         const info = res && typeof res === 'object' ? JSON.stringify(res) : String(res);
         await Swal.fire('Info', res?.MSG || res?.MESSAGE || `Unexpected response: ${info}`, 'info');

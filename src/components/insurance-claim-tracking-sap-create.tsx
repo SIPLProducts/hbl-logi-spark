@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, ChevronDown, Plus, X } from "lucide-react";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -192,8 +193,8 @@ const BASE_FIELDS: FieldSpec[] = [
   { label: "Approve Document", key: "ZAPP_DOC", type: "file" },
 ];
 
-export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "with" | "without" }) {
-
+export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
+  const navigate = useNavigate();
   const isWithout = mode === "without";
   const isSap = !isWithout;
 
@@ -577,6 +578,8 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         Swal.fire({ icon: "success", text: res.MESSAGE || "Saved Successfully" });
 
         if (action === "previous") {
+          navigate({ to: "/transit-damage-info" });
+        } else {
           resetAll();
         }
       } else {
@@ -712,7 +715,11 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
       if (res?.STATUS === true || res?.STATUS === "TRUE") {
         Swal.fire({ icon: "success", title: "Success", text: "Data Saved Successfully" });
-        resetAll();
+        if (action === "previous") {
+          navigate({ to: "/transit-damage-info" });
+        } else {
+          resetAll();
+        }
       } else {
         Swal.fire({ icon: "warning", title: "Save Failed", text: res?.MESSAGE || "" });
       }

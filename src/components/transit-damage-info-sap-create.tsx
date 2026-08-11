@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, ChevronDown, Plus, X } from "lucide-react";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -258,8 +259,8 @@ function getLoggedInUser(): string {
   } catch { return ""; }
 }
 
-export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" }) {
-
+export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
+  const navigate = useNavigate();
   const isWithout = mode === "without";
   const isSap = !isWithout;
   const [checked, setChecked] = useState(!isWithout);
@@ -859,14 +860,11 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
         });
 
         if (action === "next") {
-
-          // navigate("/insurance-claim-tracking")
-
+          navigate({ to: "/insurance-claim-tracking" });
         } else if (action === "previous") {
-
-          // navigate("/freight-billing")
-            resetAll(); 
-
+          navigate({ to: "/service-level" });
+        } else {
+          resetAll(); 
         }
 
       } else {
@@ -1229,9 +1227,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
         // resetForm();
 
         if (action === "next") {
-          // navigate next
+          navigate({ to: "/insurance-claim-tracking" });
         } else if (action === "previous") {
-          // navigate previous
+          navigate({ to: "/service-level" });
         }
       } else {
         Swal.fire({

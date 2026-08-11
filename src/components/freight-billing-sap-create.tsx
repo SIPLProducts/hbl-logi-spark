@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
@@ -413,7 +414,7 @@ function PACheckDialog({
 }
 
 export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "without" }) {
-
+  const navigate = useNavigate();
   const isWithout = mode === "without";
   const isSap = !isWithout;
   const [checked, setChecked] = useState(false);
@@ -739,13 +740,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         });
 
         if (action === "next") {
-          console.log("Navigate Next");
-          // navigate("/transit-damage-info");
+          navigate({ to: "/service-level" });
         } else if (action === "previous") {
-          console.log("Navigate Previous");
-          // navigate("/transit-info");
+          navigate({ to: "/transit-info" });
         } else {
-          console.log("Reset Form");
+          // console.log("Reset Form");
         }
       } else {
         Swal.fire({
