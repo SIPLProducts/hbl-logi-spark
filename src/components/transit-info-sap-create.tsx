@@ -563,48 +563,60 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const sapType = "SAP";
 
   const updateSearchRow = async (
-    headerRow: any,
-    itemRows: any[]
-  ) => {
-    const result = await Swal.fire({
-      title: "Are you sure?",
-      text: "Do you want to update this transit record?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Yes, Update",
-      cancelButtonText: "Cancel",
-    });
+  headerRow: any,
+  itemRows: any[]
+) => {
+  const result = await Swal.fire({
+    title: "Are you sure?",
+    text: "Do you want to update this transit record?",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Yes, Update",
+    cancelButtonText: "Cancel",
+  });
 
-    if (!result.isConfirmed) return;
+  if (!result.isConfirmed) return;
 
-    if (!headerRow.ZREFNO) {
-      Swal.fire("Error", "Missing mandatory ZREFNO in header", "error");
-      return;
-    }
+  if (!headerRow?.ZREFNO) {
+    Swal.fire("Error", "Missing mandatory ZREFNO in header", "error");
+    return;
+  }
 
-    const invalidItems = itemRows.filter(
-      (item) => !item.ZREFNO || !item.ZLINE_NO
+  const invalidItems = itemRows.filter(
+    (item) => !item?.ZREFNO || !item?.ZLINE_NO
+  );
+
+  if (invalidItems.length > 0) {
+    Swal.fire(
+      "Error",
+      "Missing mandatory keys in items (ZREFNO/ZLINE_NO)",
+      "error"
     );
+    return;
+  }
 
-    if (invalidItems.length > 0) {
-      Swal.fire(
-        "Error",
-        "Missing mandatory keys in items (ZREFNO/ZLINE_NO)",
-        "error"
-      );
-      return;
-    }
+  setLoadingSave(true);
 
+  try {
+    /*
+     * IMPORTANT:
+     * Update API expects HEADER as object and ITEM as array.
+     * Keep all editable fields in the payload.
+     */
     const headerPayload = {
       ZREFNO: headerRow.ZREFNO,
       ZINV_NO: headerRow.ZINV_NO || "",
       ZODN_NO: headerRow.ZODN_NO || "",
       ZSONO: headerRow.ZSONO || "",
       ZSALE_PERSON: headerRow.ZSALE_PERSON || "",
+
+      // Editable date fields
       ZPY_ARRIVED_DEST: headerRow.ZPY_ARRIVED_DEST || "",
       ZUNLOADING_DT: headerRow.ZUNLOADING_DT || "",
+      ZPOD_SCAN: headerRow.ZPOD_SCAN || "",
+
       ZSIT_SALE: headerRow.ZSIT_SALE || "",
-      ZPOD_FNAME: headerRow.ZPOD_FNAME || "",
+      ZPODNAME: headerRow.ZPODNAME || "",
       ZLOCATION: headerRow.ZLOCATION || "",
       ZCREATED_DT: headerRow.ZCREATED_DT || "",
       ZPLANT: headerRow.ZPLANT || "",
@@ -614,17 +626,21 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       ZUSER_CH: getLoggedInUser(),
     };
 
+    /*
+     * Preserve the existing ITEM values.
+     * Do not generate POSNR / VEH_LINE values again.
+     */
     const itemPayload = itemRows.map((item: any) => ({
-      ZREFNO: String(item.ZREFNO),
-      ZLINE_NO: String(item.ZLINE_NO),
-      ZINV_NO: item.ZINV_NO || "",
-      POSNR: item.POSNR || "",
-      ZVEH_LINE: item.ZVEH_LINE || "",
-      ZVEH_NUM: item.ZVEH_NUM || "",
-      ZLRNO: item.ZLRNO || "",
-      ZWORK_ORDER: item.ZWORK_ORDER || "",
-      ZTRANSPORTER: item.ZTRANSPORTER || "",
-      ZUSER: item.ZUSER || "",
+      ZREFNO: String(item.ZREFNO ?? ""),
+      ZLINE_NO: String(item.ZLINE_NO ?? ""),
+      ZINV_NO: item.ZINV_NO ?? "",
+      POSNR: item.POSNR ?? "",
+      ZVEH_LINE: item.ZVEH_LINE ?? "",
+      ZVEH_NUM: item.ZVEH_NUM ?? "",
+      ZLRNO: item.ZLRNO ?? "",
+      ZWORK_ORDER: item.ZWORK_ORDER ?? "",
+      ZTRANSPORTER: item.ZTRANSPORTER ?? "",
+      ZUSER: item.ZUSER ?? "",
       ZUSER_CH: getLoggedInUser(),
     }));
 
@@ -635,45 +651,115 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       ITEM: itemPayload,
     };
 
-    console.log("TRANSIT UPDATE PAYLOAD", payload);
+    console.log(
+      "========== TRANSIT UPDATE PAYLOAD =========="
+    );
+    console.log(JSON.stringify(payload, null, 2));
 
-    try {
-      const response =
-        sapType === "SAP"
-          ? await service.TransitInfoChangeWithSap(payload)
-          : await service.TransitInfoChangeWithoutSap(payload);
+    const response =
+      isSap
+        ? await service.TransitInfoChangeWithSap(payload)
+        : await service.TransitInfoChangeWithoutSap(payload);
 
-      if (
-        response.STATUS === "TRUE" ||
-        response.NUMBER === "200"
-      ) {
-        Swal.fire(
-          "Success",
-          response.MESSAGE || "Transit data updated successfully",
-          "success"
-        );
+    console.log(
+      "========== TRANSIT UPDATE RESPONSE =========="
+    );
+    console.log(response);
 
-        setItemsList((prev) =>
-          prev.map((i) => {
-            const { _backup, ...rest } = i;
-            return { ...rest, isEdit: false };
-          })
-        );
+    const updateSuccess =
+      String(response?.STATUS ?? "").toUpperCase() === "TRUE" ||
+      String(response?.NUMBER ?? "") === "200";
 
-        // Refresh from the server — this also repopulates headerData with
-        // the freshly saved values.
-        onSearchReference();
-      } else {
-        Swal.fire(
-          "Error",
-          response.MESSAGE || "Update failed",
-          "error"
-        );
-      }
-    } catch (err) {
-      Swal.fire("Error", "Internal Server Error", "error");
+    if (!updateSuccess) {
+      Swal.fire(
+        "Error",
+        response?.MESSAGE || response?.MSG || "Update failed",
+        "error"
+      );
+      return;
     }
-  };
+
+    /*
+     * IMPORTANT:
+     * Do not immediately call onSearchReference().
+     * First update the UI with the values that were actually submitted.
+     */
+    setHeaderData({
+      ...headerPayload,
+      isEdit: false,
+    });
+
+    setItemsList(
+      itemPayload.map((item: any) => ({
+        ...item,
+        isEdit: false,
+      }))
+    );
+
+    /*
+     * Also keep the top form fields synchronized.
+     */
+    setInvoiceNumber(headerPayload.ZINV_NO || "");
+    setPhysicalArrivedDate(
+      headerPayload.ZPY_ARRIVED_DEST || ""
+    );
+    setUnloadingDate(
+      headerPayload.ZUNLOADING_DT || ""
+    );
+    setPodScanDate(
+      headerPayload.ZPOD_SCAN || ""
+    );
+    setSitSale(
+      headerPayload.ZSIT_SALE || ""
+    );
+
+    /*
+     * Remove edit backup data.
+     */
+    setHeaderData((prev: any) => {
+      if (!prev) return prev;
+
+      const { _backup, ...cleanHeader } = prev;
+
+      return {
+        ...cleanHeader,
+        isEdit: false,
+      };
+    });
+
+    setItemsList((prev: any[]) =>
+      prev.map((item) => {
+        const { _backup, ...cleanItem } = item;
+
+        return {
+          ...cleanItem,
+          isEdit: false,
+        };
+      })
+    );
+
+    await Swal.fire({
+      icon: "success",
+      title: "Success",
+      text: response?.MESSAGE || "Transit data updated successfully",
+      confirmButtonText: "OK",
+    });
+
+  } catch (err) {
+    console.error(
+      "Transit update error:",
+      err
+    );
+
+    Swal.fire(
+      "Error",
+      "Internal Server Error while updating transit data",
+      "error"
+    );
+  } finally {
+    setLoadingSave(false);
+  }
+};
 
   const cancelSearchEdit = (type: "header" | "item", index: number) => {
     if (type === "header") {

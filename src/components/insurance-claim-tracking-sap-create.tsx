@@ -850,13 +850,19 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
     if (!result.isConfirmed) return;
 
+    // Strip UI-only fields (_backup, isEdit) before sending to backend
+    const { _backup, isEdit, ...cleanHeader } = headerData;
+
     const payload = {
       ZSUPT_DOC: supportingBase64 || "",
       ZSUPT_PATH: supportingPath || "",
       ZAPP_DOC: approveBase64 || "",
       ZAPP_PATH: approvePath || "",
-      HEAD: { ...headerData, ZUSER_CH: getLoggedInUser() },
-      ITEM: itemData.map((item: any) => ({ ...item, ZUSER_CH: getLoggedInUser() })),
+      HEAD: { ...cleanHeader, ZUSER_CH: getLoggedInUser() },
+      ITEM: itemData.map((item: any) => {
+        const { _backup: ib, isEdit: ie, ...cleanItem } = item;
+        return { ...cleanItem, ZUSER_CH: getLoggedInUser() };
+      }),
     };
 
     try {
@@ -1173,7 +1179,13 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       { field: "PLANT", alt: "ZPLANT", type: "text" },
                       { field: "DIVISION", alt: "ZDIVISION", type: "text" },
                     ].map(({ field, alt, type }) => {
-                      const value = headerData[field] ?? headerData[alt];
+                      // Backend response always carries the Z-prefixed key
+                      // (ZLOSS_DCL, ZCLM_ST, ...). Read AND write must use
+                      // the SAME key, otherwise edits land on a stray
+                      // non-Z key that the backend never looks at (that
+                      // was the original bug — see chat history).
+                      const key = headerData[alt] !== undefined ? alt : field;
+                      const value = headerData[key];
                       return (
                         <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
                           {headerData.isEdit ? (
@@ -1182,7 +1194,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                                 className={`${GREEN_INPUT} h-16`}
                                 value={value || ""}
                                 onChange={(e) =>
-                                  setHeaderData((prev: any) => ({ ...prev, [field]: e.target.value }))
+                                  setHeaderData((prev: any) => ({ ...prev, [key]: e.target.value }))
                                 }
                               />
                             ) : (
@@ -1191,7 +1203,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                                 className={GREEN_INPUT}
                                 value={value || ""}
                                 onChange={(e) =>
-                                  setHeaderData((prev: any) => ({ ...prev, [field]: e.target.value }))
+                                  setHeaderData((prev: any) => ({ ...prev, [key]: e.target.value }))
                                 }
                               />
                             )
