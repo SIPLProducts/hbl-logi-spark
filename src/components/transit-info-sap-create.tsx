@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Search,
   Save,
@@ -136,6 +137,7 @@ const CHECK_PATH = "M5 13l4 4L19 7";
 const X_PATH = "M6 18L18 6M6 6l12 12";
 
 export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" }) {
+  const navigate = useNavigate();
 
   const isWithout = mode === "without";
   const isSap = !isWithout;
@@ -382,9 +384,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           confirmButtonText: "OK",
         });
 
-        // Clear all fields after clicking OK
-        resetAll();
-        // action === "next" / "previous": parent handles navigation
+        if (action === "next") navigate({ to: "/freight-billing" });
+        else if (action === "previous") navigate({ to: "/segment-info" });
+        else resetAll();
       } else {
         Swal.fire({
           icon: "error",
