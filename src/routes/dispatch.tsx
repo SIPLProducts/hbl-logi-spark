@@ -224,6 +224,12 @@ function CreateDispatch() {
   const [searchReference, setSearchReference] = useState<string>("");
   const [searchNotice, setSearchNotice] = useState<string | null>(null);
   const isLockedRow = (index: number) => index !== 0;
+  const countLRNumbers = (value: string) => {
+  return value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean).length;
+};
   const [originalTotals, setOriginalTotals] = useState({
     trucks: 0,
     invoices: 0,
@@ -987,10 +993,22 @@ function CreateDispatch() {
                         onChange={(v) => updateRow(row.id, { noOfLRs: v })}
                         invalid={showErrors && isFieldEmpty(row, "noOfLRs")}
                       />
-                      <CellInput
+                      {/* <CellInput
                         value={row.lrNumber}
                         onChange={(v) => updateRow(row.id, { lrNumber: v })}
                         placeholder="LR-…"
+                        mono
+                        invalid={showErrors && isFieldEmpty(row, "lrNumber")}
+                      /> */}
+                      <CellInput
+                        value={row.lrNumber}
+                        onChange={(v) =>
+                          updateRow(row.id, {
+                            lrNumber: v,
+                            noOfLRs: countLRNumbers(v),
+                          })
+                        }
+                        placeholder="LR001, LR002, LR003"
                         mono
                         invalid={showErrors && isFieldEmpty(row, "lrNumber")}
                       />
@@ -1126,7 +1144,7 @@ function WorkOrderToggle({ value, onChange }: { value: "same" | "different" | nu
             value === m ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400",
           )}
         >
-          {m === "same" ? "Same Work Order" : "Different Work Order"}
+          {m === "same" ? "Same W O" : "Different W O"}
         </button>
       ))}
     </div>

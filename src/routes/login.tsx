@@ -111,7 +111,45 @@ function LoginPage() {
         showConfirmButton: false,
       });
 
-      navigate({ to: "/" });
+      // navigate({ to: "/" });
+      const activities = response?.ACTIVITIES ?? response?.ACTIVITY ?? [];
+
+      const normalizeKey = (input: string) =>
+        input
+          .toLowerCase()
+          .replace(/outward/g, "")
+          .replace(/[^a-z0-9]/g, "");
+
+      const screenMap: Record<string, string> = {
+        dashboard: "/",
+        dispatchorders: "/dispatch-orders",
+        dispatch: "/dispatch",
+        orderinfo: "/order-info",
+        gateinout: "/gate-in-out-process",
+        invoiceloaddetails: "/invoice-load-details",
+        vehicleinfo: "/vehicle-info",
+        shipmentdetails: "/shipment-details",
+        segmentinfo: "/segment-info",
+        transitinfo: "/transit-info",
+        freightbilling: "/freight-billing",
+        servicelevel: "/service-level",
+        transitdamageinfo: "/transit-damage-info",
+        insuranceclaimtracking: "/insurance-claim-tracking",
+        usercreation: "/user-creation",
+      };
+
+      const firstActivity = activities.find(
+        (item: any) => item?.ACTIVITY || item?.ACT
+      );
+
+      const activityName =
+        firstActivity?.ACTIVITY ?? firstActivity?.ACT ?? "";
+
+      const firstScreen = screenMap[normalizeKey(activityName)];
+
+      navigate({
+        to: firstScreen || "/",
+      });
 
     } catch (err: any) {
       Swal.fire({

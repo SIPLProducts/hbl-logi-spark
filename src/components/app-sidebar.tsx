@@ -21,7 +21,7 @@ import {
   LogOut,
   DoorOpen,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { REPORTS_NAV } from "@/lib/reports-nav";
 import hblLogo from "@/assets/hbl-logo.png";
@@ -30,43 +30,55 @@ type NavItem = {
   title: string;
   to: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** normalized key(s) this item maps to in the user's ACTIVITY list */
+  key: string;
 };
+
+// key ni ACT tho match cheyyadaniki normalize chestham:
+// lowercase + "outward" word remove + non-alphanumeric remove
+// Ex: "Outward-DispatchOrders" -> "dispatchorders", "Dispatch Orders" -> "dispatchorders"
+function normalizeKey(input: string) {
+  return input
+    .toLowerCase()
+    .replace(/outward/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+const DASHBOARD_KEY = normalizeKey("Dashboard");
 
 const groups: { items: NavItem[] }[] = [
   {
     items: [
-      { title: "Dispatch Orders", to: "/dispatch-orders", icon: ClipboardList },
-      { title: "Dispatch", to: "/dispatch", icon: Truck },
+      { title: "Dispatch Orders", to: "/dispatch-orders", icon: ClipboardList, key: normalizeKey("Dispatch Orders") },
+      { title: "Dispatch", to: "/dispatch", icon: Truck, key: normalizeKey("Dispatch") },
     ],
   },
   {
     items: [
-      { title: "Order Info", to: "/order-info", icon: FileText },
-      { title: "Gate In & Out", to: "/gate-in-out-process", icon: DoorOpen },
-      { title: "Loading Factor", to: "/invoice-load-details", icon: Receipt },
-      { title: "Vehicle Info", to: "/vehicle-info", icon: Bus },
-      { title: "Shipment Details", to: "/shipment-details", icon: PackageOpen },
-
-
+      { title: "Order Info", to: "/order-info", icon: FileText, key: normalizeKey("Order Info") },
+      { title: "Gate In & Out", to: "/gate-in-out-process", icon: DoorOpen, key: normalizeKey("Gate In Out") },
+      { title: "Loading Factor", to: "/invoice-load-details", icon: Receipt, key: normalizeKey("Invoice Load Details") },
+      { title: "Vehicle Info", to: "/vehicle-info", icon: Bus, key: normalizeKey("Vehicle Info") },
+      { title: "Shipment Details", to: "/shipment-details", icon: PackageOpen, key: normalizeKey("Shipment Details") },
     ],
   },
   {
     items: [
-      { title: "Segment Info", to: "/segment-info", icon: Split },
-      { title: "Transit Info", to: "/transit-info", icon: RouteIcon },
+      { title: "Segment Info", to: "/segment-info", icon: Split, key: normalizeKey("Segment Info") },
+      { title: "Transit Info", to: "/transit-info", icon: RouteIcon, key: normalizeKey("Transit Info") },
     ],
   },
   {
     items: [
-      { title: "Freight Billing", to: "/freight-billing", icon: IndianRupee },
-      { title: "Service Level", to: "/service-level", icon: Gauge },
-      { title: "Transit Damage Info", to: "/transit-damage-info", icon: AlertTriangle },
-      { title: "Insurance Claim", to: "/insurance-claim-tracking", icon: ShieldCheck },
+      { title: "Freight Billing", to: "/freight-billing", icon: IndianRupee, key: normalizeKey("Freight Billing") },
+      { title: "Service Level", to: "/service-level", icon: Gauge, key: normalizeKey("Service Level") },
+      { title: "Transit Damage Info", to: "/transit-damage-info", icon: AlertTriangle, key: normalizeKey("Transit Damage Info") },
+      { title: "Insurance Claim", to: "/insurance-claim-tracking", icon: ShieldCheck, key: normalizeKey("Insurance Claim Tracking") },
     ],
   },
   {
     items: [
-      { title: "User Creation", to: "/user-creation", icon: UserPlus },
+      { title: "User Creation", to: "/user-creation", icon: UserPlus, key: normalizeKey("User Creation") },
     ],
   },
 ];
@@ -100,6 +112,41 @@ export function AppSidebar() {
   const fullName = `${firstName} ${lastName}`.trim();
   const initials = getInitials(firstName, lastName);
   const role = user?.TYUSER ?? "";
+
+  // Logged-in user ki ACTIVITY/ACTIVITIES array nunchi allowed keys set build chestham.
+  // Login API response lo "ACTIVITIES": [{ "ACTIVITY": "Outward-Dashboard" }, ...] ala untundi,
+  // kani legacy/sample data lo "ACTIVITY": [{ "ACT": "Dispatch Orders" }, ...] ala vundochu.
+  // Rendu formats ni kuda support chestham, ekkada data unte akkadi nundi chadavutham.
+  const allowedKeys = useMemo(() => {
+    const raw =
+      user?.ACTIVITIES ??
+      user?.ACTIVITY ??
+      [];
+    const values: string[] = (raw as any[]).map(
+      (a) => a?.ACTIVITY ?? a?.ACT ?? ""
+    );
+    return new Set(values.map((v) => normalizeKey(v)));
+  }, [user]);
+
+  const showDashboard = allowedKeys.has(DASHBOARD_KEY);
+
+  // Prathi group nundi user ki access unna items matrame, empty groups filter out
+  const visibleGroups = useMemo(() => {
+    return groups
+      .map((group) => ({
+        items: group.items.filter((item) => allowedKeys.has(item.key)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [allowedKeys]);
+
+  // Reports lo kuda, prathi report item title ni normalize chesi ACT tho match chestham.
+  // (REPORTS_NAV lo prathi item ki kuda ACT tho match ayye "key" field pettuko galigithe
+  //  accuracy inka better untundi, ippudu title base ga filter chestunnam)
+  const visibleReports = useMemo(() => {
+    return (REPORTS_NAV as { title: string; to: string; icon: React.ComponentType<{ className?: string }> }[]).filter(
+      (item) => allowedKeys.has(normalizeKey(item.title))
+    );
+  }, [allowedKeys]);
 
   const handleLogout = () => {
     localStorage.removeItem("userData");
@@ -141,7 +188,7 @@ export function AppSidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto scrollbar-elegant py-2 px-2 space-y-0">
-        {!collapsed && (
+        {!collapsed && showDashboard && (
           <Link
             to="/"
             className={
@@ -159,7 +206,7 @@ export function AppSidebar() {
           </Link>
         )}
 
-        {groups.map((group, gi) => (
+        {visibleGroups.map((group, gi) => (
           <div key={gi}>
             <ul className="space-y-1">
               {group.items.map((item) => {
@@ -190,67 +237,69 @@ export function AppSidebar() {
           </div>
         ))}
 
-        {/* Reports (collapsible) */}
-        <div>
-          <button
-            onClick={() => {
-              if (collapsed) setCollapsed(false);
-              setReportsOpen((v) => !v);
-            }}
-            title={collapsed ? "Reports" : undefined}
-            className={
-              "group relative w-full flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
-              (reportsHasActive
-                ? "bg-sidebar-accent/70 text-white shadow-sm"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
-            }
-          >
-            {reportsHasActive && (
-              <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent shadow-[0_0_8px_var(--accent)]" />
-            )}
-            <FileBarChart
-              className={"size-4 shrink-0 transition-colors " + (reportsHasActive ? "text-accent" : "group-hover:text-white")}
-            />
-            {!collapsed && (
-              <>
-                <span className="truncate flex-1 text-left">Reports</span>
-                <ChevronDown
-                  className={"size-3.5 shrink-0 transition-transform " + (reportsOpen ? "rotate-180" : "")}
-                />
-              </>
-            )}
-          </button>
+        {/* Reports (collapsible) - user ki access unna reports unte matrame kanipistundi */}
+        {visibleReports.length > 0 && (
+          <div>
+            <button
+              onClick={() => {
+                if (collapsed) setCollapsed(false);
+                setReportsOpen((v) => !v);
+              }}
+              title={collapsed ? "Reports" : undefined}
+              className={
+                "group relative w-full flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
+                (reportsHasActive
+                  ? "bg-sidebar-accent/70 text-white shadow-sm"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
+              }
+            >
+              {reportsHasActive && (
+                <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-accent shadow-[0_0_8px_var(--accent)]" />
+              )}
+              <FileBarChart
+                className={"size-4 shrink-0 transition-colors " + (reportsHasActive ? "text-accent" : "group-hover:text-white")}
+              />
+              {!collapsed && (
+                <>
+                  <span className="truncate flex-1 text-left">Reports</span>
+                  <ChevronDown
+                    className={"size-3.5 shrink-0 transition-transform " + (reportsOpen ? "rotate-180" : "")}
+                  />
+                </>
+              )}
+            </button>
 
-          {reportsOpen && !collapsed && (
-            <ul className="mt-1 ml-3 pl-3 border-l border-sidebar-border/60 space-y-0.5">
-              {REPORTS_NAV.map((item) => {
-                const active = pathname === item.to;
-                const Icon = item.icon;
-                return (
-                  <li key={item.to}>
-                    <Link
-                      to={item.to}
-                      className={
-                        "group relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all duration-150 " +
-                        (active
-                          ? "bg-sidebar-accent/70 text-white shadow-sm"
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
-                      }
-                    >
-                      <Icon
+            {reportsOpen && !collapsed && (
+              <ul className="mt-1 ml-3 pl-3 border-l border-sidebar-border/60 space-y-0.5">
+                {visibleReports.map((item) => {
+                  const active = pathname === item.to;
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.to}>
+                      <Link
+                        to={item.to}
                         className={
-                          "size-3.5 shrink-0 transition-colors " +
-                          (active ? "text-accent" : "group-hover:text-white")
+                          "group relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all duration-150 " +
+                          (active
+                            ? "bg-sidebar-accent/70 text-white shadow-sm"
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
                         }
-                      />
-                      <span className="truncate">{item.title}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+                      >
+                        <Icon
+                          className={
+                            "size-3.5 shrink-0 transition-colors " +
+                            (active ? "text-accent" : "group-hover:text-white")
+                          }
+                        />
+                        <span className="truncate">{item.title}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
       </nav>
 
       {/* Bottom user section */}
