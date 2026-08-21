@@ -29,6 +29,8 @@ export type UserFormValues = {
   role: string;
   screensCount: number;
   active: boolean;
+  /** optional: raw activity names, used to pre-select screens when editing an existing user */
+  activities?: string[];
 };
 
 const BLANK: UserFormValues = {
@@ -80,9 +82,11 @@ export function CreateUserDialog({
 
 
   const allScreens = [
+    "Dashboard",
     "Dispatch Orders",
     "Dispatch",
     "Order Info",
+    "Gate In Out",
     "Shipment Details",
     "Invoice Load Details",
     "Segment Info",
@@ -232,6 +236,15 @@ export function CreateUserDialog({
       setChangePwd(false);
       setShowPwd(false);
       setShowConfirm(false);
+
+      // Pre-fill screens/plants/divisions so editing a user shows their existing selections
+      setSelectedScreens(initialValues?.activities ?? []);
+      setSelectedPlants(
+        initialValues?.plants ? initialValues.plants.split(",").filter(Boolean) : []
+      );
+      setSelectedDivisions(
+        initialValues?.divisions ? initialValues.divisions.split(",").filter(Boolean) : []
+      );
     }
   }, [open, initialValues]);
 

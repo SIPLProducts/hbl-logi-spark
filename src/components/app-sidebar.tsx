@@ -58,7 +58,7 @@ const groups: { items: NavItem[] }[] = [
       { title: "Order Info", to: "/order-info", icon: FileText, key: normalizeKey("Order Info") },
       { title: "Gate In & Out", to: "/gate-in-out-process", icon: DoorOpen, key: normalizeKey("Gate In Out") },
       { title: "Loading Factor", to: "/invoice-load-details", icon: Receipt, key: normalizeKey("Invoice Load Details") },
-      { title: "Vehicle Info", to: "/vehicle-info", icon: Bus, key: normalizeKey("Vehicle Info") },
+      // { title: "Vehicle Info", to: "/vehicle-info", icon: Bus, key: normalizeKey("Vehicle Info") },
       { title: "Shipment Details", to: "/shipment-details", icon: PackageOpen, key: normalizeKey("Shipment Details") },
     ],
   },

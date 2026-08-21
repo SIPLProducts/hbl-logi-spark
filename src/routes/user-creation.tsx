@@ -131,6 +131,7 @@ function UserCreationPage() {
 
         role: user.ROLES,
         screensCount: user.ACTIVITIES?.length || 0,
+        activities: user.ACTIVITIES || [],
         active: user.STATUS === "ACTIVE",
       },
     });

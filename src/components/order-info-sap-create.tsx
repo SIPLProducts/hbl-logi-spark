@@ -677,7 +677,8 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       CUST_CODE: row.ZCUST_CODE || "", LINE_NO: row.ZLINE_NO || "",
       CUST_GROUP: row.ZCUST_GRP || "", CNEE_NAME: row.ZCONSIGN_NAME || "",
       DEST_LOC: row.ZDES_LOC || "", DEST_STATE: row.ZSTATE || "",
-      DEST_ZONE: row.ZZONE || "", ZUSER: row.ZUSER,
+      DEST_ZONE: row.ZZONE || "", ZINCO: row.ZINCO || "",
+      ZUSER: row.ZUSER,
       ZUSER_CH: getLoggedInUser(),
     };
 

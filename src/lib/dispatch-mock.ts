@@ -19,6 +19,7 @@ export type DispatchRow = {
   lineNo?: number | string;
   createdDate?: string;
   lrSpec?: string;
+  zUser?: string;
 };
 
 export type DispatchResultRow = {
@@ -78,5 +79,6 @@ export const emptyDispatchRow = (slNo: number): DispatchRow => ({
   lineNo: "",
   createdDate: "",
   lrSpec: "",
+  zUser: "",
 });
 

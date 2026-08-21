@@ -118,7 +118,7 @@ function ChargesBreakdownDialog({
   title: string;
   totalLabel: string;
   value: Breakdown;
-  onSave: (b: Breakdown, total: number) => void;
+  onSave: (b: Breakdown, total: number, gst: number) => void;
 }) {
   const [draft, setDraft] = useState<Breakdown>(value);
   const [taxMode, setTaxMode] = useState<"RCM" | "FCM">("RCM");
@@ -202,7 +202,7 @@ function ChargesBreakdownDialog({
           </button>
           <button
             onClick={() => {
-              onSave(draft, grandTotal);
+              onSave(draft, grandTotal, taxMode === "FCM" ? Number(gstAmount) || 0 : 0);
               onOpenChange(false);
             }}
             className="inline-flex items-center px-5 h-9 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
@@ -448,10 +448,12 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     }
   });
   const [provisionOpen, setProvisionOpen] = useState(false);
+  const [provisionGst, setProvisionGst] = useState<number>(0);
 
   const [freightBreakdown, setFreightBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
   const [freightTotal, setFreightTotal] = useState<number | "">("");
   const [freightOpen, setFreightOpen] = useState(false);
+  const [freightGst, setFreightGst] = useState<number>(0);
   const [freightBillNo, setFreightBillNo] = useState(() => {
     if (typeof window === "undefined") return "";
     try {
@@ -499,6 +501,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [paProvisionBreakdown, setPaProvisionBreakdown] = useState<Breakdown>(EMPTY_BREAKDOWN);
   const [paFreightOpen, setPaFreightOpen] = useState(false);
   const [paProvisionOpen, setPaProvisionOpen] = useState(false);
+  const [paFreightGst, setPaFreightGst] = useState<number>(0);
+  const [paProvisionGst, setPaProvisionGst] = useState<number>(0);
 
   const [financeDetails, setFinanceDetails] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -551,9 +555,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setProvisionTotal("");
     setProvisionDate("");
     setProvisionOpen(false);
+    setProvisionGst(0);
     setFreightBreakdown(EMPTY_BREAKDOWN);
     setFreightTotal("");
     setFreightOpen(false);
+    setFreightGst(0);
     setFreightBillNo("");
     setFreightBillDate("");
     setBillSubmissionDate("");
@@ -725,6 +731,13 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         JV_DATE: jvDate,
         UTR_NUMBER: utrNumber,
         UTR_DATE: utrDate,
+
+        ZFINDET: financeDetails,
+        ZJVNUM: jvNumber,
+        ZJVDT: jvDate,
+        ZUTRNUM: utrNumber,
+        ZUTRDT: utrDate,
+        ZGSTAMT: (provision ? provisionGst : 0) + (account ? freightGst : 0),
       };
 
       console.log(record);
@@ -943,6 +956,13 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           ZPR_TSHIP: row.ZPR_TSHIP || 0,
           ZPR_OTHER: row.ZPR_OTHER || 0,
           ZPR_DEDUCT: row.ZPR_DEDUCT || 0,
+
+          ZFINDET: row.ZFINDET,
+          ZJVNUM: row.ZJVNUM,
+          ZJVDT: row.ZJVDT,
+          ZUTRNUM: row.ZUTRNUM,
+          ZUTRDT: row.ZUTRDT,
+          ZGSTAMT: row.ZGSTAMT || 0,
         },
       ],
     };
@@ -1097,6 +1117,9 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       "Deduction": item.ZPR_DEDUCT || 0,
     });
 
+    setPaFreightGst(0);
+    setPaProvisionGst(0);
+
     setPaModalOpen(true);
   };
 
@@ -1168,6 +1191,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       updatedItem.ZFC_OTHER = 0;
       updatedItem.ZFC_DEDUCT = 0;
     }
+
+    updatedItem.ZGSTAMT =
+      (paFormData.provisionChecked ? paProvisionGst : 0) +
+      (paFormData.accountChecked ? paFreightGst : 0);
 
     setSearchOptionsList((prev) =>
       prev.map((r, i) => (i === paModalIndex ? updatedItem : r))
@@ -1694,9 +1721,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         title="Detailed Provision Amount Input"
         totalLabel="Total Provision"
         value={provisionBreakdown}
-        onSave={(b, total) => {
+        onSave={(b, total, gst) => {
           setProvisionBreakdown(b);
           setProvisionTotal(total);
+          setProvisionGst(gst);
         }}
       />
       <ChargesBreakdownDialog
@@ -1705,9 +1733,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         title="Detailed Freight Charges Input"
         totalLabel="Total Freight"
         value={freightBreakdown}
-        onSave={(b, total) => {
+        onSave={(b, total, gst) => {
           setFreightBreakdown(b);
           setFreightTotal(total);
+          setFreightGst(gst);
         }}
       />
 
@@ -1727,9 +1756,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         title="Detailed Freight Charges Input"
         totalLabel="Total Freight"
         value={paFreightBreakdown}
-        onSave={(b, total) => {
+        onSave={(b, total, gst) => {
           setPaFreightBreakdown(b);
           setPaFormData((p) => ({ ...p, freightCharges: total }));
+          setPaFreightGst(gst);
         }}
       />
       <ChargesBreakdownDialog
@@ -1738,9 +1768,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         title="Detailed Provision Amount Input"
         totalLabel="Total Provision"
         value={paProvisionBreakdown}
-        onSave={(b, total) => {
+        onSave={(b, total, gst) => {
           setPaProvisionBreakdown(b);
           setPaFormData((p) => ({ ...p, provisionAmount: total }));
+          setPaProvisionGst(gst);
         }}
       />
     </div>

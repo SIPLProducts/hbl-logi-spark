@@ -482,6 +482,7 @@ function CreateDispatch() {
           unloadingPoints: item.UNLOAD_PT || "",
           noOfInvoices: Number(item.NO_INVOICES || 0),
           createdDate: item.CREATED_DT || "",
+          zUser: item.ZUSER || "",
         })
       );
 
@@ -531,6 +532,7 @@ function CreateDispatch() {
         LOAD_PT: row.loadingPoints || "",
         UNLOAD_PT: row.unloadingPoints || "",
         ZDIS_RM: row.remarks || "",
+        ZUSER: row.zUser || "",
         ZUSER_CH: loggedInUser,
       }));
 
@@ -1146,7 +1148,7 @@ function WorkOrderToggle({ value, onChange }: { value: "same" | "different" | nu
             value === m ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground hover:text-emerald-700 dark:hover:text-emerald-400",
           )}
         >
-          {m === "same" ? "Same W O" : "Different W O"}
+          {m === "same" ? "Same Work Order" : "Different Work Order"}
         </button>
       ))}
     </div>
