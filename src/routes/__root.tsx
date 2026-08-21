@@ -3,12 +3,13 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
+  redirect,
   useRouter,
   useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -77,6 +78,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: ({ location }) => {
+    // Skip during the build-time static-shell render (no window/localStorage
+    // there — see scripts/generate-static-shell.mjs) — only guard in the browser.
+    if (typeof window === "undefined") return;
+
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    if (!isLoggedIn && location.pathname !== "/login") {
+      throw redirect({ to: "/login" });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -131,12 +142,39 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAuthRoute = pathname === "/login";
 
+  // SSR (and the prerendered static shell, see scripts/generate-static-shell.mjs)
+  // has no window/localStorage, so it can't know the login state and always
+  // renders the matched route's content — hydration then trusts that render
+  // and never re-runs the route's beforeLoad. Without this gate, a protected
+  // page would flash on screen (already painted by SSR) before the effect
+  // below redirects to /login. Holding render until the client has actually
+  // checked login state closes that gap.
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    if (isAuthRoute) {
+      setAuthChecked(true);
+      return;
+    }
+    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    if (!isLoggedIn) {
+      router.navigate({ to: "/login", replace: true });
+      return;
+    }
+    setAuthChecked(true);
+  }, [isAuthRoute, pathname, router]);
+
   return (
     <QueryClientProvider client={queryClient}>
-      {isAuthRoute ? <Outlet /> : <AppShell><Outlet /></AppShell>}
+      {isAuthRoute ? (
+        <Outlet />
+      ) : authChecked ? (
+        <AppShell><Outlet /></AppShell>
+      ) : null}
     </QueryClientProvider>
   );
 }
