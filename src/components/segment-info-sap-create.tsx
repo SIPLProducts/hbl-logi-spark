@@ -472,7 +472,18 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     if (!invoiceNumber.trim()) return;
     setLoadingGet(true);
     try {
-      const res: any = await service.SegmentInfoOutwardFetch({ VBELN: invoiceNumber.trim(), SCREEN: "WITHSAP" });
+      // Reference rows are fetched (not checkbox-selected) before GET, so send every
+      // fetched row that has a reference number — same rows already used to build invoiceF4List.
+      const res: any = await service.SegmentInfoOutwardFetch({
+        INV_GET: tableData
+          .filter((row) => row.referenceNumber)
+          .map((row) => ({
+            INVOICE: invoiceNumber.trim(),
+            ZREFNO: row.referenceNumber,
+            ZLINE_NO: row.lineNumber || "",
+          })),
+        SCREEN: "WITHSAP",
+      });
       if (res && res.length > 0) {
         patchForm(res[0]);
         setSearchResults([]);
@@ -492,14 +503,25 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setField("INV_VBELN", invNo);
     if (!invNo) return;
     try {
-      const res: any = await service.SegmentInfoOutwardwithoutSapFetch({ INV_VBELN: invNo, SCREEN: "WITHOUTSAP" });
-      if (res) {
+      const res: any = await service.SegmentInfoOutwardwithoutSapFetch({
+        INV_GET: tableData
+          .filter((row) => row.referenceNumber)
+          .map((row) => ({
+            INVOICE: invNo,
+            ZREFNO: row.referenceNumber,
+            ZLINE_NO: row.lineNumber || "",
+          })),
+        SCREEN: "WITHOUTSAP",
+      });
+      if (res?.STATUS === "FALSE") {
+        Swal.fire("Error", res?.MESSAGE || "Error fetching invoice details", "error");
+      } else if (res) {
         setForm((p) => ({ ...p, ZSTATE: res.ZSTATE || "", ZZONE: res.ZZONE || "" }));
       } else {
         Swal.fire("No Data Found", "", "info");
       }
-    } catch {
-      Swal.fire("Error fetching invoice details", "", "error");
+    } catch (err: any) {
+      Swal.fire("Error", err?.error?.MESSAGE || "Error fetching invoice details", "error");
     }
   };
 

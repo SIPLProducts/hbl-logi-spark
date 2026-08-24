@@ -1006,12 +1006,7 @@ function CreateDispatch() {
                       /> */}
                       <CellInput
                         value={row.lrNumber}
-                        onChange={(v) =>
-                          updateRow(row.id, {
-                            lrNumber: v,
-                            noOfLRs: countLRNumbers(v),
-                          })
-                        }
+                        onChange={(v) => updateRow(row.id, { lrNumber: v })}
                         placeholder="LR001, LR002, LR003"
                         mono
                         invalid={showErrors && isFieldEmpty(row, "lrNumber")}

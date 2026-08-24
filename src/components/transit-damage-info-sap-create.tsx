@@ -702,9 +702,13 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     }
 
     const payload = {
-      VBELN: lookupValue,
-      ZREFNO: selectedRow.REF_NO || "",
-      ZMAPID: selectedRow.MAPID || "",
+      INV_GET: [
+        {
+          INVOICE: lookupValue,
+          ZREFNO: selectedRow.REF_NO || "",
+          ZLINE_NO: selectedRow.LINE_NO || "",
+        },
+      ],
     };
 
     console.log("Invoice Payload", payload);
@@ -1054,9 +1058,13 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
   // Payload
   const payload = {
-    VBELN: dcRef,
-    ZREFNO: selectedRow.REF_NO || "",
-    ZMAPID: selectedRow.MAPID || "",
+    INV_GET: [
+      {
+        INVOICE: dcRef,
+        ZREFNO: selectedRow.REF_NO || "",
+        ZLINE_NO: selectedRow.LINE_NO || "",
+      },
+    ],
   };
 
   console.log("Non-SAP Payload:", payload);

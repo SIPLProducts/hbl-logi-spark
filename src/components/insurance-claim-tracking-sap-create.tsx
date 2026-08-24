@@ -444,9 +444,13 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     }
 
     const payload = {
-      VBELN: lookupValue,
-      ZREFNO: selectedRow.REF_NO || "",
-      ZMAPID: selectedRow.MAPID || "",
+      INV_GET: [
+        {
+          INVOICE: lookupValue,
+          ZREFNO: selectedRow.REF_NO || "",
+          ZLINE_NO: selectedRow.LINE_NO || "",
+        },
+      ],
     };
 
     try {
@@ -612,9 +616,13 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     }
 
     const payload = {
-      VBELN: dcRef,
-      ZREFNO: selectedRow.REF_NO || "",
-      ZMAPID: selectedRow.MAPID || "",
+      INV_GET: [
+        {
+          INVOICE: dcRef,
+          ZREFNO: selectedRow.REF_NO || "",
+          ZLINE_NO: selectedRow.LINE_NO || "",
+        },
+      ],
     };
 
     try {

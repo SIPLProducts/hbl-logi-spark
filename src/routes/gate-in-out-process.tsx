@@ -1223,6 +1223,23 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const [dcReferenceNumber, setDcReferenceNumber] = useState(""); // DC reference (non-SAP)
   const [showDetails, setShowDetails] = useState(false); // Header/Item tables + Save actions gated behind GET
   const [zplant, setZplant] = useState(""); // ZPLANT — carried from FetchGateInOutInvoiceData for the Save payload
+  // One row per invoice HEADER returned by FetchGateInOutInvoiceData.
+  // Row 0's E-way Bill / Insurance Scope / Kilometres stay mirrored into the
+  // existing ewayApplicable/insuranceScope/kilometres state below (unchanged),
+  // since that's what the Save payload still reads.
+  const [headerRows, setHeaderRows] = useState<
+    {
+      refNo: string;
+      lineNo: string;
+      invNo: string;
+      ewayApplicable: string;
+      ewayDate: string;
+      ewayNumber: string;
+      ewayExpireDate: string;
+      insuranceScope: string;
+      kilometres: string;
+    }[]
+  >([]);
 
   const [searchResultHeader, setSearchResultHeader] = useState<any>({});
   const [searchResultItems, setSearchResultItems] = useState<any[]>([]);
@@ -1356,6 +1373,21 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const toggleRefRowSelect = (index: number) =>
     setRefTableData((prev) => prev.map((r, i) => (i === index ? { ...r, selected: !r.selected } : r)));
 
+  // Each Header-table row's E-way Bill / Insurance Scope / Kilometres are edited
+  // independently. Row 0 also mirrors into the existing scalar state below, since
+  // that's still what the (unchanged) Save payload reads.
+  const updateHeaderRow = (index: number, patch: Partial<(typeof headerRows)[number]>) => {
+    setHeaderRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+    if (index === 0) {
+      if (patch.ewayApplicable !== undefined) setEwayApplicable(patch.ewayApplicable);
+      if (patch.ewayDate !== undefined) setEwayDate(patch.ewayDate);
+      if (patch.ewayNumber !== undefined) setEwayNumber(patch.ewayNumber);
+      if (patch.ewayExpireDate !== undefined) setEwayExpireDate(patch.ewayExpireDate);
+      if (patch.insuranceScope !== undefined) setInsuranceScope(patch.insuranceScope);
+      if (patch.kilometres !== undefined) setKilometres(patch.kilometres);
+    }
+  };
+
   const removeRefRow = (index: number) => {
     if (refTableData.length === 1) return;
     setRefTableData((prev) => prev.filter((_, i) => i !== index));
@@ -1364,15 +1396,23 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   // ── GET → FetchGateInOutInvoiceData (With SAP) ──
   const handleGet = async () => {
     setIsGlobalSearch(false);
-    const refRow = refTableData[0];
+    const selectedInvoiceNumbers = invoiceNumber
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
     const payload = {
-      SAP_INV: [
-        {
-          INV_NO: invoiceNumber,
-          REFNO: refRow?.REF_NO || "",
-          REF_LINE: refRow?.LINE_NO || "",
-        },
-      ],
+      SAP_INV: selectedInvoiceNumbers.map((inv) => {
+        const owner: any = fullReferenceData.find(
+          (refItem: any) =>
+            Array.isArray(refItem.INV_NO) &&
+            refItem.INV_NO.some((x: any) => x.VBELN === inv)
+        );
+        return {
+          INV_NO: inv,
+          REFNO: owner?.REF_NO || "",
+          REF_LINE: owner?.LINE_NO || "",
+        };
+      }),
     };
 
     try {
@@ -1399,9 +1439,23 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       setKilometres(HEADER.KILLOMETERS != null ? String(HEADER.KILLOMETERS) : "");
       setZplant(HEADER.ZPLANT || "");
 
-      const mappedRows: GateRow[] =
-        Array.isArray(ITEMS) && ITEMS.length > 0
-          ? ITEMS.map((item: any) => ({
+      setHeaderRows(
+        res.map((entry: any) => ({
+          refNo: entry?.HEADER?.REFERENCE_NUMBER != null ? String(entry.HEADER.REFERENCE_NUMBER) : "",
+          lineNo: entry?.HEADER?.REFERENCE_LINE_ITEM != null ? String(entry.HEADER.REFERENCE_LINE_ITEM) : "",
+          invNo: entry?.HEADER?.ZINV_NO || "",
+          ewayApplicable: entry?.HEADER?.EWAY_BILL_APPLICABLE || "",
+          ewayDate: entry?.HEADER?.EWAY_BILL_DATE || "",
+          ewayNumber: entry?.HEADER?.EWAY_BILL_NUMBER || "",
+          ewayExpireDate: entry?.HEADER?.EWAY_BILL_EXPIRE_DATE || "",
+          insuranceScope: entry?.HEADER?.INSURANCE_SCOPE || "",
+          kilometres: entry?.HEADER?.KILLOMETERS != null ? String(entry.HEADER.KILLOMETERS) : "",
+        }))
+      );
+
+      const mappedRows: GateRow[] = res.flatMap((entry: any) =>
+        Array.isArray(entry?.ITEMS)
+          ? entry.ITEMS.map((item: any) => ({
             selected: false,
             mapId: "",
             invoiceNumber: item.ZINV_NO || "",
@@ -1422,7 +1476,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
             tatDays: item.TAT_DAYS != null ? String(item.TAT_DAYS) : "",
             eta: item.ETA || "",
           }))
-          : [EMPTY_GATE_ROW()];
+          : []
+      );
+      if (mappedRows.length === 0) mappedRows.push(EMPTY_GATE_ROW());
 
       setGateRows(mappedRows);
       setShowDetails(true);
@@ -1644,6 +1700,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         setDcReferenceNumber("");
         setShowDetails(false);
         setZplant("");
+        setHeaderRows([]);
         setGateRows([EMPTY_GATE_ROW()]);
         setRefTableData([EMPTY_GATE_REF_ROW()]);
         setFullReferenceData([]);
@@ -1737,6 +1794,13 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       Swal.fire("Error", "API Error occurred while updating.", "error");
     }
   };
+
+  // Whether to show the E-Way Bill Date/Number/Expire Date columns at all —
+  // true if any Header row needs them, so every row keeps the same column count.
+  const showEwayExtraColumns =
+    headerRows.length > 0
+      ? headerRows.some((r) => r.ewayApplicable === "Yes")
+      : ewayApplicable === "Yes";
 
   return (
     <div className="space-y-3">
@@ -2199,7 +2263,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                     <th className="px-3 py-0.5 text-center">Invoice Number</th>
                     {!isSap && <th className="px-3 py-0.5 text-center">DC Reference Number</th>}
                     <th className="px-3 py-0.5 text-center">E-way Bill Applicable</th>
-                    {ewayApplicable === "Yes" && (
+                    {showEwayExtraColumns && (
                       <>
                         <th className="px-3 py-0.5 text-center">E-Way Bill Date</th>
                         <th className="px-3 py-0.5 text-center">E-Way Bill Number</th>
@@ -2211,76 +2275,114 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td className="px-3 py-0.5">
-                      <input value={refTableData[0]?.REF_NO || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
-                    </td>
-                    <td className="px-3 py-0.5">
-                      <input value={refTableData[0]?.LINE_NO || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
-                    </td>
-                    <td className="px-3 py-0.5">
-                      <input value={invoiceNumber || ""} readOnly className={GATE_INPUT_READONLY + " text-center"} />
-                    </td>
-                    {!isSap && (
+                  {(headerRows.length > 0
+                    ? headerRows
+                    : [
+                        {
+                          refNo: refTableData[0]?.REF_NO || "",
+                          lineNo: refTableData[0]?.LINE_NO || "",
+                          invNo: invoiceNumber || "",
+                          ewayApplicable,
+                          ewayDate,
+                          ewayNumber,
+                          ewayExpireDate,
+                          insuranceScope,
+                          kilometres,
+                        },
+                      ]
+                  ).map((hr, hrIdx) => (
+                    <tr key={hrIdx}>
                       <td className="px-3 py-0.5">
-                        <GateF4MultiSelect
-                          options={invoiceF4List}
-                          value={dcReferenceNumber}
-                          onChange={setDcReferenceNumber}
-                          placeholder="Select DC Reference"
-                          className={GATE_INPUT_NORMAL}
-                        />
+                        <input value={hr.refNo} readOnly className={GATE_INPUT_READONLY + " text-center"} />
                       </td>
-                    )}
-                    <td className="px-3 py-0.5">
-                      <select
-                        value={ewayApplicable}
-                        onChange={(e) => setEwayApplicable(e.target.value)}
-                        className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                      >
-                        <option value="">Select</option>
-                        <option value="No">No</option>
-                        <option value="Yes">Yes</option>
-                      </select>
-                    </td>
-                    {ewayApplicable === "Yes" && (
-                      <>
-                        <td className="px-3 py-0.5">
-                          <Input type="date" value={ewayDate} onChange={(e) => setEwayDate(e.target.value)} />
-                        </td>
-                        <td className="px-3 py-0.5">
-                          <Input
-                            type="text"
-                            placeholder="Enter E-Way Bill Number"
-                            value={ewayNumber}
-                            onChange={(e) => setEwayNumber(e.target.value)}
+                      <td className="px-3 py-0.5">
+                        <input value={hr.lineNo} readOnly className={GATE_INPUT_READONLY + " text-center"} />
+                      </td>
+                      <td className="px-3 py-0.5">
+                        <input value={hr.invNo} readOnly className={GATE_INPUT_READONLY + " text-center"} />
+                      </td>
+                      {!isSap && hrIdx === 0 && (
+                        <td className="px-3 py-0.5" rowSpan={headerRows.length > 0 ? headerRows.length : 1}>
+                          <GateF4MultiSelect
+                            options={invoiceF4List}
+                            value={dcReferenceNumber}
+                            onChange={setDcReferenceNumber}
+                            placeholder="Select DC Reference"
+                            className={GATE_INPUT_NORMAL}
                           />
                         </td>
-                        <td className="px-3 py-0.5">
-                          <Input type="date" value={ewayExpireDate} onChange={(e) => setEwayExpireDate(e.target.value)} />
-                        </td>
-                      </>
-                    )}
-                    <td className="px-3 py-0.5">
-                      <select
-                        value={insuranceScope}
-                        onChange={(e) => setInsuranceScope(e.target.value)}
-                        className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                      >
-                        <option value="">Select Insurance Scope</option>
-                        <option value="Buyer">Buyer</option>
-                        <option value="Supplier">Supplier</option>
-                      </select>
-                    </td>
-                    <td className="px-3 py-0.5">
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={kilometres}
-                        onChange={(e) => setKilometres(e.target.value)}
-                      />
-                    </td>
-                  </tr>
+                      )}
+                      <td className="px-3 py-0.5">
+                        <select
+                          value={hr.ewayApplicable}
+                          onChange={(e) => updateHeaderRow(hrIdx, { ewayApplicable: e.target.value })}
+                          className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                        >
+                          <option value="">Select</option>
+                          <option value="No">No</option>
+                          <option value="Yes">Yes</option>
+                        </select>
+                      </td>
+                      {showEwayExtraColumns &&
+                        (hr.ewayApplicable === "Yes" ? (
+                          <>
+                            <td className="px-3 py-0.5">
+                              <Input
+                                type="date"
+                                value={hr.ewayDate}
+                                onChange={(e) => updateHeaderRow(hrIdx, { ewayDate: e.target.value })}
+                              />
+                            </td>
+                            <td className="px-3 py-0.5">
+                              <Input
+                                type="text"
+                                placeholder="Enter E-Way Bill Number"
+                                value={hr.ewayNumber}
+                                onChange={(e) => updateHeaderRow(hrIdx, { ewayNumber: e.target.value })}
+                              />
+                            </td>
+                            <td className="px-3 py-0.5">
+                              <Input
+                                type="date"
+                                value={hr.ewayExpireDate}
+                                onChange={(e) => updateHeaderRow(hrIdx, { ewayExpireDate: e.target.value })}
+                              />
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-3 py-0.5">
+                              <input value="" readOnly disabled className={GATE_INPUT_READONLY + " text-center"} />
+                            </td>
+                            <td className="px-3 py-0.5">
+                              <input value="" readOnly disabled className={GATE_INPUT_READONLY + " text-center"} />
+                            </td>
+                            <td className="px-3 py-0.5">
+                              <input value="" readOnly disabled className={GATE_INPUT_READONLY + " text-center"} />
+                            </td>
+                          </>
+                        ))}
+                      <td className="px-3 py-0.5">
+                        <select
+                          value={hr.insuranceScope}
+                          onChange={(e) => updateHeaderRow(hrIdx, { insuranceScope: e.target.value })}
+                          className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                        >
+                          <option value="">Select Insurance Scope</option>
+                          <option value="Buyer">Buyer</option>
+                          <option value="Supplier">Supplier</option>
+                        </select>
+                      </td>
+                      <td className="px-3 py-0.5">
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={hr.kilometres}
+                          onChange={(e) => updateHeaderRow(hrIdx, { kilometres: e.target.value })}
+                        />
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

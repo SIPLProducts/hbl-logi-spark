@@ -311,7 +311,6 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [dcRef, setDcRef] = useState("");
-  const [dcTouched, setDcTouched] = useState(false);
   const [revealed, setRevealed] = useState(false);
 
   const [rows, setRows] = useState<LoadRow[]>([newRow(1)]);
@@ -492,7 +491,11 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
     try {
       const res: any = await service.Invoiceloaddetailsfetch({
-        INV_GET: invoiceNumber.trim(),
+        INV_GET: selectedItems.map((ref) => ({
+          INVOICE: invoiceNumber.trim(),
+          ZREFNO: ref.referenceNumber || "",
+          ZLINE_NO: ref.lineNumber || "",
+        })),
         SCREEN: "WITHSAP",
       });
 
@@ -555,7 +558,11 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
     try {
       const res: any = await service.Invoiceloaddetailsfetch({
-        INV_GET: value.trim(),
+        INV_GET: selectedItems.map((ref) => ({
+          INVOICE: value.trim(),
+          ZREFNO: ref.referenceNumber || "",
+          ZLINE_NO: ref.lineNumber || "",
+        })),
         SCREEN: "WITHOUTSAP",
       });
 
@@ -881,11 +888,6 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
       Swal.fire('Warning', 'Please select at least one reference row before saving', 'warning');
       return;
     }
-    if (isWithout && !dcRef.trim()) {
-      Swal.fire('Warning', 'Please enter DC Reference Number', 'warning');
-      return;
-    }
-
     setSaving(true);
     try {
       let res: any;
@@ -1116,26 +1118,6 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
             </button>
           </div>
 
-          {isWithout && searchResults.length === 0 && (
-            <div className="w-full">
-              <label className={LABEL}>DC Reference Number</label>
-              <F4MultiSelect
-                options={invoiceF4List}
-                value={dcRef}
-                onChange={(value) => {
-                  setDcTouched(true);
-                  handleDcRefChange(value);
-                }}
-                onBlur={() => setDcTouched(true)}
-                placeholder="Select DC Reference"
-                className={GREEN_INPUT}
-              />
-              {dcTouched && !dcRef.trim() && (
-                <p className="mt-1 text-[11px] text-red-500 font-medium">DC Reference Number is required</p>
-              )}
-            </div>
-          )}
-
           {searchResults.length > 0 && (
             <button
               onClick={() => setSearchResults([])}
@@ -1146,6 +1128,23 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
           )}
         </div>
       </div>
+
+      {isWithout && searchResults.length === 0 && (
+        <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
+            <div>
+              <label className={LABEL}>DC Reference Number</label>
+              <F4MultiSelect
+                options={invoiceF4List}
+                value={dcRef}
+                onChange={handleDcRefChange}
+                placeholder="Select DC Reference"
+                className={GREEN_INPUT}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {!isWithout && !revealed && searchResults.length === 0 && (
         <p className="text-[12px] text-muted-foreground px-1">

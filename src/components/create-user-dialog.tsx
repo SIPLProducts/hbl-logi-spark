@@ -31,6 +31,8 @@ export type UserFormValues = {
   active: boolean;
   /** optional: raw activity names, used to pre-select screens when editing an existing user */
   activities?: string[];
+  /** optional: the user's existing password, used to pre-fill the Password field when editing */
+  password?: string;
 };
 
 const BLANK: UserFormValues = {
@@ -66,6 +68,8 @@ export function CreateUserDialog({
   const [showConfirm, setShowConfirm] = useState(false);
   const [values, setValues] = useState<UserFormValues>(initialValues ?? BLANK);
   const [changePwd, setChangePwd] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   // const [users, setUsers] = useState([]);
   const [plantList, setPlantList] = useState<any[]>([]);
   const [divisionList, setDivisionList] = useState<any[]>([]);
@@ -236,6 +240,8 @@ export function CreateUserDialog({
       setChangePwd(false);
       setShowPwd(false);
       setShowConfirm(false);
+      setPassword(isEdit ? (initialValues?.password ?? "") : "password12");
+      setConfirmPassword(isEdit ? (initialValues?.password ?? "") : "");
 
       // Pre-fill screens/plants/divisions so editing a user shows their existing selections
       setSelectedScreens(initialValues?.activities ?? []);
@@ -260,7 +266,7 @@ export function CreateUserDialog({
         LAST_NAME: values.lastName,
         EMAIL: values.email,
         CONTACT: values.contact,
-        PASSWORD: "password12",
+        PASSWORD: password,
         EMP_CODE: values.employeeCode,
         INOUT_TYPE: values.inOutType,
         CATEGORY: values.category,
@@ -323,7 +329,7 @@ export function CreateUserDialog({
         LAST_NAME: values.lastName,
         EMAIL: values.email,
         CONTACT: values.contact,
-        PASSWORD: "password12",
+        ...(changePwd ? { PASSWORD: password } : {}),
         STATUS: values.active ? "ACTIVE" : "INACTIVE",
         EMP_CODE: values.employeeCode,
         INOUT_TYPE: values.inOutType,
@@ -426,10 +432,11 @@ export function CreateUserDialog({
             <div className="relative">
               <input
                 type={showPwd ? "text" : "password"}
-                defaultValue={isEdit ? "••••••••••" : "password12"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={isEdit ? "Password unchanged" : ""}
                 disabled={pwdDisabled}
                 className={INPUT + " pr-9" + (pwdDisabled ? " bg-muted cursor-not-allowed" : "")}
-                key={`pwd-${changePwd}`}
               />
               <button
                 type="button"
@@ -444,11 +451,11 @@ export function CreateUserDialog({
             <div className="relative">
               <input
                 type={showConfirm ? "text" : "password"}
-                defaultValue={isEdit && !changePwd ? "••••••••••" : ""}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Enter password"
                 disabled={pwdDisabled}
                 className={INPUT + " pr-9" + (pwdDisabled ? " bg-muted cursor-not-allowed" : "")}
-                key={`cpwd-${changePwd}`}
               />
               <button
                 type="button"
@@ -663,7 +670,14 @@ export function CreateUserDialog({
               <input
                 type="checkbox"
                 checked={changePwd}
-                onChange={(e) => setChangePwd(e.target.checked)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setChangePwd(checked);
+                  if (!checked) {
+                    setPassword(initialValues?.password ?? "");
+                    setConfirmPassword(initialValues?.password ?? "");
+                  }
+                }}
                 className="size-3.5 rounded border-input accent-indigo-600"
               />
               Change Password

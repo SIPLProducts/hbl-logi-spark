@@ -417,10 +417,19 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
     }
     setLoading(true);
     try {
-      const res = await service.shipmentdetailsfetch({ INV_GET: invoicenumber.trim() });
+      const res = await service.shipmentdetailsfetch({
+        INV_GET: selectedItems.map((ref) => ({
+          INVOICE: invoicenumber.trim(),
+          ZREFNO: ref.referenceNumber || "",
+          ZLINE_NO: ref.lineNumber || "",
+        })),
+      });
       const result = Array.isArray(res) ? res : [];
       if (result.length === 0) {
-        Swal.fire({ icon: "info", title: "No data found for this reference." });
+        Swal.fire({
+  icon: "info",
+  text: res.MSG
+});
         return;
       }
       const firstItem = result[0];
