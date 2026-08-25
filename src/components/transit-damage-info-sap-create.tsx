@@ -131,49 +131,6 @@ type FieldSpec = {
   placeholder?: string;
 };
 
-const BASE_FIELDS: FieldSpec[] = [
-  { label: "Invoice Date", type: "date" },
-  { label: "FSR Report Date", type: "date" },
-  { label: "Invoice Basic Value" },
-  { label: "Incident Date", type: "date" },
-  { label: "Customer" },
-  { label: "C/nee Name" },
-  {
-    label: "Damage Remarks",
-    type: "select",
-    options: [
-      "Packing material damage",
-      "Pallet damage",
-      "Cells damage",
-      "Cell Bank damage",
-      "Can damage",
-      "Accident",
-      "Prohibited material loading and seized by Police",
-      "Damage during unloading",
-      "Material in wet condition",
-      "Damage due to other materials loaded",
-    ],
-    placeholder: "Select Damage Remarks",
-  },
-  {
-    label: "Settlement",
-    type: "select",
-    options: [
-      "Claim Settlement",
-      "Direct Deduction",
-      "Insurance claim",
-      "Repair Locally with cost",
-      "Repair Locally without cost",
-    ],
-    placeholder: "Select Settlement",
-  },
-  { label: "Closing Date", type: "date" },
-  { label: "Images", type: "file" },
-  { label: "FSR Report", type: "file" },
-  { label: "FIR Report", type: "file" },
-  { label: "COF", type: "file" },
-];
-
 type TableRow = {
   REF_NO: string;
   MAPID: number | string;
@@ -396,18 +353,8 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       ]
       : []),
     {
-      label: "FSR Report Date",
-      type: "date",
-      value: headerData.FSR_RPT_DT || "",
-    },
-    {
       label: "Invoice Basic Value",
       value: String(headerData.BASIC_VALUE || ""),
-    },
-    {
-      label: "Incident Date",
-      type: "date",
-      value: headerData.INC_DATE || "",
     },
     {
       label: "Customer",
@@ -435,6 +382,11 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       ],
     },
     {
+      label: "Incident Date",
+      type: "date",
+      value: headerData.INC_DATE || "",
+    },
+    {
       label: "Settlement",
       type: "select",
       value: headerData.SETTLEMENT || "",
@@ -450,6 +402,11 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       label: "Closing Date",
       type: "date",
       value: headerData.CLOSING_DT || "",
+    },
+    {
+      label: "FSR Report Date",
+      type: "date",
+      value: headerData.FSR_RPT_DT || "",
     },
     {
       label: "Images",
@@ -736,7 +693,12 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       const items = res?.[0]?.ITEM || [];
 
       setHeaderData(header);
-      setItemData(items);
+      setItemData(
+        items.map((item: any) => ({
+          ...item,
+          VEHICLE_NO: item.TRUCK_NO ?? item.VEHICLE_NO ?? "",
+        }))
+      );
 
       // Track only header keys that have a NON-EMPTY value from SAP (for colouring)
       setSapFilledKeys(
@@ -1418,6 +1380,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       setTableData(data);
                     }}
                     onBlur={() => fetchGlobalReferences(row, index, "MAPID")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "MAPID");
+                    }}
                     placeholder="Enter Map ID"
                     className={GREEN_INPUT + " text-center"}
                   />
@@ -1433,6 +1398,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       setTableData(data);
                     }}
                     onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
+                    }}
                     placeholder="Enter Ref. No."
                     className={GREEN_INPUT + " text-center"}
                   />
@@ -1448,6 +1416,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       setTableData(data);
                     }}
                     onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
+                    }}
                     placeholder="Enter Work Order No."
                     className={GREEN_INPUT + " text-center"}
                   />
@@ -1463,6 +1434,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       setTableData(data);
                     }}
                     onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
+                    }}
                     placeholder="Enter LR No."
                     className={GREEN_INPUT + " text-center"}
                   />
@@ -1478,6 +1452,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       setTableData(data);
                     }}
                     onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
+                    }}
                     placeholder="Enter Transporter"
                     className={GREEN_INPUT + " text-center"}
                   />

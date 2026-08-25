@@ -169,8 +169,9 @@ function getLoggedInUser(): string {
 }
 
 const BASE_FIELDS: FieldSpec[] = [
-  { label: "Fiscal Year", key: "FI" },
+
   { label: "Reported Date", key: "REP_DATE", type: "date" },
+    { label: "Fiscal Year", key: "FI" },
   { label: "Claim Reference", key: "CLAIM_REF" },
   { label: "Invoice Date", key: "INV_DATE", type: "date" },
   { label: "Invoice Basic Value", key: "INV_BV" },
@@ -181,7 +182,7 @@ const BASE_FIELDS: FieldSpec[] = [
   { label: "SO Number", key: "SO_NO" },
   { label: "Location", key: "LOCATION" },
   { label: "Damage Remarks", key: "DAMAGE_RMK", type: "select", options: ["Wet", "Crushed", "Broken", "Leak"] },
-  { label: "Claim Info Sent", key: "CLM_INF" },
+  { label: "Claim Info Sent", key: "CLM_INF" , type: "date"},
   { label: "Claim Status", key: "CLM_ST", type: "select", options: ["Under preparation", "Submitted", "Not submitted"] },
   { label: "Claim Document Status", key: "CLM_DOC_ST" },
   { label: "Courier Details", key: "COURIER_DET" },
@@ -259,6 +260,19 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
   const handleHeaderChange = (key: string, value: any) => {
     setHeaderData((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  // ── Reported Date → fiscal year ──
+  const onReportedDateChange = async (value: string) => {
+    if (!value) return;
+    try {
+      const res: any = await service.OrderInfoPhysicaldispatch({ phys_dispatch: value });
+      if (res) {
+        setHeaderData((prev: any) => ({ ...prev, FI: res.FISCAL_YEAR || "" }));
+      }
+    } catch (e) {
+      console.error("Fiscal year fetch error:", e);
+    }
   };
 
   // ---------------------------------------------------------------------
@@ -981,6 +995,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       setTableData(data);
                     }}
                     onBlur={() => fetchGlobalReferences(row, index, "MAPID")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "MAPID");
+                    }}
                     placeholder="Enter Map ID"
                     className={GREEN_INPUT + " text-center"}
                   />
@@ -995,6 +1012,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       setTableData(data);
                     }}
                     onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
+                    }}
                     placeholder="Enter Ref. No."
                     className={GREEN_INPUT + " text-center"}
                   />
@@ -1009,6 +1029,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       setTableData(data);
                     }}
                     onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
+                    }}
                     placeholder="Enter Work Order No."
                     className={GREEN_INPUT + " text-center"}
                   />
@@ -1023,6 +1046,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       setTableData(data);
                     }}
                     onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
+                    }}
                     placeholder="Enter LR No."
                     className={GREEN_INPUT + " text-center"}
                   />
@@ -1037,6 +1063,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       setTableData(data);
                     }}
                     onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
+                    }}
                     placeholder="Enter Transporter"
                     className={GREEN_INPUT + " text-center"}
                   />
@@ -1393,6 +1422,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       setHeaderData={setHeaderData}
                       sapFetched={sapFetched}
                       sapFilledKeys={sapFilledKeys}
+                      onReportedDateChange={onReportedDateChange}
                     />
                   ))}
                 </div>
@@ -1541,11 +1571,13 @@ function SapField({
   setHeaderData,
   sapFetched = false,
   sapFilledKeys,
+  onReportedDateChange,
 }: {
   field: FieldSpec;
   setHeaderData: React.Dispatch<React.SetStateAction<any>>;
   sapFetched?: boolean;
   sapFilledKeys?: Set<string>;
+  onReportedDateChange?: (value: string) => void;
 }) {
   const { label, value = "", type = "text", options = [], placeholder } = field;
 
@@ -1590,7 +1622,12 @@ function SapField({
           type="date"
           value={value || ""}
           readOnly={filled}
-          onChange={(e) => !filled && setHeaderData((prev: any) => ({ ...prev, [field.key]: e.target.value }))}
+          onChange={(e) => {
+            if (filled) return;
+            const val = e.target.value;
+            setHeaderData((prev: any) => ({ ...prev, [field.key]: val }));
+            if (field.key === "REP_DATE") onReportedDateChange?.(val);
+          }}
           className={cls}
         />
       ) : type === "file" ? (

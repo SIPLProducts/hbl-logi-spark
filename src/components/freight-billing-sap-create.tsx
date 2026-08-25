@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, ChevronDown, X } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -33,6 +33,7 @@ const SEARCH_FIELD_MAP: Record<string, string> = {
 };
 
 type TableRow = {
+  MAPID: string;
   REF_NO: string;
   WORK_ORDER_NO: string;
   LR_NO: string;
@@ -42,7 +43,7 @@ type TableRow = {
 };
 
 const EMPTY_ROW = (): TableRow => ({
-  REF_NO: "", WORK_ORDER_NO: "", LR_NO: "", TRANSPORTER: "", LINE_NO: "", selected: false,
+  MAPID: "", REF_NO: "", WORK_ORDER_NO: "", LR_NO: "", TRANSPORTER: "", LINE_NO: "", selected: false,
 });
 
 // Columns rendered before the "P/A Check" (View) button — kept editable already
@@ -105,6 +106,103 @@ function computeTotal(b: Breakdown) {
   return sum - (Number(b.Deduction) || 0);
 }
 
+// Multi-select combo for the Invoice Number field, populated from the
+// reference table rows the user has checked (mirrors GateInOutCreate.GateF4MultiSelect).
+function F4MultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select",
+  className,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selected = value ? value.split(",").filter(Boolean) : [];
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={
+          (className ? className + " " : "") +
+          "flex items-center justify-between gap-2 text-left" +
+          (selected.length === 0 ? " text-muted-foreground" : "")
+        }
+      >
+        <span className="truncate">{displayLabel() || placeholder}</span>
+        <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+          <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o}
+                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  onChange={() => toggle(o)}
+                  className="size-3.5"
+                />
+                <span className="truncate">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChargesBreakdownDialog({
   open,
   onOpenChange,
@@ -163,10 +261,11 @@ function ChargesBreakdownDialog({
                 <label className={LABEL}>{k}</label>
                 <input
                   type="number"
-                  value={draft[k]}
+                  value={draft[k] === 0 ? "" : draft[k]}
                   onChange={(e) =>
                     setDraft((d) => ({ ...d, [k]: Number(e.target.value) || 0 }))
                   }
+                  placeholder="0"
                   className={GREEN_INPUT}
                 />
               </div>
@@ -176,8 +275,9 @@ function ChargesBreakdownDialog({
                 <label className={LABEL}>GST Amount</label>
                 <input
                   type="number"
-                  value={gstAmount}
+                  value={gstAmount === 0 ? "" : gstAmount}
                   onChange={(e) => setGstAmount(Number(e.target.value) || 0)}
+                  placeholder="0"
                   className={GREEN_INPUT}
                 />
               </div>
@@ -489,6 +589,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [itemsList, setItemsList] = useState<any[]>([]);
   const [showTable, setShowTable] = useState(false);
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
+  const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
+  const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [transportationType, setTransportationType] = useState("");
   const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(true);
 
@@ -567,6 +671,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setItemsList([]);
     setShowTable(false);
     setTableData([EMPTY_ROW()]);
+    setFullReferenceData([]);
+    setInvoiceF4List([]);
+    setInvoiceNumber("");
+    setTransportationType("");
     setSearchOptionsList([]);
     setShowForm(true);
     setFinanceDetails("");
@@ -641,10 +749,14 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       if (res?.STATUS === "FALSE") {
         Swal.fire({ icon: "info", title: "No Records Found", text: "No matching reference details found.", timer: 1500, showConfirmButton: false });
         setTableData([EMPTY_ROW()]);
+        setFullReferenceData([]);
+        setInvoiceF4List([]);
         return;
       }
       if (Array.isArray(res) && res.length > 0) {
+        setFullReferenceData(res);
         setTableData(res.map((item: any) => ({
+          MAPID: item.MAPID || "",
           REF_NO: item.REF_NO || "",
           WORK_ORDER_NO: item.WORK_ORDER_NO || "",
           LR_NO: item.LR_NO || "",
@@ -654,12 +766,37 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         })));
       } else {
         setTableData([EMPTY_ROW()]);
+        setFullReferenceData([]);
+        setInvoiceF4List([]);
       }
     } catch (e) {
       console.error("GlobalReference fetch error:", e);
       Swal.fire({ icon: "error", text: "Error fetching reference details." });
     }
   };
+
+  // Recompute invoice number options from the reference rows the user has checked
+  // (mirrors GateInOutCreate.updateInvoiceListForSelectedItems).
+  useEffect(() => {
+    const selectedMapIds = tableData
+      .filter((r) => r.selected && r.MAPID)
+      .map((r) => String(r.MAPID));
+
+    if (selectedMapIds.length === 0) {
+      setInvoiceF4List([]);
+      return;
+    }
+
+    const f4: string[] = [];
+    fullReferenceData.forEach((refItem: any) => {
+      if (selectedMapIds.includes(String(refItem.MAPID)) && Array.isArray(refItem.INV_NO)) {
+        refItem.INV_NO.forEach((inv: any) => {
+          if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
+        });
+      }
+    });
+    setInvoiceF4List(f4);
+  }, [tableData, fullReferenceData]);
 
   const saveFreightBilling = async (
     action = "stay" // stay | next | previous
@@ -1248,6 +1385,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                 <td className="px-3 py-0.5">
                   <input
                     value={row.REF_NO}
+                    placeholder="Enter Ref. No."
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -1256,6 +1394,9 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
+                    }}
                     className={GREEN_INPUT + " text-center"}
                   />
                 </td>
@@ -1263,6 +1404,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                 <td className="px-3 py-0.5">
                   <input
                     value={row.WORK_ORDER_NO}
+                    placeholder="Enter Work Order No."
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -1271,6 +1413,9 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
+                    }}
                     className={GREEN_INPUT + " text-center"}
                   />
                 </td>
@@ -1278,6 +1423,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                 <td className="px-3 py-0.5">
                   <input
                     value={row.LR_NO}
+                    placeholder="Enter LR No."
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -1286,6 +1432,9 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
+                    }}
                     className={GREEN_INPUT + " text-center"}
                   />
                 </td>
@@ -1293,6 +1442,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                 <td className="px-3 py-0.5">
                   <input
                     value={row.TRANSPORTER}
+                    placeholder="Enter Transporter"
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -1301,6 +1451,9 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
+                    }}
                     className={GREEN_INPUT + " text-center"}
                   />
                 </td>
@@ -1506,11 +1659,28 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
             <div>
               <label className={LABEL}>Invoice Number</label>
-              <input placeholder="Enter Invoice Number" className={GREEN_INPUT} />
+              <F4MultiSelect
+                options={invoiceF4List}
+                value={invoiceNumber}
+                onChange={setInvoiceNumber}
+                placeholder="Select Invoice Number"
+                className={GREEN_INPUT}
+              />
             </div>
             <div>
               <label className={LABEL}>Transportation Type</label>
-              <input placeholder="Enter Transportation Type" className={GREEN_INPUT} />
+              <select
+                value={transportationType}
+                onChange={(e) => setTransportationType(e.target.value)}
+                className={GREEN_INPUT}
+              >
+                <option value="">Select Transportation Type</option>
+                <option value="Rate contract">Rate contract</option>
+                <option value="WORK ORDER NUMBER">work order number</option>
+                <option value="Customer Transporter">Customer Transporter</option>
+                <option value="Local Transporter">Local Transporter</option>
+                <option value="Company vehicle">Company vehicle</option>
+              </select>
             </div>
             <div className="flex items-end gap-6 pb-1">
               <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">
@@ -1519,7 +1689,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   checked={provision}
                   onChange={(e) => {
                     setProvision(e.target.checked);
-                    if (e.target.checked) setAccount(false);
+                    if (e.target.checked) {
+                      setAccount(false);
+                      setFinanceDetails("No");
+                    }
                   }}
                   className="size-4 accent-emerald-600"
                 />
@@ -1531,7 +1704,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   checked={account}
                   onChange={(e) => {
                     setAccount(e.target.checked);
-                    if (e.target.checked) setProvision(false);
+                    if (e.target.checked) {
+                      setProvision(false);
+                      setFinanceDetails("Yes");
+                    }
                   }}
                   className="size-4 accent-emerald-600"
                 />
@@ -1672,7 +1848,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
 
             <div>
               <label className={LABEL}>Freight Bill upload</label>
-              <input type="file" className={GREEN_INPUT + " py-1.5"} />
+              <input
+                type="file"
+                disabled={provision}
+                className={GREEN_INPUT + " py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"}
+              />
             </div>
             <div>
               <label className={LABEL}>Unloading Charges Approval</label>
@@ -1684,7 +1864,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
             </div>
             <div>
               <label className={LABEL}>Work Order Uploading</label>
-              <input type="file" className={GREEN_INPUT + " py-1.5"} />
+              <input
+                type="file"
+                disabled={provision}
+                className={GREEN_INPUT + " py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"}
+              />
             </div>
           </div>
         </div>

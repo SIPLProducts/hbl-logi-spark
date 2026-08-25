@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
@@ -1006,6 +1007,8 @@ const GATE_COLUMNS = [
   "Customer Email Id",
   "Salesperson Email Id",
   "GPS Live Location",
+  "Destination State",
+  "Destination Zone",
   "TAT Type",
   "TAT Days",
   "ETA",
@@ -1050,6 +1053,14 @@ const GATE_INPUT_READONLY =
 
 const GATE_LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
+// Reference table field placeholders (matches Segment Info screen)
+const GATE_REF_FIELD_PLACEHOLDER: Record<"REF_NO" | "WORK_ORDER_NO" | "LR_NO" | "TRANSPORTER", string> = {
+  REF_NO: "Enter Ref. No.",
+  WORK_ORDER_NO: "Enter Work Order No.",
+  LR_NO: "Enter LR No.",
+  TRANSPORTER: "Enter Transporter",
+};
+
 /* Multi-select dropdown for the Invoice Number field — mirrors F4MultiSelect
    in ShipmentDetailsSapCreate. `value` stays a comma-joined string so existing
    handlers (invoiceNumber state) keep working unchanged. */
@@ -1069,12 +1080,24 @@ function GateF4MultiSelect({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  // Panel is portalled to <body> (see below) so it isn't clipped by an
+  // ancestor's overflow-x-auto (e.g. the horizontally-scrollable Header
+  // table) — this tracks where to draw it relative to the trigger button.
+  const [panelRect, setPanelRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  // The portalled panel lives outside `ref`, so outside-click detection
+  // needs its own ref too, or every click inside the panel would register
+  // as "outside" and close it before the selection registers.
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const selected = value ? value.split(",").filter(Boolean) : [];
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        ref.current && !ref.current.contains(target) &&
+        (!panelRef.current || !panelRef.current.contains(target))
+      ) {
         setOpen(false);
         setSearch("");
       }
@@ -1082,6 +1105,23 @@ function GateF4MultiSelect({
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const updateRect = () => {
+      const el = ref.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setPanelRect({ top: r.bottom, left: r.left, width: r.width });
+    };
+    updateRect();
+    window.addEventListener("scroll", updateRect, true);
+    window.addEventListener("resize", updateRect);
+    return () => {
+      window.removeEventListener("scroll", updateRect, true);
+      window.removeEventListener("resize", updateRect);
+    };
+  }, [open]);
 
   const filtered = search
     ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
@@ -1113,8 +1153,12 @@ function GateF4MultiSelect({
         <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
       </button>
 
-      {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+      {open && panelRect && createPortal(
+        <div
+          ref={panelRef}
+          style={{ position: "fixed", top: panelRect.top, left: panelRect.left, width: panelRect.width }}
+          className="z-50 mt-1 rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto"
+        >
           <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline">
             <input
               autoFocus
@@ -1142,7 +1186,8 @@ function GateF4MultiSelect({
               </label>
             ))
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -1165,6 +1210,8 @@ type GateRow = {
   customerEmailId: string;
   salespersonEmailId: string;
   gpsLiveLocation: string;
+  destinationState: string;
+  destinationZone: string;
   tatType: string;
   tatDays: string;
   eta: string;
@@ -1187,6 +1234,8 @@ const EMPTY_GATE_ROW = (): GateRow => ({
   customerEmailId: "",
   salespersonEmailId: "",
   gpsLiveLocation: "",
+  destinationState: "",
+  destinationZone: "",
   tatType: "",
   tatDays: "",
   eta: "",
@@ -1472,6 +1521,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
             customerEmailId: Array.isArray(item.CUSTOMER_EMAIL_DETAILS) ? item.CUSTOMER_EMAIL_DETAILS.join(",") : "",
             salespersonEmailId: Array.isArray(item.SALESPERSON_EMAIL_DETAILS) ? item.SALESPERSON_EMAIL_DETAILS.join(",") : "",
             gpsLiveLocation: item.GPS_LIVE_LOCATION || "",
+            destinationState: item.ZSTATE || "",
+            destinationZone: item.ZZONE || "",
             tatType: item.TAT_TYPE || "",
             tatDays: item.TAT_DAYS != null ? String(item.TAT_DAYS) : "",
             eta: item.ETA || "",
@@ -1492,6 +1543,115 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       });
     } catch (err) {
       console.error("FetchGateInOutInvoiceData failed:", err);
+      Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch invoice details." });
+    }
+  };
+
+  // ── DC Reference Number select → FetchGateInOutInvoiceDataWithoutSap (Without SAP) ──
+  // Mirrors handleGet above, but keyed off the DC Reference dropdown instead of a GET button.
+  const handleDcReferenceChange = async (value: string) => {
+    setDcReferenceNumber(value);
+    if (!value.trim()) return;
+
+    setIsGlobalSearch(false);
+    const selectedInvoiceNumbers = value
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    const payload = {
+      NSAP_INV: selectedInvoiceNumbers.map((inv) => {
+        const owner: any = fullReferenceData.find(
+          (refItem: any) =>
+            Array.isArray(refItem.INV_NO) &&
+            refItem.INV_NO.some((x: any) => x.VBELN === inv)
+        );
+        return {
+          INV_NO: inv,
+          REFNO: owner?.REF_NO || "",
+          REF_LINE: owner?.LINE_NO || "",
+        };
+      }),
+    };
+
+    try {
+      const res: any = await service.FetchGateInOutInvoiceDataWithoutSap(payload);
+
+      if (!Array.isArray(res) || res.length === 0 || !res[0]?.HEADER) {
+        Swal.fire({
+          icon: "info",
+          title: "No Records Found",
+          text: res?.MSG || "No invoice details were found for the selected DC Reference Number.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        return;
+      }
+
+      const { HEADER } = res[0];
+
+      setEwayApplicable(HEADER.EWAY_BILL_APPLICABLE || "");
+      setEwayDate(HEADER.EWAY_BILL_DATE || "");
+      setEwayNumber(HEADER.EWAY_BILL_NUMBER || "");
+      setEwayExpireDate(HEADER.EWAY_BILL_EXPIRE_DATE || "");
+      setInsuranceScope(HEADER.INSURANCE_SCOPE || "");
+      setKilometres(HEADER.KILLOMETERS != null ? String(HEADER.KILLOMETERS) : "");
+      setZplant(HEADER.ZPLANT || "");
+
+      setHeaderRows(
+        res.map((entry: any) => ({
+          refNo: entry?.HEADER?.REFERENCE_NUMBER != null ? String(entry.HEADER.REFERENCE_NUMBER) : "",
+          lineNo: entry?.HEADER?.REFERENCE_LINE_ITEM != null ? String(entry.HEADER.REFERENCE_LINE_ITEM) : "",
+          invNo: entry?.HEADER?.ZINV_NO || "",
+          ewayApplicable: entry?.HEADER?.EWAY_BILL_APPLICABLE || "",
+          ewayDate: entry?.HEADER?.EWAY_BILL_DATE || "",
+          ewayNumber: entry?.HEADER?.EWAY_BILL_NUMBER || "",
+          ewayExpireDate: entry?.HEADER?.EWAY_BILL_EXPIRE_DATE || "",
+          insuranceScope: entry?.HEADER?.INSURANCE_SCOPE || "",
+          kilometres: entry?.HEADER?.KILLOMETERS != null ? String(entry.HEADER.KILLOMETERS) : "",
+        }))
+      );
+
+      const mappedRows: GateRow[] = res.flatMap((entry: any) =>
+        Array.isArray(entry?.ITEMS)
+          ? entry.ITEMS.map((item: any) => ({
+            selected: false,
+            mapId: "",
+            invoiceNumber: item.ZINV_NO || "",
+            invoiceLineNo: item.INVOICE_LINE_ITEM != null ? String(item.INVOICE_LINE_ITEM) : "",
+            requiredDateTime: item.REQUIRED_DATE_AND_TIME || "",
+            reportedDateTime: item.REPORTED_DATE_AND_TIME || "",
+            physicalDispatchDateTime: item.PHYSICAL_DISPATCH_DATE_TIME || "",
+            truckType: item.TRUCK_TYPE || "",
+            typeOfTransporter: item.TYPE_OF_TRANSPORTER || "",
+            vehicleNumber: item.VEHICLE_NUMBER || "",
+            noOfVehicles: item.NO_OF_VEHICLES != null ? String(item.NO_OF_VEHICLES) : "",
+            driverNumber: item.DRIVER_NUMBER || "",
+            driverName: item.DRIVER_NAME || "",
+            customerEmailId: Array.isArray(item.CUSTOMER_EMAIL_DETAILS) ? item.CUSTOMER_EMAIL_DETAILS.join(",") : "",
+            salespersonEmailId: Array.isArray(item.SALESPERSON_EMAIL_DETAILS) ? item.SALESPERSON_EMAIL_DETAILS.join(",") : "",
+            gpsLiveLocation: item.GPS_LIVE_LOCATION || "",
+            destinationState: item.ZSTATE || "",
+            destinationZone: item.ZZONE || "",
+            tatType: item.TAT_TYPE || "",
+            tatDays: item.TAT_DAYS != null ? String(item.TAT_DAYS) : "",
+            eta: item.ETA || "",
+          }))
+          : []
+      );
+      if (mappedRows.length === 0) mappedRows.push(EMPTY_GATE_ROW());
+
+      setGateRows(mappedRows);
+      setShowDetails(true);
+
+      Swal.fire({
+        icon: "success",
+        title: "Invoice Details Loaded",
+        text: "Invoice details have been fetched successfully.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (err) {
+      console.error("FetchGateInOutInvoiceDataWithoutSap failed:", err);
       Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch invoice details." });
     }
   };
@@ -1598,15 +1758,27 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
     const row = gateRows[index];
     const invNo = row?.invoiceNumber || invoiceNumber || "";
-    const payload: any = { BRANCH: "", BRANCH_ZONE: "", TAT_TYPE: tatType };
+    const payload: any = { BRANCH: row?.destinationState || "", BRANCH_ZONE: row?.destinationZone || "", TAT_TYPE: tatType };
     if (isSap) payload.VBELN = invNo;
     else payload.INV_NO = invNo;
 
     try {
       const res: any = isSap ? await service.fetchTAT(payload) : await service.fetchNonSapTAT(payload);
       if (res?.TAT || res?.ETA) {
-        updateGateRow(index, "tatDays", res.TAT || "");
-        updateGateRow(index, "eta", res.ETA || "");
+        const tatDays = res.TAT || "";
+        updateGateRow(index, "tatDays", tatDays);
+
+        // ETA = Physical Dispatch Date + TAT Days (+1 extra day for every TAT Type except Revised TAT)
+        const dispatchDate = row?.physicalDispatchDateTime ? row.physicalDispatchDateTime.slice(0, 10) : "";
+        if (dispatchDate && tatDays) {
+          const extraDay = tatType === "Revised TAT" ? 0 : 1;
+          const [y, m, d] = dispatchDate.split("-").map(Number);
+          const calculatedDate = new Date(y, m - 1, d);
+          calculatedDate.setDate(calculatedDate.getDate() + Number(tatDays) + extraDay);
+          updateGateRow(index, "eta", format(calculatedDate, "yyyy-MM-dd"));
+        } else {
+          updateGateRow(index, "eta", res.ETA || "");
+        }
       } else {
         Swal.fire("No TAT data found for selected type", "", "info");
       }
@@ -1669,6 +1841,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               ? row.salespersonEmailId.split(",").filter(Boolean).map((email) => ({ SALESPERSON_EMAIL_ID: email }))
               : [],
             GPS_LIVE_LOCATION: row.gpsLiveLocation,
+            ZSTATE: row.destinationState,
+            ZZONE: row.destinationZone,
             TAT_TYPE: row.tatType,
             TAT_DAYS: row.tatDays,
             ETA: row.eta,
@@ -1709,7 +1883,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         setSearchType("");
         setSearchValue("");
         setIsAllGateSelected(false);
-        
+
         if (action === "next") {
           navigate({ to: "/invoice-load-details" });
         } else if (action === "previous") {
@@ -1733,7 +1907,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const handleUpdateRecord = async (target: "header" | "item", itemIndex?: number) => {
     try {
       const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
-      
+
       let cleanItems: any[] = [];
       if (target === "item" && itemIndex !== undefined) {
         const { isEdit, _backup, ...cleanItem } = searchResultItems[itemIndex];
@@ -1742,13 +1916,13 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           ...cleanItem,
           CUSTOMER_EMAIL_DETAILS: cleanItem.CUSTOMER_EMAIL_DETAILS
             ? (typeof cleanItem.CUSTOMER_EMAIL_DETAILS === "string"
-                ? cleanItem.CUSTOMER_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ CUSTOMER_EMAIL_ID: e.trim() }))
-                : cleanItem.CUSTOMER_EMAIL_DETAILS)
+              ? cleanItem.CUSTOMER_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ CUSTOMER_EMAIL_ID: e.trim() }))
+              : cleanItem.CUSTOMER_EMAIL_DETAILS)
             : [],
           SALESPERSON_EMAIL_DETAILS: cleanItem.SALESPERSON_EMAIL_DETAILS
             ? (typeof cleanItem.SALESPERSON_EMAIL_DETAILS === "string"
-                ? cleanItem.SALESPERSON_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ SALESPERSON_EMAIL_ID: e.trim() }))
-                : cleanItem.SALESPERSON_EMAIL_DETAILS)
+              ? cleanItem.SALESPERSON_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ SALESPERSON_EMAIL_ID: e.trim() }))
+              : cleanItem.SALESPERSON_EMAIL_DETAILS)
             : []
         };
         cleanItems = [formattedItem];
@@ -1778,7 +1952,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           timer: 2000,
           showConfirmButton: false,
         });
-        
+
         if (target === "header") {
           setSearchResultHeader((prev: any) => ({ ...prev, isEdit: false }));
         } else if (target === "item" && itemIndex !== undefined) {
@@ -1835,8 +2009,12 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                     <input
                       value={(row as any)[field] || ""}
                       readOnly={i !== 0}
+                      placeholder={GATE_REF_FIELD_PLACEHOLDER[field]}
                       onChange={(e) => handleRefRowChange(i, field, e.target.value)}
                       onBlur={() => fetchGlobalReferences(i, field)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(i, field);
+                      }}
                       className={GATE_INPUT_NORMAL + " text-center"}
                     />
                   </td>
@@ -1926,6 +2104,24 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         )}
       </div>
 
+      {/* ── DC Reference Number (Without SAP) — mirrors InvoiceLoadDetails' DC Reference field ── */}
+      {!isSap && (
+        <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
+            <div>
+              <label className={GATE_LABEL}>DC Reference Number</label>
+              <GateF4MultiSelect
+                options={invoiceF4List}
+                value={dcReferenceNumber}
+                onChange={handleDcReferenceChange}
+                placeholder="Select DC Reference"
+                className={GATE_INPUT_NORMAL}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Global Search Results (With SAP) ── */}
       {isSap && isGlobalSearch && Object.keys(searchResultHeader).length > 0 && (
         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -1977,9 +2173,13 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                         ) : (
                           <input
                             type={type}
+                            inputMode={field === "EWAY_BILL_NUMBER" ? "numeric" : undefined}
                             className="h-7 w-full min-w-[80px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] outline-none"
                             value={searchResultHeader[field] || ""}
-                            onChange={(e) => setSearchResultHeader((prev: any) => ({ ...prev, [field]: e.target.value }))}
+                            onChange={(e) => {
+                              const v = field === "EWAY_BILL_NUMBER" ? e.target.value.replace(/\D/g, "") : e.target.value;
+                              setSearchResultHeader((prev: any) => ({ ...prev, [field]: v }));
+                            }}
                           />
                         )
                       ) : (
@@ -2011,7 +2211,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               if (result.isConfirmed) {
                                 try {
                                   const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
-                                  
+
                                   const payload = {
                                     CREATE: "",
                                     CHANGE: "",
@@ -2079,6 +2279,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                       "Physical Dispatch Date Time", "Truck Type", "Transporter Type",
                       "Vehicle No", "No of Vehicles", "Driver Name", "Driver Number",
                       "Customer Email", "Salesperson Email",
+                      "Destination State", "Destination Zone",
                       "TAT Type", "TAT Days", "ETA", "Action"
                     ].map((h) => (
                       <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
@@ -2104,6 +2305,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                         { field: "DRIVER_NUMBER", type: "text" },
                         { field: "CUSTOMER_EMAIL_DETAILS", type: "text" },
                         { field: "SALESPERSON_EMAIL_DETAILS", type: "text" },
+                        { field: "ZSTATE", type: "text" },
+                        { field: "ZZONE", type: "text" },
                         { field: "TAT_TYPE", type: "select", options: ["Direct Truck TAT(Vizag)", "Direct Truck TAT(Hyd)", "Revised TAT", "Safe Express TAT", "Delivery TAT", "GATI TAT"] },
                         { field: "TAT_DAYS", type: "number" },
                         { field: "ETA", type: "date" },
@@ -2135,6 +2338,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               ) : (
                                 <input
                                   type={type}
+                                  inputMode={field === "DRIVER_NUMBER" ? "numeric" : undefined}
                                   className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] outline-none"
                                   value={displayVal}
                                   onChange={(e) => {
@@ -2145,6 +2349,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                       newVal = rawVal ? rawVal.split(",").map(v => ({ CUSTOMER_EMAIL_ID: v.trim() })) : [];
                                     } else if (field === "SALESPERSON_EMAIL_DETAILS") {
                                       newVal = rawVal ? rawVal.split(",").map(v => ({ SALESPERSON_EMAIL_ID: v.trim() })) : [];
+                                    } else if (field === "DRIVER_NUMBER") {
+                                      newVal = rawVal.replace(/\D/g, "");
                                     }
                                     next[index] = { ...next[index], [field]: newVal };
                                     setSearchResultItems(next);
@@ -2260,13 +2466,12 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                   <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
                     <th className="px-3 py-0.5 text-center">Reference Number</th>
                     <th className="px-3 py-0.5 text-center">Reference Line No</th>
-                    <th className="px-3 py-0.5 text-center">Invoice Number</th>
-                    {!isSap && <th className="px-3 py-0.5 text-center">DC Reference Number</th>}
+                    <th className="px-3 py-0.5 text-center">{isSap ? "Invoice Number" : "DC Reference Number"}</th>
                     <th className="px-3 py-0.5 text-center">E-way Bill Applicable</th>
                     {showEwayExtraColumns && (
                       <>
-                        <th className="px-3 py-0.5 text-center">E-Way Bill Date</th>
                         <th className="px-3 py-0.5 text-center">E-Way Bill Number</th>
+                        <th className="px-3 py-0.5 text-center">E-Way Bill Date</th>
                         <th className="px-3 py-0.5 text-center">E-Way Bill Expire Date</th>
                       </>
                     )}
@@ -2278,18 +2483,18 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                   {(headerRows.length > 0
                     ? headerRows
                     : [
-                        {
-                          refNo: refTableData[0]?.REF_NO || "",
-                          lineNo: refTableData[0]?.LINE_NO || "",
-                          invNo: invoiceNumber || "",
-                          ewayApplicable,
-                          ewayDate,
-                          ewayNumber,
-                          ewayExpireDate,
-                          insuranceScope,
-                          kilometres,
-                        },
-                      ]
+                      {
+                        refNo: isSap ? (refTableData[0]?.REF_NO || "") : "",
+                        lineNo: refTableData[0]?.LINE_NO || "",
+                        invNo: invoiceNumber || "",
+                        ewayApplicable,
+                        ewayDate,
+                        ewayNumber,
+                        ewayExpireDate,
+                        insuranceScope,
+                        kilometres,
+                      },
+                    ]
                   ).map((hr, hrIdx) => (
                     <tr key={hrIdx}>
                       <td className="px-3 py-0.5">
@@ -2301,17 +2506,6 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                       <td className="px-3 py-0.5">
                         <input value={hr.invNo} readOnly className={GATE_INPUT_READONLY + " text-center"} />
                       </td>
-                      {!isSap && hrIdx === 0 && (
-                        <td className="px-3 py-0.5" rowSpan={headerRows.length > 0 ? headerRows.length : 1}>
-                          <GateF4MultiSelect
-                            options={invoiceF4List}
-                            value={dcReferenceNumber}
-                            onChange={setDcReferenceNumber}
-                            placeholder="Select DC Reference"
-                            className={GATE_INPUT_NORMAL}
-                          />
-                        </td>
-                      )}
                       <td className="px-3 py-0.5">
                         <select
                           value={hr.ewayApplicable}
@@ -2328,19 +2522,21 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           <>
                             <td className="px-3 py-0.5">
                               <Input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Enter E-Way Bill Number"
+                                value={hr.ewayNumber}
+                                onChange={(e) => updateHeaderRow(hrIdx, { ewayNumber: e.target.value.replace(/\D/g, "") })}
+                              />
+                            </td>
+                            <td className="px-3 py-0.5">
+                              <Input
                                 type="date"
                                 value={hr.ewayDate}
                                 onChange={(e) => updateHeaderRow(hrIdx, { ewayDate: e.target.value })}
                               />
                             </td>
-                            <td className="px-3 py-0.5">
-                              <Input
-                                type="text"
-                                placeholder="Enter E-Way Bill Number"
-                                value={hr.ewayNumber}
-                                onChange={(e) => updateHeaderRow(hrIdx, { ewayNumber: e.target.value })}
-                              />
-                            </td>
+
                             <td className="px-3 py-0.5">
                               <Input
                                 type="date"
@@ -2403,7 +2599,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                       />
                     </TableHead>
                     <TableHead className="w-10">Sl.No</TableHead>
-                    <TableHead className="whitespace-nowrap">Invoice Number</TableHead>
+                    <TableHead className="whitespace-nowrap">{isSap ? "Invoice Number" : "DC Reference Number"}</TableHead>
                     <TableHead className="whitespace-nowrap">Invoice Line No</TableHead>
                     {GATE_COLUMNS.map((c) => (
                       <TableHead key={c} className="whitespace-nowrap">
@@ -2512,6 +2708,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                             "Customer Email Id": "customerEmailId",
                             "Salesperson Email Id": "salespersonEmailId",
                             "GPS Live Location": "gpsLiveLocation",
+                            "Destination State": "destinationState",
+                            "Destination Zone": "destinationZone",
                             "TAT Days": "tatDays",
                           };
                           const field = fieldMap[c];
@@ -2531,8 +2729,10 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                 )}
                                 value={val}
                                 min={isPd ? minPd : undefined}
+                                inputMode={field === "driverNumber" ? "numeric" : undefined}
                                 onChange={(e) => {
-                                  const v = e.target.value;
+                                  let v = e.target.value;
+                                  if (field === "driverNumber") v = v.replace(/\D/g, "");
                                   if (isPd && minPd && v && v < minPd) return;
                                   updateGateRow(i, field, v);
                                 }}

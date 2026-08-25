@@ -160,6 +160,7 @@ export const reportsApi = {
     DeleteGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Delete', 'POST', data),
     FilterRecordsGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/FilterRecords', 'POST', data),
     ChangeGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Change', 'POST', data),
+    FetchGateInOutInvoiceDataWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/InvoiceGet', 'PUT', data),
 
 
 };

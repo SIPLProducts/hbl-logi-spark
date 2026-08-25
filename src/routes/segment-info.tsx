@@ -238,7 +238,7 @@ function SegmentInfoPage() {
           { header: "Customer Profile", value: (r: any) => r.ZCUST_PROFILE || "" },
           { header: "Branch", value: (r: any) => r.ZBRANCH || "" },
           { header: "Branch Zone", value: (r: any) => r.ZBRANCH_ZONE || "" },
-          { header: "TAT Type", value: (r: any) => r.ZTAT_TYPE || "" },
+          // { header: "TAT Type", value: (r: any) => r.ZTAT_TYPE || "" },
           { header: "TAT Days", value: (r: any) => r.ZTAT || "" },
           { header: "ETA", value: (r: any) => r.ZETA || "" },
           { header: "Plant", value: (r: any) => r.ZPLANT || "" },
@@ -316,15 +316,16 @@ function SegmentInfoPage() {
     if (fStatus === "Completed") {
       headers = [[
         "SI.No", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number", "Sales Person", "Segment",
-        "Application Type", "Customer Profile", "Branch", "Branch Zone", "TAT Type", "TAT Days", "ETA",
+        "Application Type", "Customer Profile", "Branch", "Branch Zone", 
         "Plant", "Division", "Work Order", "LR No", "Transporter", "Created Date", "Vehicle Type",
       ]];
 
       data = exportSource.map((item, index) => ([
         index + 1, item.ZLINE_NO || "", item.ZREFNO || "", item.ZINV_NUM || "", item.ZODN_NO || "",
         item.ZSO_NO || "", item.ZSALE_PERSON || "", item.ZSEGMENT || "", item.ZAPPTYP || "",
-        item.ZCUST_PROFILE || "", item.ZBRANCH || "", item.ZBRANCH_ZONE || "", item.ZTAT_TYPE || "",
-        item.ZTAT || "", item.ZETA || "", item.ZPLANT || "", item.ZDIVISION || "", item.ZWORK_ORDER || "",
+        item.ZCUST_PROFILE || "", item.ZBRANCH || "", item.ZBRANCH_ZONE || "", 
+        // item.ZTAT || "", item.ZETA || "", 
+        item.ZPLANT || "", item.ZDIVISION || "", item.ZWORK_ORDER || "",
         item.ZLRNO || "", item.ZTRANSPORTER || "",
         item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : "",
         item.ZVEH_TYPE || "",
@@ -561,7 +562,8 @@ function SegmentInfoPage() {
                     <thead className="sticky top-0 z-30">
                       <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
                         {["SI.No", "Line No", "REFNO", "Invoice No", "Odn Number", "SO Number", "Sales Person", "Segment",
-                          "Application Type", "Customer Profile", "Branch", "Branch Zone", "TAT Type", "TAT Days", "ETA",
+                          "Application Type", "Customer Profile", "Branch", "Branch Zone",
+                          //  "TAT Type", "TAT Days", "ETA",
                           "Plant", "Division", "Work Order", "LR No", "Transporter", "Created date", "Vehicle Type"].map((h) => (
                             <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
                           ))}
@@ -589,9 +591,9 @@ function SegmentInfoPage() {
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZCUST_PROFILE}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZBRANCH}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZBRANCH_ZONE}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZTAT_TYPE}</td>
+                            {/* <td className="px-3 py-2 whitespace-nowrap">{item.ZTAT_TYPE}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZTAT}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZETA}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZETA}</td> */}
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZPLANT}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>

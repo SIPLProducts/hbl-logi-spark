@@ -249,6 +249,7 @@ type LoadRow = {
   ZTRUC_TYPE: string;
   ZTRUC_WT: string;
   ZACT_LOAD: string;
+  ZTRUC_VOL: string;
   ZACT_VOL: string;
   ZLF_VOL: string;
   ZLF_WT: string;
@@ -275,6 +276,7 @@ const newRow = (id: number, patch: Partial<LoadRow> = {}): LoadRow => ({
   ZTRUC_TYPE: "",
   ZTRUC_WT: "",
   ZACT_LOAD: "",
+  ZTRUC_VOL: "",
   ZACT_VOL: "",
   ZLF_VOL: "",
   ZLF_WT: "",
@@ -317,7 +319,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [nextId, setNextId] = useState(2);
   const [allChecked, setAllChecked] = useState(false);
 
-  const [vehicleTypes, setVehicleTypes] = useState<{ ZTRUC_TYPE: string; ZTRUC_WT: string }[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<{ ZTRUC_TYPE: string; ZTRUC_WT: string; ZTRUC_VOL: string }[]>([]);
   const [fTransporter, setFTransporter] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -519,6 +521,9 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                 ZWEEK_SF: res[0]?.ZWEEK_SF || "",
                 ZODN_NO: res[0]?.ZODN_NO || "",
                 ZSO_NO: res[0]?.ZSO_NO || "",
+                ZTRUC_TYPE: res[0]?.ZTRUC_TYPE || "",
+                ZTRUC_WT: res[0]?.ZTRUC_WT || "",
+                ZTRUC_VOL: res[0]?.ZTRUC_VOL || "",
               }),
             );
           }
@@ -583,6 +588,9 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                 ZTRANSPORTER: ref.transporter || "",
                 ZTRUCK_LINE: i + 1,
                 ZWEEK_SF: res[0]?.ZWEEK_SF || "",
+                ZTRUC_TYPE: res[0]?.ZTRUC_TYPE || "",
+                ZTRUC_WT: res[0]?.ZTRUC_WT || "",
+                ZTRUC_VOL: res[0]?.ZTRUC_VOL || "",
               }),
             );
           }
@@ -635,14 +643,16 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
   /* ── Truck type change -> auto weight + part-load handling (Angular: onVehicleTypeChange) ── */
   const onTruckTypeSelect = (rowId: number, truckType: string) => {
     if (!truckType) {
-      updateRow(rowId, { ZTRUC_TYPE: "", ZTRUC_WT: "", ZACT_LOAD: "" });
+      updateRow(rowId, { ZTRUC_TYPE: "", ZTRUC_WT: "", ZACT_LOAD: "", ZTRUC_VOL: "" });
       return;
     }
     const matched = vehicleTypes.find((v) => v.ZTRUC_TYPE === truckType);
     const weight = matched?.ZTRUC_WT || "";
+    const volume = matched?.ZTRUC_VOL || "";
     updateRow(rowId, {
       ZTRUC_TYPE: truckType,
       ZTRUC_WT: weight,
+      ZTRUC_VOL: volume,
       ...(truckType === "PART LOAD" ? { ZACT_LOAD: weight } : {}),
     });
   };
@@ -780,6 +790,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
               ZTRUC_TYPE: row.ZTRUC_TYPE,
               ZTRUC_WT: row.ZTRUC_WT,
               ZACT_LOAD: row.ZACT_LOAD,
+              ZTRUC_VOL: row.ZTRUC_VOL,
               ZACT_VOL: row.ZACT_VOL,
               ZLF_VOL: row.ZLF_VOL,
               ZLF_WT: row.ZLF_WT,
@@ -808,6 +819,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
               ZTRUC_TYPE: row.ZTRUC_TYPE,
               ZTRUC_WT: row.ZTRUC_WT,
               ZACT_LOAD: row.ZACT_LOAD,
+              ZTRUC_VOL: row.ZTRUC_VOL,
               ZACT_VOL: row.ZACT_VOL,
               ZLF_VOL: row.ZLF_VOL,
               ZLF_WT: row.ZLF_WT,
@@ -906,6 +918,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
             ZTRUC_TYPE: inv.ZTRUC_TYPE || "",
             ZTRUC_WT: inv.ZTRUC_WT || "",
             ZACT_LOAD: inv.ZACT_LOAD || "",
+            ZTRUC_VOL: inv.ZTRUC_VOL || "",
             ZACT_VOL: inv.ZACT_VOL || "",
             ZLF_VOL: inv.ZLF_VOL || "",
             ZLF_WT: inv.ZLF_WT || "",
@@ -1186,8 +1199,9 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       <br />
                       (w.r.t weight)
                     </th>
-                    <th className="px-2 py-1.5 text-center">Actual Volume Occupied</th>
-                    <th className="px-2 py-1.5 text-center">Loading Factor w.r.t Volume</th>
+                    <th className="px-2 py-1.5 text-center">Truck Volume<br />(Cubic Feet)</th>
+                    <th className="px-2 py-1.5 text-center">Actual Volume Occupied<br />(Input in %)</th>
+                    <th className="px-2 py-1.5 text-center">Actual Volume<br />(Cubic Feet)</th>
                     {/* <th className="px-2 py-1.5 text-center">Week Wise Shipment Flow</th>
                     <th className="px-2 py-1.5 text-center">Eway Bill Number</th>
                     <th className="px-2 py-1.5 text-center">Eway Bill Expiry Date</th> */}
@@ -1256,6 +1270,13 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                           <input
                             value={row.ZLF_WT}
                             onChange={(e) => updateRow(row.id, { ZLF_WT: e.target.value })}
+                            className={GREEN_INPUT + " text-center"}
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <input
+                            value={row.ZTRUC_VOL}
+                            onChange={(e) => updateRow(row.id, { ZTRUC_VOL: e.target.value })}
                             className={GREEN_INPUT + " text-center"}
                           />
                         </td>
@@ -1699,8 +1720,8 @@ function InvoiceFilterDownload({
           "Passing Weight (Tons)": item.ZTRUC_WT || "",
           "Actual Load (Tons)": item.ZACT_LOAD || "",
           "Loading factor % (w.r.t weight)": item.ZLF_WT || "",
-          "Actual Volume Occupied": item.ZACT_VOL || "",
-          "Loading Factor w.r.t Volume": item.ZLF_VOL || "",
+          "Actual Volume Occupied(Input in %)": item.ZACT_VOL || "",
+          "Actual Volume(Cubic Feet)": item.ZLF_VOL || "",
           "Week Wise Shipment Flow": item.ZWEEK_SF || "",
           "Eway Bill Number": item.ZEWAYBILL_NO || "",
           "Eway Bill Expiry Date": item.ZEWAYBILL_DT || "",
@@ -1913,8 +1934,8 @@ function InvoiceFilterDownload({
                 <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.1em] text-primary-foreground">
                   {["SI.No", "Map ID", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number",
                     "Truck Type", "Passing Weight (Tons)", "Actual Load (Tons)",
-                    "Loading factor% (w.r.t weight)", "Actual Volume Occupied",
-                    "Loading Factor w.r.t Volume", "Week Wise Shipment Flow", "Eway Bill Number",
+                    "Loading factor% (w.r.t weight)", "Actual Volume Occupied(Input in %)",
+                    "Actual Volume(Cubic Feet)", "Week Wise Shipment Flow", "Eway Bill Number",
                     "Eway Bill Expiry Date", "Plant", "Division", "Work Order", "LR No",
                     "Transporter", "Created date", "Vehicle Type"].map((h) => (
                       <th key={h} className="px-2 py-1.5 whitespace-nowrap">{h}</th>

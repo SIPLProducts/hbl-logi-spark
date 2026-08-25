@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   Plus,
   RefreshCw,
@@ -552,7 +552,15 @@ function ServiceLevelFeedbackCreate({
     loadType === "ftl" ? "FULL TRUCK LOAD" : loadType === "cargo" ? "CARGO" : "";
 
   const [rows, setRows] = useState<SLRow[]>([slEmptyRow()]);
+  // Last (fieldKey, value) pair that actually triggered a reference lookup —
+  // guards against refiring the API when a field merely loses focus (e.g.
+  // clicking the row checkbox or the Invoice Number select) without its
+  // value having changed.
+  const lastFetchedRef = useRef<{ fieldKey: string; value: string } | null>(null);
   const [selectedItems, setSelectedItems] = useState<SLRow[]>([]);
+  // Raw reference-fetch response (mirrors SegmentInfoSapCreate's fullReferenceData) —
+  // used to recompute invoiceList from just the rows the user has checked.
+  const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
   const [invoiceList, setInvoiceList] = useState<string[]>([]);
   const [invoicenumber, setInvoicenumber] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
@@ -567,14 +575,46 @@ function ServiceLevelFeedbackCreate({
   const isItemSelected = (row: SLRow): boolean =>
     selectedItems.some((item) => slSameRow(item, row));
 
-  const onCheckboxChange = (checked: boolean, row: SLRow): void => {
-    if (checked) {
-      setSelectedItems((prev) =>
-        prev.some((item) => slSameRow(item, row)) ? prev : [...prev, row],
-      );
-    } else {
-      setSelectedItems((prev) => prev.filter((item) => !slSameRow(item, row)));
+  // Recompute invoiceList from just the selected reference rows (mirrors
+  // SegmentInfoSapCreate.recomputeInvoiceList).
+  const recomputeInvoiceList = (selected: SLRow[]): void => {
+    if (selected.length === 0) {
+      setInvoiceList([]);
+      setInvoicenumber("");
+      return;
     }
+    const selectedMapIds = new Set(selected.map((r) => r.mapId));
+    const invoices: string[] = [];
+    fullReferenceData.forEach((refItem: any) => {
+      if (selectedMapIds.has(refItem.MAPID) && Array.isArray(refItem.INV_NO)) {
+        refItem.INV_NO.forEach((inv: any) => {
+          if (inv.VBELN && !invoices.includes(inv.VBELN)) invoices.push(inv.VBELN);
+        });
+      }
+    });
+    setInvoiceList(invoices);
+    setInvoicenumber("");
+  };
+
+  const onCheckboxChange = (checked: boolean, row: SLRow): void => {
+    setSelectedItems((prev) => {
+      const next = checked
+        ? (prev.some((item) => slSameRow(item, row)) ? prev : [...prev, row])
+        : prev.filter((item) => !slSameRow(item, row));
+      recomputeInvoiceList(next);
+      return next;
+    });
+  };
+
+  const removeRow = (index: number): void => {
+    if (rows.length === 1) return;
+    const removedRow = rows[index];
+    setRows((prev) => prev.filter((_, i) => i !== index));
+    setSelectedItems((prev) => {
+      const next = prev.filter((item) => !slSameRow(item, removedRow));
+      recomputeInvoiceList(next);
+      return next;
+    });
   };
 
   const updateRowField = (index: number, key: keyof SLRow, value: string): void => {
@@ -583,28 +623,34 @@ function ServiceLevelFeedbackCreate({
     );
   };
 
+  // Mirrors SegmentInfoSapCreate.populateReferenceRows: stash the raw fetch
+  // response and seed invoiceList from every row just returned, then let
+  // recomputeInvoiceList() narrow it down as the user checks rows.
   const populateRows = (data: any): void => {
     if (Array.isArray(data) && data.length > 0) {
-      setRows(
-        data.map((d: any) => ({
-          referenceNumber: d.REF_NO || "",
-          workOrderNumber: d.WORK_ORDER_NO || "",
-          lrNumber: d.LR_NO || "",
-          transporter: d.TRANSPORTER || "",
-          lineNumber: d.LINE_NO || "",
-          mapId: d.MAPID || "",
-        })),
-      );
+      setFullReferenceData(data);
       const invoices: string[] = [];
-      data.forEach((d: any) => {
-        if (d.INV_NO && d.INV_NO.length > 0) {
-          d.INV_NO.forEach((inv: any) => invoices.push(inv.VBELN));
-        }
-      });
-      if (invoices.length > 0) {
-        setInvoiceList((prev) => [...prev, ...invoices]);
-      }
+      setRows(
+        data.map((d: any) => {
+          if (Array.isArray(d.INV_NO)) {
+            d.INV_NO.forEach((inv: any) => {
+              if (inv.VBELN && !invoices.includes(inv.VBELN)) invoices.push(inv.VBELN);
+            });
+          }
+          return {
+            referenceNumber: d.REF_NO || "",
+            workOrderNumber: d.WORK_ORDER_NO || "",
+            lrNumber: d.LR_NO || "",
+            transporter: d.TRANSPORTER || "",
+            lineNumber: d.LINE_NO || "",
+            mapId: d.MAPID || "",
+          };
+        }),
+      );
+      setInvoiceList(invoices);
+      setInvoicenumber("");
     } else {
+      setFullReferenceData([]);
       Swal.fire({
         icon: "info",
         title: "No Records Found",
@@ -630,6 +676,28 @@ function ServiceLevelFeedbackCreate({
       !values.transporter
     ) {
       setRows([slEmptyRow()]);
+      lastFetchedRef.current = null;
+      return;
+    }
+
+    // String(...) here — after a fetch repopulates the row, populateRows()
+    // carries the API's raw value through (e.g. REF_NO can come back as a
+    // number), so comparing without normalizing types would never match the
+    // string value captured before the fetch, defeating the guard below.
+    const fieldValue = String(
+      fieldKey === "REF_NO" ? values.referenceNumber :
+      fieldKey === "WORK_ORDER_NO" ? values.workOrderNumber :
+      fieldKey === "LR_NO" ? values.lrNumber :
+      fieldKey === "TRANSPORTER" ? values.transporter : ""
+    );
+
+    // Field merely lost focus (e.g. checkbox click, Invoice Number select) —
+    // its value hasn't changed since the last successful lookup, so skip.
+    if (
+      lastFetchedRef.current &&
+      lastFetchedRef.current.fieldKey === fieldKey &&
+      lastFetchedRef.current.value === fieldValue
+    ) {
       return;
     }
 
@@ -650,6 +718,7 @@ function ServiceLevelFeedbackCreate({
         ? await service.GlobalReferenceNoFetch(obj) // POST
         : await service.GlobalReferenceNoFetchwithoutsap(obj); // PUT
       populateRows(res);
+      lastFetchedRef.current = { fieldKey, value: fieldValue };
     } catch (err) {
       console.error("❌ Error:", err);
     } finally {
@@ -739,7 +808,9 @@ function ServiceLevelFeedbackCreate({
     setFeedback({ ...SL_EMPTY_FEEDBACK });
     setDisabledFields([]);
     setRows([slEmptyRow()]);
+    setFullReferenceData([]);
     setLoading(false);
+    lastFetchedRef.current = null;
   };
 
   const submitFeedback = async (): Promise<void> => {
@@ -886,6 +957,7 @@ function ServiceLevelFeedbackCreate({
                     <th className="px-3 py-1 text-center">Work Order Number</th>
                     <th className="px-3 py-1 text-center">LR Number</th>
                     <th className="px-3 py-1 text-center">Transporter</th>
+                    <th className="px-3 py-1 text-center w-20">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-hairline/60">
@@ -896,6 +968,7 @@ function ServiceLevelFeedbackCreate({
                           type="checkbox"
                           checked={isItemSelected(row)}
                           onChange={(e) => onCheckboxChange(e.target.checked, row)}
+                          onMouseDown={(e) => e.preventDefault()}
                         />
                       </td>
                       <td className="px-3 py-1 text-center">{i + 1}</td>
@@ -949,6 +1022,18 @@ function ServiceLevelFeedbackCreate({
                           {...blurKeys(i, "TRANSPORTER")}
                           className={SL_INPUT + " text-center"}
                         />
+                      </td>
+                      <td className="px-3 py-1 text-center">
+                        {rows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeRow(i)}
+                            aria-label="Remove row"
+                            className="inline-grid place-items-center size-7 rounded-md text-red-500 hover:bg-red-50"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

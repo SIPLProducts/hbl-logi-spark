@@ -29,6 +29,14 @@ const LABEL_YELLOW = "block text-[11px] font-semibold text-yellow-700 mb-0.5";
 
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
+// Reference table field placeholders (matches Segment Info screen)
+const REF_FIELD_PLACEHOLDER: Record<"REF_NO" | "WORK_ORDER_NO" | "LR_NO" | "TRANSPORTER", string> = {
+  REF_NO: "Enter Ref. No.",
+  WORK_ORDER_NO: "Enter Work Order No.",
+  LR_NO: "Enter LR No.",
+  TRANSPORTER: "Enter Transporter",
+};
+
 // ── Search options ────────────────────────────────────────────────────────────
 const SEARCH_OPTIONS = [
   { key: "ref_no", label: "Reference No" },
@@ -847,10 +855,11 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                     <input
                       value={(row as any)[field] || ""}
                       readOnly={i !== 0}
+                      placeholder={REF_FIELD_PLACEHOLDER[field]}
                       onChange={(e) => handleRowChange(i, field, e.target.value)}
                       onBlur={() => fetchGlobalReferences(row, i, field)}
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Tab") fetchGlobalReferences(row, i, field); }}
-                      className={i !== 0 ? INPUT_READONLY : INPUT_NORMAL}
+                      className={(i !== 0 ? INPUT_READONLY : INPUT_NORMAL) + " text-center"}
                     />
                   </td>
                 ))}

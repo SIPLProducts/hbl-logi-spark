@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Search,
   Save,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Loader2,
 } from "lucide-react";
 // @ts-ignore
@@ -38,6 +39,7 @@ type FieldSpec = {
   placeholder?: string;
 };
 type TableRow = {
+  MAPID: string;
   REF_NO: string;
   WORK_ORDER_NO: string;
   LR_NO: string;
@@ -47,7 +49,7 @@ type TableRow = {
 };
 
 const EMPTY_ROW = (): TableRow => ({
-  REF_NO: "", WORK_ORDER_NO: "", LR_NO: "", TRANSPORTER: "", LINE_NO: "", selected: false,
+  MAPID: "", REF_NO: "", WORK_ORDER_NO: "", LR_NO: "", TRANSPORTER: "", LINE_NO: "", selected: false,
 });
 
 function getLoggedInUser(): string {
@@ -155,6 +157,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [itemsList, setItemsList] = useState<any[]>([]);
   const [showTable, setShowTable] = useState(false);
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
+  const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
+  const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
   const [referenceItems, setReferenceItems] = useState([
     {
       referenceNumber: "",
@@ -185,6 +189,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setItemsList([]);
     setShowTable(false);
     setTableData([EMPTY_ROW()]);
+    setFullReferenceData([]);
+    setInvoiceF4List([]);
 
     // Reset reference items
     setReferenceItems([
@@ -248,6 +254,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setShowTable(false);
 
     setTableData([EMPTY_ROW()]);
+    setFullReferenceData([]);
+    setInvoiceF4List([]);
 
     setReferenceItems([
       {
@@ -283,10 +291,14 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       if (res?.STATUS === "FALSE") {
         Swal.fire({ icon: "info", title: "No Records Found", text: "No matching reference details found.", timer: 1500, showConfirmButton: false });
         setTableData([EMPTY_ROW()]);
+        setFullReferenceData([]);
+        setInvoiceF4List([]);
         return;
       }
       if (Array.isArray(res) && res.length > 0) {
+        setFullReferenceData(res);
         setTableData(res.map((item: any) => ({
+          MAPID: item.MAPID || "",
           REF_NO: item.REF_NO || "",
           WORK_ORDER_NO: item.WORK_ORDER_NO || "",
           LR_NO: item.LR_NO || "",
@@ -296,12 +308,37 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         })));
       } else {
         setTableData([EMPTY_ROW()]);
+        setFullReferenceData([]);
+        setInvoiceF4List([]);
       }
     } catch (e) {
       console.error("GlobalReference fetch error:", e);
       Swal.fire({ icon: "error", text: "Error fetching reference details." });
     }
   };
+
+  // Recompute invoice number options from the reference rows the user has checked
+  // (mirrors GateInOutCreate.updateInvoiceListForSelectedItems).
+  useEffect(() => {
+    const selectedMapIds = tableData
+      .filter((r) => r.selected && r.MAPID)
+      .map((r) => String(r.MAPID));
+
+    if (selectedMapIds.length === 0) {
+      setInvoiceF4List([]);
+      return;
+    }
+
+    const f4: string[] = [];
+    fullReferenceData.forEach((refItem: any) => {
+      if (selectedMapIds.includes(String(refItem.MAPID)) && Array.isArray(refItem.INV_NO)) {
+        refItem.INV_NO.forEach((inv: any) => {
+          if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
+        });
+      }
+    });
+    setInvoiceF4List(f4);
+  }, [tableData, fullReferenceData]);
 
   // ── Table helpers (matches OrderInfoSapCreate's reference table) ──
   const toggleRowSelect = (index: number) =>
@@ -883,6 +920,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                   <input
                     value={row.REF_NO}
                     readOnly={index !== 0}
+                    placeholder="Enter Ref. No."
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -891,6 +929,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
+                    }}
                     className={(index !== 0 ? INPUT_READONLY : INPUT_NORMAL) + " text-center"}
                   />
                 </td>
@@ -899,6 +940,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                   <input
                     value={row.WORK_ORDER_NO}
                     readOnly={index !== 0}
+                    placeholder="Enter Work Order No."
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -907,6 +949,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
+                    }}
                     className={(index !== 0 ? INPUT_READONLY : INPUT_NORMAL) + " text-center"}
                   />
                 </td>
@@ -915,6 +960,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                   <input
                     value={row.LR_NO}
                     readOnly={index !== 0}
+                    placeholder="Enter LR No."
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -923,6 +969,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
+                    }}
                     className={(index !== 0 ? INPUT_READONLY : INPUT_NORMAL) + " text-center"}
                   />
                 </td>
@@ -931,6 +980,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                   <input
                     value={row.TRANSPORTER}
                     readOnly={index !== 0}
+                    placeholder="Enter Transporter"
                     onChange={(e) =>
                       setTableData(prev => {
                         const copy = [...prev];
@@ -939,6 +989,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       })
                     }
                     onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
+                    }}
                     className={(index !== 0 ? INPUT_READONLY : INPUT_NORMAL) + " text-center"}
                   />
                 </td>
@@ -1005,11 +1058,16 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
 
-            <SapField
-              field={FIELDS[0]}
-              value={invoiceNumber}
-              onChange={setInvoiceNumber}
-            />
+            <div>
+              <label className={LABEL}>Invoice Number</label>
+              <F4MultiSelect
+                options={invoiceF4List}
+                value={invoiceNumber}
+                onChange={setInvoiceNumber}
+                placeholder="Select Invoice Number"
+                className={INPUT_NORMAL}
+              />
+            </div>
 
             <SapField
               field={FIELDS[1]}
@@ -1254,6 +1312,103 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           Save and Previous
         </button>
       </div>
+    </div>
+  );
+}
+
+// Multi-select combo for the Invoice Number field, populated from the
+// reference table rows the user has checked (mirrors GateInOutCreate.GateF4MultiSelect).
+function F4MultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select",
+  className,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selected = value ? value.split(",").filter(Boolean) : [];
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={
+          (className ? className + " " : "") +
+          "flex items-center justify-between gap-2 text-left" +
+          (selected.length === 0 ? " text-muted-foreground" : "")
+        }
+      >
+        <span className="truncate">{displayLabel() || placeholder}</span>
+        <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+          <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o}
+                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  onChange={() => toggle(o)}
+                  className="size-3.5"
+                />
+                <span className="truncate">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

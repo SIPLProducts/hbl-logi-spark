@@ -726,7 +726,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
   // ── Save ──
   const requiredFieldsMissing = () =>
-    !form.INV_VBELN || !form.SALE_PERSON || !form.SEGMENT || !form.APPTYP || !form.BRANCH || !form.TAT_Type || !form.TAT_DAYS || !form.ETA_DATE;
+    !form.INV_VBELN || !form.SALE_PERSON || !form.SEGMENT || !form.APPTYP || !form.BRANCH;
 
   const handleSave = async (action: "stay" | "next" | "previous" = "stay") => {
     if (requiredFieldsMissing()) {
@@ -997,7 +997,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               <thead className="sticky top-0 z-30">
                 <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
                   {["Ref No", "Invoice No", "Line No", "ODN No", "SO NO", "Sales Person", "Segment", "Application Type",
-                    "Customer Profile", "Branch", "Branch Zone", "TAT Type", "TAT Days", "ETA", "Work Order", "LR No",
+                    "Customer Profile", "Branch", "Branch Zone", "Work Order", "LR No",
                     "Transporter", "Plant", "Division", "Created Date", "Vehicle Type", "Action"].map((h) => (
                       <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
                     ))}
@@ -1025,9 +1025,9 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       { field: "ZCUST_PROFILE", type: "text" },
                       { field: "ZBRANCH", type: "text" },
                       { field: "ZBRANCH_ZONE", type: "text" },
-                      { field: "ZTAT_TYPE", type: "text" },
-                      { field: "ZTAT", type: "text" },
-                      { field: "ZETA", type: "date" },
+                      // { field: "ZTAT_TYPE", type: "text" },
+                      // { field: "ZTAT", type: "text" },
+                      // { field: "ZETA", type: "date" },
                       { field: "ZWORK_ORDER", type: "text" },
                       { field: "ZLRNO", type: "text" },
                       { field: "ZTRANSPORTER", type: "text" },
@@ -1255,7 +1255,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               </div>
 
               {/* TAT Type */}
-              <div>
+              {/* <div>
                 <FieldLabel label="TAT Type" fromSap={!isWithout && sapAuxFilled.has("TAT_Type")} />
                 {!isWithout && sapAuxFilled.has("TAT_Type") ? (
                   <input value={form.TAT_Type} readOnly className={INPUT_SAP_FILLED} />
@@ -1271,10 +1271,10 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                     ))}
                   </select>
                 )}
-              </div>
+              </div> */}
 
               {/* TAT Days */}
-              <div>
+              {/* <div>
                 <FieldLabel label="TAT (Days)" fromSap={!isWithout && sapAuxFilled.has("TAT_DAYS")} />
                 <input
                   value={form.TAT_DAYS}
@@ -1288,10 +1288,10 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         : GREEN_INPUT
                   }
                 />
-              </div>
+              </div> */}
 
               {/* ETA */}
-              <div>
+              {/* <div>
                 <FieldLabel label="ETA" fromSap={!isWithout && sapAuxFilled.has("ETA_DATE")} />
                 <input
                   type="date"
@@ -1306,7 +1306,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         : GREEN_INPUT
                   }
                 />
-              </div>
+              </div> */}
             </div>
           </div>
 
