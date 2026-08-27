@@ -959,7 +959,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
         if (action === "stay") {
           resetAll();
         } else if (action === "next") {
-          navigate({ to: "/vehicle-info" });
+          navigate({ to: "/shipment-details" });
         } else if (action === "previous") {
           navigate({ to: "/gate-in-out-process" });
         }

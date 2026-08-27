@@ -161,6 +161,11 @@ export const reportsApi = {
     FilterRecordsGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/FilterRecords', 'POST', data),
     ChangeGateInOutWithSap: (data) => request('api/external/LE/GateInOut/WithSap/Change', 'POST', data),
     FetchGateInOutInvoiceDataWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/InvoiceGet', 'PUT', data),
+    SaveGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/Save', 'PUT', data),
+    SearchGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/Search', 'PUT', data),
+    DeleteGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/Delete', 'PUT', data),
+    FilterRecordsGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/FilterRecords', 'PUT', data),
+    ChangeGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/Change', 'PUT', data)
 
 
 };

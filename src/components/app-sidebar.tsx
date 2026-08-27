@@ -159,40 +159,67 @@ export function AppSidebar() {
     <aside
       className={
         "shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border sticky top-0 h-screen transition-[width] duration-200 " +
-        (collapsed ? "w-[68px]" : "w-57")
+        (collapsed ? "w-[68px]" : "w-56")
       }
     >
-      <div className="px-3 py-3 border-b border-sidebar-border/70 flex items-center gap-2.5">
-        <Link to="/" className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className="size-8 rounded-lg bg-white grid place-items-center shadow-md ring-1 ring-white/10 shrink-0 p-1">
-            <img src={hblLogo} alt="HBL" className="size-full object-contain" />
+      <div
+        className={
+          "relative border-b border-sidebar-border/70 flex items-center " +
+          (collapsed ? "p-2 justify-center" : "px-3 py-3")
+        }
+      >
+        <Link to="/" className="flex items-center gap-2 min-w-0">
+          <div className="relative shrink-0">
+            <div aria-hidden className="absolute inset-0 rounded-xl bg-sidebar-primary/50 blur-md" />
+            <div
+              className={
+                "relative rounded-xl bg-white grid place-items-center shadow-md ring-1 ring-white/10 " +
+                (collapsed ? "size-8 p-1" : "size-11 p-1.5")
+              }
+            >
+              <img src={hblLogo} alt="HBL" className="size-full object-contain" />
+            </div>
           </div>
           {!collapsed && (
-            <div className="leading-tight min-w-0">
-              <div className="text-white font-display font-semibold text-[13.5px] tracking-tight truncate">
-                Logistics Execution
+            <>
+              <span className="w-px h-8 bg-white/15 shrink-0" />
+              <div className="leading-tight min-w-0">
+                <div className="font-display font-extrabold text-[20px] tracking-tight whitespace-nowrap bg-gradient-to-r from-sky-400 via-blue-400 to-blue-600 bg-clip-text text-transparent">
+                  Pravah
+                </div>
+                <div className="text-[9.5px] font-medium uppercase tracking-[0.1em] text-sidebar-foreground/60 whitespace-nowrap">
+                  HBL Power Systems
+                </div>
               </div>
-              <div className="text-[10px] uppercase tracking-[0.14em] text-sidebar-foreground/55 truncate">
-                HBL Power Systems
-              </div>
-            </div>
+            </>
           )}
         </Link>
+        {!collapsed && (
+          <button
+            onClick={() => setCollapsed((v) => !v)}
+            className="absolute top-2.5 right-2.5 p-1 rounded-lg text-sidebar-foreground/60 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+            aria-label="Collapse sidebar"
+          >
+            <ChevronsLeft className="size-4" />
+          </button>
+        )}
+      </div>
+      {collapsed && (
         <button
           onClick={() => setCollapsed((v) => !v)}
-          className="p-1.5 rounded-lg text-sidebar-foreground/60 hover:text-white hover:bg-sidebar-accent/70 transition-colors shrink-0"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="mx-2 mb-1 p-1.5 rounded-lg text-sidebar-foreground/60 hover:text-white hover:bg-sidebar-accent/70 transition-colors flex items-center justify-center"
+          aria-label="Expand sidebar"
         >
-          {collapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
+          <ChevronsRight className="size-4" />
         </button>
-      </div>
+      )}
 
       <nav className="flex-1 overflow-y-auto scrollbar-elegant py-2 px-2 space-y-0">
         {!collapsed && showDashboard && (
           <Link
             to="/"
             className={
-              "group relative flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
+              "group relative inline-flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
               (pathname === "/"
                 ? "bg-sidebar-accent/70 text-white shadow-sm"
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
@@ -218,7 +245,7 @@ export function AppSidebar() {
                       to={item.to}
                       title={collapsed ? item.title : undefined}
                       className={
-                        "group relative flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
+                        "group relative inline-flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
                         (active
                           ? "bg-sidebar-accent/70 text-white shadow-sm"
                           : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
@@ -247,7 +274,7 @@ export function AppSidebar() {
               }}
               title={collapsed ? "Reports" : undefined}
               className={
-                "group relative w-full flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
+                "group relative inline-flex items-center gap-3 px-2.5 py-1.5 rounded-md text-[12px] font-medium transition-all duration-150 " +
                 (reportsHasActive
                   ? "bg-sidebar-accent/70 text-white shadow-sm"
                   : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")
@@ -279,7 +306,7 @@ export function AppSidebar() {
                       <Link
                         to={item.to}
                         className={
-                          "group relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all duration-150 " +
+                          "group relative inline-flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all duration-150 " +
                           (active
                             ? "bg-sidebar-accent/70 text-white shadow-sm"
                             : "text-sidebar-foreground/70 hover:bg-sidebar-accent/40 hover:text-white")

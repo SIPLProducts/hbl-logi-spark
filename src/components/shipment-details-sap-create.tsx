@@ -808,7 +808,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
           showConfirmButton: false,
         }).then(() => {
           if (action === "next") navigate({ to: "/segment-info" });
-          else if (action === "previous") navigate({ to: "/vehicle-info" });
+          else if (action === "previous") navigate({ to: "/invoice-load-details" });
           else resetForm();
         });
       } else {

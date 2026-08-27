@@ -156,11 +156,6 @@ function GateInOutProcessPage() {
       return;
     }
 
-    if (searchSap !== "with") {
-      Swal.fire("Info", "Only 'With SAP' is supported for Gate In Out filter.", "info");
-      return;
-    }
-
     try {
       setIsFilterLoading(true);
       const payload = {
@@ -175,7 +170,9 @@ function GateInOutProcessPage() {
         STATUS: fStatus || "",
       };
 
-      const res: any = await service.FilterRecordsGateInOutWithSap(payload);
+      const res: any = searchSap === "with"
+        ? await service.FilterRecordsGateInOutWithSap(payload)
+        : await service.FilterRecordsGateInOutWithoutSap(payload);
 
       setApplied(true);
       setOrderInfoData([]);
@@ -1657,10 +1654,6 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   };
 
   const handleSearch = async () => {
-    if (!isSap) {
-      Swal.fire("Info", "Without SAP search is not implemented.", "info");
-      return;
-    }
     if (!searchValue.trim()) {
       Swal.fire("Warning", "Please enter a search value.", "warning");
       return;
@@ -1679,7 +1672,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     };
 
     try {
-      const res: any = await service.SearchGateInOutWithSap(payload);
+      const res: any = isSap
+        ? await service.SearchGateInOutWithSap(payload)
+        : await service.SearchGateInOutWithoutSap(payload);
       const data = Array.isArray(res) && res.length > 0 ? res[0] : res;
 
       if (data?.HEADER) {
@@ -1705,7 +1700,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         }
       }
 
-      Swal.fire("No Results", "No matching records found.", "info");
+      if (data?.STATUS === "FALSE") {
+        Swal.fire("Error", data.MESSAGE || "No matching records found.", "error");
+      } else {
+        Swal.fire("No Results", "No matching records found.", "info");
+      }
       setIsGlobalSearch(false);
     } catch (err) {
       console.error("Search API error:", err);
@@ -1787,13 +1786,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     }
   };
 
-  // ── Save → SaveGateInOutWithSap (With SAP) ──
+  // ── Save → SaveGateInOutWithSap (With SAP) / SaveGateInOutWithoutSap (Without SAP) ──
   const handleSave = async (action: string) => {
-    if (!isSap) {
-      // TODO: integrate Without SAP save API when ready
-      return;
-    }
-
     const refRow = refTableData[0];
     const payload = {
       CREATE: "X",
@@ -1853,7 +1847,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
     setLoadingSave(true);
     try {
-      const res: any = await service.SaveGateInOutWithSap(payload);
+      const res: any = isSap
+        ? await service.SaveGateInOutWithSap(payload)
+        : await service.SaveGateInOutWithoutSap(payload);
 
       if (res?.NUMBER === "200") {
         Swal.fire({
@@ -1898,7 +1894,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         });
       }
     } catch (err) {
-      console.error("SaveGateInOutWithSap failed:", err);
+      console.error("SaveGateInOut failed:", err);
       Swal.fire({ title: "Error", text: "Internal Server Error. Please try again later.", icon: "error" });
     } finally {
       setLoadingSave(false);
@@ -1942,7 +1938,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         ],
       };
 
-      const res: any = await service.ChangeGateInOutWithSap(payload);
+      const res: any = isSap
+        ? await service.ChangeGateInOutWithSap(payload)
+        : await service.ChangeGateInOutWithoutSap(payload);
 
       if (res?.NUMBER === "200") {
         Swal.fire({
@@ -2224,7 +2222,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                     ]
                                   };
 
-                                  const res: any = await service.DeleteGateInOutWithSap(payload);
+                                  const res: any = isSap
+                                    ? await service.DeleteGateInOutWithSap(payload)
+                                    : await service.DeleteGateInOutWithoutSap(payload);
                                   if (res?.MSG) {
                                     Swal.fire("Success", res.MSG, "success");
                                     setSearchResultHeader({});
@@ -2405,7 +2405,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                         ]
                                       };
 
-                                      const res = await service.DeleteGateInOutWithSap(payload);
+                                      const res: any = isSap
+                                        ? await service.DeleteGateInOutWithSap(payload)
+                                        : await service.DeleteGateInOutWithoutSap(payload);
                                       if (res?.MSG) {
                                         Swal.fire("Success", res.MSG, "success");
                                         setSearchResultItems(prev => prev.filter((_, i) => i !== index));
