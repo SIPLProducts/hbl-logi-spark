@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { exportRowsToXls } from "@/lib/export-xls";
 import type { DispatchOrderRow } from "@/lib/dispatch-orders-mock";
+import Swal from "sweetalert2";
 
 export const Route = createFileRoute("/dispatch-orders")({
   component: DispatchOrdersPage,
@@ -159,6 +160,8 @@ function DispatchOrdersPage() {
     const payload = {
       from_date: fromDate,
       to_date: toDate,
+      werks: plant || " ", // plant
+      spart: division || " ", // division
     };
 
     try {
@@ -167,6 +170,17 @@ function DispatchOrdersPage() {
       setPage(1);
 
       const response = await service.FetchDispatchOrderFlowData(payload);
+
+      if (response && response.MESSAGE) {
+        Swal.fire({
+          icon: "info",
+          title: "No Data",
+          text: response.MESSAGE,
+        });
+        setStatus("empty");
+        return;
+      }
+
       const raw = response?.data || response || [];
 
       // Map API UPPERCASE keys to camelCase DispatchOrderRow shape

@@ -86,6 +86,16 @@ function LoginPage() {
       };
 
       const response = await service.GlobalUserAuth(loginPayload);
+
+      if (response && (response.STATUS === "INACTIVE" || response.ZEXPIRY === "X")) {
+        Swal.fire({
+          icon: "warning",
+          title: "Login Failed",
+          text: response.WARNMSG,
+        });
+        return;
+      }
+
       const isSuccessfulLogin =
         !!response &&
         response.STATUS !== "FALSE" &&

@@ -329,7 +329,7 @@ export function CreateUserDialog({
         LAST_NAME: values.lastName,
         EMAIL: values.email,
         CONTACT: values.contact,
-        ...(changePwd ? { PASSWORD: password } : {}),
+        PASSWORD: password,
         STATUS: values.active ? "ACTIVE" : "INACTIVE",
         EMP_CODE: values.employeeCode,
         INOUT_TYPE: values.inOutType,

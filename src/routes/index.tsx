@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
   Truck,
   Calendar,
@@ -11,7 +11,19 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+// On the very first load of the app, always open the Login page first
+// instead of the Dashboard. Later in-app navigations to "/" (logo,
+// "Dashboard" nav link, post-login redirect) are unaffected.
+let isFirstAppLoad = true;
+
 export const Route = createFileRoute("/")({
+  beforeLoad: () => {
+    if (typeof window === "undefined") return;
+    if (isFirstAppLoad) {
+      isFirstAppLoad = false;
+      throw redirect({ to: "/login" });
+    }
+  },
   component: DashboardPage,
 });
 
