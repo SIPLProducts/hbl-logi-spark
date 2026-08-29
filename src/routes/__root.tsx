@@ -77,11 +77,28 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+// True only for the very first route resolution after the page is loaded
+// (opening localhost / the deployed URL, or a hard refresh). Flipped to false
+// after that first run so later in-app navigations are not affected.
+let appJustOpened = true;
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: ({ location }) => {
     // Skip during the build-time static-shell render (no window/localStorage
     // there — see scripts/generate-static-shell.mjs) — only guard in the browser.
     if (typeof window === "undefined") return;
+
+    // On a fresh open of the app, always start at the Login page. Any stored
+    // login flag from a previous browser session is dropped so the user has to
+    // sign in again before any screen is reachable.
+    if (appJustOpened) {
+      appJustOpened = false;
+      if (location.pathname !== "/login") {
+        localStorage.removeItem("userData");
+        localStorage.removeItem("isLoggedIn");
+        throw redirect({ to: "/login" });
+      }
+    }
 
     const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
     if (!isLoggedIn && location.pathname !== "/login") {
