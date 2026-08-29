@@ -21,6 +21,12 @@ export const Route = createFileRoute("/")({
     if (typeof window === "undefined") return;
     if (isFirstAppLoad) {
       isFirstAppLoad = false;
+      // A successful login navigates here ("post-login redirect"). If the user
+      // reached /login without this route's beforeLoad having run yet (the root
+      // redirects "/" -> "/login" before it), this flag is still armed and would
+      // bounce the just-authenticated user back to /login. Only force the Login
+      // page on first load when the user is not actually logged in.
+      if (localStorage.getItem("isLoggedIn") === "true") return;
       throw redirect({ to: "/login" });
     }
   },

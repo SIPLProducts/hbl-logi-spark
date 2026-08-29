@@ -190,6 +190,49 @@ export function CreateUserDialog({
     }));
   };
 
+  // Select All / clear all for the Plants dropdown
+  const onSelectAllPlants = (checked: boolean) => {
+    const updatedPlants = checked
+      ? plantList.map((p: any) => p.PLANT)
+      : [];
+
+    setSelectedPlants(updatedPlants);
+
+    setValues((prev) => ({
+      ...prev,
+      plants: updatedPlants.join(","),
+    }));
+
+    const divisions = plantList
+      .filter((p: any) => updatedPlants.includes(p.PLANT))
+      .map((p: any) => ({
+        DIVISION: p.DIVISION,
+        PLANT: p.PLANT,
+      }));
+
+    const uniqueDivisions = [
+      ...new Map(
+        divisions.map((item: any) => [item.DIVISION, item])
+      ).values(),
+    ];
+
+    setDivisionList(uniqueDivisions);
+  };
+
+  // Select All / clear all for the Divisions dropdown
+  const onSelectAllDivisions = (checked: boolean) => {
+    const updatedDivisions = checked
+      ? divisionList.map((d: any) => d.DIVISION)
+      : [];
+
+    setSelectedDivisions(updatedDivisions);
+
+    setValues((prev) => ({
+      ...prev,
+      divisions: updatedDivisions.join(","),
+    }));
+  };
+
 
   // const getUsers = async () => {
   //   try {
@@ -330,6 +373,8 @@ export function CreateUserDialog({
         EMAIL: values.email,
         CONTACT: values.contact,
         PASSWORD: password,
+        // "X" when the "Change Password" checkbox is ticked, empty otherwise
+        ZCHPWRD: changePwd ? "X" : "",
         STATUS: values.active ? "ACTIVE" : "INACTIVE",
         EMP_CODE: values.employeeCode,
         INOUT_TYPE: values.inOutType,
@@ -514,6 +559,21 @@ export function CreateUserDialog({
               {showPlantDropdown && (
                 <div className="absolute top-full left-0 z-[9999] mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
 
+                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 cursor-pointer border-b font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={
+                        plantList.length > 0 &&
+                        selectedPlants.length === plantList.length
+                      }
+                      onChange={(e) =>
+                        onSelectAllPlants(e.target.checked)
+                      }
+                    />
+
+                    Select All
+                  </label>
+
                   {plantList.map((plant: any, index) => (
                     <label
                       key={index}
@@ -577,6 +637,21 @@ export function CreateUserDialog({
 
               {showDivisionDropdown && (
                 <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
+
+                  <label className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 cursor-pointer border-b font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={
+                        divisionList.length > 0 &&
+                        selectedDivisions.length === divisionList.length
+                      }
+                      onChange={(e) =>
+                        onSelectAllDivisions(e.target.checked)
+                      }
+                    />
+
+                    Select All
+                  </label>
 
                   {divisionList.map(
                     (division: any, index) => (
