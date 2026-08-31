@@ -10,16 +10,16 @@ import hblLogo from "@/assets/hbl-logo.png";
 import slide1 from "@/assets/loginbgimage 1.png";
 import slide2 from "@/assets/loginbgimage 2.jpeg";
 import slide3 from "@/assets/loginggimage 3.png";
-import slide4 from "@/assets/loginbgimage 4.jpg";
-import slide5 from "@/assets/loginbgimage 5.jpg";
+// import slide4 from "@/assets/loginbgimage 4.jpg";
+// import slide5 from "@/assets/loginbgimage 5.jpg";
 import slide6 from "@/assets/Le1 image 6.png";
 
 const slides = [
   { url: slide1, alt: "Slide 1" },
   { url: slide2, alt: "Slide 2" },
   { url: slide3, alt: "Slide 3" },
-  { url: slide4, alt: "Slide 4" },
-  { url: slide5, alt: "Slide 5" },
+  // { url: slide4, alt: "Slide 4" },
+  // { url: slide5, alt: "Slide 5" },
   { url: slide6, alt: "Slide 6" },
 ];
 
@@ -156,7 +156,39 @@ function LoginPage() {
       const activityName =
         firstActivity?.ACTIVITY ?? firstActivity?.ACT ?? "";
 
-      const firstScreen = screenMap[normalizeKey(activityName)];
+      // Menu order — must stay in sync with app-sidebar.tsx. The login API
+      // does not return activities in menu order, so picking activities[0]
+      // can land the user on a lower menu item (e.g. "Dispatch") instead of
+      // the first screen they actually see at the top of the nav
+      // (e.g. "Dispatch Orders"). Land on the first menu screen they have
+      // access to, and fall back to the API's first activity.
+      const menuOrder = [
+        "dashboard",
+        "dispatchorders",
+        "dispatch",
+        "orderinfo",
+        "gateinout",
+        "invoiceloaddetails",
+        "vehicleinfo",
+        "shipmentdetails",
+        "segmentinfo",
+        "transitinfo",
+        "freightbilling",
+        "servicelevel",
+        "transitdamageinfo",
+        "insuranceclaimtracking",
+        "usercreation",
+      ];
+
+      const allowedKeys = new Set(
+        activities
+          .map((item: any) => normalizeKey(item?.ACTIVITY ?? item?.ACT ?? ""))
+          .filter(Boolean)
+      );
+
+      const orderedKey = menuOrder.find((k) => allowedKeys.has(k));
+
+      const firstScreen = screenMap[orderedKey ?? normalizeKey(activityName)];
 
       navigate({
         to: firstScreen || "/",

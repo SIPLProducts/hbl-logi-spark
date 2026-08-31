@@ -16,6 +16,11 @@ const INPUT_SAP_FILLED =
 const INPUT_SAP_EMPTY =
   "h-7 w-full rounded-md bg-red-50 border-2 border-red-400 px-2 text-[12px] text-foreground font-medium outline-none focus:border-red-500 focus:ring-2 focus:ring-red-300";
 
+// Derived by logic (Reported Date → Fiscal Year) → VIOLET, readonly
+// (same treatment as the "From Logic" field on the Order Info screen)
+const INPUT_FROM_LOGIC =
+  "h-7 w-full rounded-md bg-violet-50 border-2 border-violet-400 px-2 text-[12px] text-violet-900 font-semibold outline-none cursor-not-allowed";
+
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
 const SEARCH_OPTIONS = ["Reference", "Invoice", "ODN", "SO Number", "Work Order", "LR Number"];
@@ -171,25 +176,25 @@ function getLoggedInUser(): string {
 const BASE_FIELDS: FieldSpec[] = [
 
   { label: "Reported Date", key: "REP_DATE", type: "date" },
-    { label: "Fiscal Year", key: "FI" },
-  { label: "Claim Reference", key: "CLAIM_REF" },
+  { label: "Fiscal Year", key: "FI" },
+  { label: "SO Number", key: "SO_NO" },
+  { label: "Customer", key: "CUSTOMER" },
+  { label: "Location", key: "LOCATION" },
   { label: "Invoice Date", key: "INV_DATE", type: "date" },
   { label: "Invoice Basic Value", key: "INV_BV" },
-  { label: "Loss Declared", key: "LOSS_DCL" },
-  { label: "Claim Received", key: "CLM_RF", type: "date" },
-  { label: "Salvage Value", key: "SOL_VAL" },
-  { label: "Customer", key: "CUSTOMER" },
-  { label: "SO Number", key: "SO_NO" },
-  { label: "Location", key: "LOCATION" },
   { label: "Damage Remarks", key: "DAMAGE_RMK", type: "select", options: ["Wet", "Crushed", "Broken", "Leak"] },
-  { label: "Claim Info Sent", key: "CLM_INF" , type: "date"},
   { label: "Claim Status", key: "CLM_ST", type: "select", options: ["Under preparation", "Submitted", "Not submitted"] },
+  { label: "Claim Info Sent", key: "CLM_INF" , type: "date"},
+  { label: "Claim Reference", key: "CLAIM_REF" },
+  { label: "Loss Declared", key: "LOSS_DCL" },
+  { label: "Salvage Value", key: "SOL_VAL" },
   { label: "Claim Document Status", key: "CLM_DOC_ST" },
   { label: "Courier Details", key: "COURIER_DET" },
   { label: "Payment Status", key: "PAY_ST", type: "select", options: ["Pending", "Settled"] },
   { label: "Payment Info", key: "PAY_INFO" },
   { label: "UTR", key: "UTR" },
   { label: "Claim Settlement Date", key: "CLM_SET_DT", type: "date" },
+  { label: "Claim Received", key: "CLM_RF", type: "date" },
   { label: "Supporting Document", key: "ZSUPT_DOC", type: "file" },
   { label: "Approve Document", key: "ZAPP_DOC", type: "file" },
 ];
@@ -1580,6 +1585,29 @@ function SapField({
   onReportedDateChange?: (value: string) => void;
 }) {
   const { label, value = "", type = "text", options = [], placeholder } = field;
+
+  // Fiscal Year is derived by logic (Reported Date → Fiscal Year), so it
+  // gets the same "From Logic" violet treatment as the Order Info screen.
+  if (field.key === "FI") {
+    return (
+      <div>
+        <label className={LABEL}>
+          {label}
+          {value && (
+            <span className="ml-1.5 inline-flex items-center px-1.5 rounded text-[9px] font-bold bg-violet-100 text-violet-700 border border-violet-300 leading-tight align-middle">
+              From Logic
+            </span>
+          )}
+        </label>
+        <input
+          value={value || ""}
+          readOnly
+          placeholder="Auto-filled from Reported Date"
+          className={value ? INPUT_FROM_LOGIC : GREEN_INPUT}
+        />
+      </div>
+    );
+  }
 
   // SAP-aware colouring (same pattern as Order Info screen):
   // - SAP filled  → green + readonly

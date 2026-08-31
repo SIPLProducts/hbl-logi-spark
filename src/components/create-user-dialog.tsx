@@ -101,6 +101,14 @@ export function CreateUserDialog({
     "Transit Damage Info",
     "Insurance Claim Tracking",
     "User Creation",
+    // Reports screens (titles must match REPORTS_NAV so the sidebar can gate them)
+    "Transit & E-way bill Report",
+    "Pending PODs",
+    "Freight Bills",
+    "Loading Factor & Cost",
+    "Business Share Matrix",
+    "Damage List",
+    "Insurance",
   ];
 
   const [selectedScreens, setSelectedScreens] = useState<string[]>([]);
@@ -110,8 +118,12 @@ export function CreateUserDialog({
     try {
       const res = await service.fetchVendorCode();
 
-      if (res && res[0]?.PLANT) {
-        const plants = res[0].PLANT;
+      // fetchVendorCode may return either an array ([{ PLANT: [...] }]) or a
+      // plain object ({ PLANT: [...] }) — normalize both, same as other screens.
+      const data: any = Array.isArray(res) ? (res[0] ?? {}) : (res ?? {});
+
+      if (data && Array.isArray(data.PLANT)) {
+        const plants = data.PLANT;
 
         setPlantList(plants);
 
@@ -233,6 +245,25 @@ export function CreateUserDialog({
     }));
   };
 
+  // Resolve the plant (WERKS) a selected division belongs to, from the fetched
+  // plant/division list. Prefers a plant the user has actually selected, and
+  // falls back to the first selected plant so a division is never sent without
+  // one (divisions are always assigned under the user's selected plants).
+  const resolveDivisionWerks = (division: string): string => {
+    const fromSelected = plantList.find(
+      (p: any) => p.DIVISION === division && selectedPlants.includes(p.PLANT)
+    );
+    if (fromSelected?.PLANT) return fromSelected.PLANT;
+
+    const fromList = divisionList.find((d: any) => d.DIVISION === division);
+    if (fromList?.PLANT && selectedPlants.includes(fromList.PLANT)) return fromList.PLANT;
+
+    const anyPlant = plantList.find((p: any) => p.DIVISION === division);
+    if (anyPlant?.PLANT && selectedPlants.includes(anyPlant.PLANT)) return anyPlant.PLANT;
+
+    return selectedPlants[0] ?? fromList?.PLANT ?? anyPlant?.PLANT ?? "";
+  };
+
 
   // const getUsers = async () => {
   //   try {
@@ -331,7 +362,7 @@ export function CreateUserDialog({
         //   }))
         //   : [],
         DIVISIONS: selectedDivisions.map((division) => ({
-          WERKS: "",
+          WERKS: resolveDivisionWerks(division),
           DIVISIONS: division,
         })),
 
@@ -399,7 +430,7 @@ export function CreateUserDialog({
         //   }))
         //   : [],
         DIVISIONS: selectedDivisions.map((division) => ({
-          WERKS: "",
+          WERKS: resolveDivisionWerks(division),
           DIVISIONS: division,
         })),
 
@@ -672,7 +703,7 @@ export function CreateUserDialog({
                           }
                         />
 
-                        {division.DIVISION}
+                        {division.DIV_TEXT || division.DIVISION}
                       </label>
                     )
                   )}
@@ -798,9 +829,25 @@ export function CreateUserDialog({
               Available Screens
             </span>
 
-            <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold">
-              Selected: {selectedScreens.length}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedScreens([...allScreens])}
+                className="px-3 py-1 rounded-md border border-indigo-300 text-indigo-700 text-xs font-semibold hover:bg-indigo-50"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedScreens([])}
+                className="px-3 py-1 rounded-md border border-gray-300 text-gray-600 text-xs font-semibold hover:bg-gray-100"
+              >
+                Deselect All
+              </button>
+              <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold">
+                Selected: {selectedScreens.length}
+              </span>
+            </div>
           </div>
 
           {/* Screen List */}

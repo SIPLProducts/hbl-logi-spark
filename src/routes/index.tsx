@@ -16,9 +16,72 @@ import {
 // "Dashboard" nav link, post-login redirect) are unaffected.
 let isFirstAppLoad = true;
 
+// ── Dashboard access gate ─────────────────────────────────────────────
+// The Dashboard screen must only open when the logged-in user has the
+// "Dashboard" permission in their User Creation activities. If they don't,
+// they are routed to the first screen they *can* access instead. This
+// mirrors the normalize + screen map used in login.tsx / app-sidebar.tsx.
+const ACTIVITY_SCREEN_MAP: Record<string, string> = {
+  dashboard: "/",
+  dispatchorders: "/dispatch-orders",
+  dispatch: "/dispatch",
+  orderinfo: "/order-info",
+  gateinout: "/gate-in-out-process",
+  invoiceloaddetails: "/invoice-load-details",
+  vehicleinfo: "/vehicle-info",
+  shipmentdetails: "/shipment-details",
+  segmentinfo: "/segment-info",
+  transitinfo: "/transit-info",
+  freightbilling: "/freight-billing",
+  servicelevel: "/service-level",
+  transitdamageinfo: "/transit-damage-info",
+  insuranceclaimtracking: "/insurance-claim-tracking",
+  usercreation: "/user-creation",
+};
+
+function normalizeActivityKey(input: string) {
+  return input
+    .toLowerCase()
+    .replace(/outward/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+// Returns null when the Dashboard is allowed (user has "Dashboard" access,
+// or we can't tell). Otherwise returns the path of the first screen the
+// user does have access to, so the caller can redirect there.
+function dashboardRedirectTarget(): string | null {
+  try {
+    const raw = localStorage.getItem("userData");
+    if (!raw) return null;
+    const user = JSON.parse(raw);
+    const activities: any[] = user?.ACTIVITIES ?? user?.ACTIVITY ?? [];
+    const keys = activities.map((a) =>
+      normalizeActivityKey(a?.ACTIVITY ?? a?.ACT ?? ""),
+    );
+    if (keys.length === 0) return null;
+    if (keys.includes("dashboard")) return null;
+    for (const k of keys) {
+      const screen = ACTIVITY_SCREEN_MAP[k];
+      if (screen && screen !== "/") return screen;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
     if (typeof window === "undefined") return;
+
+    // Block the Dashboard for logged-in users without "Dashboard" access —
+    // send them to their first accessible screen instead. Runs on every
+    // in-app navigation to "/" (post-login redirect, logo, nav link).
+    if (localStorage.getItem("isLoggedIn") === "true") {
+      const target = dashboardRedirectTarget();
+      if (target) throw redirect({ to: target });
+    }
+
     if (isFirstAppLoad) {
       isFirstAppLoad = false;
       // A successful login navigates here ("post-login redirect"). If the user

@@ -230,9 +230,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   };
 
   useEffect(() => {
-    if (unloadingDate || podScanDate) {
+    if (podScanDate) {
       setSitSale("SALE");
-    } else if (physicalArrivedDate) {
+    } else if (physicalArrivedDate || unloadingDate) {
       setSitSale("SIT");
     } else {
       setSitSale("");

@@ -188,7 +188,7 @@ export function AppSidebar() {
                   Pravah
                 </div>
                 <div className="text-[9.5px] font-medium uppercase tracking-[0.1em] text-sidebar-foreground/60 whitespace-nowrap">
-                  HBL Power Systems
+                  HBL Engineering Ltd
                 </div>
               </div>
             </>

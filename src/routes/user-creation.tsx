@@ -202,7 +202,17 @@ function UserCreationPage() {
                     <td className="px-3 py-2">{user.INOUT_TYPE}</td>
                     <td className="px-3 py-2">{user.CATEGORY}</td>
                     <td className="px-3 py-2">{user.ROLES}</td>
-                    <td className="px-3 py-2">{user.STATUS}</td>
+                    <td className="px-3 py-2">
+                      <span
+                        className={
+                          String(user.STATUS).toUpperCase() === "ACTIVE"
+                            ? "font-medium text-green-600"
+                            : "font-medium text-red-500"
+                        }
+                      >
+                        {user.STATUS}
+                      </span>
+                    </td>
                     {/* <td className="text-center"> */}
                     <td className="px-2 py-2 text-center">
                       <button

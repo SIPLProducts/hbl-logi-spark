@@ -88,12 +88,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     // there — see scripts/generate-static-shell.mjs) — only guard in the browser.
     if (typeof window === "undefined") return;
 
-    // On a fresh open of the app, always start at the Login page. Any stored
-    // login flag from a previous browser session is dropped so the user has to
-    // sign in again before any screen is reachable.
+    // On a fresh open of the app with no active session, start at the Login
+    // page and drop any stale stored flags. An already logged-in session is
+    // left intact so a page reload (e.g. the "Refresh" button / F5) does not
+    // sign the user out — same approach as the "/" route's first-load guard.
     if (appJustOpened) {
       appJustOpened = false;
-      if (location.pathname !== "/login") {
+      if (
+        location.pathname !== "/login" &&
+        localStorage.getItem("isLoggedIn") !== "true"
+      ) {
         localStorage.removeItem("userData");
         localStorage.removeItem("isLoggedIn");
         throw redirect({ to: "/login" });

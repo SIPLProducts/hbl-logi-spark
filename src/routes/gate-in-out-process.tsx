@@ -1480,9 +1480,15 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       setEwayApplicable(HEADER.EWAY_BILL_APPLICABLE || "");
       setEwayDate(HEADER.EWAY_BILL_DATE || "");
       setEwayNumber(HEADER.EWAY_BILL_NUMBER || "");
-      setEwayExpireDate(HEADER.EWAY_BILL_EXPIRE_DATE || "");
+      setEwayExpireDate(HEADER.EWAY_BILL_EXPIRE_DATE || HEADER.eway_bill_expire_date || "");
       setInsuranceScope(HEADER.INSURANCE_SCOPE || "");
-      setKilometres(HEADER.KILLOMETERS != null ? String(HEADER.KILLOMETERS) : "");
+      setKilometres(
+        HEADER.KILLOMETERS != null
+          ? String(HEADER.KILLOMETERS)
+          : HEADER.killometers != null
+            ? String(HEADER.killometers)
+            : ""
+      );
       setZplant(HEADER.ZPLANT || "");
 
       setHeaderRows(
@@ -1493,9 +1499,14 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           ewayApplicable: entry?.HEADER?.EWAY_BILL_APPLICABLE || "",
           ewayDate: entry?.HEADER?.EWAY_BILL_DATE || "",
           ewayNumber: entry?.HEADER?.EWAY_BILL_NUMBER || "",
-          ewayExpireDate: entry?.HEADER?.EWAY_BILL_EXPIRE_DATE || "",
+          ewayExpireDate: entry?.HEADER?.EWAY_BILL_EXPIRE_DATE || entry?.HEADER?.eway_bill_expire_date || "",
           insuranceScope: entry?.HEADER?.INSURANCE_SCOPE || "",
-          kilometres: entry?.HEADER?.KILLOMETERS != null ? String(entry.HEADER.KILLOMETERS) : "",
+          kilometres:
+            entry?.HEADER?.KILLOMETERS != null
+              ? String(entry.HEADER.KILLOMETERS)
+              : entry?.HEADER?.killometers != null
+                ? String(entry.HEADER.killometers)
+                : "",
         }))
       );
 
@@ -2602,7 +2613,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                     </TableHead>
                     <TableHead className="w-10">Sl.No</TableHead>
                     <TableHead className="whitespace-nowrap">{isSap ? "Invoice Number" : "DC Reference Number"}</TableHead>
-                    <TableHead className="whitespace-nowrap">Invoice Line No</TableHead>
+                    {/* <TableHead className="whitespace-nowrap">Invoice Line No</TableHead> */}
                     {GATE_COLUMNS.map((c) => (
                       <TableHead key={c} className="whitespace-nowrap">
                         {c}
@@ -2639,14 +2650,14 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                             ))}
                           </select>
                         </TableCell>
-                        <TableCell className="p-1">
+                        {/* <TableCell className="p-1">
                           <Input
                             type="text"
                             className="h-7 min-w-[110px]"
                             value={row.invoiceLineNo}
                             onChange={(e) => updateGateRow(i, "invoiceLineNo", e.target.value)}
                           />
-                        </TableCell>
+                        </TableCell> */}
                         {GATE_COLUMNS.map((c) => {
                           if (c === "Truck Type") {
                             return (
