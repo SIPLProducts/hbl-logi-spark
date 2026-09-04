@@ -759,7 +759,8 @@ function TransitInfoPage() {
                                         {item.ZPODNAME}
                                       </button>
                                     ) : (
-                                      "-"
+                                      // fall back to the file name found on disk for this record
+                                      item.ZLOCALFILES?.POD || "-"
                                     )}
                                   </td>
 

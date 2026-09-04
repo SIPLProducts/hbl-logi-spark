@@ -216,6 +216,52 @@ function getLoggedInUser(): string {
   } catch { return ""; }
 }
 
+// Reads a File as a base64 data URI, e.g. "data:application/pdf;base64,JVBERi0x..."
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Show only the file name from a stored document path.
+//   "D:\Pravah\SAP\Transit_Damage_Info\Images\1000_5000_dmg1.jpg"
+//     -> "1000_5000_dmg1.jpg"
+// Returns "" when there is no path.
+function fileNameFromPath(storedPath?: string): string {
+  if (!storedPath) return "";
+  const parts = String(storedPath).split(/[\\/]/);
+  return parts[parts.length - 1] || "";
+}
+
+// The Images / FSR Report / FIR Report / COF columns hold the base64 only while
+// creating; after a fetch they are empty. For those columns we instead show the
+// uploaded file name - taken from the folder on disk (ZLOCALFILES), or derived
+// from the saved path. Maps the Z-field -> its disk folder key and its path key.
+const DOC_LOCAL_KEY: Record<string, string> = {
+  ZDIMAGES: "Images",
+  ZFSRREP: "FSR_Report",
+  ZFIRREP: "FIR_Report",
+  ZCOF: "COF",
+};
+const DOC_PATH_KEY: Record<string, string> = {
+  ZDIMAGES: "ZDIMG_PATH",
+  ZFSRREP: "ZFSRREP_PATH",
+  ZFIRREP: "ZFIRREP_PATH",
+  ZCOF: "ZCOF_PATH",
+};
+function docFileName(headerData: any, field: string): string {
+  const localKey = DOC_LOCAL_KEY[field];
+  return (
+    headerData?.ZLOCALFILES?.[localKey] ||
+    fileNameFromPath(headerData?.[DOC_PATH_KEY[field]]) ||
+    headerData?.[field] ||
+    "-"
+  );
+}
+
 export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
   const navigate = useNavigate();
   const isWithout = mode === "without";
@@ -243,6 +289,28 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
   const [cofBase64, setCofBase64] = useState("");
   const [cofPath, setCofPath] = useState("");
+
+  // original file names for the picked documents
+  const [imagesName, setImagesName] = useState("");
+  const [fsrReportName, setFsrReportName] = useState("");
+  const [firReportName, setFirReportName] = useState("");
+  const [cofName, setCofName] = useState("");
+
+  // Capture a picked document as base64 + its file name, keyed by the field label.
+  const handlePickDoc = async (label: string, file: File | null) => {
+    if (!file) {
+      if (label === "Images") { setImagesBase64(""); setImagesName(""); }
+      else if (label === "FSR Report") { setFsrReportBase64(""); setFsrReportName(""); }
+      else if (label === "FIR Report") { setFirReportBase64(""); setFirReportName(""); }
+      else if (label === "COF") { setCofBase64(""); setCofName(""); }
+      return;
+    }
+    const b64 = await fileToBase64(file);
+    if (label === "Images") { setImagesBase64(b64); setImagesName(file.name); }
+    else if (label === "FSR Report") { setFsrReportBase64(b64); setFsrReportName(file.name); }
+    else if (label === "FIR Report") { setFirReportBase64(b64); setFirReportName(file.name); }
+    else if (label === "COF") { setCofBase64(b64); setCofName(file.name); }
+  };
   const [showForm, setShowForm] = useState(false);
   const showFields = isWithout || revealed;
   const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
@@ -314,12 +382,16 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   setSelectedItems([]);
   setImagesBase64("");
   setImagesPath("");
+  setImagesName("");
   setFsrReportBase64("");
   setFsrReportPath("");
+  setFsrReportName("");
   setFirReportBase64("");
   setFirReportPath("");
+  setFirReportName("");
   setCofBase64("");
   setCofPath("");
+  setCofName("");
   setShowForm(false);
   setInvoiceF4List([]);
   setFullReferenceData([]);
@@ -765,18 +837,22 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       ROUTE: headerData.ROUTE || null,
 
       ZDIMAGES: imagesBase64,
+      ZDIMAGES_NAME: imagesName,
 
       ZDIMG_PATH: imagesPath,
 
       ZFSRREP: fsrReportBase64,
+      ZFSRREP_NAME: fsrReportName,
 
       ZFSRREP_PATH: fsrReportPath,
 
       ZFIRREP: firReportBase64,
+      ZFIRREP_NAME: firReportName,
 
       ZFIRREP_PATH: firReportPath,
 
       ZCOF: cofBase64,
+      ZCOF_NAME: cofName,
 
       ZCOF_PATH: cofPath,
 
@@ -866,12 +942,16 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   setSelectedItems([]);
   setImagesBase64("");
   setImagesPath("");
+  setImagesName("");
   setFsrReportBase64("");
   setFsrReportPath("");
+  setFsrReportName("");
   setFirReportBase64("");
   setFirReportPath("");
+  setFirReportName("");
   setCofBase64("");
   setCofPath("");
+  setCofName("");
   setShowForm(false);
   setInvoiceF4List([]);
   setFullReferenceData([]);
@@ -1139,15 +1219,19 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       ZUSER_CH: "",
 
       ZDIMAGES: imagesBase64 || "",
+      ZDIMAGES_NAME: imagesName || "",
       ZDIMG_PATH: imagesPath || "",
 
       ZFSRREP: fsrReportBase64 || "",
+      ZFSRREP_NAME: fsrReportName || "",
       ZFSRREP_PATH: fsrReportPath || "",
 
       ZFIRREP: firReportBase64 || "",
+      ZFIRREP_NAME: firReportName || "",
       ZFIRREP_PATH: firReportPath || "",
 
       ZCOF: cofBase64 || "",
+      ZCOF_NAME: cofName || "",
       ZCOF_PATH: cofPath || "",
     };
 
@@ -1653,6 +1737,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                               }
                             />
                           )
+                        ) : DOC_LOCAL_KEY[field] ? (
+                          // Images / FSR Report / FIR Report / COF -> uploaded file name
+                          <span>{docFileName(headerData, field)}</span>
                         ) : (
                           <span>
                             {type === "date" && headerData[field]
@@ -1900,6 +1987,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       onChange={handleHeaderChange}
                       sapFetched={sapFetched}
                       sapFilledKeys={sapFilledKeys}
+                      onFileChange={handlePickDoc}
                     />
                   ))}
                 </div>
@@ -2068,11 +2156,13 @@ function SapField({
   onChange,
   sapFetched = false,
   sapFilledKeys,
+  onFileChange,
 }: {
   field: FieldSpec;
   onChange: (key: string, value: any) => void;
   sapFetched?: boolean;
   sapFilledKeys?: Set<string>;
+  onFileChange?: (label: string, file: File | null) => void;
 }) {
   const {
     label,
@@ -2134,6 +2224,8 @@ function SapField({
       ) : type === "file" ? (
         <input
           type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={(e) => onFileChange?.(label, e.target.files?.[0] ?? null)}
           className={GREEN_INPUT + " py-1.5"}
         />
       ) : (

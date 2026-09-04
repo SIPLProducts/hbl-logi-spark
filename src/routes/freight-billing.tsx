@@ -135,6 +135,24 @@ function FreightBillingPage() {
     }
   }
 
+  const clearSearchData = () => {
+    setSearchSap(null);
+    setFromDate(undefined);
+    setToDate(undefined);
+    setFPlant("");
+    setFDivision("");
+    setFTransporter("");
+    setFVehicleType("");
+    setFStatus("");
+    setFPACheck("");
+
+    setPendingData([]);
+    setFreightBillingData([]);
+
+    setApplied(false);
+    setLoading(false);
+  };
+
   const resetFilters = () => {
     setFromDate(undefined);
     setToDate(undefined);
@@ -149,6 +167,7 @@ function FreightBillingPage() {
     setFreightBillingData([]);
 
     setApplied(false);
+    setLoading(false);
   };
 
   const handleDirectionChange = (dir: "outward" | "inward") => {
@@ -158,6 +177,7 @@ function FreightBillingPage() {
     setPendingCount(0);
     setCompletedCount(0);
     setCasesCount(0);
+    clearSearchData();
   };
 
   const handleSearchSapChange = (value: SapMode) => {
@@ -593,7 +613,16 @@ function FreightBillingPage() {
 
   return (
     <div className="flex flex-col min-h-full">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
+      <Tabs
+        value={tab}
+        onValueChange={(v) => {
+          if (v === "create") {
+            clearSearchData();
+          }
+          setTab(v as "create" | "search");
+        }}
+        className="w-full"
+      >
         {/* Page header */}
         <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
@@ -609,10 +638,17 @@ function FreightBillingPage() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-7 shadow-soft">
-                <TabsTrigger value="create" className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all">
+                <TabsTrigger
+                  value="create"
+                  onClick={() => clearSearchData()}
+                  className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
+                >
                   <Plus className="size-3" /> Create
                 </TabsTrigger>
-                <TabsTrigger value="search" className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all">
+                <TabsTrigger
+                  value="search"
+                  className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
+                >
                   <Filter className="size-3" /> Filter &amp; Download
                 </TabsTrigger>
               </TabsList>
@@ -648,6 +684,7 @@ function FreightBillingPage() {
                       onChange={(value) => {
                         setSap(value);
                         fetchPendingAndCompletedCounts(value);
+                        clearSearchData();
                       }}
                     />
                   </>
@@ -868,13 +905,17 @@ function FreightBillingPage() {
                           <th className="px-3 py-2.5 whitespace-nowrap">Transporter</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Created Date</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Vehicle Type</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap">Freight Bill</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap">Unloading Charges Approval</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap">Detention Charges</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap">Work Order File</th>
                         </tr>
                       </thead>
 
                       <tbody className="divide-y divide-hairline/70">
                         {freightBillingData.length === 0 ? (
                           <tr>
-                            <td colSpan={40} className="px-3 py-10 text-center text-muted-foreground">
+                            <td colSpan={44} className="px-3 py-10 text-center text-muted-foreground">
                               No Records Found
                             </td>
                           </tr>
@@ -943,6 +984,11 @@ function FreightBillingPage() {
                                 {item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : ""}
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
+                              {/* Uploaded file name per document type (found on disk for this record) */}
+                              <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.Freight_Bill || "-"}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.Unloading_Charges_Approval || "-"}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.Detention_Charges || "-"}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.Work_Order || "-"}</td>
                             </tr>
                           ))
                         )}

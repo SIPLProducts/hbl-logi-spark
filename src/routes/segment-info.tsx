@@ -128,6 +128,21 @@ function SegmentInfoPage() {
     })();
   }, [direction, sap]);
 
+  const clearSearchData = () => {
+    setSearchSap(null);
+    setFromDate(undefined);
+    setToDate(undefined);
+    setFPlant("");
+    setFDivision("");
+    setFTransporter("");
+    setFVehicleType("");
+    setFStatus("");
+    setApplied(false);
+    setIsFilterLoading(false);
+    setSegmentData([]);
+    setDispatchData([]);
+  };
+
   const resetFilters = () => {
     setFromDate(undefined);
     setToDate(undefined);
@@ -137,6 +152,7 @@ function SegmentInfoPage() {
     setFVehicleType("");
     setFStatus("");
     setApplied(false);
+    setIsFilterLoading(false);
     setSegmentData([]);
     setDispatchData([]);
   };
@@ -361,7 +377,16 @@ function SegmentInfoPage() {
 
   return (
     <div className="flex flex-col min-h-full">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
+      <Tabs
+        value={tab}
+        onValueChange={(v) => {
+          if (v === "create") {
+            clearSearchData();
+          }
+          setTab(v as "create" | "search");
+        }}
+        className="w-full"
+      >
         {/* Page header */}
         <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
@@ -379,6 +404,7 @@ function SegmentInfoPage() {
               <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-7 shadow-soft">
                 <TabsTrigger
                   value="create"
+                  onClick={() => clearSearchData()}
                   className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
                 >
                   <Plus className="size-3" /> Create
@@ -414,12 +440,21 @@ function SegmentInfoPage() {
                 <PremiumRadio
                   label="Outward"
                   checked={direction === "outward"}
-                  onSelect={() => setDirection("outward")}
+                  onSelect={() => {
+                    setDirection("outward");
+                    clearSearchData();
+                  }}
                 />
                 {direction && (
                   <>
                     <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
-                    <SapToggle value={sap} onChange={setSap} />
+                    <SapToggle
+                      value={sap}
+                      onChange={(v) => {
+                        setSap(v);
+                        clearSearchData();
+                      }}
+                    />
                   </>
                 )}
                 <div className="ml-auto flex items-center gap-1.5">

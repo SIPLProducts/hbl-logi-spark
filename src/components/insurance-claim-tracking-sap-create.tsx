@@ -173,6 +173,26 @@ function getLoggedInUser(): string {
   } catch { return ""; }
 }
 
+// Reads a File as a base64 data URI, e.g. "data:application/pdf;base64,JVBERi0x..."
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Show only the file name from a stored document path.
+//   "D:\Pravah\SAP\Insurance_Claim\Supporting_Document\1000_5000_claim.pdf"
+//     -> "1000_5000_claim.pdf"
+// Returns "" when there is no path.
+function fileNameFromPath(storedPath?: string): string {
+  if (!storedPath) return "";
+  const parts = String(storedPath).split(/[\\/]/);
+  return parts[parts.length - 1] || "";
+}
+
 const BASE_FIELDS: FieldSpec[] = [
 
   { label: "Reported Date", key: "REP_DATE", type: "date" },
@@ -217,8 +237,22 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
   const [supportingBase64, setSupportingBase64] = useState("");
   const [supportingPath, setSupportingPath] = useState("");
+  const [supportingName, setSupportingName] = useState("");
   const [approveBase64, setApproveBase64] = useState("");
   const [approvePath, setApprovePath] = useState("");
+  const [approveName, setApproveName] = useState("");
+
+  // Capture a picked document (Supporting / Approve) as base64 + its file name.
+  const handlePickDoc = async (key: string, file: File | null) => {
+    if (!file) {
+      if (key === "ZSUPT_DOC") { setSupportingBase64(""); setSupportingName(""); }
+      if (key === "ZAPP_DOC") { setApproveBase64(""); setApproveName(""); }
+      return;
+    }
+    const b64 = await fileToBase64(file);
+    if (key === "ZSUPT_DOC") { setSupportingBase64(b64); setSupportingName(file.name); }
+    if (key === "ZAPP_DOC") { setApproveBase64(b64); setApproveName(file.name); }
+  };
 
   const [showForm, setShowForm] = useState(false);
   const showFields = isWithout || revealed;
@@ -253,8 +287,10 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     setSelectedItems([]);
     setSupportingBase64("");
     setSupportingPath("");
+    setSupportingName("");
     setApproveBase64("");
     setApprovePath("");
+    setApproveName("");
     setShowForm(false);
     setInvoiceF4List([]);
     setFullReferenceData([]);
@@ -569,8 +605,10 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
       REFNO: selectedRow.REF_NO,
       LINE_NO: selectedRow.LINE_NO,
       ZSUPT_DOC: supportingBase64,
+      ZSUPT_DOC_NAME: supportingName,
       ZSUPT_PATH: supportingPath,
       ZAPP_DOC: approveBase64,
+      ZAPP_DOC_NAME: approveName,
       ZAPP_PATH: approvePath,
       ZUSER: getLoggedInUser(),
       ZUSER_CH: "",
@@ -712,8 +750,10 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
       ZUSER: getLoggedInUser(),
       ZUSER_CH: "",
       ZSUPT_DOC: supportingBase64 || "",
+      ZSUPT_DOC_NAME: supportingName || "",
       ZSUPT_PATH: supportingPath || "",
       ZAPP_DOC: approveBase64 || "",
+      ZAPP_DOC_NAME: approveName || "",
       ZAPP_PATH: approvePath || "",
     };
 
@@ -768,8 +808,10 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     setSelectedItems([]);
     setSupportingBase64("");
     setSupportingPath("");
+    setSupportingName("");
     setApproveBase64("");
     setApprovePath("");
+    setApproveName("");
     setShowForm(false);
     setInvoiceF4List([]);
     setFullReferenceData([]);
@@ -1197,7 +1239,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       "Fiscal Year", "Reported Date", "Claim Ref", "Invoice Date",
                       "Base Value", "Loss Declared", "Customer", "Location",
                       "Damage", "Claim Status", "Payment Status", "Plant",
-                      "Division", "Action",
+                      "Division", "Supporting Document", "Approve Document", "Action",
                     ].map((h) => (
                       <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
                         {h}
@@ -1266,6 +1308,19 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                         </td>
                       );
                     })}
+
+                    {/* Uploaded file name per document type (read-only):
+                        file found on disk for this record, else derived from the saved path. */}
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {headerData.ZLOCALFILES?.Supporting_Document ||
+                        fileNameFromPath(headerData.ZSUPT_PATH) ||
+                        "-"}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {headerData.ZLOCALFILES?.Approve_Document ||
+                        fileNameFromPath(headerData.ZAPP_PATH) ||
+                        "-"}
+                    </td>
 
                     <td className="px-2 py-2 text-center">
                       {!headerData.isEdit ? (
@@ -1428,6 +1483,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                       sapFetched={sapFetched}
                       sapFilledKeys={sapFilledKeys}
                       onReportedDateChange={onReportedDateChange}
+                      onFileChange={handlePickDoc}
                     />
                   ))}
                 </div>
@@ -1577,12 +1633,14 @@ function SapField({
   sapFetched = false,
   sapFilledKeys,
   onReportedDateChange,
+  onFileChange,
 }: {
   field: FieldSpec;
   setHeaderData: React.Dispatch<React.SetStateAction<any>>;
   sapFetched?: boolean;
   sapFilledKeys?: Set<string>;
   onReportedDateChange?: (value: string) => void;
+  onFileChange?: (key: string, file: File | null) => void;
 }) {
   const { label, value = "", type = "text", options = [], placeholder } = field;
 
@@ -1659,7 +1717,12 @@ function SapField({
           className={cls}
         />
       ) : type === "file" ? (
-        <input type="file" className={GREEN_INPUT + " py-1.5"} />
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={(e) => onFileChange?.(field.key, e.target.files?.[0] ?? null)}
+          className={GREEN_INPUT + " py-1.5"}
+        />
       ) : (
         <input
           type="text"

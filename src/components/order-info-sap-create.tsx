@@ -403,10 +403,10 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       ReportedDateTime: data.ZVEHREPDT || "",
       PhysicalDispatchDateTime: physDispatch,
       Plant: data.PLANT_NAME || "",
-      TransactionType: data.TRAN_TYPE || "",
+      TransactionType: data.tran_type || data.TRAN_TYPE || "",
       BillingTransactionType: data.TRAN_TEXT_BILL || "",
       Division: data.DIVISION_TEXT || data.DIVISION || "",
-      SubDivision: data.SUB_DIVISION || "",
+      SubDivision: data.sub_division || data.SUB_DIVISION || "",
       RefNumber: data.SO_REF_NO || "",
       Customer: data.CUST_NAME || "",
       CustomerGroup: data.CUST_GROUP || "",
@@ -1283,39 +1283,44 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                 />
               </div>
 
+              {/* Transaction Type */}
               <div>
-                <FieldLabel label="Transaction Type" fromSap={sapFetched && sapFilledKeys.has("TransactionType")} />
-                {renderSelect("TransactionType",
-                  <>
-                    <option value="">Select Mode of Transport</option>
-                    {[
-                      { value: "FULL TRUCK LOAD", label: "FULL TRUCK LOAD" },
-                      { value: "CARGO", label: "CARGO" },
-                      { value: "RATECONTRACT", label: "RATE CONTRACT" },
-                      { value: "LOCALTRANSPORTATION", label: "LOCAL TRANSPORTATION" },
-                      { value: "CUSTOMERTRANSPORTER", label: "CUSTOMER TRANSPORTER" },
-                      { value: "COMPANYVEHICLE", label: "COMPANY VEHICLE" },
-                      { value: "COURIER", label: "COURIER" },
-                      { value: "BYHAND", label: "BY HAND" },
-                    ].map(({ value, label }) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </>
-                )}
+                <label className={isSap ? LABEL_YELLOW : LABEL}>Transaction Type</label>
+                <select
+                  value={form.TransactionType}
+                  onChange={(e) => setField("TransactionType", e.target.value)}
+                  className={isSap ? INPUT_YELLOW : INPUT_NORMAL}
+                >
+                  <option value="">Select Mode of Transport</option>
+                  {[
+                    { value: "FULL TRUCK LOAD", label: "FULL TRUCK LOAD" },
+                    { value: "CARGO", label: "CARGO" },
+                    { value: "RATECONTRACT", label: "RATE CONTRACT" },
+                    { value: "LOCALTRANSPORTATION", label: "LOCAL TRANSPORTATION" },
+                    { value: "CUSTOMERTRANSPORTER", label: "CUSTOMER TRANSPORTER" },
+                    { value: "COMPANYVEHICLE", label: "COMPANY VEHICLE" },
+                    { value: "COURIER", label: "COURIER" },
+                    { value: "BYHAND", label: "BY HAND" },
+                  ].map(({ value, label }) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Sub Division */}
               <div>
-                <FieldLabel label="Sub Division" fromSap={sapFetched && sapFilledKeys.has("SubDivision")} />
-                {renderSelect("SubDivision",
-                  <>
-                    <option value="">Select Sub Division</option>
-                    {["FUZE", "IPS SYSTEM", "LITHIUM", "NCFP", "NCPP", "NCPP-VSEZ", "NCPP/ETP",
-                      "NCSP", "PE", "SILVER ZINC", "SYSTEM ORDERS", "THERMAL", "THERMAL,FUZE,SZ"].map(v => (
-                        <option key={v} value={v}>{v}</option>
-                      ))}
-                  </>
-                )}
+                <label className={isSap ? LABEL_YELLOW : LABEL}>Sub Division</label>
+                <select
+                  value={form.SubDivision}
+                  onChange={(e) => setField("SubDivision", e.target.value)}
+                  className={isSap ? INPUT_YELLOW : INPUT_NORMAL}
+                >
+                  <option value="">Select Sub Division</option>
+                  {["FUZE", "IPS SYSTEM", "LITHIUM", "NCFP", "NCPP", "NCPP-VSEZ", "NCPP/ETP",
+                    "NCSP", "PE", "SILVER ZINC", "SYSTEM ORDERS", "THERMAL", "THERMAL,FUZE,SZ", "VRLA"].map(v => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                </select>
               </div>
 
               {/* Customer Group */}
@@ -1324,32 +1329,13 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                 {renderInput("CustomerGroup")}
               </div>
 
-              {/* Incoterms (highlighted yellow) */}
-              {/* <div>
-                <label className={LABEL_YELLOW}>Incoterms</label>
-                {isSap ? (
-                  <input value={form.Incoterms} readOnly className={INPUT_YELLOW} />
-                ) : (
-                  <select
-                    value={form.Incoterms}
-                    onChange={(e) => setField("Incoterms", e.target.value)}
-                    className={INPUT_YELLOW}
-                  >
-                    <option value="">Select Incoterm</option>
-                    {incotermsList.map((i, idx) => (
-                      <option key={idx} value={i.INCO1}>
-                        {i.INCO1} - {i.BEZEI}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div> */}
+              {/* Incoterms */}
               <div>
-                <label className={LABEL_YELLOW}>Incoterms</label>
+                <label className={isSap ? LABEL_YELLOW : LABEL}>Incoterms</label>
                 <select
                   value={form.Incoterms}
                   onChange={(e) => setField("Incoterms", e.target.value)}
-                  className={INPUT_YELLOW}
+                  className={isSap ? INPUT_YELLOW : INPUT_NORMAL}
                 >
                   <option value="">Select Incoterm</option>
                   {incotermsList.map((i, idx) => (

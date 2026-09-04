@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type Ref } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Search,
@@ -58,6 +58,25 @@ function getLoggedInUser(): string {
     const u = JSON.parse(raw) as Record<string, unknown>;
     return String(u?.USER ?? u?.USERNAME ?? u?.USER_ID ?? "");
   } catch { return ""; }
+}
+
+// Reads a File as a base64 data URI, e.g. "data:application/pdf;base64,JVBERi0x..."
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Show only the file name from a stored document path.
+//   "D:\Pravah\SAP\Transit_Info\POD\1000_5000_challan.pdf" -> "1000_5000_challan.pdf"
+// Returns "" when there is no path.
+function fileNameFromPath(storedPath?: string): string {
+  if (!storedPath) return "";
+  const parts = String(storedPath).split(/[\\/]/);
+  return parts[parts.length - 1] || "";
 }
 
 const FIELDS: FieldSpec[] = [
@@ -172,6 +191,11 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
 
+  // POD Scan document chosen by the user (sent to the backend on Save).
+  const [podFile, setPodFile] = useState<File | null>(null);
+  const [editSearchPodFile, setEditSearchPodFile] = useState<File | null>(null);
+  const podInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     // Reset search fields
     setSearchType("");
@@ -266,6 +290,10 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         lineNumber: "",
       },
     ]);
+
+    // Clear the chosen POD document too.
+    setPodFile(null);
+    if (podInputRef.current) podInputRef.current.value = "";
   };
 
   const fetchGlobalReferences = async (row: TableRow, index: number, fieldKey: string) => {
@@ -364,6 +392,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
     setLoadingSave(true);
     try {
+      // Convert the chosen POD document to base64 (empty string when none picked).
+      const podBase64 = podFile ? await fileToBase64(podFile) : "";
+
       const HEAD = {
         REFNO: selectedRows[0]?.REF_NO || "",
         INV_NO: invoiceNumber || "",
@@ -375,8 +406,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
         ZUSER: getLoggedInUser(),
         ZUSER_CH: "",
-        // ZPOD_FNAME: podFileBase64 || "",
-        // ZPATH: podFilePath || "",
+        ZPOD_FNAME: podBase64,                       // base64 file; backend saves it then clears this
+        ZPOD_DOCNAME: podFile ? podFile.name : "",   // original document name
+        ZPATH: "",                                   // backend fills this with the saved file path
       };
 
       const ITEM = selectedRows.map((item, idx) => ({
@@ -591,6 +623,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const editSearchRow = (type: "header" | "item", index: number) => {
     if (type === "header") {
       if (!headerData) return;
+      setEditSearchPodFile(null);
       setHeaderData({ ...headerData, _backup: { ...headerData }, isEdit: true });
     } else {
       const updated = [...itemsList];
@@ -637,6 +670,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   setLoadingSave(true);
 
   try {
+    const editPodBase64 = editSearchPodFile ? await fileToBase64(editSearchPodFile) : "";
+    const editPodDocName = editSearchPodFile ? editSearchPodFile.name : (headerRow.ZPODNAME || "POD");
+
     /*
      * IMPORTANT:
      * Update API expects HEADER as object and ITEM as array.
@@ -655,7 +691,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       ZPOD_SCAN: headerRow.ZPOD_SCAN || "",
 
       ZSIT_SALE: headerRow.ZSIT_SALE || "",
-      ZPODNAME: headerRow.ZPODNAME || "",
+      ZPODNAME: editSearchPodFile ? editSearchPodFile.name : (headerRow.ZPODNAME || ""),
       ZLOCATION: headerRow.ZLOCATION || "",
       ZCREATED_DT: headerRow.ZCREATED_DT || "",
       ZPLANT: headerRow.ZPLANT || "",
@@ -663,6 +699,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       ZVEH_TYPE: headerRow.ZVEH_TYPE || "",
       ZUSER: headerRow.ZUSER || "",
       ZUSER_CH: getLoggedInUser(),
+      ZPOD_FNAME: editPodBase64,
+      ZPOD_DOCNAME: editPodDocName,
     };
 
     /*
@@ -684,7 +722,10 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     }));
 
     const payload = {
-      ZPOD_FNAME: "",
+      REFNO: headerRow.ZREFNO,
+      INV_NO: headerRow.ZINV_NO || "",
+      ZPOD_FNAME: editPodBase64,
+      ZPOD_DOCNAME: editPodDocName,
       ZPATH: "",
       HEADER: headerPayload,
       ITEM: itemPayload,
@@ -723,8 +764,13 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
      * Do not immediately call onSearchReference().
      * First update the UI with the values that were actually submitted.
      */
+    setEditSearchPodFile(null);
     setHeaderData({
       ...headerPayload,
+      ZLOCALFILES: editSearchPodFile
+        ? { ...headerRow.ZLOCALFILES, POD: editSearchPodFile.name }
+        : headerRow.ZLOCALFILES,
+      ZPODNAME: editSearchPodFile ? editSearchPodFile.name : headerRow.ZPODNAME,
       isEdit: false,
     });
 
@@ -802,6 +848,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
   const cancelSearchEdit = (type: "header" | "item", index: number) => {
     if (type === "header") {
+      setEditSearchPodFile(null);
       if (!headerData) return;
       if (headerData._backup) {
         setHeaderData({ ...headerData._backup, isEdit: false });
@@ -1093,7 +1140,11 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               onChange={setSitSale}
             />
 
-            <SapField field={FIELDS[5]} />
+            <SapField
+              field={FIELDS[5]}
+              inputRef={podInputRef}
+              onFileChange={(f) => setPodFile(f)}
+            />
 
           </div>
         </div>
@@ -1142,9 +1193,21 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                     {/* POD Name */}
                     <td className="px-3 py-2 whitespace-nowrap text-center">
                       {headerData.isEdit ? (
-                        <input type="file" accept=".jpg,.jpeg,.png" className={EDIT_CELL_INPUT + " py-0.5"} />
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png,.pdf"
+                          onChange={(e) => setEditSearchPodFile(e.target.files?.[0] || null)}
+                          className={EDIT_CELL_INPUT + " py-0.5"}
+                        />
                       ) : (
-                        headerData.ZPODNAME || "-"
+                        // 1) file name found on disk for this record (Ref + Invoice),
+                        // 2) the name SAP sends (ZPODNAME),
+                        // 3) name derived from a saved path (ZPATH / ZPODFILE).
+                        headerData.ZLOCALFILES?.POD ||
+                        headerData.ZPODNAME ||
+                        fileNameFromPath(headerData.ZPATH) ||
+                        fileNameFromPath(headerData.ZPODFILE) ||
+                        "-"
                       )}
                     </td>
 
@@ -1417,10 +1480,14 @@ function SapField({
   field,
   value = "",
   onChange,
+  onFileChange,
+  inputRef,
 }: {
   field: FieldSpec;
   value?: string;
   onChange?: (value: string) => void;
+  onFileChange?: (file: File | null) => void;
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   const {
     label,
@@ -1462,7 +1529,10 @@ function SapField({
         </select>
       ) : type === "file" ? (
         <input
+          ref={inputRef}
           type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          onChange={(e) => onFileChange?.(e.target.files?.[0] ?? null)}
           className={INPUT_NORMAL + " py-1.5"}
         />
       ) : (

@@ -81,6 +81,21 @@ function OrderInfoPage() {
 
   const rows: WorklistRow[] = [];
 
+  const clearSearchData = () => {
+    setSearchSap(null);
+    setFromDate(undefined);
+    setToDate(undefined);
+    setFPlant("");
+    setFDivision("");
+    setFTransporter("");
+    setFVehicleType("");
+    setFStatus("");
+    setApplied(false);
+    setIsFilterLoading(false);
+    setOrderInfoData([]);
+    setDispatchData([]);
+  };
+
   const resetFilters = () => {
     setFromDate(undefined);
     setToDate(undefined);
@@ -90,6 +105,9 @@ function OrderInfoPage() {
     setFVehicleType("");
     setFStatus("");
     setApplied(false);
+    setIsFilterLoading(false);
+    setOrderInfoData([]);
+    setDispatchData([]);
     setSearchSap(null);
   };
 
@@ -380,7 +398,12 @@ function OrderInfoPage() {
     <div className="flex flex-col min-h-full">
       <Tabs
         value={tab}
-        onValueChange={(v) => setTab(v as "create" | "search")}
+        onValueChange={(v) => {
+          if (v === "create") {
+            clearSearchData();
+          }
+          setTab(v as "create" | "search");
+        }}
         className="w-full"
       >
         {/* Page Header */}
@@ -400,6 +423,7 @@ function OrderInfoPage() {
               <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-7 shadow-soft">
                 <TabsTrigger
                   value="create"
+                  onClick={() => clearSearchData()}
                   className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
                 >
                   <Plus className="size-3" /> Create
@@ -434,12 +458,16 @@ function OrderInfoPage() {
                 <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   Direction
                 </span>
-                <PremiumRadio label="Outward" checked={direction === "outward"} onSelect={() => setDirection("outward")} />
+                <PremiumRadio label="Outward" checked={direction === "outward"} onSelect={() => { setDirection("outward"); clearSearchData(); }} />
                 {direction && (
                   <>
                     <div className="h-6 w-px bg-hairline mx-1 hidden sm:block " />
                     <SapToggle
-                      value={sap} onChange={setSap}
+                      value={sap}
+                      onChange={(v) => {
+                        setSap(v);
+                        clearSearchData();
+                      }}
                     />
                   </>
                 )}
@@ -494,6 +522,9 @@ function OrderInfoPage() {
                     setFVehicleType("");
                     setFStatus("");
                     setApplied(false);
+                    setIsFilterLoading(false);
+                    setOrderInfoData([]);
+                    setDispatchData([]);
                   }}
                 />
               </div>

@@ -112,6 +112,7 @@ function ShipmentDetailsPage() {
   const handleSapChange = (v: SapMode) => {
     setSap(v);
     fetchCounts(v);
+    resetFilters();
   };
 
   const fetchTransporters = async () => {
@@ -424,7 +425,16 @@ function ShipmentDetailsPage() {
 
   return (
     <div className="flex flex-col min-h-full">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
+      <Tabs
+        value={tab}
+        onValueChange={(v) => {
+          if (v === "create") {
+            resetFilters();
+          }
+          setTab(v as "create" | "search");
+        }}
+        className="w-full"
+      >
         {/* Page header */}
         <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
@@ -442,6 +452,7 @@ function ShipmentDetailsPage() {
               <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-7 shadow-soft">
                 <TabsTrigger
                   value="create"
+                  onClick={() => resetFilters()}
                   className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
                 >
                   <Plus className="size-3" /> Create
@@ -472,7 +483,14 @@ function ShipmentDetailsPage() {
                 <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   Direction
                 </span>
-                <PremiumRadio label="Outward" checked={direction === "outward"} onSelect={() => setDirection("outward")} />
+                <PremiumRadio
+                  label="Outward"
+                  checked={direction === "outward"}
+                  onSelect={() => {
+                    setDirection("outward");
+                    resetFilters();
+                  }}
+                />
                 {direction && (
                   <>
                     <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />

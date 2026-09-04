@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -1239,11 +1239,549 @@ const EMPTY_GATE_ROW = (): GateRow => ({
 });
 
 function getMinPhysicalDispatch(row: GateRow): string {
-  const dates: string[] = [];
-  if (row.requiredDateTime) dates.push(row.requiredDateTime);
-  if (row.reportedDateTime) dates.push(row.reportedDateTime);
-  if (dates.length === 0) return "";
-  return dates.reduce((a, b) => (a > b ? a : b));
+  if (row.reportedDateTime) return row.reportedDateTime;
+  if (row.requiredDateTime) return row.requiredDateTime;
+  return "";
+}
+
+function padZero(n: number): string {
+  return n < 10 ? `0${n}` : `${n}`;
+}
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
+const TIME_SLOTS: string[] = [];
+for (let h = 0; h < 24; h++) {
+  for (let m = 0; m < 60; m += 15) {
+    const hh = h < 10 ? `0${h}` : `${h}`;
+    const mm = m < 10 ? `0${m}` : `${m}`;
+    TIME_SLOTS.push(`${hh}:${mm}`);
+  }
+}
+
+function parseIsoDateTime(val?: string) {
+  if (!val) return null;
+  const match = val.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  if (!match) return null;
+  return {
+    year: parseInt(match[1], 10),
+    month: parseInt(match[2], 10) - 1,
+    day: parseInt(match[3], 10),
+    hour24: match[4] !== undefined ? parseInt(match[4], 10) : 12,
+    minute: match[5] !== undefined ? parseInt(match[5], 10) : 0,
+    timeStr: match[4] !== undefined && match[5] !== undefined ? `${match[4]}:${match[5]}` : "12:00",
+  };
+}
+
+/* ── Custom Date & Time Picker Matching Reference Design ── */
+function parseTypedDateTime(val: string): string | null {
+  if (!val) return null;
+  val = val.trim();
+
+  // Pattern 1: DD-MM-YYYY HH:mm or DD/MM/YYYY HH:mm
+  const dmyTime = val.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:[T\s](\d{1,2}):(\d{2}))?$/);
+  if (dmyTime) {
+    const d = parseInt(dmyTime[1], 10);
+    const m = parseInt(dmyTime[2], 10);
+    const y = parseInt(dmyTime[3], 10);
+    const hh = dmyTime[4] !== undefined ? parseInt(dmyTime[4], 10) : 0;
+    const mm = dmyTime[5] !== undefined ? parseInt(dmyTime[5], 10) : 0;
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31 && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) {
+      return `${y}-${padZero(m)}-${padZero(d)}T${padZero(hh)}:${padZero(mm)}`;
+    }
+  }
+
+  // Pattern 2: YYYY-MM-DD HH:mm or YYYY-MM-DDTHH:mm
+  const ymdTime = val.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T\s](\d{1,2}):(\d{2}))?$/);
+  if (ymdTime) {
+    const y = parseInt(ymdTime[1], 10);
+    const m = parseInt(ymdTime[2], 10);
+    const d = parseInt(ymdTime[3], 10);
+    const hh = ymdTime[4] !== undefined ? parseInt(ymdTime[4], 10) : 0;
+    const mm = ymdTime[5] !== undefined ? parseInt(ymdTime[5], 10) : 0;
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31 && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59) {
+      return `${y}-${padZero(m)}-${padZero(d)}T${padZero(hh)}:${padZero(mm)}`;
+    }
+  }
+
+  return null;
+}
+
+function GateDateTimePicker({
+  value,
+  onChange,
+  min,
+  placeholder = "Select Date & Time",
+  disabled = false,
+  className,
+}: {
+  value?: string;
+  onChange?: (value: string) => void;
+  min?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const parsed = useMemo(() => parseIsoDateTime(value), [value]);
+  const minParsed = useMemo(() => parseIsoDateTime(min), [min]);
+
+  const displayFormatted = useMemo(() => {
+    if (!parsed) return "";
+    return `${padZero(parsed.day)}-${padZero(parsed.month + 1)}-${parsed.year} ${parsed.timeStr}`;
+  }, [parsed]);
+
+  const [rawInput, setRawInput] = useState(displayFormatted);
+
+  useEffect(() => {
+    setRawInput(displayFormatted);
+  }, [displayFormatted]);
+
+  const now = new Date();
+  const [viewYear, setViewYear] = useState<number>(parsed?.year ?? now.getFullYear());
+  const [viewMonth, setViewMonth] = useState<number>(parsed?.month ?? now.getMonth());
+
+  const [selectedYear, setSelectedYear] = useState<number | null>(parsed?.year ?? null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(parsed?.month ?? null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(parsed?.day ?? null);
+
+  const [selectedTime, setSelectedTime] = useState<string>(parsed?.timeStr ?? "12:00");
+  const [customTimeInput, setCustomTimeInput] = useState<string>(parsed?.timeStr ?? "12:00");
+
+  const selectedTimeBtnRef = useRef<HTMLDivElement>(null);
+
+  // Sync state when popover opens or value changes
+  useEffect(() => {
+    if (open) {
+      if (parsed) {
+        setViewYear(parsed.year);
+        setViewMonth(parsed.month);
+        setSelectedYear(parsed.year);
+        setSelectedMonth(parsed.month);
+        setSelectedDay(parsed.day);
+        setSelectedTime(parsed.timeStr);
+        setCustomTimeInput(parsed.timeStr);
+      } else {
+        const d = new Date();
+        const curMin = Math.floor(d.getMinutes() / 15) * 15;
+        const curH = d.getHours() < 10 ? `0${d.getHours()}` : `${d.getHours()}`;
+        const curM = curMin < 10 ? `0${curMin}` : `${curMin}`;
+        const fallbackTime = `${curH}:${curM}`;
+
+        setViewYear(d.getFullYear());
+        setViewMonth(d.getMonth());
+        setSelectedYear(d.getFullYear());
+        setSelectedMonth(d.getMonth());
+        setSelectedDay(d.getDate());
+        setSelectedTime(fallbackTime);
+        setCustomTimeInput(fallbackTime);
+      }
+    }
+  }, [open, parsed]);
+
+  // Scroll active time into center view when popover opens or selection changes
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => {
+        selectedTimeBtnRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [open, selectedTime]);
+
+  const isDateDisabled = (y: number, m: number, d: number) => {
+    if (!minParsed) return false;
+    const cellDateStr = `${y}-${padZero(m + 1)}-${padZero(d)}`;
+    const minDateStr = `${minParsed.year}-${padZero(minParsed.month + 1)}-${padZero(minParsed.day)}`;
+    return cellDateStr < minDateStr;
+  };
+
+  const isTimeDisabled = (timeStr: string) => {
+    if (!minParsed || selectedYear === null || selectedMonth === null || selectedDay === null) return false;
+    const curDateStr = `${selectedYear}-${padZero(selectedMonth + 1)}-${padZero(selectedDay)}`;
+    const minDateStr = `${minParsed.year}-${padZero(minParsed.month + 1)}-${padZero(minParsed.day)}`;
+    if (curDateStr === minDateStr) {
+      return timeStr <= minParsed.timeStr;
+    }
+    return curDateStr < minDateStr;
+  };
+
+  const calendarDays = useMemo(() => {
+    const firstDayIndex = new Date(viewYear, viewMonth, 1).getDay();
+    const mondayOffset = (firstDayIndex + 6) % 7;
+
+    const daysInCurrentMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+    const cells: {
+      day: number;
+      month: number;
+      year: number;
+      isCurrentMonth: boolean;
+      isSelected: boolean;
+      isDisabled: boolean;
+    }[] = [];
+
+    // Prev month padding
+    for (let i = mondayOffset - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const m = viewMonth === 0 ? 11 : viewMonth - 1;
+      const y = viewMonth === 0 ? viewYear - 1 : viewYear;
+      cells.push({
+        day: d,
+        month: m,
+        year: y,
+        isCurrentMonth: false,
+        isSelected: false,
+        isDisabled: isDateDisabled(y, m, d),
+      });
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInCurrentMonth; d++) {
+      const isSelected =
+        selectedYear === viewYear &&
+        selectedMonth === viewMonth &&
+        selectedDay === d;
+      cells.push({
+        day: d,
+        month: viewMonth,
+        year: viewYear,
+        isCurrentMonth: true,
+        isSelected,
+        isDisabled: isDateDisabled(viewYear, viewMonth, d),
+      });
+    }
+
+    // Next month padding
+    const remaining = (7 - (cells.length % 7)) % 7;
+    const totalSlots = cells.length + remaining < 35 ? 35 : cells.length + remaining;
+    const nextPadding = totalSlots - cells.length;
+
+    for (let d = 1; d <= nextPadding; d++) {
+      const m = viewMonth === 11 ? 0 : viewMonth + 1;
+      const y = viewMonth === 11 ? viewYear + 1 : viewYear;
+      cells.push({
+        day: d,
+        month: m,
+        year: y,
+        isCurrentMonth: false,
+        isSelected: false,
+        isDisabled: isDateDisabled(y, m, d),
+      });
+    }
+
+    return cells;
+  }, [viewYear, viewMonth, selectedYear, selectedMonth, selectedDay, minParsed]);
+
+  const handlePrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+  };
+
+  const handleSelectDay = (cell: (typeof calendarDays)[0]) => {
+    if (cell.isDisabled) return;
+    setSelectedYear(cell.year);
+    setSelectedMonth(cell.month);
+    setSelectedDay(cell.day);
+    if (!cell.isCurrentMonth) {
+      setViewYear(cell.year);
+      setViewMonth(cell.month);
+    }
+  };
+
+  const handleToday = () => {
+    const d = new Date();
+    if (!isDateDisabled(d.getFullYear(), d.getMonth(), d.getDate())) {
+      setViewYear(d.getFullYear());
+      setViewMonth(d.getMonth());
+      setSelectedYear(d.getFullYear());
+      setSelectedMonth(d.getMonth());
+      setSelectedDay(d.getDate());
+    }
+  };
+
+  const handleClear = () => {
+    setSelectedYear(null);
+    setSelectedMonth(null);
+    setSelectedDay(null);
+    onChange?.("");
+    setOpen(false);
+  };
+
+  const handleConfirm = (confirmedTime: string) => {
+    const y = selectedYear ?? now.getFullYear();
+    const m = selectedMonth ?? now.getMonth();
+    const d = selectedDay ?? now.getDate();
+
+    const isoStr = `${y}-${padZero(m + 1)}-${padZero(d)}T${confirmedTime}`;
+    onChange?.(isoStr);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div
+        className={cn(
+          "relative flex items-center h-7 w-full rounded-md border border-input bg-white dark:bg-surface text-[12px] transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30",
+          disabled && "opacity-60 cursor-not-allowed",
+          className
+        )}
+      >
+        <input
+          type="text"
+          disabled={disabled}
+          placeholder={placeholder}
+          value={rawInput}
+          onChange={(e) => {
+            const typed = e.target.value;
+            setRawInput(typed);
+            const parsedIso = parseTypedDateTime(typed);
+            if (parsedIso) {
+              onChange?.(parsedIso);
+            }
+          }}
+          onBlur={() => {
+            if (parsed) {
+              setRawInput(displayFormatted);
+            } else if (!rawInput.trim()) {
+              onChange?.("");
+              setRawInput("");
+            }
+          }}
+          className="h-full w-full bg-transparent px-2 text-[12px] text-foreground font-medium outline-none placeholder:text-muted-foreground placeholder:font-normal"
+        />
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            className="h-full px-1.5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+            aria-label="Open Calendar and Time Picker"
+          >
+            <CalendarIcon className="size-3.5 opacity-70 hover:opacity-100" />
+          </button>
+        </PopoverTrigger>
+      </div>
+
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        className="w-auto p-0 bg-white dark:bg-surface border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden"
+      >
+        <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800">
+          
+          {/* LEFT: Date Calendar */}
+          <div className="p-3.5 w-[260px] flex flex-col justify-between select-none">
+            <div>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-2.5 px-1">
+                <span className="text-[13.5px] font-bold text-slate-800 dark:text-slate-100">
+                  {MONTH_NAMES[viewMonth]} {viewYear}
+                </span>
+                <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                  <button
+                    type="button"
+                    onClick={handlePrevMonth}
+                    className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextMonth}
+                    className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Weekdays */}
+              <div className="grid grid-cols-7 text-center mb-1">
+                {WEEKDAYS.map((wd) => (
+                  <span key={wd} className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 py-0.5">
+                    {wd}
+                  </span>
+                ))}
+              </div>
+
+              {/* Days grid */}
+              <div className="grid grid-cols-7 gap-y-1 place-items-center text-[12px]">
+                {calendarDays.map((cell, i) => {
+                  const isCurMonth = cell.isCurrentMonth;
+                  const isSel = cell.isSelected;
+                  const isDis = cell.isDisabled;
+
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      disabled={isDis}
+                      onClick={() => handleSelectDay(cell)}
+                      className={cn(
+                        "size-7.5 rounded-lg flex items-center justify-center font-medium transition-all",
+                        isSel
+                          ? "bg-blue-600 text-white shadow-sm font-semibold"
+                          : isDis
+                          ? "text-slate-300 dark:text-slate-700 cursor-not-allowed pointer-events-none"
+                          : isCurMonth
+                          ? "text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          : "text-slate-300 dark:text-slate-600 hover:bg-slate-50"
+                      )}
+                    >
+                      {cell.day}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-slate-100 dark:border-slate-800 text-[11.5px] font-semibold">
+              <button
+                type="button"
+                onClick={handleClear}
+                className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={handleToday}
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 transition-colors"
+              >
+                Today
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT: Time Slots with Manual Typing Input + [Time] [Confirm] List */}
+          <div className="p-3 w-[195px] flex flex-col select-none bg-slate-50/50 dark:bg-surface/50">
+            <div className="flex items-center justify-between px-0.5 mb-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Time
+              </span>
+              <span className="text-[10px] font-medium text-muted-foreground">HH:MM</span>
+            </div>
+
+            {/* Manual time typing input bar */}
+            <div className="flex items-center gap-1 mb-2 px-0.5">
+              <input
+                type="text"
+                placeholder="HH:mm"
+                maxLength={5}
+                value={customTimeInput}
+                onChange={(e) => {
+                  let val = e.target.value.replace(/[^0-9:]/g, "");
+                  if (val.length === 2 && !val.includes(":") && (e.nativeEvent as any)?.inputType !== "deleteContentBackward") {
+                    val = val + ":";
+                  }
+                  setCustomTimeInput(val);
+                  if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(val)) {
+                    setSelectedTime(val);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(customTimeInput)) {
+                      if (!isTimeDisabled(customTimeInput)) {
+                        handleConfirm(customTimeInput);
+                      }
+                    }
+                  }
+                }}
+                className="h-7 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-surface px-2 text-center font-mono text-[12px] font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-2xs"
+              />
+              <button
+                type="button"
+                disabled={!/^([01]\d|2[0-3]):([0-5]\d)$/.test(customTimeInput) || isTimeDisabled(customTimeInput)}
+                onClick={() => {
+                  if (/^([01]\d|2[0-3]):([0-5]\d)$/.test(customTimeInput) && !isTimeDisabled(customTimeInput)) {
+                    handleConfirm(customTimeInput);
+                  }
+                }}
+                className="h-7 px-2.5 rounded-md bg-[#324baf] hover:bg-[#283e96] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-[11.5px] shadow-sm transition-all flex items-center justify-center cursor-pointer active:scale-95 shrink-0"
+              >
+                Set
+              </button>
+            </div>
+
+            <div className="h-[240px] overflow-y-auto scrollbar-elegant pr-1 space-y-1.5">
+              {TIME_SLOTS.map((timeStr) => {
+                const isSelected = selectedTime === timeStr;
+                const isDis = isTimeDisabled(timeStr);
+
+                if (isSelected) {
+                  return (
+                    <div
+                      key={timeStr}
+                      ref={selectedTimeBtnRef}
+                      className="flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-150"
+                    >
+                      <button
+                        type="button"
+                        className="flex-1 py-1.5 px-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-bold text-[13px] text-center"
+                      >
+                        {timeStr}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleConfirm(timeStr)}
+                        className="py-1.5 px-3 rounded-lg bg-[#324baf] hover:bg-[#283e96] text-white font-semibold text-[12.5px] shadow-sm active:scale-95 transition-all flex items-center justify-center cursor-pointer"
+                      >
+                        Confirm
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <button
+                    key={timeStr}
+                    type="button"
+                    disabled={isDis}
+                    onClick={() => {
+                      if (!isDis) {
+                        setSelectedTime(timeStr);
+                        setCustomTimeInput(timeStr);
+                      }
+                    }}
+                    className={cn(
+                      "w-full py-1.5 px-3 rounded-lg border text-center text-[13px] font-medium transition-all",
+                      isDis
+                        ? "border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-700 bg-slate-50/50 cursor-not-allowed"
+                        : "border-slate-200 dark:border-slate-700/80 bg-white dark:bg-surface text-slate-700 dark:text-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/80 shadow-2xs"
+                    )}
+                  >
+                    {timeStr}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 function getLoggedInUser(): string {
@@ -1753,7 +2291,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         const next: GateRow = { ...r, [field]: value };
         if ((field === "requiredDateTime" || field === "reportedDateTime") && next.physicalDispatchDateTime) {
           const min = getMinPhysicalDispatch(next);
-          if (min && next.physicalDispatchDateTime < min) {
+          if (min && next.physicalDispatchDateTime <= min) {
             next.physicalDispatchDateTime = "";
           }
         }
@@ -1799,6 +2337,18 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
   // ── Save → SaveGateInOutWithSap (With SAP) / SaveGateInOutWithoutSap (Without SAP) ──
   const handleSave = async (action: string) => {
+    for (let i = 0; i < gateRows.length; i++) {
+      const r = gateRows[i];
+      const minPd = getMinPhysicalDispatch(r);
+      if (minPd && r.physicalDispatchDateTime && r.physicalDispatchDateTime <= minPd) {
+        Swal.fire({
+          icon: "warning",
+          title: "Validation Error",
+          text: `Row ${i + 1}: Physical Dispatch Date and Time must be later than Reported Date and Time.`,
+        });
+        return;
+      }
+    }
     const refRow = refTableData[0];
     const payload = {
       CREATE: "X",
@@ -1918,6 +2468,19 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       let cleanItems: any[] = [];
       if (target === "item" && itemIndex !== undefined) {
         const { isEdit, _backup, ...cleanItem } = searchResultItems[itemIndex];
+        const minPd = cleanItem.REPORTED_DATE_AND_TIME || cleanItem.REQUIRED_DATE_AND_TIME || "";
+        if (
+          minPd &&
+          cleanItem.PHYSICAL_DISPATCH_DATE_TIME &&
+          cleanItem.PHYSICAL_DISPATCH_DATE_TIME <= minPd
+        ) {
+          Swal.fire({
+            icon: "warning",
+            title: "Validation Error",
+            text: "Physical Dispatch Date and Time must be later than Reported Date and Time.",
+          });
+          return;
+        }
         // Parse email strings to arrays as required by payload
         const formattedItem = {
           ...cleanItem,
@@ -2318,7 +2881,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                         { field: "SALESPERSON_EMAIL_DETAILS", type: "text" },
                         { field: "ZSTATE", type: "text" },
                         { field: "ZZONE", type: "text" },
-                        { field: "TAT_TYPE", type: "select", options: ["Direct Truck TAT(Vizag)", "Direct Truck TAT(Hyd)", "Revised TAT", "Safe Express TAT", "Delivery TAT", "GATI TAT"] },
+                        { field: "TAT_TYPE", type: "select", options: ["Direct Truck TAT(Vizag)", "Direct Truck TAT(Hyd)", /* "Revised TAT", */ "Safe Express TAT", "Delivery TAT", "GATI TAT", "V Xpress", "Instant Transport Solution"] },
                         { field: "TAT_DAYS", type: "number" },
                         { field: "ETA", type: "date" },
                       ].map(({ field, type, options, readonly }) => {
@@ -2346,6 +2909,37 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                   <option value="">Select</option>
                                   {options?.map(o => <option key={o} value={o}>{o}</option>)}
                                 </select>
+                              ) : type === "datetime-local" ? (
+                                <GateDateTimePicker
+                                  value={displayVal}
+                                  min={
+                                    field === "PHYSICAL_DISPATCH_DATE_TIME" && item.REPORTED_DATE_AND_TIME
+                                      ? item.REPORTED_DATE_AND_TIME
+                                      : undefined
+                                  }
+                                  className="h-7 w-full min-w-[150px] text-[11px]"
+                                  onChange={(val) => {
+                                    const next = [...searchResultItems];
+                                    if (
+                                      field === "PHYSICAL_DISPATCH_DATE_TIME" &&
+                                      item.REPORTED_DATE_AND_TIME
+                                    ) {
+                                      const minPd = item.REPORTED_DATE_AND_TIME;
+                                      if (minPd && val && val <= minPd) {
+                                        Swal.fire({
+                                          icon: "warning",
+                                          title: "Invalid Date & Time",
+                                          text: "Physical Dispatch Date and Time must be later than Reported Date and Time.",
+                                          timer: 2000,
+                                          showConfirmButton: false,
+                                        });
+                                        return;
+                                      }
+                                    }
+                                    next[index] = { ...next[index], [field]: val };
+                                    setSearchResultItems(next);
+                                  }}
+                                />
                               ) : (
                                 <input
                                   type={type}
@@ -2689,10 +3283,12 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                   <option value="">Select TAT Type</option>
                                   <option value="Direct Truck TAT(Vizag)">Direct Truck TAT(Vizag)</option>
                                   <option value="Direct Truck TAT(Hyd)">Direct Truck TAT(Hyd)</option>
-                                  <option value="Revised TAT">Revised TAT</option>
+                                  {/* <option value="Revised TAT">Revised TAT</option> */}
                                   <option value="Safe Express TAT">Safe Express TAT</option>
                                   <option value="Delivery TAT">Delivery TAT</option>
                                   <option value="GATI TAT">GATI TAT</option>
+                                  <option value="V Xpress">V Xpress</option>
+                                  <option value="Instant Transport Solution">Instant Transport Solution</option>
                                 </select>
                               </TableCell>
                             );
@@ -2730,23 +3326,47 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           const isPd = c === "Physical Dispatch Date and Time";
                           const isDateTime = c.toLowerCase().includes("date");
                           const val = row[field] || "";
+
+                          if (isDateTime) {
+                            return (
+                              <TableCell key={c} className="p-1">
+                                <GateDateTimePicker
+                                  value={val}
+                                  min={isPd ? minPd : undefined}
+                                  className={cn(
+                                    "h-7 min-w-[150px]",
+                                    isPd && minPd && val && val <= minPd
+                                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
+                                      : ""
+                                  )}
+                                  onChange={(v) => {
+                                    if (isPd && minPd && v && v <= minPd) {
+                                      Swal.fire({
+                                        icon: "warning",
+                                        title: "Invalid Date & Time",
+                                        text: "Physical Dispatch Date and Time must be later than Reported Date and Time.",
+                                        timer: 2000,
+                                        showConfirmButton: false,
+                                      });
+                                      return;
+                                    }
+                                    updateGateRow(i, field, v);
+                                  }}
+                                />
+                              </TableCell>
+                            );
+                          }
+
                           return (
                             <TableCell key={c} className="p-1">
                               <Input
-                                type={isDateTime ? "datetime-local" : "text"}
-                                className={cn(
-                                  "h-7 min-w-[140px]",
-                                  isPd && minPd && val && val < minPd
-                                    ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
-                                    : ""
-                                )}
+                                type="text"
+                                className="h-7 min-w-[140px]"
                                 value={val}
-                                min={isPd ? minPd : undefined}
                                 inputMode={field === "driverNumber" ? "numeric" : undefined}
                                 onChange={(e) => {
                                   let v = e.target.value;
                                   if (field === "driverNumber") v = v.replace(/\D/g, "");
-                                  if (isPd && minPd && v && v < minPd) return;
                                   updateGateRow(i, field, v);
                                 }}
                               />

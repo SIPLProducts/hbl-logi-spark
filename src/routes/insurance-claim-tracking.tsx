@@ -201,10 +201,20 @@ function InsuranceClaimTrackingPage() {
 
   const clearSearchData = () => {
     setApplied(false);
+    setLoading(false);
+
     setDispatchData([]);
     setInsuranceTrackingHeader([]);
     setInsuranceTrackingItems([]);
-    setLoading(false);
+
+    setSearchSap(null);
+    setFromDate(undefined);
+    setToDate(undefined);
+    setFPlant("");
+    setFDivision("");
+    setFTransporter("");
+    setFVehicleType("");
+    setFStatus("");
   };
 
   const resetFilters = () => {
@@ -230,6 +240,7 @@ function InsuranceClaimTrackingPage() {
     setPendingCount(0);
     setCompletedCount(0);
     setCasesCount(0);
+    clearSearchData();
   };
 
   const filteredRows = searchValue.trim()
@@ -894,7 +905,12 @@ function InsuranceClaimTrackingPage() {
     <div className="flex flex-col min-h-full">
       <Tabs
         value={tab}
-        onValueChange={(v) => setTab(v as "create" | "search")}
+        onValueChange={(v) => {
+          if (v === "create") {
+            clearSearchData();
+          }
+          setTab(v as "create" | "search");
+        }}
         className="w-full"
       >
         {/* Page header */}
@@ -914,6 +930,7 @@ function InsuranceClaimTrackingPage() {
               <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-7 shadow-soft">
                 <TabsTrigger
                   value="create"
+                  onClick={() => clearSearchData()}
                   className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
                 >
                   <Plus className="size-3" /> Create
@@ -959,6 +976,7 @@ function InsuranceClaimTrackingPage() {
                       onChange={(value) => {
                         setSap(value);
                         fetchPendingAndCompletedCounts(value);
+                        clearSearchData();
                       }}
                     />
                   </>
@@ -1242,7 +1260,8 @@ function InsuranceClaimTrackingPage() {
                                         {item.ZSUPT_DOC}
                                       </button>
                                     ) : (
-                                      "-"
+                                      // fall back to the file name found on disk for this record
+                                      item.ZLOCALFILES?.Supporting_Document || "-"
                                     )}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap">
@@ -1254,7 +1273,8 @@ function InsuranceClaimTrackingPage() {
                                         {item.ZAPP_DOC}
                                       </button>
                                     ) : (
-                                      "-"
+                                      // fall back to the file name found on disk for this record
+                                      item.ZLOCALFILES?.Approve_Document || "-"
                                     )}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZLOSS_DCL}</td>

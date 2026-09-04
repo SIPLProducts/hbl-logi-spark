@@ -80,6 +80,26 @@ function getLoggedInUser(): string {
   } catch { return ""; }
 }
 
+// Reads a File as a base64 data URI, e.g. "data:application/pdf;base64,JVBERi0x..."
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Show only the file name from a stored document path.
+//   "D:\Pravah\SAP\Freight_Billing\Freight_Bill\1000_5000_bill.pdf"
+//     -> "1000_5000_bill.pdf"
+// Returns "" when there is no path.
+function fileNameFromPath(storedPath?: string): string {
+  if (!storedPath) return "";
+  const parts = String(storedPath).split(/[\\/]/);
+  return parts[parts.length - 1] || "";
+}
+
 const BREAKDOWN_FIELDS = [
   "Basic Freight",
   "Detention Loading",
@@ -593,6 +613,17 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [transportationType, setTransportationType] = useState("");
+
+  // Freight Billing document uploads: record key -> { b64, name }
+  const [fbDocs, setFbDocs] = useState<Record<string, { b64: string; name: string }>>({});
+  const handlePickDoc = async (key: string, file: File | null) => {
+    if (!file) {
+      setFbDocs((prev) => ({ ...prev, [key]: { b64: "", name: "" } }));
+      return;
+    }
+    const b64 = await fileToBase64(file);
+    setFbDocs((prev) => ({ ...prev, [key]: { b64, name: file.name } }));
+  };
   const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(true);
 
@@ -674,6 +705,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setFullReferenceData([]);
     setInvoiceF4List([]);
     setInvoiceNumber("");
+    setFbDocs({});
     setTransportationType("");
     setSearchOptionsList([]);
     setShowForm(true);
@@ -814,7 +846,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       }
 
       const record = {
-        INV_NO: "",
+        INV_NO: invoiceNumber,
         REFNO: selectedRow.REF_NO,
         LINE_NO: selectedRow.LINE_NO,
         BILLNO: freightBillNo,
@@ -836,10 +868,14 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
 
         BILL_SUBMISSION: billSubmissionDate,
 
-        FRBILLUP: "",
-        UNLOADAPP: "",
-        DETENTUP: "",
-        WORDUP: "",
+        FRBILLUP: fbDocs.FRBILLUP?.b64 || "",
+        FRBILLUP_NAME: fbDocs.FRBILLUP?.name || "",
+        UNLOADAPP: fbDocs.UNLOADAPP?.b64 || "",
+        UNLOADAPP_NAME: fbDocs.UNLOADAPP?.name || "",
+        DETENTUP: fbDocs.DETENTUP?.b64 || "",
+        DETENTUP_NAME: fbDocs.DETENTUP?.name || "",
+        WORDUP: fbDocs.WORDUP?.b64 || "",
+        WORDUP_NAME: fbDocs.WORDUP?.name || "",
 
         // Freight Charges
         ZFC_BASIC: account ? freightBreakdown["Basic Freight"] : 0,
@@ -1530,6 +1566,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Vehicle No</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Created Date</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Vehicle Line</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Freight Bill</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Unloading Charges Approval</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Detention Charges</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Work Order</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Action</th>
                 </tr>
               </thead>
@@ -1596,6 +1636,21 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                         )}
                       </td>
                     ))}
+
+                    {/* Uploaded file name per document type (read-only):
+                        file found on disk for this record, else derived from the saved path. */}
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {item.ZLOCALFILES?.Freight_Bill || fileNameFromPath(item.ZFRB_PATH) || "-"}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {item.ZLOCALFILES?.Unloading_Charges_Approval || fileNameFromPath(item.ZUNAPP_PATH) || "-"}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {item.ZLOCALFILES?.Detention_Charges || fileNameFromPath(item.ZDUP_PATH) || "-"}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {item.ZLOCALFILES?.Work_Order || fileNameFromPath(item.ZWORDUP_PATH) || "-"}
+                    </td>
 
                     <td className="px-3 py-2 whitespace-nowrap text-center">
                       {!item.isEdit ? (
@@ -1850,23 +1905,37 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
               <label className={LABEL}>Freight Bill upload</label>
               <input
                 type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
                 disabled={provision}
+                onChange={(e) => handlePickDoc("FRBILLUP", e.target.files?.[0] ?? null)}
                 className={GREEN_INPUT + " py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"}
               />
             </div>
             <div>
               <label className={LABEL}>Unloading Charges Approval</label>
-              <input type="file" className={GREEN_INPUT + " py-1.5"} />
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={(e) => handlePickDoc("UNLOADAPP", e.target.files?.[0] ?? null)}
+                className={GREEN_INPUT + " py-1.5"}
+              />
             </div>
             <div>
               <label className={LABEL}>Detention Charges Uploading</label>
-              <input type="file" className={GREEN_INPUT + " py-1.5"} />
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={(e) => handlePickDoc("DETENTUP", e.target.files?.[0] ?? null)}
+                className={GREEN_INPUT + " py-1.5"}
+              />
             </div>
             <div>
               <label className={LABEL}>Work Order Uploading</label>
               <input
                 type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
                 disabled={provision}
+                onChange={(e) => handlePickDoc("WORDUP", e.target.files?.[0] ?? null)}
                 className={GREEN_INPUT + " py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"}
               />
             </div>

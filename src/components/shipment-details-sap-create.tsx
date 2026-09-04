@@ -1066,11 +1066,11 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
           </div>
 
           {/* Product table */}
-          <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
-            <table className="w-full text-[12px]">
-              <thead>
+          <div className="rounded-xl overflow-auto max-h-[500px] scrollbar-elegant border border-hairline shadow-elegant bg-surface">
+            <table className="w-full min-w-[1400px] text-[12px] border-collapse">
+              <thead className="sticky top-0 z-20">
                 <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-                  <th className="px-2 py-1.5 text-center w-10">
+                  <th className="px-2 py-1.5 text-center w-10 whitespace-nowrap">
                     <input
                       type="checkbox"
                       checked={isAllSelected}
@@ -1078,16 +1078,22 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                       className="size-4 accent-white"
                     />
                   </th>
-                  <th className="px-2 py-1.5 text-center w-14">Sl.No</th>
-                  <th className="px-2 py-1.5 text-center">Map ID</th>
-                  <th className="px-2 py-1.5 text-center">Product</th>
-                  <th className="px-2 py-1.5 text-center">Type of Material</th>
-                  <th className="px-2 py-1.5 text-center">Material Description</th>
-                  <th className="px-2 py-1.5 text-center">No of Sets/No (Qty)</th>
-                  <th className="px-2 py-1.5 text-center">Ah Loaded</th>
-                  <th className="px-2 py-1.5 text-center">Shipment Weight (kg)</th>
-                  <th className="px-2 py-1.5 text-center">Battery Condition</th>
-                  <th className="px-2 py-1.5 text-center w-24">Action</th>
+                  <th className="px-2 py-1.5 text-center w-14 whitespace-nowrap">Sl.No</th>
+                  {isSap && (
+                    <>
+                      <th className="px-2 py-1.5 text-center whitespace-nowrap">Invoice Number</th>
+                      <th className="px-2 py-1.5 text-center whitespace-nowrap">POSNR</th>
+                    </>
+                  )}
+                  <th className="px-2 py-1.5 text-center whitespace-nowrap">Map ID</th>
+                  <th className="px-2 py-1.5 text-center whitespace-nowrap">Product</th>
+                  <th className="px-2 py-1.5 text-center whitespace-nowrap">Type of Material</th>
+                  <th className="px-2 py-1.5 text-center whitespace-nowrap">Material Description</th>
+                  <th className="px-2 py-1.5 text-center whitespace-nowrap">No of Sets/No (Qty)</th>
+                  <th className="px-2 py-1.5 text-center whitespace-nowrap">Ah Loaded</th>
+                  <th className="px-2 py-1.5 text-center whitespace-nowrap">Shipment Weight (kg)</th>
+                  <th className="px-2 py-1.5 text-center whitespace-nowrap">Battery Condition</th>
+                  <th className="px-2 py-1.5 text-center w-24 whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -1102,6 +1108,24 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                       />
                     </td>
                     <td className="px-2 py-1 text-center">{idx + 1}</td>
+                    {isSap && (
+                      <>
+                        <td className="px-2 py-1">
+                          <input
+                            value={row.VBELN || ""}
+                            readOnly
+                            className={GREEN_INPUT + " text-center"}
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <input
+                            value={row.POSNR || ""}
+                            readOnly
+                            className={GREEN_INPUT + " text-center"}
+                          />
+                        </td>
+                      </>
+                    )}
                     <td className="px-2 py-1">
                       <select
                         value={row.ZMAPID}

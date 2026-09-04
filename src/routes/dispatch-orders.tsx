@@ -126,22 +126,26 @@ function DispatchOrdersPage() {
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
 
   // Pending/Completed counts from API
-  const [counts, setCounts] = useState({ pending: 0, completed: 0 });
+  const [counts, setCounts] = useState<{ pending: number | string; completed: number | string }>({
+    pending: 0,
+    completed: 0,
+  });
+
+  const fetchCounts = async () => {
+    try {
+      const response = await service.FetchDispatchOrderPendingCounts();
+      setCounts({
+        pending: response?.PENDING ?? 0,
+        completed: response?.COMPLETED ?? 0,
+      });
+    } catch (err) {
+      console.error("Failed to fetch counts:", err);
+    }
+  };
 
   // Fetch pending/completed counts on page load
   useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const response = await service.FetchDispatchOrderPendingCounts();
-        setCounts({
-          pending: response?.PENDING ?? 0,
-          completed: response?.COMPLETED ?? 0,
-        });
-      } catch (err) {
-        console.error("Failed to fetch counts:", err);
-      }
-    };
-    fetchCounts();
+    void fetchCounts();
   }, []);
 
   const onExecute = async () => {
@@ -178,10 +182,38 @@ function DispatchOrdersPage() {
           text: response.MESSAGE,
         });
         setStatus("empty");
+        if (response.PENDING !== undefined || response.COMPLETED !== undefined) {
+          setCounts({
+            pending: response.PENDING ?? 0,
+            completed: response.COMPLETED ?? 0,
+          });
+        } else {
+          void fetchCounts();
+        }
         return;
       }
 
-      const raw = response?.data || response || [];
+      if (!response) {
+        void fetchCounts();
+        setStatus("empty");
+        return;
+      }
+
+      // Update Pending and Completed counts from the response
+      if (response.PENDING !== undefined || response.COMPLETED !== undefined) {
+        setCounts({
+          pending: response.PENDING ?? 0,
+          completed: response.COMPLETED ?? 0,
+        });
+      }
+
+      const raw = Array.isArray(response?.LIST)
+        ? response.LIST
+        : Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response)
+        ? response
+        : [];
 
       // Map API UPPERCASE keys to camelCase DispatchOrderRow shape
       const data: DispatchOrderRow[] = raw.map((item: any, index: number) => ({
@@ -206,17 +238,21 @@ function DispatchOrdersPage() {
       console.error(err);
       setError("Failed to fetch data.");
       setStatus("empty");
+      void fetchCounts();
     }
   };
 
   const onClear = () => {
     setFromDate("");
     setToDate("");
+    setPlant("");
+    setDivision("");
     setSearch("");
     setRows([]);
     setStatus("idle");
     setError(null);
     setPage(1);
+    void fetchCounts();
   };
 
   useEffect(() => {

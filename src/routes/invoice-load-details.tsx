@@ -98,6 +98,12 @@ function fireAlert(tone: BannerTone, text: string, title?: string) {
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
+const DISABLED_INPUT =
+  "h-7 w-full rounded-md bg-muted/60 dark:bg-muted/30 border border-input px-2 text-[12px] text-foreground font-medium outline-none cursor-not-allowed text-center";
+const INPUT_SAP_GREEN =
+  "h-7 w-full rounded-md bg-emerald-50 border-2 border-emerald-400 px-2 text-[12px] text-emerald-900 font-semibold outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-300 text-center";
+const INPUT_LOGIC_PURPLE =
+  "h-7 w-full rounded-md bg-violet-50 border-2 border-violet-400 px-2 text-[12px] text-violet-900 font-semibold outline-none cursor-not-allowed text-center";
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
 /* Reports-style multi-select dropdown (checkboxes + search) for the F4 lists.
@@ -1254,8 +1260,9 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                           <input
                             type="number"
                             value={row.ZTRUC_WT}
-                            onChange={(e) => onPassingWeightChange(row.id, e.target.value)}
-                            className={GREEN_INPUT + " text-center"}
+                            disabled
+                            readOnly
+                            className={DISABLED_INPUT}
                           />
                         </td>
                         <td className="px-2 py-1">
@@ -1263,21 +1270,23 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                             type="number"
                             value={row.ZACT_LOAD}
                             onChange={(e) => updateRow(row.id, { ZACT_LOAD: e.target.value })}
-                            className={GREEN_INPUT + " text-center"}
+                            className={INPUT_SAP_GREEN}
                           />
                         </td>
                         <td className="px-2 py-1">
                           <input
                             value={row.ZLF_WT}
-                            onChange={(e) => updateRow(row.id, { ZLF_WT: e.target.value })}
-                            className={GREEN_INPUT + " text-center"}
+                            disabled
+                            readOnly
+                            className={INPUT_LOGIC_PURPLE}
                           />
                         </td>
                         <td className="px-2 py-1">
                           <input
                             value={row.ZTRUC_VOL}
-                            onChange={(e) => updateRow(row.id, { ZTRUC_VOL: e.target.value })}
-                            className={GREEN_INPUT + " text-center"}
+                            disabled
+                            readOnly
+                            className={DISABLED_INPUT}
                           />
                         </td>
                         <td className="px-2 py-1">
@@ -1286,15 +1295,18 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                             disabled={isPartLoad}
                             onChange={(e) => updateRow(row.id, { ZACT_VOL: e.target.value })}
                             onBlur={() => onActualVolumeBlur(row.id)}
-                            className={GREEN_INPUT + " text-center disabled:opacity-50"}
+                            className={cn(
+                              INPUT_SAP_GREEN,
+                              isPartLoad && "opacity-50 cursor-not-allowed"
+                            )}
                           />
                         </td>
                         <td className="px-2 py-1">
                           <input
                             value={row.ZLF_VOL}
-                            disabled={isPartLoad}
-                            onChange={(e) => updateRow(row.id, { ZLF_VOL: e.target.value })}
-                            className={GREEN_INPUT + " text-center disabled:opacity-50"}
+                            disabled
+                            readOnly
+                            className={INPUT_LOGIC_PURPLE}
                           />
                         </td>
                         {/* <td className="px-2 py-1">

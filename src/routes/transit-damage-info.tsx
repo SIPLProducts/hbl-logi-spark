@@ -201,13 +201,20 @@ function TransitDamageInfoPage() {
 
   const clearSearchData = () => {
     setApplied(false);
-
+    setLoading(false);
 
     setDispatchData([]);
     setTransitDamageInfoHeader([]);
     setTransitDamageInfoItems([]);
 
-    setLoading(false);
+    setSearchSap(null);
+    setFromDate(undefined);
+    setToDate(undefined);
+    setFPlant("");
+    setFDivision("");
+    setFTransporter("");
+    setFVehicleType("");
+    setFStatus("");
   };
 
   const resetFilters = () => {
@@ -233,6 +240,7 @@ function TransitDamageInfoPage() {
     setPendingCount(0);
     setCompletedCount(0);
     setCasesCount(0);
+    clearSearchData();
   };
 
   const filteredRows = searchValue.trim()
@@ -855,7 +863,12 @@ function TransitDamageInfoPage() {
     <div className="flex flex-col min-h-full">
       <Tabs
         value={tab}
-        onValueChange={(v) => setTab(v as "create" | "search")}
+        onValueChange={(v) => {
+          if (v === "create") {
+            clearSearchData();
+          }
+          setTab(v as "create" | "search");
+        }}
         className="w-full"
       >
         {/* Page header */}
@@ -875,6 +888,7 @@ function TransitDamageInfoPage() {
               <TabsList className="bg-surface border border-hairline rounded-lg p-0.5 h-7 shadow-soft">
                 <TabsTrigger
                   value="create"
+                  onClick={() => clearSearchData()}
                   className="data-[state=active]:bg-gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-cta rounded-md px-2 py-0.5 text-[11px] font-semibold gap-1 transition-all"
                 >
                   <Plus className="size-3" /> Create
@@ -920,6 +934,7 @@ function TransitDamageInfoPage() {
                       onChange={(value) => {
                         setSap(value);
                         fetchPendingAndCompletedCounts(value);
+                        clearSearchData();
                       }}
                     />
                   </>
@@ -1186,10 +1201,10 @@ function TransitDamageInfoPage() {
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZFSR_RPT_DT}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZBASIC_VALUE}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZINC_DATE}</td>
-                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZDIMAGES || "-"}</td>
-                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZFSRREP || "-"}</td>
-                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZFIRREP || "-"}</td>
-                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZCOF || "-"}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.Images || item.ZDIMAGES || "-"}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.FSR_Report || item.ZFSRREP || "-"}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.FIR_Report || item.ZFIRREP || "-"}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.COF || item.ZCOF || "-"}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZCUSTOMER}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZCONSIGN_NAME}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZDAMAGE_RMK}</td>
