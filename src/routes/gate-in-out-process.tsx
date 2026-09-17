@@ -24,7 +24,9 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { GateDatePicker } from "@/components/ui/date-picker";
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -929,31 +931,11 @@ function DateField({
   onChange: (d: Date | undefined) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn("h-8 justify-start text-left font-normal", !value && "text-muted-foreground")}
-          >
-            <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
-            {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={value}
-            onSelect={onChange}
-            initialFocus
-            className={cn("p-3 pointer-events-auto")}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <GateDatePicker
+      label={label}
+      value={value}
+      onChange={(d) => onChange(d)}
+    />
   );
 }
 
@@ -1022,6 +1004,11 @@ type GateRefRow = {
   TRANSPORTER: string;
   LINE_NO: string;
   selected: boolean;
+  lrOptions?: string[];
+  compInvoices?: string[];
+  notAllowed?: boolean;
+  rawItem?: any;
+  ZNO_TRUCKS?: number | string;
 };
 
 const EMPTY_GATE_REF_ROW = (): GateRefRow => ({
@@ -1032,7 +1019,188 @@ const EMPTY_GATE_REF_ROW = (): GateRefRow => ({
   TRANSPORTER: "",
   LINE_NO: "",
   selected: false,
+  lrOptions: [],
+  compInvoices: [],
+  notAllowed: false,
+  rawItem: null,
+  ZNO_TRUCKS: "",
 });
+
+const GATE_ROW_DISABLED =
+  "border-t border-hairline/80 bg-slate-100/90 dark:bg-zinc-800/80 text-muted-foreground";
+const GATE_INPUT_DISABLED_ROW =
+  "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed text-center";
+
+/** Multi-select dropdown for table rows (LR Number, Invoice Number, etc.) */
+function GateTableMultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select LR No",
+  className,
+  disabled = false,
+  readOnly = false,
+  title,
+  searchPlaceholder,
+  emptyText,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+  title?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const cleanOptions = useMemo(
+    () => Array.from(new Set(options.map((o) => (o || "").trim()).filter(Boolean))),
+    [options]
+  );
+
+  const selected = useMemo(
+    () =>
+      value
+        ? value
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+        : [],
+    [value]
+  );
+
+  const filtered = useMemo(
+    () =>
+      search
+        ? cleanOptions.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+        : cleanOptions,
+    [search, cleanOptions]
+  );
+
+  const toggle = (v: string) => {
+    if (disabled || readOnly) return;
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const selectAll = () => {
+    if (disabled || readOnly) return;
+    onChange(cleanOptions.join(","));
+  };
+
+  const clearAll = () => {
+    if (disabled || readOnly) return;
+    onChange("");
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  const entityName = placeholder.replace(/^Select\s*/i, "").trim() || "Options";
+  const headerTitle = title || `Select ${entityName}`;
+  const searchInputPlaceholder = searchPlaceholder || `Search ${entityName}...`;
+  const noOptionsText = emptyText || `No ${entityName} found`;
+
+  return (
+    <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          title={selected.join(", ")}
+          className={
+            (className ? className + " " : "") +
+            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+            (selected.length === 0 ? " text-muted-foreground" : "")
+          }
+        >
+          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant"
+        align="start"
+        side="bottom"
+        sideOffset={4}
+        avoidCollisions={true}
+        collisionPadding={8}
+      >
+        <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
+          <span className="font-semibold text-muted-foreground">{headerTitle} ({cleanOptions.length})</span>
+          {cleanOptions.length > 1 && !readOnly && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                All
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-muted-foreground hover:underline font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+        {cleanOptions.length > 5 && (
+          <div className="p-1.5 border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={searchInputPlaceholder}
+              className="h-6 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+        )}
+        <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
+          {filtered.length === 0 ? (
+            <div className="p-2 text-center text-[11px] text-muted-foreground">{noOptionsText}</div>
+          ) : (
+            filtered.map((o) => {
+              const isChecked = selected.includes(o);
+              return (
+                <label
+                  key={o}
+                  className={
+                    "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] hover:bg-muted/60 transition-colors " +
+                    (readOnly ? "cursor-default" : "cursor-pointer")
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    disabled={readOnly}
+                    onChange={() => toggle(o)}
+                    className="size-3.5 accent-primary rounded cursor-pointer"
+                  />
+                  <span className="font-mono text-foreground">{o}</span>
+                </label>
+              );
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const GATE_SEARCH_OPTIONS = [
   { key: "ref_no", label: "Reference No" },
@@ -1265,7 +1433,7 @@ for (let h = 0; h < 24; h++) {
 
 function parseIsoDateTime(val?: string) {
   if (!val) return null;
-  const match = val.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/);
+  const match = val.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2}))?/);
   if (!match) return null;
   return {
     year: parseInt(match[1], 10),
@@ -1275,6 +1443,37 @@ function parseIsoDateTime(val?: string) {
     minute: match[5] !== undefined ? parseInt(match[5], 10) : 0,
     timeStr: match[4] !== undefined && match[5] !== undefined ? `${match[4]}:${match[5]}` : "12:00",
   };
+}
+
+/**
+ * Returns the earliest allowed Reported Date and Time (start of the next calendar date: YYYY-MM-DDT00:00).
+ * If Required Date is "2026-09-08 15:48", returns "2026-09-09T00:00".
+ * The same date or any earlier date cannot be selected or entered.
+ */
+function getNextCalendarDate(isoDateTime?: string): string {
+  if (!isoDateTime) return "";
+  const parsed = parseIsoDateTime(isoDateTime);
+  if (!parsed) return "";
+  const nextDay = new Date(parsed.year, parsed.month, parsed.day);
+  nextDay.setDate(nextDay.getDate() + 1);
+  return `${nextDay.getFullYear()}-${padZero(nextDay.getMonth() + 1)}-${padZero(nextDay.getDate())}T00:00`;
+}
+
+/**
+ * Validates whether Reported Date and Time is on or after the next calendar day
+ * relative to Required Date and Time.
+ * Returns false if Reported Date is on the same calendar day or earlier.
+ */
+function isReportedDateValid(requiredDateTime?: string, reportedDateTime?: string): boolean {
+  if (!requiredDateTime || !reportedDateTime) return true;
+  const minAllowedDateTime = getNextCalendarDate(requiredDateTime);
+  if (!minAllowedDateTime) return true;
+
+  const minCalendarDate = minAllowedDateTime.slice(0, 10);
+  const reportedCalendarDate = reportedDateTime.slice(0, 10);
+
+  // Must be strictly on or after the next calendar date
+  return reportedCalendarDate >= minCalendarDate;
 }
 
 /* ── Custom Date & Time Picker Matching Reference Design ── */
@@ -1315,6 +1514,7 @@ function GateDateTimePicker({
   value,
   onChange,
   min,
+  minDateOnly = false,
   placeholder = "Select Date & Time",
   disabled = false,
   className,
@@ -1322,6 +1522,7 @@ function GateDateTimePicker({
   value?: string;
   onChange?: (value: string) => void;
   min?: string;
+  minDateOnly?: boolean;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -1367,21 +1568,24 @@ function GateDateTimePicker({
         setCustomTimeInput(parsed.timeStr);
       } else {
         const d = new Date();
+        const minDate = minParsed ? new Date(minParsed.year, minParsed.month, minParsed.day) : null;
+        const initialDate = minDate && d < minDate ? minDate : d;
+
         const curMin = Math.floor(d.getMinutes() / 15) * 15;
         const curH = d.getHours() < 10 ? `0${d.getHours()}` : `${d.getHours()}`;
         const curM = curMin < 10 ? `0${curMin}` : `${curMin}`;
         const fallbackTime = `${curH}:${curM}`;
 
-        setViewYear(d.getFullYear());
-        setViewMonth(d.getMonth());
-        setSelectedYear(d.getFullYear());
-        setSelectedMonth(d.getMonth());
-        setSelectedDay(d.getDate());
+        setViewYear(initialDate.getFullYear());
+        setViewMonth(initialDate.getMonth());
+        setSelectedYear(initialDate.getFullYear());
+        setSelectedMonth(initialDate.getMonth());
+        setSelectedDay(initialDate.getDate());
         setSelectedTime(fallbackTime);
         setCustomTimeInput(fallbackTime);
       }
     }
-  }, [open, parsed]);
+  }, [open, parsed, minParsed]);
 
   // Scroll active time into center view when popover opens or selection changes
   useEffect(() => {
@@ -1405,6 +1609,7 @@ function GateDateTimePicker({
     const curDateStr = `${selectedYear}-${padZero(selectedMonth + 1)}-${padZero(selectedDay)}`;
     const minDateStr = `${minParsed.year}-${padZero(minParsed.month + 1)}-${padZero(minParsed.day)}`;
     if (curDateStr === minDateStr) {
+      if (minDateOnly) return false;
       return timeStr <= minParsed.timeStr;
     }
     return curDateStr < minDateStr;
@@ -1531,6 +1736,10 @@ function GateDateTimePicker({
     const m = selectedMonth ?? now.getMonth();
     const d = selectedDay ?? now.getDate();
 
+    if (isDateDisabled(y, m, d)) {
+      return;
+    }
+
     const isoStr = `${y}-${padZero(m + 1)}-${padZero(d)}T${confirmedTime}`;
     onChange?.(isoStr);
     setOpen(false);
@@ -1538,55 +1747,80 @@ function GateDateTimePicker({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <div
-        className={cn(
-          "relative flex items-center h-7 w-full rounded-md border border-input bg-white dark:bg-surface text-[12px] transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30",
-          disabled && "opacity-60 cursor-not-allowed",
-          className
-        )}
-      >
-        <input
-          type="text"
-          disabled={disabled}
-          placeholder={placeholder}
-          value={rawInput}
-          onChange={(e) => {
-            const typed = e.target.value;
-            setRawInput(typed);
-            const parsedIso = parseTypedDateTime(typed);
-            if (parsedIso) {
-              onChange?.(parsedIso);
-            }
-          }}
-          onBlur={() => {
-            if (parsed) {
-              setRawInput(displayFormatted);
-            } else if (!rawInput.trim()) {
-              onChange?.("");
-              setRawInput("");
-            }
-          }}
-          className="h-full w-full bg-transparent px-2 text-[12px] text-foreground font-medium outline-none placeholder:text-muted-foreground placeholder:font-normal"
-        />
-        <PopoverTrigger asChild>
-          <button
-            type="button"
+      <PopoverAnchor asChild>
+        <div
+          className={cn(
+            "relative flex items-center h-7 w-full rounded-md border border-input bg-white dark:bg-surface text-[12px] transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30",
+            disabled && "opacity-60 cursor-not-allowed",
+            className
+          )}
+        >
+          <input
+            type="text"
             disabled={disabled}
-            className="h-full px-1.5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
-            aria-label="Open Calendar and Time Picker"
-          >
-            <CalendarIcon className="size-3.5 opacity-70 hover:opacity-100" />
-          </button>
-        </PopoverTrigger>
-      </div>
+            placeholder={placeholder}
+            value={rawInput}
+            onClick={() => !disabled && setOpen((prev) => !prev)}
+            onChange={(e) => {
+              const typed = e.target.value;
+              setRawInput(typed);
+              const parsedIso = parseTypedDateTime(typed);
+              if (parsedIso) {
+                const p = parseIsoDateTime(parsedIso);
+                if (p && isDateDisabled(p.year, p.month, p.day)) {
+                  return;
+                }
+                onChange?.(parsedIso);
+              }
+            }}
+            onBlur={() => {
+              const parsedIso = parseTypedDateTime(rawInput);
+              if (parsedIso) {
+                const p = parseIsoDateTime(parsedIso);
+                if (p && isDateDisabled(p.year, p.month, p.day)) {
+                  Swal.fire({
+                    icon: "warning",
+                    title: "Invalid Date & Time",
+                    text: "Reported Date and Time must be at least one calendar day after Required Date and Time.",
+                    timer: 2500,
+                    showConfirmButton: false,
+                  });
+                  setRawInput(displayFormatted);
+                  return;
+                }
+              }
+              if (parsed) {
+                setRawInput(displayFormatted);
+              } else if (!rawInput.trim()) {
+                onChange?.("");
+                setRawInput("");
+              }
+            }}
+            className="h-full w-full bg-transparent px-2 text-[12px] text-foreground font-medium outline-none placeholder:text-muted-foreground placeholder:font-normal"
+          />
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              disabled={disabled}
+              className="h-full px-1.5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+              aria-label="Open Calendar and Time Picker"
+            >
+              <CalendarIcon className="size-3.5 opacity-70 hover:opacity-100" />
+            </button>
+          </PopoverTrigger>
+        </div>
+      </PopoverAnchor>
 
       <PopoverContent
+        side="bottom"
         align="start"
-        sideOffset={6}
+        sideOffset={4}
+        avoidCollisions={true}
+        collisionPadding={8}
         className="w-auto p-0 bg-white dark:bg-surface border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden"
       >
         <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800">
-          
+
           {/* LEFT: Date Calendar */}
           <div className="p-3.5 w-[260px] flex flex-col justify-between select-none">
             <div>
@@ -1640,10 +1874,10 @@ function GateDateTimePicker({
                         isSel
                           ? "bg-blue-600 text-white shadow-sm font-semibold"
                           : isDis
-                          ? "text-slate-300 dark:text-slate-700 cursor-not-allowed pointer-events-none"
-                          : isCurMonth
-                          ? "text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                          : "text-slate-300 dark:text-slate-600 hover:bg-slate-50"
+                            ? "text-slate-300 dark:text-slate-700 cursor-not-allowed pointer-events-none"
+                            : isCurMonth
+                              ? "text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              : "text-slate-300 dark:text-slate-600 hover:bg-slate-50"
                       )}
                     >
                       {cell.day}
@@ -1664,8 +1898,12 @@ function GateDateTimePicker({
               </button>
               <button
                 type="button"
+                disabled={isDateDisabled(now.getFullYear(), now.getMonth(), now.getDate())}
                 onClick={handleToday}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 transition-colors"
+                className={cn(
+                  "text-blue-600 hover:text-blue-700 dark:text-blue-400 transition-colors",
+                  isDateDisabled(now.getFullYear(), now.getMonth(), now.getDate()) && "opacity-40 cursor-not-allowed pointer-events-none"
+                )}
               >
                 Today
               </button>
@@ -1822,6 +2060,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       ewayExpireDate: string;
       insuranceScope: string;
       kilometres: string;
+      rawHeader?: any;
     }[]
   >([]);
 
@@ -1860,10 +2099,140 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     })();
   }, []);
 
+  // ── F4 Dropdown state for Search Edit & Form Dropdowns ──
+  const [plantList, setPlantList] = useState<string[]>([]);
+  const [transporterList, setTransporterList] = useState<string[]>([]);
+  const [statesList, setStatesList] = useState<{ STATE: string }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res: any = await service.fetchVendorCode();
+        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+
+        const plants: string[] = Array.isArray(data.PLANT)
+          ? data.PLANT.map((p: any) => {
+              const desc = String(p.PLANT_DESC || "").split("_")[0].trim();
+              return desc ? `${p.PLANT}_${desc}` : String(p.PLANT || "");
+            }).filter(Boolean)
+          : [];
+
+        const transporters: string[] = Array.isArray(data.VEND_CODE)
+          ? Array.from(new Set(data.VEND_CODE.map((v: any) => String(v.TRANSPORTER || "")).filter(Boolean)))
+          : [];
+
+        if (plants.length > 0) setPlantList(plants);
+        if (transporters.length > 0) setTransporterList(transporters);
+      } catch (err) {
+        console.error("fetchVendorCode failed in GateInOutCreate:", err);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res: any = await service.getpdb();
+        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+        if (Array.isArray(data.STATES)) {
+          setStatesList(data.STATES);
+        }
+      } catch (err) {
+        console.error("getpdb failed in GateInOutCreate:", err);
+      }
+    })();
+  }, []);
+
+  // Handler for Destination State change in searchResultItems (auto-fetches zone)
+  const handleItemStateChange = async (itemIndex: number, newState: string) => {
+    const next = [...searchResultItems];
+    next[itemIndex] = { ...next[itemIndex], ZSTATE: newState };
+    setSearchResultItems(next);
+
+    if (!newState) return;
+    try {
+      const res: any = await service.fetchzone({ STATE: newState });
+      if (res?.ZONE) {
+        setSearchResultItems((prev) => {
+          const updated = [...prev];
+          if (updated[itemIndex]) {
+            updated[itemIndex] = { ...updated[itemIndex], ZZONE: res.ZONE };
+          }
+          return updated;
+        });
+      }
+    } catch (err) {
+      console.error("fetchzone failed in search item edit:", err);
+    }
+  };
+
+  // Handler for TAT Type change in searchResultItems (auto-calculates TAT Days and ETA)
+  const handleItemTatTypeChange = async (itemIndex: number, newTatType: string) => {
+    const currentItem = searchResultItems[itemIndex];
+    const next = [...searchResultItems];
+    next[itemIndex] = { ...next[itemIndex], TAT_TYPE: newTatType };
+    setSearchResultItems(next);
+
+    if (!newTatType) return;
+
+    const invNo = currentItem?.ZINV_NO || "";
+    const payload: any = {
+      BRANCH: currentItem?.ZSTATE || "",
+      BRANCH_ZONE: currentItem?.ZZONE || "",
+      TAT_TYPE: newTatType,
+    };
+    if (isSap) payload.VBELN = invNo;
+    else payload.INV_NO = invNo;
+
+    try {
+      const res: any = isSap ? await service.fetchTAT(payload) : await service.fetchNonSapTAT(payload);
+      if (res?.TAT || res?.ETA) {
+        const tatDays = res.TAT != null ? String(res.TAT) : "";
+
+        // ETA = Physical Dispatch Date + TAT Days (+1 extra day for every TAT Type except Revised TAT)
+        const dispatchDate = currentItem?.PHYSICAL_DISPATCH_DATE_TIME
+          ? currentItem.PHYSICAL_DISPATCH_DATE_TIME.slice(0, 10)
+          : "";
+        let calculatedEta = res.ETA || "";
+
+        if (dispatchDate && tatDays) {
+          const extraDay = newTatType === "Revised TAT" ? 0 : 1;
+          const [y, m, d] = dispatchDate.split("-").map(Number);
+          if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+            const dateObj = new Date(y, m - 1, d);
+            dateObj.setDate(dateObj.getDate() + Number(tatDays) + extraDay);
+            calculatedEta = format(dateObj, "yyyy-MM-dd");
+          }
+        }
+
+        setSearchResultItems((prev) => {
+          const updated = [...prev];
+          if (updated[itemIndex]) {
+            updated[itemIndex] = {
+              ...updated[itemIndex],
+              TAT_DAYS: tatDays || updated[itemIndex].TAT_DAYS,
+              ETA: calculatedEta || updated[itemIndex].ETA,
+            };
+          }
+          return updated;
+        });
+      }
+    } catch (err) {
+      console.error("fetchTAT failed in search item edit:", err);
+    }
+  };
+
   // ── Reference table state ──
   const [refTableData, setRefTableData] = useState<GateRefRow[]>([EMPTY_GATE_REF_ROW()]);
   const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
   const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
+  const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
+  const [compInvoicesModalData, setCompInvoicesModalData] = useState<{ refNo: string; invoices: string[] }>({ refNo: "", invoices: [] });
+
+  const openCompletedInvoicesModal = (row: GateRefRow) => {
+    setCompInvoicesModalData({ refNo: row.REF_NO || "", invoices: row.compInvoices || [] });
+    setCompInvoicesModalOpen(true);
+  };
 
   // ── Invoice lookup + search bar state ──
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -1873,28 +2242,66 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   // Recompute invoice options from the reference rows the user has checked
   // (mirrors ShipmentDetailsSapCreate.updateInvoiceListForSelectedItems).
   useEffect(() => {
-    const selectedMapIds = refTableData
-      .filter((r) => r.selected && r.MAPID)
-      .map((r) => String(r.MAPID));
-
-    if (selectedMapIds.length === 0) {
+    const selectedRefs = refTableData.filter((r) => r.selected);
+    if (selectedRefs.length === 0) {
       setInvoiceF4List([]);
+      setInvoiceNumber("");
       return;
     }
 
+    const selectedMapIds = selectedRefs.map((r) => String(r.MAPID)).filter(Boolean);
+    const selectedRefNos = selectedRefs.map((r) => String(r.REF_NO)).filter(Boolean);
+
     const f4: string[] = [];
     fullReferenceData.forEach((refItem: any) => {
-      if (selectedMapIds.includes(String(refItem.MAPID)) && Array.isArray(refItem.INV_NO)) {
-        refItem.INV_NO.forEach((inv: any) => {
-          if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
+      const isMatch =
+        (refItem.MAPID && selectedMapIds.includes(String(refItem.MAPID))) ||
+        (refItem.REF_NO && selectedRefNos.includes(String(refItem.REF_NO)));
+
+      if (isMatch) {
+        if (Array.isArray(refItem.INV_NO)) {
+          refItem.INV_NO.forEach((inv: any) => {
+            const v = typeof inv === "object" && inv !== null ? (inv.VBELN || inv.INV_NO || inv.INVOICE || inv.inv_no) : String(inv);
+            if (v && !f4.includes(String(v).trim())) f4.push(String(v).trim());
+          });
+        } else if (typeof refItem.INV_NO === "string" && refItem.INV_NO.trim()) {
+          const v = refItem.INV_NO.trim();
+          if (!f4.includes(v)) f4.push(v);
+        }
+        if (refItem.ZINV_NO && !f4.includes(String(refItem.ZINV_NO).trim())) {
+          f4.push(String(refItem.ZINV_NO).trim());
+        }
+        if (refItem.VBELN && !f4.includes(String(refItem.VBELN).trim())) {
+          f4.push(String(refItem.VBELN).trim());
+        }
+      }
+    });
+
+    // Also check rawItem directly attached to selected reference table rows
+    selectedRefs.forEach((r) => {
+      const raw = r.rawItem;
+      if (raw && Array.isArray(raw.INV_NO)) {
+        raw.INV_NO.forEach((inv: any) => {
+          const v = typeof inv === "object" && inv !== null ? (inv.VBELN || inv.INV_NO || inv.INVOICE || inv.inv_no) : String(inv);
+          if (v && !f4.includes(String(v).trim())) f4.push(String(v).trim());
         });
       }
     });
+
     setInvoiceF4List(f4);
+
+    // When reference rows are selected, automatically populate the Invoice Number field if empty
+    if (f4.length > 0) {
+      const currentInvs = invoiceNumber.split(",").map((s) => s.trim()).filter(Boolean);
+      const stillValid = currentInvs.filter((inv) => f4.includes(inv));
+      if (stillValid.length === 0) {
+        setInvoiceNumber(f4.join(","));
+      }
+    }
   }, [refTableData, fullReferenceData]);
 
   const handleRefRowChange = (index: number, field: keyof GateRefRow, value: string) =>
-    setRefTableData((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+    setRefTableData((prev) => prev.map((r, i) => (i === index ? (r.notAllowed ? r : { ...r, [field]: value }) : r)));
 
   // ── Row blur → global reference fetch (mirrors ShipmentDetailsSapCreate.onFieldBlur) ──
   const fetchGlobalReferences = async (index: number, fieldKey: "REF_NO" | "WORK_ORDER_NO" | "LR_NO" | "TRANSPORTER") => {
@@ -1935,15 +2342,53 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       if (Array.isArray(res) && res.length > 0) {
         setFullReferenceData(res);
         setRefTableData(
-          res.map((item: any) => ({
-            MAPID: item.MAPID || "",
-            REF_NO: item.REF_NO || "",
-            WORK_ORDER_NO: item.WORK_ORDER_NO || "",
-            LR_NO: item.LR_NO || "",
-            TRANSPORTER: item.TRANSPORTER || "",
-            LINE_NO: item.LINE_NO || "",
-            selected: false,
-          }))
+          res.map((item: any) => {
+            let lrOptions: string[] = [];
+            if (Array.isArray(item.LR_NO)) {
+              lrOptions = item.LR_NO
+                .map((x: any) => (typeof x === "object" && x !== null ? x.LR : String(x)))
+                .filter(Boolean);
+            } else if (typeof item.LR_NO === "string" && item.LR_NO.trim()) {
+              lrOptions = [item.LR_NO.trim()];
+            }
+            lrOptions = Array.from(new Set(lrOptions));
+
+            let compInvoices: string[] = [];
+            if (Array.isArray(item.COMP_INV_NO)) {
+              compInvoices = item.COMP_INV_NO
+                .map((x: any) => (typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x)))
+                .filter(Boolean);
+            } else if (typeof item.COMP_INV_NO === "string" && item.COMP_INV_NO.trim()) {
+              compInvoices = [item.COMP_INV_NO.trim()];
+            }
+            compInvoices = Array.from(new Set(compInvoices));
+
+            const isNotAllowed = String(item.ZNOT_ALLOWED || "").trim().toUpperCase() === "X";
+            const zNoTrucksVal =
+              item.ZNO_TRUCKS ??
+              item.NO_OF_TRUCKS ??
+              item.NO_TRUCKS ??
+              item.ZNO_TRUCK ??
+              item.NO_TRUCK ??
+              item["No. of Trucks"] ??
+              item["No of Trucks"] ??
+              item.noOfTrucks;
+
+            return {
+              MAPID: item.MAPID != null ? String(item.MAPID) : "",
+              REF_NO: item.REF_NO != null ? String(item.REF_NO) : "",
+              WORK_ORDER_NO: item.WORK_ORDER_NO != null ? String(item.WORK_ORDER_NO) : "",
+              LR_NO: lrOptions.length > 0 ? lrOptions.join(",") : (item.LR_NO != null ? String(item.LR_NO) : ""),
+              lrOptions,
+              TRANSPORTER: item.TRANSPORTER != null ? String(item.TRANSPORTER) : "",
+              LINE_NO: item.LINE_NO != null ? String(item.LINE_NO) : "",
+              selected: false,
+              compInvoices,
+              notAllowed: isNotAllowed,
+              rawItem: item,
+              ZNO_TRUCKS: zNoTrucksVal != null ? zNoTrucksVal : "",
+            };
+          })
         );
       } else {
         setRefTableData([EMPTY_GATE_REF_ROW()]);
@@ -1955,7 +2400,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   };
 
   const toggleRefRowSelect = (index: number) =>
-    setRefTableData((prev) => prev.map((r, i) => (i === index ? { ...r, selected: !r.selected } : r)));
+    setRefTableData((prev) => prev.map((r, i) => (i === index ? (r.notAllowed ? r : { ...r, selected: !r.selected }) : r)));
 
   // Each Header-table row's E-way Bill / Insurance Scope / Kilometres are edited
   // independently. Row 0 also mirrors into the existing scalar state below, since
@@ -1977,20 +2422,362 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     setRefTableData((prev) => prev.filter((_, i) => i !== index));
   };
 
+  /**
+   * Validates the condition when fetching invoice for a selected Reference Table row:
+   *   No. of Line Items > 1
+   *   No. of Trucks = 1
+   *   Total Trucks = 1
+   * If satisfied, automatically adds rows based on the "No. of Trucks Items" value.
+   */
+  const expandGateRowsForTruckItems = (
+    baseRows: GateRow[],
+    selectedInvoices: string[],
+    entry: any
+  ): GateRow[] => {
+    const selectedRefRows = refTableData.filter((r) => r.selected);
+    if (selectedRefRows.length === 0) return baseRows;
+
+    // Find the reference row that matches the selected invoices, or fallback to first selected
+    const activeRefRow =
+      selectedRefRows.find((r) => {
+        const raw: any =
+          r.rawItem ||
+          fullReferenceData.find((item: any) => String(item.MAPID) === String(r.MAPID));
+        return (
+          Array.isArray(raw?.INV_NO) &&
+          raw.INV_NO.some((x: any) => selectedInvoices.includes(x.VBELN))
+        );
+      }) || selectedRefRows[0];
+
+    const refData: any =
+      activeRefRow?.rawItem ||
+      fullReferenceData.find(
+        (item: any) =>
+          (activeRefRow?.MAPID && String(item.MAPID) === String(activeRefRow.MAPID)) ||
+          (activeRefRow?.REF_NO &&
+            String(item.REF_NO) === String(activeRefRow.REF_NO) &&
+            String(item.LINE_NO || "") === String(activeRefRow.LINE_NO || ""))
+      ) ||
+      activeRefRow ||
+      {};
+
+    const header = entry?.HEADER || {};
+    const items = Array.isArray(entry?.ITEMS) ? entry.ITEMS : [];
+
+    // 1. No. of Line Items
+    const rawLineItems =
+      refData.NO_OF_LINE_ITEMS ??
+      refData.ZNO_LINE_ITEMS ??
+      refData.NO_LINE_ITEMS ??
+      refData.LINE_ITEMS ??
+      refData.NO_OF_ITEMS ??
+      refData.ZNO_ITEMS ??
+      refData["No. of Line Items"] ??
+      refData["No of Line Items"] ??
+      refData.noOfLineItems ??
+      header.NO_OF_LINE_ITEMS ??
+      header.ZNO_LINE_ITEMS ??
+      (items.length > 0 ? items.length : undefined) ??
+      (Array.isArray(refData.INV_NO) ? refData.INV_NO.length : 0);
+    const noOfLineItems = Number(rawLineItems) || items.length || 0;
+
+    // 2. No. of Trucks
+    const rawNoOfTrucks =
+      refData.ZNO_TRUCKS ??
+      refData.NO_OF_TRUCKS ??
+      refData.NO_TRUCKS ??
+      refData.ZNO_TRUCK ??
+      refData.NO_TRUCK ??
+      refData["No. of Trucks"] ??
+      refData["No of Trucks"] ??
+      refData.noOfTrucks ??
+      header.ZNO_TRUCKS ??
+      header.NO_OF_TRUCKS ??
+      header.NO_TRUCKS ??
+      1;
+    const noOfTrucks = Number(rawNoOfTrucks);
+
+    // 3. Total Trucks
+    const rawTotalTrucks =
+      refData.TOTAL_TRUCKS ??
+      refData.ZTOT_TRUCKS ??
+      refData.TOT_TRUCKS ??
+      refData.ZTOTAL_TRUCKS ??
+      refData.TOTAL_VEHICLES ??
+      refData["Total Trucks"] ??
+      refData.totalTrucks ??
+      header.TOTAL_TRUCKS ??
+      header.ZTOT_TRUCKS ??
+      header.TOT_TRUCKS ??
+      rawNoOfTrucks;
+    const totalTrucks = Number(rawTotalTrucks);
+
+    // Condition: No. of Line Items > 1, No. of Trucks = 1, Total Trucks = 1
+    const satisfiesCondition = noOfLineItems > 1 && noOfTrucks === 1 && totalTrucks === 1;
+
+    if (!satisfiesCondition) {
+      return baseRows;
+    }
+
+    // Determine "No. of Trucks Items" value
+    const rawTruckItemsValue =
+      refData.ZNO_TRUCK_ITEMS ??
+      refData.NO_OF_TRUCK_ITEMS ??
+      refData.NO_OF_TRUCKS_ITEMS ??
+      refData.ZNO_TRUCKS_ITEMS ??
+      refData.NO_TRUCK_ITEMS ??
+      refData.TRUCK_ITEMS ??
+      refData.ZTRUCK_ITEMS ??
+      refData["No. of Trucks Items"] ??
+      refData["No of Trucks Items"] ??
+      refData["No. of Truck Items"] ??
+      refData["No of Truck Items"] ??
+      refData.noOfTrucksItems ??
+      header.ZNO_TRUCK_ITEMS ??
+      header.NO_OF_TRUCK_ITEMS ??
+      header.TRUCK_ITEMS ??
+      noOfLineItems;
+
+    const truckItemsCount = Number(rawTruckItemsValue) || noOfLineItems || 1;
+
+    const result = [...baseRows];
+    if (result.length === 0) {
+      result.push({
+        ...EMPTY_GATE_ROW(),
+        invoiceNumber: selectedInvoices[0] || invoiceNumber || "",
+      });
+    }
+
+    if (truckItemsCount > result.length) {
+      const templateRow = result[0];
+      const startCount = result.length;
+      for (let i = startCount; i < truckItemsCount; i++) {
+        const nextLineNo = templateRow.invoiceLineNo
+          ? String(Number(templateRow.invoiceLineNo) + (i - startCount + 1) * 10)
+          : String((i + 1) * 10);
+        result.push({
+          ...templateRow,
+          selected: false,
+          invoiceLineNo: nextLineNo,
+        });
+      }
+    }
+
+    return result;
+  };
+
+  /**
+   * Builds Item table rows based on the ZNO_TRUCKS value from each selected Reference table row.
+   * 
+   * Requirement:
+   *   - After fetching the Reference table response, when the user selects checkbox(es) and clicks Invoice Get:
+   *   - For each selected Reference table row:
+   *       - If ZNO_TRUCKS > 0: adds that same number of Item rows and populates the corresponding Invoice Number.
+   *       - If ZNO_TRUCKS <= 0 (e.g. 0): does not add any Item row for that Reference row.
+   *       - For example, if Reference response has 2 rows and ZNO_TRUCKS is 1 for row 1 and 0 for row 2, adds only 1 Item row.
+   */
+  const buildItemRowsFromSelectedReferences = (
+    baseRows: GateRow[],
+    selectedInvoices: string[],
+    resData: any[]
+  ): GateRow[] => {
+    // 1. Get all Reference table rows currently selected by the user
+    const selectedReferenceRows = refTableData.filter((row) => row.selected);
+
+    // If no Reference row is selected, preserve the base rows
+    if (selectedReferenceRows.length === 0) {
+      return baseRows;
+    }
+
+    const generatedItemRows: GateRow[] = [];
+
+    // 2. Iterate through each selected Reference table row
+    selectedReferenceRows.forEach((referenceRow) => {
+      // Get the raw data object returned by the Reference fetch API
+      const rawReferenceData: any =
+        referenceRow.rawItem ||
+        fullReferenceData.find(
+          (item: any) =>
+            (referenceRow.MAPID && String(item.MAPID) === String(referenceRow.MAPID)) ||
+            (referenceRow.REF_NO &&
+              String(item.REF_NO) === String(referenceRow.REF_NO) &&
+              String(item.LINE_NO || "") === String(referenceRow.LINE_NO || ""))
+        ) ||
+        referenceRow;
+
+      // Extract the ZNO_TRUCKS count
+      const rawZNoTrucks =
+        referenceRow.ZNO_TRUCKS ??
+        rawReferenceData.ZNO_TRUCKS ??
+        rawReferenceData.zno_trucks ??
+        rawReferenceData.NO_OF_TRUCKS ??
+        rawReferenceData.no_of_trucks ??
+        rawReferenceData.NO_TRUCKS ??
+        rawReferenceData.no_trucks ??
+        rawReferenceData.ZNO_TRUCK ??
+        rawReferenceData.zno_truck ??
+        rawReferenceData.NO_TRUCK ??
+        rawReferenceData.no_truck ??
+        rawReferenceData.TOTAL_TRUCKS ??
+        rawReferenceData.total_trucks ??
+        rawReferenceData.ZTOT_TRUCKS ??
+        rawReferenceData.ztot_trucks ??
+        rawReferenceData.TOT_TRUCKS ??
+        rawReferenceData["No. of Trucks"] ??
+        rawReferenceData["No of Trucks"] ??
+        rawReferenceData.noOfTrucks;
+
+      const numberOfTrucks = Number(rawZNoTrucks);
+
+      // If ZNO_TRUCKS is not greater than 0, do not add any Item rows for this Reference row
+      if (!numberOfTrucks || numberOfTrucks <= 0) {
+        return;
+      }
+
+      // 3. Find the corresponding Invoice Number(s) for this Reference row
+      const referenceInvoices: string[] = [];
+      if (Array.isArray(rawReferenceData.INV_NO)) {
+        rawReferenceData.INV_NO.forEach((invoiceEntry: any) => {
+          const invNumber =
+            typeof invoiceEntry === "object" && invoiceEntry !== null
+              ? (invoiceEntry.VBELN || invoiceEntry.INV_NO || invoiceEntry.INVOICE || invoiceEntry.inv_no)
+              : String(invoiceEntry);
+          if (invNumber && !referenceInvoices.includes(String(invNumber).trim())) {
+            referenceInvoices.push(String(invNumber).trim());
+          }
+        });
+      } else if (typeof rawReferenceData.INV_NO === "string" && rawReferenceData.INV_NO.trim()) {
+        referenceInvoices.push(rawReferenceData.INV_NO.trim());
+      }
+      if (rawReferenceData.ZINV_NO && !referenceInvoices.includes(String(rawReferenceData.ZINV_NO).trim())) {
+        referenceInvoices.push(String(rawReferenceData.ZINV_NO).trim());
+      }
+      if (rawReferenceData.VBELN && !referenceInvoices.includes(String(rawReferenceData.VBELN).trim())) {
+        referenceInvoices.push(String(rawReferenceData.VBELN).trim());
+      }
+
+      // Match against selected invoices from the Invoice field or fallback to this reference row's invoices
+      const matchedSelectedInvoices = selectedInvoices.filter((inv) => referenceInvoices.includes(inv));
+      const correspondingInvoiceNumber =
+        matchedSelectedInvoices.length > 0
+          ? matchedSelectedInvoices.join(",")
+          : referenceInvoices.length > 0
+            ? referenceInvoices.join(",")
+            : selectedInvoices.join(",") || invoiceNumber || "";
+
+      // 4. Find matching template data from the fetched invoice response
+      const matchingInvoiceEntry = Array.isArray(resData)
+        ? resData.find((entry: any) => {
+            const entryRefNo = String(entry?.HEADER?.REFERENCE_NUMBER || "");
+            const entryLineNo = String(entry?.HEADER?.REFERENCE_LINE_ITEM || "");
+            const entryInvNo = String(entry?.HEADER?.ZINV_NO || "");
+            return (
+              (entryRefNo && entryRefNo === String(referenceRow.REF_NO) && (!entryLineNo || entryLineNo === String(referenceRow.LINE_NO))) ||
+              (entryInvNo && referenceInvoices.includes(entryInvNo))
+            );
+          }) || resData[0]
+        : null;
+
+      const templateItem: any = matchingInvoiceEntry?.ITEMS?.[0] || baseRows[0] || {};
+
+      // 5. Add exactly ZNO_TRUCKS Item rows and populate the corresponding Invoice Number
+      for (let truckIndex = 0; truckIndex < numberOfTrucks; truckIndex++) {
+        const lineNo =
+          templateItem.INVOICE_LINE_ITEM != null && templateItem.INVOICE_LINE_ITEM !== ""
+            ? String(Number(templateItem.INVOICE_LINE_ITEM) + generatedItemRows.length * 10)
+            : String((generatedItemRows.length + 1) * 10);
+
+        generatedItemRows.push({
+          selected: false,
+          mapId: referenceRow.MAPID || "",
+          invoiceNumber: correspondingInvoiceNumber,
+          invoiceLineNo: lineNo,
+          requiredDateTime: templateItem.REQUIRED_DATE_AND_TIME || templateItem.requiredDateTime || "",
+          reportedDateTime: templateItem.REPORTED_DATE_AND_TIME || templateItem.reportedDateTime || "",
+          physicalDispatchDateTime: templateItem.PHYSICAL_DISPATCH_DATE_TIME || templateItem.physicalDispatchDateTime || "",
+          truckType: templateItem.TRUCK_TYPE || templateItem.truckType || "",
+          typeOfTransporter: templateItem.TYPE_OF_TRANSPORTER || templateItem.typeOfTransporter || "",
+          vehicleNumber: templateItem.VEHICLE_NUMBER || templateItem.vehicleNumber || "",
+          noOfVehicles:
+            templateItem.NO_OF_VEHICLES != null
+              ? String(templateItem.NO_OF_VEHICLES)
+              : (templateItem.noOfVehicles || ""),
+          driverNumber: templateItem.DRIVER_NUMBER || templateItem.driverNumber || "",
+          driverName: templateItem.DRIVER_NAME || templateItem.driverName || "",
+          customerEmailId: Array.isArray(templateItem.CUSTOMER_EMAIL_DETAILS)
+            ? templateItem.CUSTOMER_EMAIL_DETAILS.map((e: any) => (typeof e === "object" ? e.CUSTOMER_EMAIL_ID : e)).join(",")
+            : (templateItem.customerEmailId || ""),
+          salespersonEmailId: Array.isArray(templateItem.SALESPERSON_EMAIL_DETAILS)
+            ? templateItem.SALESPERSON_EMAIL_DETAILS.map((e: any) => (typeof e === "object" ? e.SALESPERSON_EMAIL_ID : e)).join(",")
+            : (templateItem.salespersonEmailId || ""),
+          gpsLiveLocation: templateItem.GPS_LIVE_LOCATION || templateItem.gpsLiveLocation || "",
+          destinationState: templateItem.ZSTATE || templateItem.destinationState || "",
+          destinationZone: templateItem.ZZONE || templateItem.destinationZone || "",
+          tatType: templateItem.TAT_TYPE || templateItem.tatType || "",
+          tatDays: templateItem.TAT_DAYS != null ? String(templateItem.TAT_DAYS) : (templateItem.tatDays || ""),
+          eta: templateItem.ETA || templateItem.eta || "",
+        });
+      }
+    });
+
+    // Return the newly generated rows if any, otherwise return baseRows
+    return generatedItemRows.length > 0 ? generatedItemRows : baseRows;
+  };
+
   // ── GET → FetchGateInOutInvoiceData (With SAP) ──
   const handleGet = async () => {
     setIsGlobalSearch(false);
-    const selectedInvoiceNumbers = invoiceNumber
+    let selectedInvoiceNumbers = invoiceNumber
       .split(",")
       .map((v) => v.trim())
       .filter(Boolean);
+
+    // If reference rows are selected, ensure their invoice numbers are used
+    const selectedRefs = refTableData.filter((r) => r.selected);
+    if (selectedRefs.length > 0) {
+      const refInvoices: string[] = [];
+      selectedRefs.forEach((r) => {
+        const raw = r.rawItem || fullReferenceData.find((item: any) =>
+          (r.MAPID && String(item.MAPID) === String(r.MAPID)) ||
+          (r.REF_NO && String(item.REF_NO) === String(r.REF_NO))
+        );
+        if (raw) {
+          if (Array.isArray(raw.INV_NO)) {
+            raw.INV_NO.forEach((inv: any) => {
+              const v = typeof inv === "object" && inv !== null ? (inv.VBELN || inv.INV_NO || inv.INVOICE || inv.inv_no) : String(inv);
+              if (v && !refInvoices.includes(String(v).trim())) refInvoices.push(String(v).trim());
+            });
+          } else if (typeof raw.INV_NO === "string" && raw.INV_NO.trim()) {
+            if (!refInvoices.includes(raw.INV_NO.trim())) refInvoices.push(raw.INV_NO.trim());
+          }
+          if (raw.ZINV_NO && !refInvoices.includes(String(raw.ZINV_NO).trim())) {
+            refInvoices.push(String(raw.ZINV_NO).trim());
+          }
+          if (raw.VBELN && !refInvoices.includes(String(raw.VBELN).trim())) {
+            refInvoices.push(String(raw.VBELN).trim());
+          }
+        }
+      });
+      if (refInvoices.length > 0) {
+        selectedInvoiceNumbers = refInvoices;
+        setInvoiceNumber(refInvoices.join(","));
+      }
+    }
     const payload = {
       SAP_INV: selectedInvoiceNumbers.map((inv) => {
-        const owner: any = fullReferenceData.find(
-          (refItem: any) =>
-            Array.isArray(refItem.INV_NO) &&
-            refItem.INV_NO.some((x: any) => x.VBELN === inv)
-        );
+        const owner: any = fullReferenceData.find((refItem: any) => {
+          if (Array.isArray(refItem.INV_NO)) {
+            return refItem.INV_NO.some((x: any) => {
+              const v = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+              return v && String(v).trim() === inv;
+            });
+          }
+          return (
+            (refItem.INV_NO && String(refItem.INV_NO).trim() === inv) ||
+            (refItem.ZINV_NO && String(refItem.ZINV_NO).trim() === inv) ||
+            (refItem.VBELN && String(refItem.VBELN).trim() === inv)
+          );
+        });
         return {
           INV_NO: inv,
           REFNO: owner?.REF_NO || "",
@@ -2045,10 +2832,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               : entry?.HEADER?.killometers != null
                 ? String(entry.HEADER.killometers)
                 : "",
+          rawHeader: entry?.HEADER,
         }))
       );
 
-      const mappedRows: GateRow[] = res.flatMap((entry: any) =>
+      let mappedRows: GateRow[] = res.flatMap((entry: any) =>
         Array.isArray(entry?.ITEMS)
           ? entry.ITEMS.map((item: any) => ({
             selected: false,
@@ -2076,6 +2864,15 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           : []
       );
       if (mappedRows.length === 0) mappedRows.push(EMPTY_GATE_ROW());
+
+      // 1. Add Item table rows based on ZNO_TRUCKS from the selected Reference table rows
+      const hasSelectedRef = refTableData.some((r) => r.selected);
+      if (hasSelectedRef) {
+        mappedRows = buildItemRowsFromSelectedReferences(mappedRows, selectedInvoiceNumbers, res);
+      } else {
+        // 2. If no Reference table row is selected, fallback to expanding rows based on No. of Trucks Items
+        mappedRows = expandGateRowsForTruckItems(mappedRows, selectedInvoiceNumbers, res[0]);
+      }
 
       setGateRows(mappedRows);
       setShowDetails(true);
@@ -2154,10 +2951,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           ewayExpireDate: entry?.HEADER?.EWAY_BILL_EXPIRE_DATE || "",
           insuranceScope: entry?.HEADER?.INSURANCE_SCOPE || "",
           kilometres: entry?.HEADER?.KILLOMETERS != null ? String(entry.HEADER.KILLOMETERS) : "",
+          rawHeader: entry?.HEADER,
         }))
       );
 
-      const mappedRows: GateRow[] = res.flatMap((entry: any) =>
+      let mappedRows: GateRow[] = res.flatMap((entry: any) =>
         Array.isArray(entry?.ITEMS)
           ? entry.ITEMS.map((item: any) => ({
             selected: false,
@@ -2185,6 +2983,15 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           : []
       );
       if (mappedRows.length === 0) mappedRows.push(EMPTY_GATE_ROW());
+
+      // 1. Add Item table rows based on ZNO_TRUCKS from the selected Reference table rows
+      const hasSelectedRef = refTableData.some((r) => r.selected);
+      if (hasSelectedRef) {
+        mappedRows = buildItemRowsFromSelectedReferences(mappedRows, selectedInvoiceNumbers, res);
+      } else {
+        // 2. If no Reference table row is selected, fallback to expanding rows based on No. of Trucks Items
+        mappedRows = expandGateRowsForTruckItems(mappedRows, selectedInvoiceNumbers, res[0]);
+      }
 
       setGateRows(mappedRows);
       setShowDetails(true);
@@ -2289,6 +3096,13 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       prev.map((r, i) => {
         if (i !== index) return r;
         const next: GateRow = { ...r, [field]: value };
+        // If Required Date changed, ensure Reported Date is still on or after the next calendar day
+        if (field === "requiredDateTime" && next.reportedDateTime) {
+          if (!isReportedDateValid(value, next.reportedDateTime)) {
+            next.reportedDateTime = "";
+          }
+        }
+        // If Reported Date or Required Date changed, ensure Physical Dispatch Date is still later
         if ((field === "requiredDateTime" || field === "reportedDateTime") && next.physicalDispatchDateTime) {
           const min = getMinPhysicalDispatch(next);
           if (min && next.physicalDispatchDateTime <= min) {
@@ -2339,6 +3153,14 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const handleSave = async (action: string) => {
     for (let i = 0; i < gateRows.length; i++) {
       const r = gateRows[i];
+      if (r.requiredDateTime && r.reportedDateTime && !isReportedDateValid(r.requiredDateTime, r.reportedDateTime)) {
+        Swal.fire({
+          icon: "warning",
+          title: "Validation Error",
+          text: `Row ${i + 1}: Reported Date and Time must be at least one calendar day after Required Date and Time.`,
+        });
+        return;
+      }
       const minPd = getMinPhysicalDispatch(r);
       if (minPd && r.physicalDispatchDateTime && r.physicalDispatchDateTime <= minPd) {
         Swal.fire({
@@ -2349,61 +3171,196 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         return;
       }
     }
-    const refRow = refTableData[0];
+    // 1. Collect all selected Invoice Numbers across Items table rows (or fallback to top invoiceNumber)
+    const selectedInvoices: string[] = [];
+    gateRows.forEach((row) => {
+      if (row.invoiceNumber) {
+        row.invoiceNumber
+          .split(",")
+          .map((inv) => inv.trim())
+          .filter(Boolean)
+          .forEach((inv) => {
+            if (!selectedInvoices.includes(inv)) {
+              selectedInvoices.push(inv);
+            }
+          });
+      }
+    });
+
+    if (selectedInvoices.length === 0 && invoiceNumber.trim()) {
+      invoiceNumber
+        .split(",")
+        .map((inv) => inv.trim())
+        .filter(Boolean)
+        .forEach((inv) => {
+          if (!selectedInvoices.includes(inv)) {
+            selectedInvoices.push(inv);
+          }
+        });
+    }
+
+    // If still empty (e.g. without SAP or manual entry), use single empty string record
+    const targetInvoices = selectedInvoices.length > 0 ? selectedInvoices : [""];
+
+    // 2. Helper to find matching Reference row for a given invoice number
+    const getReferenceRowForInvoice = (inv: string) => {
+      if (!inv) return refTableData.find((r) => r.selected) || refTableData[0];
+
+      // Check if any reference row's raw data or properties contain this invoice
+      const matched = refTableData.find((r) => {
+        const raw = r.rawItem;
+        if (!raw) return false;
+        if (Array.isArray(raw.INV_NO)) {
+          return raw.INV_NO.some((x: any) => {
+            const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return val && String(val).trim() === inv;
+          });
+        }
+        return (
+          (raw.INV_NO && String(raw.INV_NO).trim() === inv) ||
+          (raw.ZINV_NO && String(raw.ZINV_NO).trim() === inv) ||
+          (raw.VBELN && String(raw.VBELN).trim() === inv)
+        );
+      });
+
+      if (matched) return matched;
+
+      // Fallback to fullReferenceData lookup
+      const fullItem = fullReferenceData.find((refItem: any) => {
+        if (Array.isArray(refItem.INV_NO)) {
+          return refItem.INV_NO.some((x: any) => {
+            const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return val && String(val).trim() === inv;
+          });
+        }
+        return false;
+      });
+
+      if (fullItem) {
+        const refMatch = refTableData.find(
+          (r) =>
+            (fullItem.MAPID && String(r.MAPID) === String(fullItem.MAPID)) ||
+            (fullItem.REF_NO && String(r.REF_NO) === String(fullItem.REF_NO) && (!fullItem.LINE_NO || String(r.LINE_NO) === String(fullItem.LINE_NO)))
+        );
+        if (refMatch) return refMatch;
+        return {
+          MAPID: fullItem.MAPID || "",
+          REF_NO: fullItem.REF_NO || "",
+          WORK_ORDER_NO: fullItem.WORK_ORDER_NO || "",
+          LR_NO: fullItem.LR_NO || "",
+          TRANSPORTER: fullItem.TRANSPORTER || "",
+          LINE_NO: fullItem.LINE_NO || "",
+          selected: true,
+          rawItem: fullItem,
+        } as GateRefRow;
+      }
+
+      // Check if matchedHeader has refNo that matches a refTableData row
+      const matchedHeaderForRef = headerRows.find((hr) => hr.invNo === inv);
+      if (matchedHeaderForRef?.refNo) {
+        const refMatch = refTableData.find(
+          (r) => r.REF_NO === matchedHeaderForRef.refNo && (!matchedHeaderForRef.lineNo || r.LINE_NO === matchedHeaderForRef.lineNo)
+        ) || refTableData.find((r) => r.REF_NO === matchedHeaderForRef.refNo);
+        if (refMatch) return refMatch;
+      }
+
+      return refTableData.find((r) => r.selected) || refTableData[0];
+    };
+
+    // 3. Build separate DATA records for each selected Invoice Number
+    const dataRecords = targetInvoices.map((inv) => {
+      const refRow = getReferenceRowForInvoice(inv);
+      const rawRef = refRow?.rawItem || {};
+
+      // Find matching header details for this invoice or reference
+      const matchedHeader =
+        headerRows.find((hr) => inv && hr.invNo === inv) ||
+        headerRows.find((hr) => refRow?.REF_NO && hr.refNo === refRow.REF_NO) ||
+        headerRows[0];
+
+      const rowEwayApplicable = matchedHeader?.ewayApplicable || ewayApplicable;
+      const rowEwayDate = matchedHeader?.ewayDate || ewayDate;
+      const rowEwayNumber = matchedHeader?.ewayNumber || ewayNumber;
+      const rowEwayExpireDate = matchedHeader?.ewayExpireDate || ewayExpireDate;
+      const rowInsuranceScope = matchedHeader?.insuranceScope || insuranceScope;
+      const rowKilometres = matchedHeader?.kilometres || kilometres;
+
+      // Extract Reference details
+      const refNo = refRow?.REF_NO || rawRef.REF_NO || matchedHeader?.refNo || matchedHeader?.rawHeader?.REFERENCE_NUMBER || "";
+      const lineNo = refRow?.LINE_NO || rawRef.LINE_NO || matchedHeader?.lineNo || matchedHeader?.rawHeader?.REFERENCE_LINE_ITEM || "";
+      const workOrder = refRow?.WORK_ORDER_NO || rawRef.WORK_ORDER_NO || matchedHeader?.rawHeader?.ZWORK_ORDER || "";
+      const lrNo = refRow?.LR_NO || rawRef.LR_NO || matchedHeader?.rawHeader?.ZLRNO || "";
+      const transporter = refRow?.TRANSPORTER || rawRef.TRANSPORTER || matchedHeader?.rawHeader?.ZTRANSPORTER || "";
+
+      // Filter Item rows that contain this invoice number
+      let matchingItems = gateRows.filter((row) => {
+        if (!inv) return true;
+        const rowInvs = row.invoiceNumber
+          ? row.invoiceNumber.split(",").map((s) => s.trim()).filter(Boolean)
+          : [];
+        return rowInvs.includes(inv);
+      });
+
+      // If no item explicitly matched, fallback to all gateRows
+      if (matchingItems.length === 0) {
+        matchingItems = gateRows;
+      }
+
+      return {
+        HEADER: {
+          ZINV_NO: inv || invoiceNumber,
+          REFERENCE_NUMBER: refNo,
+          REFERENCE_LINE_ITEM: lineNo,
+          ZPLANT: zplant,
+          EWAY_BILL_APPLICABLE: rowEwayApplicable,
+          EWAY_BILL_DATE: rowEwayDate,
+          EWAY_BILL_NUMBER: rowEwayNumber,
+          EWAY_BILL_EXPIRE_DATE: rowEwayExpireDate,
+          INSURANCE_SCOPE: rowInsuranceScope,
+          KILLOMETERS: rowKilometres,
+          ZWORK_ORDER: workOrder,
+          ZLRNO: lrNo,
+          ZTRANSPORTER: transporter,
+          ZCREATED_DT: "",
+          ZUSER: getLoggedInUser(),
+          ZUSER_CH: "",
+        },
+        ITEMS: matchingItems.map((row, i) => ({
+          ZINV_NO: inv || row.invoiceNumber || invoiceNumber,
+          INVOICE_LINE_ITEM: row.invoiceLineNo || "",
+          REFERENCE_NUMBER: refNo,
+          REFERENCE_LINE_ITEM: lineNo,
+          SL_NO: i + 1,
+          REQUIRED_DATE_AND_TIME: row.requiredDateTime,
+          REPORTED_DATE_AND_TIME: row.reportedDateTime,
+          PHYSICAL_DISPATCH_DATE_TIME: row.physicalDispatchDateTime,
+          TRUCK_TYPE: row.truckType,
+          TYPE_OF_TRANSPORTER: row.typeOfTransporter,
+          VEHICLE_NUMBER: row.vehicleNumber,
+          NO_OF_VEHICLES: row.noOfVehicles,
+          DRIVER_NUMBER: row.driverNumber,
+          DRIVER_NAME: row.driverName,
+          CUSTOMER_EMAIL_DETAILS: row.customerEmailId
+            ? row.customerEmailId.split(",").filter(Boolean).map((email) => ({ CUSTOMER_EMAIL_ID: email }))
+            : [],
+          SALESPERSON_EMAIL_DETAILS: row.salespersonEmailId
+            ? row.salespersonEmailId.split(",").filter(Boolean).map((email) => ({ SALESPERSON_EMAIL_ID: email }))
+            : [],
+          GPS_LIVE_LOCATION: row.gpsLiveLocation,
+          ZSTATE: row.destinationState,
+          ZZONE: row.destinationZone,
+          TAT_TYPE: row.tatType,
+          TAT_DAYS: row.tatDays,
+          ETA: row.eta,
+        })),
+      };
+    });
+
     const payload = {
       CREATE: "X",
       CHANGE: "",
       DELETE: "",
-      DATA: [
-        {
-          HEADER: {
-            ZINV_NO: invoiceNumber,
-            REFERENCE_NUMBER: refRow?.REF_NO || "",
-            REFERENCE_LINE_ITEM: refRow?.LINE_NO || "",
-            ZPLANT: zplant,
-            EWAY_BILL_APPLICABLE: ewayApplicable,
-            EWAY_BILL_DATE: ewayDate,
-            EWAY_BILL_NUMBER: ewayNumber,
-            EWAY_BILL_EXPIRE_DATE: ewayExpireDate,
-            INSURANCE_SCOPE: insuranceScope,
-            KILLOMETERS: kilometres,
-            ZWORK_ORDER: refRow?.WORK_ORDER_NO || "",
-            ZLRNO: refRow?.LR_NO || "",
-            ZTRANSPORTER: refRow?.TRANSPORTER || "",
-            ZCREATED_DT: "",
-            ZUSER: getLoggedInUser(),
-            ZUSER_CH: "",
-          },
-          ITEMS: gateRows.map((row, i) => ({
-            ZINV_NO: invoiceNumber,
-            INVOICE_LINE_ITEM: row.invoiceLineNo || "",
-            REFERENCE_NUMBER: refRow?.REF_NO || "",
-            REFERENCE_LINE_ITEM: refRow?.LINE_NO || "",
-            SL_NO: i + 1,
-            REQUIRED_DATE_AND_TIME: row.requiredDateTime,
-            REPORTED_DATE_AND_TIME: row.reportedDateTime,
-            PHYSICAL_DISPATCH_DATE_TIME: row.physicalDispatchDateTime,
-            TRUCK_TYPE: row.truckType,
-            TYPE_OF_TRANSPORTER: row.typeOfTransporter,
-            VEHICLE_NUMBER: row.vehicleNumber,
-            NO_OF_VEHICLES: row.noOfVehicles,
-            DRIVER_NUMBER: row.driverNumber,
-            DRIVER_NAME: row.driverName,
-            CUSTOMER_EMAIL_DETAILS: row.customerEmailId
-              ? row.customerEmailId.split(",").filter(Boolean).map((email) => ({ CUSTOMER_EMAIL_ID: email }))
-              : [],
-            SALESPERSON_EMAIL_DETAILS: row.salespersonEmailId
-              ? row.salespersonEmailId.split(",").filter(Boolean).map((email) => ({ SALESPERSON_EMAIL_ID: email }))
-              : [],
-            GPS_LIVE_LOCATION: row.gpsLiveLocation,
-            ZSTATE: row.destinationState,
-            ZZONE: row.destinationZone,
-            TAT_TYPE: row.tatType,
-            TAT_DAYS: row.tatDays,
-            ETA: row.eta,
-          })),
-        },
-      ],
+      DATA: dataRecords,
     };
 
     setLoadingSave(true);
@@ -2461,6 +3418,28 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       setLoadingSave(false);
     }
   };
+  const formatGateItemForPayload = (rawItem: any) => {
+    if (!rawItem) return {};
+    const { isEdit, _backup, ...cleanItem } = rawItem;
+    return {
+      ...cleanItem,
+      CUSTOMER_EMAIL_DETAILS: cleanItem.CUSTOMER_EMAIL_DETAILS
+        ? (typeof cleanItem.CUSTOMER_EMAIL_DETAILS === "string"
+          ? cleanItem.CUSTOMER_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ CUSTOMER_EMAIL_ID: e.trim() }))
+          : Array.isArray(cleanItem.CUSTOMER_EMAIL_DETAILS)
+            ? cleanItem.CUSTOMER_EMAIL_DETAILS
+            : [])
+        : [],
+      SALESPERSON_EMAIL_DETAILS: cleanItem.SALESPERSON_EMAIL_DETAILS
+        ? (typeof cleanItem.SALESPERSON_EMAIL_DETAILS === "string"
+          ? cleanItem.SALESPERSON_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ SALESPERSON_EMAIL_ID: e.trim() }))
+          : Array.isArray(cleanItem.SALESPERSON_EMAIL_DETAILS)
+            ? cleanItem.SALESPERSON_EMAIL_DETAILS
+            : [])
+        : [],
+    };
+  };
+
   const handleUpdateRecord = async (target: "header" | "item", itemIndex?: number) => {
     try {
       const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
@@ -2468,6 +3447,18 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       let cleanItems: any[] = [];
       if (target === "item" && itemIndex !== undefined) {
         const { isEdit, _backup, ...cleanItem } = searchResultItems[itemIndex];
+        if (
+          cleanItem.REQUIRED_DATE_AND_TIME &&
+          cleanItem.REPORTED_DATE_AND_TIME &&
+          !isReportedDateValid(cleanItem.REQUIRED_DATE_AND_TIME, cleanItem.REPORTED_DATE_AND_TIME)
+        ) {
+          Swal.fire({
+            icon: "warning",
+            title: "Validation Error",
+            text: "Reported Date and Time must be at least one calendar day after Required Date and Time.",
+          });
+          return;
+        }
         const minPd = cleanItem.REPORTED_DATE_AND_TIME || cleanItem.REQUIRED_DATE_AND_TIME || "";
         if (
           minPd &&
@@ -2481,21 +3472,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           });
           return;
         }
-        // Parse email strings to arrays as required by payload
-        const formattedItem = {
-          ...cleanItem,
-          CUSTOMER_EMAIL_DETAILS: cleanItem.CUSTOMER_EMAIL_DETAILS
-            ? (typeof cleanItem.CUSTOMER_EMAIL_DETAILS === "string"
-              ? cleanItem.CUSTOMER_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ CUSTOMER_EMAIL_ID: e.trim() }))
-              : cleanItem.CUSTOMER_EMAIL_DETAILS)
-            : [],
-          SALESPERSON_EMAIL_DETAILS: cleanItem.SALESPERSON_EMAIL_DETAILS
-            ? (typeof cleanItem.SALESPERSON_EMAIL_DETAILS === "string"
-              ? cleanItem.SALESPERSON_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ SALESPERSON_EMAIL_ID: e.trim() }))
-              : cleanItem.SALESPERSON_EMAIL_DETAILS)
-            : []
-        };
-        cleanItems = [formattedItem];
+        cleanItems = [formatGateItemForPayload(cleanItem)];
       } else {
         cleanItems = [];
       }
@@ -2551,7 +3528,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   return (
     <div className="space-y-3">
       {/* ── Reference table (same UI/CSS as Shipment Details) ── */}
-      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+      <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
@@ -2561,50 +3538,98 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               <th className="px-3 py-0.5 text-center">Work Order Number</th>
               <th className="px-3 py-0.5 text-center">LR Number</th>
               <th className="px-3 py-0.5 text-center">Transporter</th>
+              <th className="px-3 py-0.5 text-center whitespace-nowrap">Completed Invoices</th>
               <th className="px-3 py-0.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
-            {refTableData.map((row, i) => (
-              <tr key={i}>
-                <td className="px-3 py-0.5 text-center">
-                  <input
-                    type="checkbox"
-                    checked={row.selected}
-                    onChange={() => toggleRefRowSelect(i)}
-                    className="size-4 accent-sky-600"
-                  />
-                </td>
-                <td className="px-3 py-0.5 text-center">{i + 1}</td>
-                {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
-                  <td key={field} className="px-3 py-0.5">
+            {refTableData.map((row, i) => {
+              const isRowDisabled = Boolean(row.notAllowed);
+
+              return (
+                <tr key={i} className={isRowDisabled ? GATE_ROW_DISABLED : ""}>
+                  <td className="px-3 py-0.5 text-center">
                     <input
-                      value={(row as any)[field] || ""}
-                      readOnly={i !== 0}
-                      placeholder={GATE_REF_FIELD_PLACEHOLDER[field]}
-                      onChange={(e) => handleRefRowChange(i, field, e.target.value)}
-                      onBlur={() => fetchGlobalReferences(i, field)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") fetchGlobalReferences(i, field);
-                      }}
-                      className={GATE_INPUT_NORMAL + " text-center"}
+                      type="checkbox"
+                      checked={row.selected}
+                      disabled={isRowDisabled}
+                      onChange={() => toggleRefRowSelect(i)}
+                      className={
+                        "size-4 accent-sky-600 " +
+                        (isRowDisabled ? "cursor-not-allowed opacity-30" : "cursor-pointer")
+                      }
+                      title={isRowDisabled ? "This reference is not allowed" : undefined}
                     />
                   </td>
-                ))}
-                <td className="px-3 py-0.5 text-center">
-                  {refTableData.length > 1 && (
+                  <td className="px-3 py-0.5 text-center font-medium">{i + 1}</td>
+                  {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
+                    <td key={field} className="px-3 py-0.5">
+                      {field === "LR_NO" && ((row.lrOptions && row.lrOptions.length > 0) || row.LR_NO) ? (
+                        <GateTableMultiSelect
+                          options={row.lrOptions && row.lrOptions.length > 0 ? row.lrOptions : [row.LR_NO]}
+                          value={row.LR_NO || ""}
+                          onChange={(val) => handleRefRowChange(i, "LR_NO", val)}
+                          placeholder="Select LR No"
+                          readOnly={isRowDisabled}
+                          className={
+                            isRowDisabled
+                              ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer"
+                              : GATE_INPUT_NORMAL
+                          }
+                        />
+                      ) : (
+                        <input
+                          value={(row as any)[field] || ""}
+                          readOnly={i !== 0 || isRowDisabled}
+                          disabled={isRowDisabled}
+                          placeholder={GATE_REF_FIELD_PLACEHOLDER[field]}
+                          onChange={(e) => handleRefRowChange(i, field, e.target.value)}
+                          onBlur={() => fetchGlobalReferences(i, field)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") fetchGlobalReferences(i, field);
+                          }}
+                          className={
+                            (isRowDisabled
+                              ? GATE_INPUT_DISABLED_ROW
+                              : i !== 0
+                                ? GATE_INPUT_READONLY
+                                : GATE_INPUT_NORMAL) + " text-center"
+                          }
+                        />
+                      )}
+                    </td>
+                  ))}
+                  {/* ── Completed Invoices column next to Transporter ── */}
+                  <td className="px-3 py-0.5 text-center whitespace-nowrap">
                     <button
                       type="button"
-                      onClick={() => removeRefRow(i)}
-                      aria-label="Remove row"
-                      className="inline-grid place-items-center size-7 rounded-md text-destructive hover:bg-destructive/10"
+                      onClick={() => openCompletedInvoicesModal(row)}
+                      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 transition-colors shadow-xs cursor-pointer"
                     >
-                      <Trash2 className="size-3.5" />
+                      <Eye className="size-3.5 text-sky-600 dark:text-sky-400" />
+                      <span>View</span>
+                      {row.compInvoices && row.compInvoices.length > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold rounded-full bg-sky-600 text-white">
+                          {row.compInvoices.length}
+                        </span>
+                      )}
                     </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-3 py-0.5 text-center">
+                    {refTableData.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeRefRow(i)}
+                        aria-label="Remove row"
+                        className="inline-grid place-items-center size-7 rounded-md text-destructive hover:bg-destructive/10 cursor-pointer"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -2626,7 +3651,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               </div>
               <button
                 onClick={handleGet}
-                disabled={!invoiceNumber.trim()}
+                disabled={!invoiceNumber.trim() && !refTableData.some((r) => r.selected)}
                 className="h-7 px-4 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm flex items-center gap-1.5"
               >
                 GET
@@ -2715,54 +3740,67 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               </thead>
               <tbody className="divide-y divide-hairline/70">
                 <tr className="bg-surface hover:bg-muted/50">
-                  {[
-                    { field: "REFERENCE_NUMBER", type: "text", readonly: true },
-                    { field: "REFERENCE_LINE_ITEM", type: "text", readonly: true },
-                    { field: "ZINV_NO", type: "text", readonly: true },
-                    { field: "ZPLANT", type: "text" },
-                    { field: "EWAY_BILL_APPLICABLE", type: "select", options: ["Yes", "No"] },
-                    { field: "EWAY_BILL_DATE", type: "date" },
-                    { field: "EWAY_BILL_NUMBER", type: "text" },
-                    { field: "EWAY_BILL_EXPIRE_DATE", type: "date" },
-                    { field: "INSURANCE_SCOPE", type: "select", options: ["Buyer", "Supplier"] },
-                    { field: "KILLOMETERS", type: "number" },
-                    { field: "ZWORK_ORDER", type: "text", readonly: true },
-                    { field: "ZLRNO", type: "text", readonly: true },
-                    { field: "ZTRANSPORTER", type: "text" },
-                    { field: "ZCREATED_DT", type: "date" },
-                  ].map(({ field, type, options, readonly }: any) => (
-                    <td key={field} className="px-3 py-2 whitespace-nowrap">
-                      {searchResultHeader.isEdit && !readonly ? (
-                        type === "select" ? (
-                          <select
-                            className="h-7 w-full rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
-                            value={searchResultHeader[field] || ""}
-                            onChange={(e) => setSearchResultHeader((prev: any) => ({ ...prev, [field]: e.target.value }))}
-                          >
-                            <option value="">Select</option>
-                            {options?.map((o: string) => <option key={o} value={o}>{o}</option>)}
-                          </select>
+                  {(() => {
+                    const availablePlants = Array.from(
+                      new Set([...plantList, ...PLANTS, searchResultHeader.ZPLANT].filter(Boolean))
+                    );
+                    return [
+                      { field: "REFERENCE_NUMBER", type: "text", readonly: true },
+                      { field: "REFERENCE_LINE_ITEM", type: "text", readonly: true },
+                      { field: "ZINV_NO", type: "text", readonly: true },
+                      { field: "ZPLANT", type: "select", options: availablePlants },
+                      { field: "EWAY_BILL_APPLICABLE", type: "select", options: ["No", "Yes"] },
+                      { field: "EWAY_BILL_DATE", type: "date" },
+                      { field: "EWAY_BILL_NUMBER", type: "text" },
+                      { field: "EWAY_BILL_EXPIRE_DATE", type: "date" },
+                      { field: "INSURANCE_SCOPE", type: "select", options: ["Buyer", "Supplier"] },
+                      { field: "KILLOMETERS", type: "number" },
+                      { field: "ZWORK_ORDER", type: "text", readonly: true },
+                      { field: "ZLRNO", type: "text", readonly: true },
+                      { field: "ZTRANSPORTER", type: "text", readonly: true },
+                      { field: "ZCREATED_DT", type: "date", readonly: true },
+                    ].map(({ field, type, options, readonly }: any) => (
+                      <td key={field} className="px-3 py-2 whitespace-nowrap">
+                        {searchResultHeader.isEdit && !readonly ? (
+                          type === "select" ? (
+                            <select
+                              className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
+                              value={searchResultHeader[field] || ""}
+                              onChange={(e) => setSearchResultHeader((prev: any) => ({ ...prev, [field]: e.target.value }))}
+                            >
+                              <option value="">Select</option>
+                              {options?.map((o: string) => <option key={o} value={o}>{o}</option>)}
+                            </select>
+                          ) : type === "date" ? (
+                            <GateDatePicker
+                              value={searchResultHeader[field] || ""}
+                              onChange={(_, str) => setSearchResultHeader((prev: any) => ({ ...prev, [field]: str }))}
+                              className="h-7 min-w-[130px] text-[11px]"
+                            />
+                          ) : (
+                            <input
+                              type={type}
+                              inputMode={field === "EWAY_BILL_NUMBER" ? "numeric" : undefined}
+                              className="h-7 w-full min-w-[80px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] outline-none"
+                              value={searchResultHeader[field] || ""}
+                              onChange={(e) => {
+                                const v = field === "EWAY_BILL_NUMBER" ? e.target.value.replace(/\D/g, "") : e.target.value;
+                                setSearchResultHeader((prev: any) => ({ ...prev, [field]: v }));
+                              }}
+                            />
+                          )
                         ) : (
-                          <input
-                            type={type}
-                            inputMode={field === "EWAY_BILL_NUMBER" ? "numeric" : undefined}
-                            className="h-7 w-full min-w-[80px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] outline-none"
-                            value={searchResultHeader[field] || ""}
-                            onChange={(e) => {
-                              const v = field === "EWAY_BILL_NUMBER" ? e.target.value.replace(/\D/g, "") : e.target.value;
-                              setSearchResultHeader((prev: any) => ({ ...prev, [field]: v }));
-                            }}
-                          />
-                        )
-                      ) : (
-                        <span>
-                          {type === "date" && searchResultHeader[field]
-                            ? new Date(searchResultHeader[field]).toLocaleDateString("en-GB")
-                            : searchResultHeader[field] || "-"}
-                        </span>
-                      )}
-                    </td>
-                  ))}
+                          <span>
+                            {type === "date" && searchResultHeader[field]
+                              ? isNaN(new Date(searchResultHeader[field]).getTime())
+                                ? searchResultHeader[field]
+                                : format(new Date(searchResultHeader[field]), "dd-MM-yyyy")
+                              : searchResultHeader[field] || "-"}
+                          </span>
+                        )}
+                      </td>
+                    ));
+                  })()}
                   <td className="px-2 py-2 text-center">
                     {!searchResultHeader.isEdit ? (
                       <div className="flex items-center gap-1 justify-center">
@@ -2783,6 +3821,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               if (result.isConfirmed) {
                                 try {
                                   const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
+                                  const cleanItems = (searchResultItems || []).map(formatGateItemForPayload);
 
                                   const payload = {
                                     CREATE: "",
@@ -2791,20 +3830,20 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                     DATA: [
                                       {
                                         HEADER: { ...cleanHeader, ZUSER: getLoggedInUser() },
-                                        ITEMS: []
-                                      }
-                                    ]
+                                        ITEMS: cleanItems,
+                                      },
+                                    ],
                                   };
 
                                   const res: any = isSap
                                     ? await service.DeleteGateInOutWithSap(payload)
                                     : await service.DeleteGateInOutWithoutSap(payload);
-                                  if (res?.MSG) {
-                                    Swal.fire("Success", res.MSG, "success");
+                                  if (res?.MSG || res?.MESSAGE || res?.NUMBER === "200" || res?.STATUS === "TRUE" || res?.STATUS === true) {
+                                    Swal.fire("Success", res?.MSG || res?.MESSAGE || "Record deleted successfully", "success");
                                     setSearchResultHeader({});
                                     setSearchResultItems([]);
                                   } else {
-                                    Swal.fire("Error", "Failed to delete the record.", "error");
+                                    Swal.fire("Error", res?.MSG || res?.MESSAGE || "Failed to delete the record.", "error");
                                   }
                                 } catch (err) {
                                   console.error("Delete API failed:", err);
@@ -2849,7 +3888,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                 <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
                     {[
-                      "Inv Line No", "SL No", "Invoice No", "Reference No", "Required Date Time", "Reported Date Time",
+                      // "Inv Line No",
+                      "SL No", "Invoice No", "Reference No", "Required Date Time", "Reported Date Time",
                       "Physical Dispatch Date Time", "Truck Type", "Transporter Type",
                       "Vehicle No", "No of Vehicles", "Driver Name", "Driver Number",
                       "Customer Email", "Salesperson Email",
@@ -2864,24 +3904,44 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                   {searchResultItems.map((item, index) => (
                     <tr key={index} className="bg-surface hover:bg-muted/50">
                       {[
-                        { field: "INVOICE_LINE_ITEM", type: "text", readonly: true },
+                        // { field: "INVOICE_LINE_ITEM", type: "text", readonly: true },
                         { field: "SL_NO", type: "text", readonly: true },
                         { field: "ZINV_NO", type: "text", readonly: true },
                         { field: "REFERENCE_NUMBER", type: "text", readonly: true },
                         { field: "REQUIRED_DATE_AND_TIME", type: "datetime-local" },
                         { field: "REPORTED_DATE_AND_TIME", type: "datetime-local" },
                         { field: "PHYSICAL_DISPATCH_DATE_TIME", type: "datetime-local" },
-                        { field: "TRUCK_TYPE", type: "select", options: truckTypeList.map(t => t.code) },
-                        { field: "TYPE_OF_TRANSPORTER", type: "text" },
+                        {
+                          field: "TRUCK_TYPE",
+                          type: "select",
+                          options: Array.from(new Set([...truckTypeList.map((t) => t.code), item.TRUCK_TYPE].filter(Boolean))),
+                        },
+                        { field: "TYPE_OF_TRANSPORTER", type: "text", readonly: true },
                         { field: "VEHICLE_NUMBER", type: "text" },
                         { field: "NO_OF_VEHICLES", type: "number" },
                         { field: "DRIVER_NAME", type: "text" },
                         { field: "DRIVER_NUMBER", type: "text" },
                         { field: "CUSTOMER_EMAIL_DETAILS", type: "text" },
                         { field: "SALESPERSON_EMAIL_DETAILS", type: "text" },
-                        { field: "ZSTATE", type: "text" },
+                        {
+                          field: "ZSTATE",
+                          type: "select",
+                          options: Array.from(new Set([...statesList.map((s) => s.STATE || String(s)), item.ZSTATE].filter(Boolean))),
+                        },
                         { field: "ZZONE", type: "text" },
-                        { field: "TAT_TYPE", type: "select", options: ["Direct Truck TAT(Vizag)", "Direct Truck TAT(Hyd)", /* "Revised TAT", */ "Safe Express TAT", "Delivery TAT", "GATI TAT", "V Xpress", "Instant Transport Solution"] },
+                        {
+                          field: "TAT_TYPE",
+                          type: "select",
+                          options: [
+                            "Direct Truck TAT(Vizag)",
+                            "Direct Truck TAT(Hyd)",
+                            "Safe Express TAT",
+                            "Delivery TAT",
+                            "GATI TAT",
+                            "V Xpress",
+                            "Instant Transport Solution",
+                          ],
+                        },
                         { field: "TAT_DAYS", type: "number" },
                         { field: "ETA", type: "date" },
                       ].map(({ field, type, options, readonly }) => {
@@ -2896,7 +3956,33 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                         return (
                           <td key={field} className="px-3 py-2 whitespace-nowrap">
                             {item.isEdit && !readonly ? (
-                              type === "select" ? (
+                              field === "ZSTATE" ? (
+                                <select
+                                  className="h-7 w-full min-w-[130px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
+                                  value={displayVal}
+                                  onChange={(e) => handleItemStateChange(index, e.target.value)}
+                                >
+                                  <option value="">Select State</option>
+                                  {options?.map((o) => (
+                                    <option key={o} value={o}>
+                                      {o}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : field === "TAT_TYPE" ? (
+                                <select
+                                  className="h-7 w-full min-w-[150px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
+                                  value={displayVal}
+                                  onChange={(e) => handleItemTatTypeChange(index, e.target.value)}
+                                >
+                                  <option value="">Select TAT Type</option>
+                                  {options?.map((o) => (
+                                    <option key={o} value={o}>
+                                      {o}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : type === "select" ? (
                                 <select
                                   className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
                                   value={displayVal}
@@ -2907,7 +3993,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                   }}
                                 >
                                   <option value="">Select</option>
-                                  {options?.map(o => <option key={o} value={o}>{o}</option>)}
+                                  {options?.map((o) => (
+                                    <option key={o} value={o}>
+                                      {o}
+                                    </option>
+                                  ))}
                                 </select>
                               ) : type === "datetime-local" ? (
                                 <GateDateTimePicker
@@ -2915,11 +4005,37 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                   min={
                                     field === "PHYSICAL_DISPATCH_DATE_TIME" && item.REPORTED_DATE_AND_TIME
                                       ? item.REPORTED_DATE_AND_TIME
-                                      : undefined
+                                      : field === "REPORTED_DATE_AND_TIME" && item.REQUIRED_DATE_AND_TIME
+                                        ? getNextCalendarDate(item.REQUIRED_DATE_AND_TIME)
+                                        : undefined
                                   }
-                                  className="h-7 w-full min-w-[150px] text-[11px]"
+                                  minDateOnly={field === "REPORTED_DATE_AND_TIME"}
+                                  className={cn(
+                                    "h-7 w-full min-w-[150px] text-[11px]",
+                                    field === "REPORTED_DATE_AND_TIME" &&
+                                      item.REQUIRED_DATE_AND_TIME &&
+                                      displayVal &&
+                                      !isReportedDateValid(item.REQUIRED_DATE_AND_TIME, displayVal)
+                                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
+                                      : ""
+                                  )}
                                   onChange={(val) => {
                                     const next = [...searchResultItems];
+                                    if (
+                                      field === "REPORTED_DATE_AND_TIME" &&
+                                      item.REQUIRED_DATE_AND_TIME &&
+                                      val &&
+                                      !isReportedDateValid(item.REQUIRED_DATE_AND_TIME, val)
+                                    ) {
+                                      Swal.fire({
+                                        icon: "warning",
+                                        title: "Invalid Date & Time",
+                                        text: "Reported Date and Time must be at least one calendar day after Required Date and Time.",
+                                        timer: 2500,
+                                        showConfirmButton: false,
+                                      });
+                                      return;
+                                    }
                                     if (
                                       field === "PHYSICAL_DISPATCH_DATE_TIME" &&
                                       item.REPORTED_DATE_AND_TIME
@@ -2937,8 +4053,23 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                       }
                                     }
                                     next[index] = { ...next[index], [field]: val };
+                                    if (field === "REQUIRED_DATE_AND_TIME" && next[index].REPORTED_DATE_AND_TIME) {
+                                      if (!isReportedDateValid(val, next[index].REPORTED_DATE_AND_TIME)) {
+                                        next[index].REPORTED_DATE_AND_TIME = "";
+                                      }
+                                    }
                                     setSearchResultItems(next);
                                   }}
+                                />
+                              ) : type === "date" ? (
+                                <GateDatePicker
+                                  value={displayVal}
+                                  onChange={(_, str) => {
+                                    const next = [...searchResultItems];
+                                    next[index] = { ...next[index], [field]: str };
+                                    setSearchResultItems(next);
+                                  }}
+                                  className="h-7 min-w-[130px] text-[11px]"
                                 />
                               ) : (
                                 <input
@@ -2951,9 +4082,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                     const rawVal = e.target.value;
                                     let newVal: any = rawVal;
                                     if (field === "CUSTOMER_EMAIL_DETAILS") {
-                                      newVal = rawVal ? rawVal.split(",").map(v => ({ CUSTOMER_EMAIL_ID: v.trim() })) : [];
+                                      newVal = rawVal ? rawVal.split(",").map((v: string) => ({ CUSTOMER_EMAIL_ID: v.trim() })) : [];
                                     } else if (field === "SALESPERSON_EMAIL_DETAILS") {
-                                      newVal = rawVal ? rawVal.split(",").map(v => ({ SALESPERSON_EMAIL_ID: v.trim() })) : [];
+                                      newVal = rawVal ? rawVal.split(",").map((v: string) => ({ SALESPERSON_EMAIL_ID: v.trim() })) : [];
                                     } else if (field === "DRIVER_NUMBER") {
                                       newVal = rawVal.replace(/\D/g, "");
                                     }
@@ -2964,9 +4095,13 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               )
                             ) : (
                               <span>
-                                {type.includes("date") && displayVal
-                                  ? new Date(displayVal).toLocaleString("en-GB")
-                                  : displayVal || "-"}
+                                {type === "date" && displayVal
+                                  ? isNaN(new Date(displayVal).getTime())
+                                    ? displayVal
+                                    : format(new Date(displayVal), "dd-MM-yyyy")
+                                  : type === "datetime-local" && displayVal
+                                    ? displayVal
+                                    : displayVal || "-"}
                               </span>
                             )}
                           </td>
@@ -2996,7 +4131,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                   if (result.isConfirmed) {
                                     try {
                                       const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
-                                      const { isEdit: iEdit, _backup: iBackup, ...cleanItem } = item;
+                                      const cleanItem = formatGateItemForPayload(item);
 
                                       const payload = {
                                         CREATE: "",
@@ -3005,19 +4140,19 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                         DATA: [
                                           {
                                             HEADER: { ...cleanHeader, ZUSER: getLoggedInUser() },
-                                            ITEMS: [cleanItem]
-                                          }
-                                        ]
+                                            ITEMS: [cleanItem],
+                                          },
+                                        ],
                                       };
 
                                       const res: any = isSap
                                         ? await service.DeleteGateInOutWithSap(payload)
                                         : await service.DeleteGateInOutWithoutSap(payload);
-                                      if (res?.MSG) {
-                                        Swal.fire("Success", res.MSG, "success");
+                                      if (res?.MSG || res?.MESSAGE || res?.NUMBER === "200" || res?.STATUS === "TRUE" || res?.STATUS === true) {
+                                        Swal.fire("Success", res?.MSG || res?.MESSAGE || "Record deleted successfully", "success");
                                         setSearchResultItems(prev => prev.filter((_, i) => i !== index));
                                       } else {
-                                        Swal.fire("Error", "Failed to delete the record.", "error");
+                                        Swal.fire("Error", res?.MSG || res?.MESSAGE || "Failed to delete the record.", "error");
                                       }
                                     } catch (err) {
                                       console.error("Delete API failed:", err);
@@ -3137,18 +4272,18 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               />
                             </td>
                             <td className="px-3 py-0.5">
-                              <Input
-                                type="date"
+                              <GateDatePicker
                                 value={hr.ewayDate}
-                                onChange={(e) => updateHeaderRow(hrIdx, { ewayDate: e.target.value })}
+                                onChange={(_, str) => updateHeaderRow(hrIdx, { ewayDate: str })}
+                                className="h-7 text-xs"
                               />
                             </td>
 
                             <td className="px-3 py-0.5">
-                              <Input
-                                type="date"
+                              <GateDatePicker
                                 value={hr.ewayExpireDate}
-                                onChange={(e) => updateHeaderRow(hrIdx, { ewayExpireDate: e.target.value })}
+                                onChange={(_, str) => updateHeaderRow(hrIdx, { ewayExpireDate: str })}
+                                className="h-7 text-xs"
                               />
                             </td>
                           </>
@@ -3231,18 +4366,22 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                         </TableCell>
                         <TableCell className="text-center text-muted-foreground">{i + 1}</TableCell>
                         <TableCell className="p-1">
-                          <select
+                          <GateTableMultiSelect
+                            options={
+                              Array.from(
+                                new Set([
+                                  ...invoiceF4List,
+                                  ...headerRows.map((hr) => hr.invNo).filter(Boolean),
+                                  ...(invoiceNumber ? invoiceNumber.split(",").map((s) => s.trim()).filter(Boolean) : []),
+                                  ...(row.invoiceNumber ? row.invoiceNumber.split(",").map((s) => s.trim()).filter(Boolean) : []),
+                                ])
+                              )
+                            }
                             value={row.invoiceNumber}
-                            onChange={(e) => updateGateRow(i, "invoiceNumber", e.target.value)}
+                            onChange={(val) => updateGateRow(i, "invoiceNumber", val)}
+                            placeholder={isSap ? "Select Invoice" : "Select DC Ref"}
                             className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                          >
-                            <option value="">Select</option>
-                            {invoiceF4List.map((inv) => (
-                              <option key={inv} value={inv}>
-                                {inv}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </TableCell>
                         {/* <TableCell className="p-1">
                           <Input
@@ -3296,11 +4435,10 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           if (c === "ETA") {
                             return (
                               <TableCell key={c} className="p-1">
-                                <Input
-                                  type="date"
+                                <GateDatePicker
                                   className="h-7 min-w-[140px]"
                                   value={row.eta}
-                                  onChange={(e) => updateGateRow(i, "eta", e.target.value)}
+                                  onChange={(_, str) => updateGateRow(i, "eta", str)}
                                 />
                               </TableCell>
                             );
@@ -3324,22 +4462,38 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           const field = fieldMap[c];
                           if (!field) return <TableCell key={c} className="p-1" />;
                           const isPd = c === "Physical Dispatch Date and Time";
+                          const isReported = c === "Reported Date and Time";
                           const isDateTime = c.toLowerCase().includes("date");
                           const val = row[field] || "";
+                          const minReported = isReported && row.requiredDateTime ? getNextCalendarDate(row.requiredDateTime) : undefined;
 
                           if (isDateTime) {
                             return (
                               <TableCell key={c} className="p-1">
                                 <GateDateTimePicker
                                   value={val}
-                                  min={isPd ? minPd : undefined}
+                                  min={isPd ? minPd : isReported ? minReported : undefined}
+                                  minDateOnly={isReported}
                                   className={cn(
                                     "h-7 min-w-[150px]",
                                     isPd && minPd && val && val <= minPd
                                       ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
+                                      : "",
+                                    isReported && row.requiredDateTime && val && !isReportedDateValid(row.requiredDateTime, val)
+                                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
                                       : ""
                                   )}
                                   onChange={(v) => {
+                                    if (isReported && row.requiredDateTime && v && !isReportedDateValid(row.requiredDateTime, v)) {
+                                      Swal.fire({
+                                        icon: "warning",
+                                        title: "Invalid Date & Time",
+                                        text: "Reported Date and Time must be at least one calendar day after Required Date and Time.",
+                                        timer: 2500,
+                                        showConfirmButton: false,
+                                      });
+                                      return;
+                                    }
                                     if (isPd && minPd && v && v <= minPd) {
                                       Swal.fire({
                                         icon: "warning",
@@ -3426,6 +4580,80 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           </div>
         </>
       )}
+
+      {/* ── Completed Invoices Modal ── */}
+      <Dialog open={compInvoicesModalOpen} onOpenChange={setCompInvoicesModalOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white dark:bg-surface border border-hairline shadow-2xl rounded-xl">
+          <div className="bg-gradient-primary px-5 py-3.5 text-primary-foreground flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="size-4" />
+              <DialogTitle className="text-[14px] font-bold tracking-wide text-white">
+                Completed Invoices
+              </DialogTitle>
+            </div>
+            {compInvoicesModalData.refNo && (
+              <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded text-white font-mono">
+                Ref: {compInvoicesModalData.refNo}
+              </span>
+            )}
+          </div>
+
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between text-[12px] text-muted-foreground border-b border-hairline/60 pb-2">
+              <span>Total Completed Invoices:</span>
+              <span className="font-bold text-foreground bg-muted px-2 py-0.5 rounded-full text-[11px]">
+                {compInvoicesModalData.invoices.length}
+              </span>
+            </div>
+
+            {compInvoicesModalData.invoices.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <FileText className="size-8 mx-auto mb-2 opacity-40" />
+                <p className="text-[12.5px] font-medium">No completed invoices found for this reference.</p>
+              </div>
+            ) : (
+              <div className="max-h-64 overflow-y-auto border border-hairline rounded-lg divide-y divide-hairline bg-surface">
+                <table className="w-full text-left text-[12px]">
+                  <thead className="bg-muted/50 text-[11px] font-semibold text-muted-foreground sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 w-12 text-center">#</th>
+                      <th className="px-3 py-2">Invoice Number</th>
+                      <th className="px-3 py-2 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/60">
+                    {compInvoicesModalData.invoices.map((inv, idx) => (
+                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2 text-center text-muted-foreground font-mono text-[11px]">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-2 font-mono font-medium text-foreground">
+                          {inv}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="px-5 py-3 bg-muted/30 border-t border-hairline flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCompInvoicesModalOpen(false)}
+              className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

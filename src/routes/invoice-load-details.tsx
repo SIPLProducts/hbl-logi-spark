@@ -31,7 +31,9 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { GateDatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -105,6 +107,12 @@ const INPUT_SAP_GREEN =
 const INPUT_LOGIC_PURPLE =
   "h-7 w-full rounded-md bg-violet-50 border-2 border-violet-400 px-2 text-[12px] text-violet-900 font-semibold outline-none cursor-not-allowed text-center";
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
+
+// Reference table disabled row styles (when ZNOT_ALLOWED === "X")
+const ROW_DISABLED =
+  "border-t border-hairline/80 bg-slate-100/90 dark:bg-zinc-800/80 text-muted-foreground";
+const INPUT_DISABLED_ROW =
+  "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed text-center";
 
 /* Reports-style multi-select dropdown (checkboxes + search) for the F4 lists.
    `value` stays the screen's existing single string (comma-joined when more
@@ -232,6 +240,9 @@ type ReferenceRow = {
   lineNumber: string;
   ZNO_TRUCKS?: number;
   INV_NO?: { VBELN: string }[];
+  lrOptions?: string[];
+  compInvoices?: string[];
+  notAllowed?: boolean;
 };
 
 const emptyReferenceRow = (): ReferenceRow => ({
@@ -243,7 +254,150 @@ const emptyReferenceRow = (): ReferenceRow => ({
   soNumber: "",
   odnNumber: "",
   lineNumber: "",
+  lrOptions: [],
+  compInvoices: [],
+  notAllowed: false,
 });
+
+/** Multi-select dropdown for LR Number in reference table rows */
+function LoadTableMultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select LR No",
+  className,
+  disabled = false,
+  readOnly = false,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const selected = value
+    ? value
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+    : [];
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    if (disabled || readOnly) return;
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const selectAll = () => {
+    if (disabled || readOnly) return;
+    onChange(options.join(","));
+  };
+
+  const clearAll = () => {
+    if (disabled || readOnly) return;
+    onChange("");
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          title={selected.join(", ")}
+          className={
+            (className ? className + " " : "") +
+            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+            (selected.length === 0 ? " text-muted-foreground" : "")
+          }
+        >
+          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
+        <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
+          <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
+          {options.length > 1 && !readOnly && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                All
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-muted-foreground hover:underline font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+        {options.length > 5 && (
+          <div className="p-1.5 border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search LR..."
+              className="h-6 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+        )}
+        <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
+          {filtered.length === 0 ? (
+            <div className="p-2 text-center text-[11px] text-muted-foreground">No LR found</div>
+          ) : (
+            filtered.map((o) => {
+              const isChecked = selected.includes(o);
+              return (
+                <label
+                  key={o}
+                  className={
+                    "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] transition-colors " +
+                    (readOnly ? "cursor-not-allowed opacity-75" : "hover:bg-muted/60 cursor-pointer")
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    disabled={readOnly}
+                    onChange={() => toggle(o)}
+                    className={"size-3.5 accent-primary rounded " + (readOnly ? "cursor-not-allowed opacity-60" : "cursor-pointer")}
+                  />
+                  <span className={"font-mono " + (readOnly ? "text-muted-foreground" : "text-foreground")}>{o}</span>
+                </label>
+              );
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 type LoadRow = {
   id: number;
@@ -311,6 +465,13 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [selectedItems, setSelectedItems] = useState<ReferenceRow[]>([]);
   const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
   const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
+  const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
+  const [compInvoicesModalData, setCompInvoicesModalData] = useState<{ refNo: string; invoices: string[] }>({ refNo: "", invoices: [] });
+
+  const openCompletedInvoicesModal = (row: ReferenceRow) => {
+    setCompInvoicesModalData({ refNo: row.referenceNumber || "", invoices: row.compInvoices || [] });
+    setCompInvoicesModalOpen(true);
+  };
 
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
@@ -386,17 +547,47 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
             if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
           });
         }
+
+        let lrOptions: string[] = [];
+        if (Array.isArray(d.LR_NO)) {
+          lrOptions = d.LR_NO
+            .map((x: any) => (typeof x === "object" && x !== null ? x.LR : String(x)))
+            .filter(Boolean);
+        } else if (typeof d.LR_NO === "string" && d.LR_NO.trim()) {
+          lrOptions = [d.LR_NO.trim()];
+        }
+        lrOptions = Array.from(new Set(lrOptions));
+
+        let compInvoices: string[] = [];
+        if (Array.isArray(d.COMP_INV_NO)) {
+          compInvoices = d.COMP_INV_NO
+            .map((x: any) => (typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x)))
+            .filter(Boolean);
+        } else if (typeof d.COMP_INV_NO === "string" && d.COMP_INV_NO.trim()) {
+          compInvoices = [d.COMP_INV_NO.trim()];
+        }
+        compInvoices = Array.from(new Set(compInvoices));
+
+        const isNotAllowed =
+          String(d.ZNOT_ALLOWED || d.znot_allowed || d.notAllowed || "").trim().toUpperCase() === "X" ||
+          d.ZNOT_ALLOWED === true ||
+          d.znot_allowed === true ||
+          d.notAllowed === true;
+
         return {
           MAPID: d.MAPID || "",
           referenceNumber: d.REF_NO || "",
           workOrderNumber: d.WORK_ORDER_NO || "",
-          lrNumber: d.LR_NO || "",
+          lrNumber: lrOptions.length > 0 ? lrOptions.join(",") : (d.LR_NO || ""),
           transporter: d.TRANSPORTER || "",
           soNumber: "",
           odnNumber: "",
           lineNumber: d.LINE_NO || "",
           ZNO_TRUCKS: d.ZNO_TRUCKS,
           INV_NO: d.INV_NO || [],
+          lrOptions,
+          compInvoices,
+          notAllowed: isNotAllowed,
         };
       });
       setReferenceItems(nextRows);
@@ -418,10 +609,12 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
   };
 
   const updateReferenceField = (index: number, patch: Partial<ReferenceRow>) => {
+    if (referenceItems[index]?.notAllowed) return;
     setReferenceItems((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   };
 
   const removeReferenceRow = (index: number) => {
+    if (referenceItems[index]?.notAllowed) return;
     const removed = referenceItems[index];
     setReferenceItems((prev) => prev.filter((_, i) => i !== index));
     setSelectedItems((prev) =>
@@ -449,6 +642,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     );
 
   const toggleReferenceSelection = (row: ReferenceRow, checked: boolean) => {
+    if (row.notAllowed) return;
     let nextSelected: ReferenceRow[];
     if (checked) {
       nextSelected = isRowSelected(row) ? selectedItems : [...selectedItems, row];
@@ -738,7 +932,32 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
         setSearchResults([]);
         Swal.fire('Info', 'No records found', 'info');
       } else {
-        setSearchResults(res.HEADER.map((item: any) => ({ ...item, isEdit: false })));
+        setSearchResults(
+          res.HEADER.map((item: any) => {
+            const zactVol =
+              item.ZACT_VOL ??
+              item.ACT_VOL ??
+              item.ZACT_VOLUME ??
+              item.ACTUAL_VOLUME ??
+              item.ZACT_VOL_OCC ??
+              item.ACT_VOL_OCC ??
+              item.ZACTUAL_VOL ??
+              item.ACTUAL_VOL ??
+              "";
+            const zlfVol =
+              item.ZLF_VOL ??
+              item.LF_VOL ??
+              item.ZLF_VOLUME ??
+              item.LF_VOLUME ??
+              "";
+            return {
+              ...item,
+              ZACT_VOL: zactVol,
+              ZLF_VOL: zlfVol,
+              isEdit: false,
+            };
+          })
+        );
         setRevealed(false);
         Swal.fire('Data fetched successfully!', '', 'success');
       }
@@ -749,8 +968,26 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
   };
 
   const editSearchRow = (index: number) => {
-    setEditBackup((prev) => ({ ...prev, [index]: { ...searchResults[index] } }));
-    setSearchResults((prev) => prev.map((r, i) => (i === index ? { ...r, isEdit: true } : r)));
+    const row = searchResults[index];
+    const zactVol =
+      row.ZACT_VOL ??
+      row.ACT_VOL ??
+      row.ZACT_VOLUME ??
+      row.ACTUAL_VOLUME ??
+      row.ZACT_VOL_OCC ??
+      row.ACT_VOL_OCC ??
+      row.ZACTUAL_VOL ??
+      row.ACTUAL_VOL ??
+      "";
+    const zlfVol =
+      row.ZLF_VOL ??
+      row.LF_VOL ??
+      row.ZLF_VOLUME ??
+      row.LF_VOLUME ??
+      "";
+    const updatedRow = { ...row, ZACT_VOL: zactVol, ZLF_VOL: zlfVol };
+    setEditBackup((prev) => ({ ...prev, [index]: { ...updatedRow } }));
+    setSearchResults((prev) => prev.map((r, i) => (i === index ? { ...updatedRow, isEdit: true } : r)));
   };
 
   const cancelSearchEdit = (index: number) => {
@@ -792,7 +1029,8 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
               ZREFNO: row.ZREFNO,
               ZWORK_ORDER: row.ZWORK_ORDER,
               ZLRNO: row.ZLRNO,
-              ZTRANSPORTER: row.ZTRANSPORTER,
+              ZSO_NO: row.ZSO_NO,
+              ZODN_NO: row.ZODN_NO,
               ZTRUC_TYPE: row.ZTRUC_TYPE,
               ZTRUC_WT: row.ZTRUC_WT,
               ZACT_LOAD: row.ZACT_LOAD,
@@ -803,6 +1041,10 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
               ZWEEK_SF: row.ZWEEK_SF,
               ZEWAYBILL_NO: row.ZEWAYBILL_NO,
               ZEWAYBILL_DT: row.ZEWAYBILL_DT,
+              ZPLANT: row.ZPLANT,
+              ZDIVISION: row.ZDIVISION,
+              ZCREATED_DT: row.ZCREATED_DT,
+              ZVEH_TYPE: row.ZVEH_TYPE,
               ZUSER: row.ZUSER,
               ZUSER_CH: user.USER,
             },
@@ -832,6 +1074,10 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
               ZWEEK_SF: row.ZWEEK_SF,
               ZEWAYBILL_NO: row.ZEWAYBILL_NO,
               ZEWAYBILL_DT: row.ZEWAYBILL_DT,
+              ZPLANT: row.ZPLANT,
+              ZDIVISION: row.ZDIVISION,
+              ZCREATED_DT: row.ZCREATED_DT,
+              ZVEH_TYPE: row.ZVEH_TYPE,
               ZUSER: row.ZUSER,
               ZUSER_CH: user.USER,
             },
@@ -987,7 +1233,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
       {/* Selection table — hidden while search results are being shown, same idea as
           Angular's showForm=false on search: the create workflow steps aside for search. */}
       {searchResults.length === 0 && (
-        <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+        <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
           <table className="w-full text-[12px]">
             <thead>
               <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
@@ -995,89 +1241,159 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                 <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
                 <th className="px-3 py-0.5 text-center">Map ID</th>
                 <th className="px-3 py-0.5 text-center">Reference Number</th>
-                <th className="px-3 py-0.5 text-center">Work Order Number</th>
+                <th className="px-3 py-0.5 text-center whitespace-nowrap">Work Order Number</th>
                 <th className="px-3 py-0.5 text-center">LR Number</th>
                 <th className="px-3 py-0.5 text-center">Transporter</th>
+                <th className="px-3 py-0.5 text-center whitespace-nowrap">Completed Invoices</th>
                 <th className="px-3 py-0.5 text-center w-20">Action</th>
               </tr>
             </thead>
             <tbody>
-              {referenceItems.map((row, i) => (
-                <tr key={i}>
-                  <td className="px-3 py-0.5 text-center">
-                    <input
-                      type="checkbox"
-                      checked={isRowSelected(row)}
-                      onChange={(e) => toggleReferenceSelection(row, e.target.checked)}
-                      className="size-4 accent-sky-600"
-                    />
-                  </td>
-                  <td className="px-3 py-0.5 text-center">{i + 1}</td>
-                  <td className="px-3 py-0.5">
-                    <input
-                      value={row.MAPID}
-                      readOnly
-                      placeholder="Enter Map ID"
-                      className={GREEN_INPUT + " text-center bg-muted/50"}
-                    />
-                  </td>
-                  <td className="px-3 py-0.5">
-                    <input
-                      value={row.referenceNumber}
-                      onChange={(e) => updateReferenceField(i, { referenceNumber: e.target.value })}
-                      onBlur={() => i === 0 && onFieldBlur("REF_NO")}
-                      onKeyDown={(e) => i === 0 && e.key === "Enter" && onFieldBlur("REF_NO")}
-                      readOnly={i !== 0}
-                      maxLength={10}
-                      placeholder="Enter Ref. No."
-                      className={GREEN_INPUT + " text-center"}
-                    />
-                  </td>
-                  <td className="px-3 py-0.5">
-                    <input
-                      value={row.workOrderNumber}
-                      onChange={(e) => updateReferenceField(i, { workOrderNumber: e.target.value })}
-                      onBlur={() => i === 0 && onFieldBlur("WORK_ORDER_NO")}
-                      onKeyDown={(e) => i === 0 && e.key === "Enter" && onFieldBlur("WORK_ORDER_NO")}
-                      readOnly={i !== 0}
-                      placeholder="Enter Work Order No."
-                      className={GREEN_INPUT + " text-center"}
-                    />
-                  </td>
-                  <td className="px-3 py-0.5">
-                    <input
-                      value={row.lrNumber}
-                      onChange={(e) => updateReferenceField(i, { lrNumber: e.target.value })}
-                      onBlur={() => i === 0 && onFieldBlur("LR_NO")}
-                      onKeyDown={(e) => i === 0 && e.key === "Enter" && onFieldBlur("LR_NO")}
-                      readOnly={i !== 0}
-                      placeholder="Enter LR No."
-                      className={GREEN_INPUT + " text-center"}
-                    />
-                  </td>
-                  <td className="px-3 py-0.5">
-                    <input
-                      value={row.transporter}
-                      onChange={(e) => updateReferenceField(i, { transporter: e.target.value })}
-                      onBlur={() => i === 0 && onFieldBlur("TRANSPORTER")}
-                      onKeyDown={(e) => i === 0 && e.key === "Enter" && onFieldBlur("TRANSPORTER")}
-                      readOnly={i !== 0}
-                      placeholder="Enter Transporter"
-                      className={GREEN_INPUT + " text-center"}
-                    />
-                  </td>
-                  <td className="px-3 py-0.5 text-center">
-                    {referenceItems.length > 1 && (
+              {referenceItems.map((row, i) => {
+                const isRowDisabled = Boolean(row.notAllowed);
+                return (
+                  <tr
+                    key={i}
+                    className={
+                      isRowDisabled
+                        ? ROW_DISABLED
+                        : "border-t border-hairline/60 hover:bg-muted/20 transition-colors"
+                    }
+                  >
+                    <td className="px-3 py-0.5 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isRowSelected(row)}
+                        disabled={isRowDisabled}
+                        onChange={(e) => toggleReferenceSelection(row, e.target.checked)}
+                        className={"size-4 accent-sky-600 " + (isRowDisabled ? "cursor-not-allowed opacity-30" : "cursor-pointer")}
+                        title={isRowDisabled ? "This reference is not allowed" : undefined}
+                      />
+                    </td>
+                    <td className="px-3 py-0.5 text-center font-medium">{i + 1}</td>
+                    <td className="px-3 py-0.5">
+                      <input
+                        value={row.MAPID}
+                        readOnly
+                        disabled={isRowDisabled}
+                        placeholder="Enter Map ID"
+                        className={
+                          (isRowDisabled
+                            ? INPUT_DISABLED_ROW
+                            : GREEN_INPUT + " text-center bg-muted/50")
+                        }
+                      />
+                    </td>
+                    <td className="px-3 py-0.5">
+                      <input
+                        value={row.referenceNumber}
+                        onChange={(e) => updateReferenceField(i, { referenceNumber: e.target.value })}
+                        onBlur={() => i === 0 && onFieldBlur("REF_NO")}
+                        onKeyDown={(e) => i === 0 && e.key === "Enter" && onFieldBlur("REF_NO")}
+                        readOnly={i !== 0 || isRowDisabled}
+                        disabled={isRowDisabled}
+                        maxLength={10}
+                        placeholder="Enter Ref. No."
+                        className={
+                          (isRowDisabled
+                            ? INPUT_DISABLED_ROW
+                            : GREEN_INPUT + " text-center")
+                        }
+                      />
+                    </td>
+                    <td className="px-3 py-0.5 whitespace-nowrap">
+                      <input
+                        value={row.workOrderNumber}
+                        onChange={(e) => updateReferenceField(i, { workOrderNumber: e.target.value })}
+                        onBlur={() => i === 0 && onFieldBlur("WORK_ORDER_NO")}
+                        onKeyDown={(e) => i === 0 && e.key === "Enter" && onFieldBlur("WORK_ORDER_NO")}
+                        readOnly={i !== 0 || isRowDisabled}
+                        disabled={isRowDisabled}
+                        placeholder="Enter Work Order No."
+                        className={
+                          (isRowDisabled
+                            ? INPUT_DISABLED_ROW
+                            : GREEN_INPUT + " text-center")
+                        }
+                      />
+                    </td>
+                    <td className="px-3 py-0.5">
+                      {((row.lrOptions && row.lrOptions.length > 0) || row.lrNumber) ? (
+                        <LoadTableMultiSelect
+                          options={row.lrOptions && row.lrOptions.length > 0 ? row.lrOptions : [row.lrNumber]}
+                          value={row.lrNumber || ""}
+                          onChange={(val) => updateReferenceField(i, { lrNumber: val })}
+                          placeholder="Select LR No"
+                          readOnly={isRowDisabled}
+                          className={
+                            isRowDisabled
+                              ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer"
+                              : GREEN_INPUT
+                          }
+                        />
+                      ) : (
+                        <input
+                          value={row.lrNumber}
+                          onChange={(e) => updateReferenceField(i, { lrNumber: e.target.value })}
+                          onBlur={() => i === 0 && onFieldBlur("LR_NO")}
+                          onKeyDown={(e) => i === 0 && e.key === "Enter" && onFieldBlur("LR_NO")}
+                          readOnly={i !== 0 || isRowDisabled}
+                          disabled={isRowDisabled}
+                          placeholder="Enter LR No."
+                          className={
+                            (isRowDisabled
+                              ? INPUT_DISABLED_ROW
+                              : GREEN_INPUT + " text-center")
+                          }
+                        />
+                      )}
+                    </td>
+                    <td className="px-3 py-0.5">
+                      <input
+                        value={row.transporter}
+                        onChange={(e) => updateReferenceField(i, { transporter: e.target.value })}
+                        onBlur={() => i === 0 && onFieldBlur("TRANSPORTER")}
+                        onKeyDown={(e) => i === 0 && e.key === "Enter" && onFieldBlur("TRANSPORTER")}
+                        readOnly={i !== 0 || isRowDisabled}
+                        disabled={isRowDisabled}
+                        placeholder="Enter Transporter"
+                        className={
+                          (isRowDisabled
+                            ? INPUT_DISABLED_ROW
+                            : GREEN_INPUT + " text-center")
+                        }
+                      />
+                    </td>
+                    <td className="px-3 py-0.5 text-center whitespace-nowrap">
                       <button
-                        onClick={() => removeReferenceRow(i)}
-                        className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted hover:text-destructive"
+                        type="button"
+                        onClick={() => openCompletedInvoicesModal(row)}
+                        className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 transition-colors shadow-xs cursor-pointer"
                       >
-                        <Trash2 className="size-4" />
+                        <Eye className="size-3.5 text-sky-600 dark:text-sky-400" />
+                        <span>View</span>
+                        {row.compInvoices && row.compInvoices.length > 0 && (
+                          <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold rounded-full bg-sky-600 text-white">
+                            {row.compInvoices.length}
+                          </span>
+                        )}
                       </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-3 py-0.5 text-center">
+                      {referenceItems.length > 1 && !isRowDisabled && (
+                        <button
+                          type="button"
+                          onClick={() => removeReferenceRow(i)}
+                          aria-label="Remove row"
+                          className="inline-grid place-items-center size-7 rounded-md text-destructive hover:bg-destructive/10 cursor-pointer"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1399,195 +1715,381 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
       {/* Search results (Angular: searchOptionsList table with inline edit/delete) */}
       {searchResults.length > 0 && (
-        <div className="max-h-[560px] overflow-auto">
+        <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+          <div className="px-4 py-2 font-semibold text-[13px] text-foreground flex items-center justify-between border-b border-hairline">
+            <span>Search Results</span>
+            <span className="text-[11px] font-normal text-muted-foreground">
+              {searchResults.length} record{searchResults.length === 1 ? "" : "s"} found
+            </span>
+          </div>
           <div className="max-h-[560px] overflow-auto">
-            <table className="w-full text-left border-collapse text-[12.5px]">
-              <thead className="sticky top-0 z-30">
-                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Map ID</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Ref No</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Invoice No</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Line No</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">ODN No</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">SO No</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Truck Type</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Actual Load</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Actual Volume</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">E-Way Bill No</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">E-Way Bill Date</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Work Order</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">LR No</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center">Transporter</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-center w-20">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-hairline/70">
-                {searchResults.map((item, i) => (
-                  <tr
-                    key={i}
-                    className={
-                      i % 2 === 0
-                        ? "bg-surface hover:bg-muted/50"
-                        : "bg-surface-2/40 hover:bg-muted/50"
-                    }
-                  >
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZMAPID}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZREFNO}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.VBELN}</td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
-                    <td className="px-2 py-1">
-                      {item.isEdit ? (
-                        <input
-                          value={item.ZODN_NO || ""}
-                          onChange={(e) => patchSearchRow(i, { ZODN_NO: e.target.value })}
-                          className={GREEN_INPUT + " text-center"}
-                        />
-                      ) : (
-                        <span>{item.ZODN_NO}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          value={item.ZSO_NO || ""}
-                          onChange={(e) => patchSearchRow(i, { ZSO_NO: e.target.value })}
-                          className={GREEN_INPUT + " text-center"}
-                        />
-                      ) : (
-                        <span>{item.ZSO_NO}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          value={item.ZTRUC_TYPE || ""}
-                          onChange={(e) => patchSearchRow(i, { ZTRUC_TYPE: e.target.value })}
-                          className={GREEN_INPUT + " text-center"}
-                        />
-                      ) : (
-                        <span>{item.ZTRUC_TYPE}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          type="number"
-                          value={item.ZACT_LOAD || ""}
-                          onChange={(e) => patchSearchRow(i, { ZACT_LOAD: e.target.value })}
-                          className={GREEN_INPUT + " text-center"}
-                        />
-                      ) : (
-                        <span>{item.ZACT_LOAD}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          type="number"
-                          value={item.ZACT_VOL || ""}
-                          onChange={(e) => patchSearchRow(i, { ZACT_VOL: e.target.value })}
-                          className={GREEN_INPUT + " text-center"}
-                        />
-                      ) : (
-                        <span>{item.ZACT_VOL}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          value={item.ZEWAYBILL_NO || ""}
-                          onChange={(e) => patchSearchRow(i, { ZEWAYBILL_NO: e.target.value })}
-                          className={GREEN_INPUT + " text-center"}
-                        />
-                      ) : (
-                        <span>{item.ZEWAYBILL_NO}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          type="date"
-                          value={item.ZEWAYBILL_DT || ""}
-                          onChange={(e) => patchSearchRow(i, { ZEWAYBILL_DT: e.target.value })}
-                          className={GREEN_INPUT}
-                        />
-                      ) : (
-                        <span>{item.ZEWAYBILL_DT ? format(new Date(item.ZEWAYBILL_DT), "dd-MM-yyyy") : ""}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          value={item.ZWORK_ORDER || ""}
-                          onChange={(e) => patchSearchRow(i, { ZWORK_ORDER: e.target.value })}
-                          className={GREEN_INPUT + " text-center"}
-                        />
-                      ) : (
-                        <span>{item.ZWORK_ORDER}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          value={item.ZLRNO || ""}
-                          onChange={(e) => patchSearchRow(i, { ZLRNO: e.target.value })}
-                          className={GREEN_INPUT + " text-center"}
-                        />
-                      ) : (
-                        <span>{item.ZLRNO}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          value={item.ZTRANSPORTER || ""}
-                          onChange={(e) => patchSearchRow(i, { ZTRANSPORTER: e.target.value })}
-                          className={GREEN_INPUT + " text-center"}
-                        />
-                      ) : (
-                        <span>{item.ZTRANSPORTER}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {!item.isEdit ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => editSearchRow(i)}
-                            className="inline-grid place-items-center size-6 rounded-md text-sky-600 hover:bg-sky-50"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                          <button
-                            onClick={() => deleteSearchRow(i)}
-                            className="inline-grid place-items-center size-6 rounded-md text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => updateSearchRow(i)}
-                            className="inline-grid place-items-center size-6 rounded-md text-emerald-600 hover:bg-emerald-50"
-                          >
-                            <Check className="size-3.5" />
-                          </button>
-                          <button
-                            onClick={() => cancelSearchEdit(i)}
-                            className="inline-grid place-items-center size-6 rounded-md text-muted-foreground hover:bg-muted"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-[12.5px]">
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center">Map ID</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center">Ref No</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center">Invoice No</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center">Line No</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center min-w-[150px]">ODN No</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center min-w-[150px]">SO No</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center min-w-[200px]">Truck Type</th>
+                    <th className="px-3 py-2 text-center whitespace-nowrap leading-tight min-w-[130px]">
+                      Passing Weight
+                      <br />
+                      (Tons)
+                    </th>
+                    <th className="px-3 py-2 text-center whitespace-nowrap leading-tight min-w-[130px]">
+                      Actual Load
+                      <br />
+                      (Tons)
+                    </th>
+                    <th className="px-3 py-2 text-center whitespace-nowrap leading-tight min-w-[140px]">
+                      Loading Factor %
+                      <br />
+                      (w.r.t Weight)
+                    </th>
+                    <th className="px-3 py-2 text-center whitespace-nowrap leading-tight min-w-[140px]">
+                      Truck Volume
+                      <br />
+                      (Cubic Feet)
+                    </th>
+                    <th className="px-3 py-2 text-center whitespace-nowrap leading-tight min-w-[160px]">
+                      Actual Volume Occupied
+                      <br />
+                      (Input in %)
+                    </th>
+                    <th className="px-3 py-2 text-center whitespace-nowrap leading-tight min-w-[140px]">
+                      Actual Volume
+                      <br />
+                      (Cubic Feet)
+                    </th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center">Work Order</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center">LR No</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center">Transporter</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center min-w-[180px]">Plant</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center min-w-[180px]">Division</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center">Created Date</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center">Vehicle Type</th>
+                    <th className="px-3 py-2.5 whitespace-nowrap text-center w-20">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-hairline/70">
+                  {searchResults.map((item, i) => (
+                    <tr
+                      key={i}
+                      className={
+                        i % 2 === 0
+                          ? "bg-surface hover:bg-muted/50"
+                          : "bg-surface-2/40 hover:bg-muted/50"
+                      }
+                    >
+                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZMAPID}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZREFNO}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.VBELN}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
+                      <td className="px-2 py-1 min-w-[150px]">
+                        {item.isEdit ? (
+                          <input
+                            value={item.ZODN_NO || ""}
+                            onChange={(e) => patchSearchRow(i, { ZODN_NO: e.target.value })}
+                            className={GREEN_INPUT + " min-w-[150px] text-center"}
+                          />
+                        ) : (
+                          <span>{item.ZODN_NO}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center min-w-[150px]">
+                        {item.isEdit ? (
+                          <input
+                            value={item.ZSO_NO || ""}
+                            onChange={(e) => patchSearchRow(i, { ZSO_NO: e.target.value })}
+                            className={GREEN_INPUT + " min-w-[150px] text-center"}
+                          />
+                        ) : (
+                          <span>{item.ZSO_NO}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center min-w-[200px]">
+                        {item.isEdit ? (
+                          <select
+                            value={item.ZTRUC_TYPE || ""}
+                            onChange={(e) => {
+                              const selectedType = e.target.value;
+                              const matched = vehicleTypes.find((v) => v.ZTRUC_TYPE === selectedType);
+                              const wt = matched?.ZTRUC_WT || "";
+                              const vol = matched?.ZTRUC_VOL || "";
+                              const actLoad = selectedType === "PART LOAD" ? wt : (item.ZACT_LOAD ?? "");
+                              const lfWt = Number(wt) > 0 && Number(actLoad) > 0 ? ((Number(actLoad) / Number(wt)) * 100).toFixed(2) : "";
+                              const lfVol = Number(vol) > 0 && Number(item.ZACT_VOL) > 0 ? ((Number(item.ZACT_VOL) / Number(vol)) * 100).toFixed(2) : "";
+                              patchSearchRow(i, {
+                                ZTRUC_TYPE: selectedType,
+                                ZTRUC_WT: wt,
+                                ZTRUC_VOL: vol,
+                                ZACT_LOAD: actLoad,
+                                ZLF_WT: lfWt,
+                                ZLF_VOL: lfVol,
+                              });
+                            }}
+                            className={GREEN_INPUT + " min-w-[200px] text-center"}
+                          >
+                            <option value="">Select</option>
+                            {Array.from(new Set([...vehicleTypes.map((v) => v.ZTRUC_TYPE), item.ZTRUC_TYPE].filter(Boolean))).map((vt) => (
+                              <option key={vt} value={vt}>{vt}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span>{item.ZTRUC_TYPE}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center tabular-nums min-w-[130px]">
+                        {item.isEdit ? (
+                          <input
+                            type="number"
+                            value={item.ZTRUC_WT ?? ""}
+                            onChange={(e) => patchSearchRow(i, { ZTRUC_WT: e.target.value })}
+                            className={GREEN_INPUT + " min-w-[130px] text-center"}
+                          />
+                        ) : (
+                          <span>{item.ZTRUC_WT}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center tabular-nums min-w-[130px]">
+                        {item.isEdit ? (
+                          <input
+                            type="number"
+                            value={item.ZACT_LOAD ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const wt = item.ZTRUC_WT;
+                              const lfWt = Number(wt) > 0 && Number(val) > 0 ? ((Number(val) / Number(wt)) * 100).toFixed(2) : "";
+                              patchSearchRow(i, { ZACT_LOAD: val, ZLF_WT: lfWt });
+                            }}
+                            className={GREEN_INPUT + " min-w-[130px] text-center"}
+                          />
+                        ) : (
+                          <span>{item.ZACT_LOAD}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center tabular-nums min-w-[140px]">
+                        {item.isEdit ? (
+                          <input
+                            value={item.ZLF_WT ?? ""}
+                            onChange={(e) => patchSearchRow(i, { ZLF_WT: e.target.value })}
+                            className={GREEN_INPUT + " min-w-[140px] text-center"}
+                          />
+                        ) : (
+                          <span>{item.ZLF_WT}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center tabular-nums min-w-[140px]">
+                        {item.isEdit ? (
+                          <input
+                            type="number"
+                            value={item.ZTRUC_VOL ?? ""}
+                            onChange={(e) => patchSearchRow(i, { ZTRUC_VOL: e.target.value })}
+                            className={GREEN_INPUT + " min-w-[140px] text-center"}
+                          />
+                        ) : (
+                          <span>{item.ZTRUC_VOL}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center tabular-nums min-w-[160px]">
+                        {item.isEdit ? (
+                          <input
+                            value={item.ZACT_VOL ?? item.ACT_VOL ?? item.ZACT_VOLUME ?? item.ACTUAL_VOLUME ?? item.ZACT_VOL_OCC ?? item.ACT_VOL_OCC ?? item.ZACTUAL_VOL ?? item.ACTUAL_VOL ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const vol = item.ZTRUC_VOL;
+                              const lfVol = Number(vol) > 0 && Number(val) > 0 ? ((Number(val) / Number(vol)) * 100).toFixed(2) : "";
+                              patchSearchRow(i, { ZACT_VOL: val, ZLF_VOL: lfVol });
+                            }}
+                            className={GREEN_INPUT + " min-w-[160px] text-center"}
+                          />
+                        ) : (
+                          <span>{item.ZACT_VOL ?? item.ACT_VOL ?? item.ZACT_VOLUME ?? item.ACTUAL_VOLUME ?? item.ZACT_VOL_OCC ?? item.ACT_VOL_OCC ?? item.ZACTUAL_VOL ?? item.ACTUAL_VOL ?? ""}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center tabular-nums min-w-[140px]">
+                        {item.isEdit ? (
+                          <input
+                            type="number"
+                            value={item.ZLF_VOL ?? item.LF_VOL ?? item.ZLF_VOLUME ?? item.LF_VOLUME ?? ""}
+                            onChange={(e) => patchSearchRow(i, { ZLF_VOL: e.target.value })}
+                            className={GREEN_INPUT + " min-w-[140px] text-center"}
+                          />
+                        ) : (
+                          <span>{item.ZLF_VOL ?? item.LF_VOL ?? item.ZLF_VOLUME ?? item.LF_VOLUME ?? ""}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                        <span>{item.ZWORK_ORDER || ""}</span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                        <span>{item.ZLRNO || ""}</span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                        <span>{item.ZTRANSPORTER || ""}</span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center min-w-[180px]">
+                        {item.isEdit ? (
+                          <select
+                            value={item.ZPLANT || ""}
+                            onChange={(e) => patchSearchRow(i, { ZPLANT: e.target.value })}
+                            className={GREEN_INPUT + " min-w-[180px] text-center"}
+                          >
+                            <option value="">Select</option>
+                            {Array.from(new Set([...(user?.PLANTS || []).map((p: any) => typeof p === "string" ? p : p?.PLANT || p?.PLANT_NAME || String(p)), item.ZPLANT].filter(Boolean))).map((p) => (
+                              <option key={p} value={p}>{p}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span>{item.ZPLANT}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center min-w-[180px]">
+                        {item.isEdit ? (
+                          <select
+                            value={item.ZDIVISION || ""}
+                            onChange={(e) => patchSearchRow(i, { ZDIVISION: e.target.value })}
+                            className={GREEN_INPUT + " min-w-[180px] text-center"}
+                          >
+                            <option value="">Select</option>
+                            {Array.from(new Set([...(user?.DIV || []).map((d: any) => typeof d === "string" ? d : d?.DIVISION || d?.DIV || String(d)), item.ZDIVISION].filter(Boolean))).map((d) => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span>{item.ZDIVISION}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                        <span>
+                          {item.ZCREATED_DT
+                            ? isNaN(new Date(item.ZCREATED_DT).getTime())
+                              ? item.ZCREATED_DT
+                              : format(new Date(item.ZCREATED_DT), "dd-MM-yyyy")
+                            : ""}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                        <span>{item.ZVEH_TYPE || ""}</span>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                        {!item.isEdit ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => editSearchRow(i)}
+                              className="inline-grid place-items-center size-6 rounded-md text-sky-600 hover:bg-sky-50"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                            <button
+                              onClick={() => deleteSearchRow(i)}
+                              className="inline-grid place-items-center size-6 rounded-md text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => updateSearchRow(i)}
+                              className="inline-grid place-items-center size-6 rounded-md text-emerald-600 hover:bg-emerald-50"
+                            >
+                              <Check className="size-3.5" />
+                            </button>
+                            <button
+                              onClick={() => cancelSearchEdit(i)}
+                              className="inline-grid place-items-center size-6 rounded-md text-muted-foreground hover:bg-muted"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
+
+      {/* ── Completed Invoices Modal ── */}
+      <Dialog open={compInvoicesModalOpen} onOpenChange={setCompInvoicesModalOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white dark:bg-surface border border-hairline shadow-2xl rounded-xl">
+          <div className="bg-gradient-primary px-5 py-3.5 text-primary-foreground flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="size-4" />
+              <DialogTitle className="text-[14px] font-bold tracking-wide text-white">
+                Completed Invoices
+              </DialogTitle>
+            </div>
+            {compInvoicesModalData.refNo && (
+              <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded text-white font-mono">
+                Ref: {compInvoicesModalData.refNo}
+              </span>
+            )}
+          </div>
+
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between text-[12px] text-muted-foreground border-b border-hairline/60 pb-2">
+              <span>Total Completed Invoices:</span>
+              <span className="font-bold text-foreground bg-muted px-2 py-0.5 rounded-full text-[11px]">
+                {compInvoicesModalData.invoices.length}
+              </span>
+            </div>
+
+            {compInvoicesModalData.invoices.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <FileText className="size-8 mx-auto mb-2 opacity-40" />
+                <p className="text-[12.5px] font-medium">No completed invoices found for this reference.</p>
+              </div>
+            ) : (
+              <div className="max-h-64 overflow-y-auto border border-hairline rounded-lg divide-y divide-hairline bg-surface">
+                <table className="w-full text-left text-[12px]">
+                  <thead className="bg-muted/50 text-[11px] font-semibold text-muted-foreground sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 w-12 text-center">#</th>
+                      <th className="px-3 py-2">Invoice Number</th>
+                      <th className="px-3 py-2 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/60">
+                    {compInvoicesModalData.invoices.map((inv, idx) => (
+                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2 text-center text-muted-foreground font-mono text-[11px]">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-2 font-mono font-medium text-foreground">
+                          {inv}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="px-5 py-3 bg-muted/30 border-t border-hairline flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCompInvoicesModalOpen(false)}
+              className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1734,7 +2236,7 @@ function InvoiceFilterDownload({
           "Loading factor % (w.r.t weight)": item.ZLF_WT || "",
           "Actual Volume Occupied(Input in %)": item.ZACT_VOL || "",
           "Actual Volume(Cubic Feet)": item.ZLF_VOL || "",
-          "Week Wise Shipment Flow": item.ZWEEK_SF || "",
+          // "Week Wise Shipment Flow": item.ZWEEK_SF || "",
           "Eway Bill Number": item.ZEWAYBILL_NO || "",
           "Eway Bill Expiry Date": item.ZEWAYBILL_DT || "",
           Plant: item.ZPLANT || "",
@@ -1806,8 +2308,10 @@ function InvoiceFilterDownload({
         [
           "SI.No", "Map ID", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number",
           "Truck Type", "Passing Weight (Tons)", "Actual Load (Tons)", "Loading factor % (Wt)",
-          "Actual Volume", "Loading Factor (Vol)", "Week Wise Shipment Flow", "Eway Bill No",
-          "Eway Bill Expiry", "Plant", "Division", "Work Order", "LR No", "Transporter",
+          "Actual Volume", "Loading Factor (Vol)",
+          //  "Week Wise Shipment Flow", "Eway Bill No",
+          // "Eway Bill Expiry", 
+          "Plant", "Division", "Work Order", "LR No", "Transporter",
           "Created Date", "Vehicle Type",
         ],
       ];
@@ -1815,7 +2319,8 @@ function InvoiceFilterDownload({
         index + 1, item.ZMAPID || "", item.ZLINE_NO || "", item.ZREFNO || "", item.VBELN || "",
         item.ZODN_NO || "", item.ZSO_NO || "", item.ZTRUC_TYPE || "", item.ZTRUC_WT || "",
         item.ZACT_LOAD || "", item.ZLF_WT || "", item.ZACT_VOL || "", item.ZLF_VOL || "",
-        item.ZWEEK_SF || "", item.ZEWAYBILL_NO || "", item.ZEWAYBILL_DT || "", item.ZPLANT || "",
+        // item.ZWEEK_SF || "", item.ZEWAYBILL_NO || "", item.ZEWAYBILL_DT || "", 
+        item.ZPLANT || "",
         item.ZDIVISION || "", item.ZWORK_ORDER || "", item.ZLRNO || "", item.ZTRANSPORTER || "",
         item.ZCREATED_DT ? format(new Date(item.ZCREATED_DT), "dd-MM-yyyy") : "", item.ZVEH_TYPE || "",
       ]);
@@ -1871,33 +2376,33 @@ function InvoiceFilterDownload({
         ) : (
           <>
             <div className="overflow-x-auto scrollbar-elegant animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="p-4 grid grid-cols-3 min-w-[620px] gap-x-3 gap-y-2">
-              <DateField label="From Date" value={fromDate} onChange={setFromDate} />
-              <DateField label="To Date" value={toDate} onChange={setToDate} />
-              <PlantField value={fPlant} onChange={setFPlant} />
-              <DivisionField value={fDivision} onChange={setFDivision} />
-              <SelectField
-                label="Transporter"
-                value={fTransporter}
-                onChange={setFTransporter}
-                options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}
-                placeholder="Select Transporter"
-              />
-              <SelectField
-                label="Vehicle Type"
-                value={fVehicleType}
-                onChange={setFVehicleType}
-                options={VEHICLE_TYPES}
-                placeholder="Select Vehicle Type"
-              />
-              <SelectField
-                label="Status"
-                value={fStatus}
-                onChange={setFStatus}
-                options={["Pending", "Completed"]}
-                placeholder="Select Status Type"
-              />
-            </div>
+              <div className="p-4 grid grid-cols-3 min-w-[620px] gap-x-3 gap-y-2">
+                <DateField label="From Date" value={fromDate} onChange={setFromDate} />
+                <DateField label="To Date" value={toDate} onChange={setToDate} />
+                <PlantField value={fPlant} onChange={setFPlant} />
+                <DivisionField value={fDivision} onChange={setFDivision} />
+                <SelectField
+                  label="Transporter"
+                  value={fTransporter}
+                  onChange={setFTransporter}
+                  options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}
+                  placeholder="Select Transporter"
+                />
+                <SelectField
+                  label="Vehicle Type"
+                  value={fVehicleType}
+                  onChange={setFVehicleType}
+                  options={VEHICLE_TYPES}
+                  placeholder="Select Vehicle Type"
+                />
+                <SelectField
+                  label="Status"
+                  value={fStatus}
+                  onChange={setFStatus}
+                  options={["Pending", "Completed"]}
+                  placeholder="Select Status Type"
+                />
+              </div>
             </div>
 
             <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
@@ -1946,9 +2451,12 @@ function InvoiceFilterDownload({
                 <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.1em] text-primary-foreground">
                   {["SI.No", "Map ID", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number",
                     "Truck Type", "Passing Weight (Tons)", "Actual Load (Tons)",
-                    "Loading factor% (w.r.t weight)", "Actual Volume Occupied(Input in %)",
-                    "Actual Volume(Cubic Feet)", "Week Wise Shipment Flow", "Eway Bill Number",
-                    "Eway Bill Expiry Date", "Plant", "Division", "Work Order", "LR No",
+                    "Loading factor%(w.r.t weight)", "Actual Volume Occupied(Input in %)",
+                    "Actual Volume(Cubic Feet)",
+                    //  "Week Wise Shipment Flow", 
+                    // "Eway Bill Number",
+                    // "Eway Bill Expiry Date",
+                    "Plant", "Division", "Work Order", "LR No",
                     "Transporter", "Created date", "Vehicle Type"].map((h) => (
                       <th key={h} className="px-2 py-1.5 whitespace-nowrap">{h}</th>
                     ))}
@@ -1977,9 +2485,9 @@ function InvoiceFilterDownload({
                       <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZLF_WT}</td>
                       <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZACT_VOL}</td>
                       <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZLF_VOL}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{item.ZWEEK_SF}</td>
+                      {/* <td className="px-3 py-2 whitespace-nowrap">{item.ZWEEK_SF}</td>
                       <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZEWAYBILL_NO}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">{item.ZEWAYBILL_DT}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.ZEWAYBILL_DT}</td> */}
                       <td className="px-3 py-2 whitespace-nowrap">{item.ZPLANT}</td>
                       <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
                       <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>
@@ -2401,25 +2909,11 @@ function DateField({
   onChange: (d: Date | undefined) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn("h-8 justify-start text-left font-normal", !value && "text-muted-foreground")}
-          >
-            <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
-            {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="single" selected={value} onSelect={onChange} initialFocus className={cn("p-3 pointer-events-auto")} />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <GateDatePicker
+      label={label}
+      value={value}
+      onChange={(d) => onChange(d)}
+    />
   );
 }
 

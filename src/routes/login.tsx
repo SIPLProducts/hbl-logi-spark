@@ -56,6 +56,43 @@ function LoginPage() {
     return () => window.clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sessionReason = params.get("session");
+    if (sessionReason === "closed") {
+      Swal.fire({
+        icon: "info",
+        title: "Session Closed",
+        text: "You have been logged out successfully.",
+        timer: 3500,
+        showConfirmButton: true,
+        confirmButtonColor: "#0b2249",
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (sessionReason === "expired") {
+      Swal.fire({
+        icon: "warning",
+        title: "Session Expired",
+        text: "Your session has expired. Please sign in again.",
+        timer: 4000,
+        showConfirmButton: true,
+        confirmButtonColor: "#0b2249",
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (sessionReason === "timeout") {
+      Swal.fire({
+        icon: "warning",
+        title: "Session Timeout",
+        text: "Your session has expired due to inactivity. Please sign in again.",
+        timer: 4000,
+        showConfirmButton: true,
+        confirmButtonColor: "#0b2249",
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -111,7 +148,9 @@ function LoginPage() {
         return;
       }
 
+      sessionStorage.setItem("sessionActive", "true");
       localStorage.setItem("userData", JSON.stringify(response));
+      localStorage.setItem("currentUser", JSON.stringify(response));
       localStorage.setItem("isLoggedIn", "true");
 
       await Swal.fire({

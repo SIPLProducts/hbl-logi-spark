@@ -150,9 +150,10 @@ export function AppSidebar() {
 
   const handleLogout = () => {
     localStorage.removeItem("userData");
+    localStorage.removeItem("currentUser");
     localStorage.removeItem("isLoggedIn");
-    toast.success("Signed out");
-    navigate({ to: "/login" });
+    sessionStorage.removeItem("sessionActive");
+    navigate({ to: "/login", search: { session: "closed" } as any });
   };
 
   return (

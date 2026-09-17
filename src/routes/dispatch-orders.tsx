@@ -20,6 +20,7 @@ import {
 import { exportRowsToXls } from "@/lib/export-xls";
 import type { DispatchOrderRow } from "@/lib/dispatch-orders-mock";
 import Swal from "sweetalert2";
+import { GateDatePicker } from "@/components/ui/date-picker";
 
 export const Route = createFileRoute("/dispatch-orders")({
   component: DispatchOrdersPage,
@@ -363,12 +364,10 @@ function DispatchOrdersPage() {
                 <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   From Date <span className="text-destructive">*</span>
                 </label>
-                <input
-                  type="date"
+                <GateDatePicker
                   value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  required
-                  className="h-9 bg-surface border border-hairline rounded-md px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  onChange={(_, str) => setFromDate(str)}
+                  className="h-9"
                 />
               </div>
 
@@ -376,12 +375,10 @@ function DispatchOrdersPage() {
                 <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   To Date <span className="text-destructive">*</span>
                 </label>
-                <input
-                  type="date"
+                <GateDatePicker
                   value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  required
-                  className="h-9 bg-surface border border-hairline rounded-md px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  onChange={(_, str) => setToDate(str)}
+                  className="h-9"
                 />
               </div>
 

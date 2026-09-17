@@ -1,9 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, ChevronDown, X } from "lucide-react";
+import {
+  Search,
+  MoreVertical,
+  Save,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  X,
+  Eye,
+  FileText,
+  ExternalLink,
+} from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 // @ts-ignore
-import service from "../services/generalservice_service.js";
+import service, { getLocalDocumentUrl } from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
+import { GateDatePicker } from "@/components/ui/date-picker";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -13,6 +27,143 @@ const LABEL =
   "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 const RED_LABEL =
   "block text-[11px] font-semibold text-red-600 mb-0.5";
+
+// Table Multi-Select Dropdown for LR Numbers
+function TableMultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select LR No",
+  className,
+  disabled = false,
+  readOnly = false,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const selected = value
+    ? value
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+    : [];
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    if (disabled || readOnly) return;
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const selectAll = () => {
+    if (disabled || readOnly) return;
+    onChange(options.join(","));
+  };
+
+  const clearAll = () => {
+    if (disabled || readOnly) return;
+    onChange("");
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          title={selected.join(", ")}
+          className={
+            (className ? className + " " : "") +
+            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+            (selected.length === 0 ? " text-muted-foreground" : "")
+          }
+        >
+          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
+        <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
+          <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
+          {options.length > 1 && !readOnly && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                All
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-muted-foreground hover:underline font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+        {options.length > 5 && (
+          <div className="p-1.5 border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search LR..."
+              className="h-6 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+        )}
+        <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
+          {filtered.length === 0 ? (
+            <div className="p-2 text-center text-[11px] text-muted-foreground">No LR found</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o}
+                className={
+                  "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] hover:bg-muted/60 transition-colors " +
+                  (readOnly ? "cursor-default" : "cursor-pointer")
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  disabled={readOnly}
+                  onChange={() => toggle(o)}
+                  className="size-3.5 accent-primary rounded"
+                />
+                <span className="font-mono text-foreground">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const SEARCH_OPTIONS = [
   "Reference",
@@ -40,10 +191,22 @@ type TableRow = {
   TRANSPORTER: string;
   LINE_NO: string;
   selected: boolean;
+  lrOptions?: string[];
+  compInvoices?: string[];
+  notAllowed?: boolean;
 };
 
 const EMPTY_ROW = (): TableRow => ({
-  MAPID: "", REF_NO: "", WORK_ORDER_NO: "", LR_NO: "", TRANSPORTER: "", LINE_NO: "", selected: false,
+  MAPID: "",
+  REF_NO: "",
+  WORK_ORDER_NO: "",
+  LR_NO: "",
+  TRANSPORTER: "",
+  LINE_NO: "",
+  selected: false,
+  lrOptions: [],
+  compInvoices: [],
+  notAllowed: false,
 });
 
 // Columns rendered before the "P/A Check" (View) button — kept editable already
@@ -54,20 +217,20 @@ const PRE_PA_EDITABLE_FIELDS: { field: string; type: string }[] = [
 ];
 
 // Columns rendered after the "P/A Check" (View) button — now editable like OrderInfoSapCreate
-const POST_PA_EDITABLE_FIELDS: { field: string; type: string }[] = [
+const POST_PA_EDITABLE_FIELDS: { field: string; type: string; readonly?: boolean }[] = [
   { field: "ZPROVAMT", type: "number" },
   { field: "ZPROVDT", type: "date" },
   { field: "ZBILLNO", type: "text" },
   { field: "ZBILLDATE", type: "date" },
   { field: "ZPHY_DATE", type: "date" },
   { field: "ZFRT_CHARGES", type: "number" },
-  { field: "ZWORK_ORDER", type: "text" },
+  { field: "ZWORK_ORDER", type: "text", readonly: true },
   { field: "ZBILL_SUBMISSION", type: "date" },
-  { field: "ZLRNO", type: "text" },
-  { field: "ZTRANSPORTER", type: "text" },
+  { field: "ZLRNO", type: "text", readonly: true },
+  { field: "ZTRANSPORTER", type: "text", readonly: true },
   { field: "ZLOCATION", type: "text" },
   { field: "ZVEH_NUM", type: "text" },
-  { field: "ZCREATED_DT", type: "date" },
+  { field: "ZCREATED_DT", type: "date", readonly: true },
   { field: "ZVEH_LINE", type: "text" },
 ];
 
@@ -93,11 +256,34 @@ function fileToBase64(file: File): Promise<string> {
 // Show only the file name from a stored document path.
 //   "D:\Pravah\SAP\Freight_Billing\Freight_Bill\1000_5000_bill.pdf"
 //     -> "1000_5000_bill.pdf"
-// Returns "" when there is no path.
+// Returns "" when there is no path or when it is just a field identifier.
+const KNOWN_FIELD_NAMES = new Set([
+  "Freight_Bill",
+  "Unloading_Charges_Approval",
+  "Detention_Charges",
+  "Work_Order",
+  "Images",
+  "FSR_Report",
+  "FIR_Report",
+  "COF",
+  "POD",
+  "Supporting_Document",
+  "Approve_Document",
+  "ZFRBILLUP",
+  "ZUNLOADAPP",
+  "ZDETENTUP",
+  "ZWORDUP",
+  "ZDIMAGES",
+  "ZFSRREP",
+  "ZFIRREP",
+  "ZCOF",
+]);
+
 function fileNameFromPath(storedPath?: string): string {
   if (!storedPath) return "";
   const parts = String(storedPath).split(/[\\/]/);
-  return parts[parts.length - 1] || "";
+  const name = parts[parts.length - 1] || "";
+  return KNOWN_FIELD_NAMES.has(name) ? "" : name;
 }
 
 const BREAKDOWN_FIELDS = [
@@ -424,12 +610,11 @@ function PACheckDialog({
                   />
                 </div>
                 <div>
-                  <label className={LABEL}>Provision Date</label>
-                  <input
-                    type="date"
+                  <GateDatePicker
+                    label="Provision Date"
                     value={formData.provisionDate}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, provisionDate: e.target.value }))
+                    onChange={(_, str) =>
+                      setFormData((p) => ({ ...p, provisionDate: str }))
                     }
                     className={GREEN_INPUT}
                   />
@@ -466,23 +651,21 @@ function PACheckDialog({
                   />
                 </div>
                 <div>
-                  <label className={LABEL}>Freight Bill Date</label>
-                  <input
-                    type="date"
+                  <GateDatePicker
+                    label="Freight Bill Date"
                     value={formData.freightBillDate}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, freightBillDate: e.target.value }))
+                    onChange={(_, str) =>
+                      setFormData((p) => ({ ...p, freightBillDate: str }))
                     }
                     className={GREEN_INPUT}
                   />
                 </div>
                 <div>
-                  <label className={LABEL}>Physical Submission Date</label>
-                  <input
-                    type="date"
+                  <GateDatePicker
+                    label="Physical Submission Date"
                     value={formData.physicalSubmissionDate}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, physicalSubmissionDate: e.target.value }))
+                    onChange={(_, str) =>
+                      setFormData((p) => ({ ...p, physicalSubmissionDate: str }))
                     }
                     className={GREEN_INPUT}
                   />
@@ -498,12 +681,11 @@ function PACheckDialog({
                   />
                 </div>
                 <div>
-                  <label className={LABEL}>Bill Submission To F&amp;A</label>
-                  <input
-                    type="date"
+                  <GateDatePicker
+                    label="Bill Submission To F&A"
                     value={formData.billSubmission}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, billSubmission: e.target.value }))
+                    onChange={(_, str) =>
+                      setFormData((p) => ({ ...p, billSubmission: str }))
                     }
                     className={GREEN_INPUT}
                   />
@@ -540,6 +722,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [checked, setChecked] = useState(false);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string } | null>(null);
   const [provision, setProvision] = useState(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -627,6 +810,20 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(true);
 
+  // Search table edit files: rowIndex -> { docKey: File }
+  const [editSearchFiles, setEditSearchFiles] = useState<{ [index: number]: { [key: string]: File } }>({});
+  const handleSearchPickDoc = (rowIndex: number, key: string, file: File | null) => {
+    setEditSearchFiles((prev) => {
+      const rowFiles = { ...(prev[rowIndex] || {}) };
+      if (file) {
+        rowFiles[key] = file;
+      } else {
+        delete rowFiles[key];
+      }
+      return { ...prev, [rowIndex]: rowFiles };
+    });
+  };
+
   // ── P/A Check modal state ──
   const [paModalOpen, setPaModalOpen] = useState(false);
   const [paModalItem, setPaModalItem] = useState<any>(null);
@@ -680,6 +877,24 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     }
   });
 
+  // ── Completed Invoices Modal State ──
+  const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
+  const [compInvoicesModalData, setCompInvoicesModalData] = useState<{
+    refNo: string;
+    invoices: string[];
+  }>({
+    refNo: "",
+    invoices: [],
+  });
+
+  const openCompletedInvoicesModal = (row: TableRow) => {
+    setCompInvoicesModalData({
+      refNo: row.REF_NO || "",
+      invoices: row.compInvoices || [],
+    });
+    setCompInvoicesModalOpen(true);
+  };
+
   const resetFormState = () => {
     setChecked(false);
     setSearchType("");
@@ -720,6 +935,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setPaFormData(EMPTY_PA_FORM);
     setPaFreightBreakdown(EMPTY_BREAKDOWN);
     setPaProvisionBreakdown(EMPTY_BREAKDOWN);
+    setCompInvoicesModalOpen(false);
+    setCompInvoicesModalData({ refNo: "", invoices: [] });
 
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("freight-billing-provision");
@@ -764,7 +981,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     if (!value) return;
 
     const payload = {
-      global_scr: "TRANSIT INFO",
+      global_scr: "FREIGHT BILLING",
       REF_NO: fieldKey === "REF_NO" ? row.REF_NO : "",
       WORK_ORDER_NO: fieldKey === "WORK_ORDER_NO" ? row.WORK_ORDER_NO : "",
       LR_NO: fieldKey === "LR_NO" ? row.LR_NO : "",
@@ -787,15 +1004,51 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       }
       if (Array.isArray(res) && res.length > 0) {
         setFullReferenceData(res);
-        setTableData(res.map((item: any) => ({
-          MAPID: item.MAPID || "",
-          REF_NO: item.REF_NO || "",
-          WORK_ORDER_NO: item.WORK_ORDER_NO || "",
-          LR_NO: item.LR_NO || "",
-          TRANSPORTER: item.TRANSPORTER || "",
-          LINE_NO: item.LINE_NO || "",
-          selected: false,
-        })));
+        setTableData(res.map((item: any) => {
+          let lrOptions: string[] = [];
+          if (Array.isArray(item.LR_NO)) {
+            lrOptions = item.LR_NO.map((x: any) =>
+              typeof x === "object" && x !== null ? x.LR : String(x)
+            ).filter(Boolean);
+          } else if (typeof item.LR_NO === "string" && item.LR_NO.trim()) {
+            lrOptions = [item.LR_NO.trim()];
+          }
+          lrOptions = Array.from(new Set(lrOptions));
+
+          let compInvoices: string[] = [];
+          if (Array.isArray(item.COMP_INV_NO)) {
+            compInvoices = item.COMP_INV_NO.map((x: any) =>
+              typeof x === "object" && x !== null
+                ? x.VBELN || x.INV_NO || x.INVOICE || x.inv_no
+                : String(x)
+            ).filter(Boolean);
+          } else if (typeof item.COMP_INV_NO === "string" && item.COMP_INV_NO.trim()) {
+            compInvoices = [item.COMP_INV_NO.trim()];
+          }
+          compInvoices = Array.from(new Set(compInvoices));
+
+          const isNotAllowed = String(item.ZNOT_ALLOWED || "").trim().toUpperCase() === "X";
+
+          let initialLr = "";
+          if (Array.isArray(item.LR_NO)) {
+            initialLr = lrOptions.join(",");
+          } else if (typeof item.LR_NO === "string") {
+            initialLr = item.LR_NO;
+          }
+
+          return {
+            MAPID: item.MAPID || "",
+            REF_NO: item.REF_NO || "",
+            WORK_ORDER_NO: item.WORK_ORDER_NO || "",
+            LR_NO: initialLr || item.LR_NO || "",
+            TRANSPORTER: item.TRANSPORTER || "",
+            LINE_NO: item.LINE_NO || "",
+            selected: false,
+            lrOptions,
+            compInvoices,
+            notAllowed: isNotAllowed,
+          };
+        }));
       } else {
         setTableData([EMPTY_ROW()]);
         setFullReferenceData([]);
@@ -899,13 +1152,13 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         ZPR_OTHER: provision ? provisionBreakdown["Other Charges"] : 0,
         ZPR_DEDUCT: provision ? provisionBreakdown["Deduction"] : 0,
 
-        FINANCE_DETAILS: financeDetails,
+        FINANCE_DETAILS: financeDetails === "Yes" ? "Y" : financeDetails === "No" ? "N" : financeDetails,
         JV_NUMBER: jvNumber,
         JV_DATE: jvDate,
         UTR_NUMBER: utrNumber,
         UTR_DATE: utrDate,
 
-        ZFINDET: financeDetails,
+        ZFINDET: financeDetails === "Yes" ? "Y" : financeDetails === "No" ? "N" : financeDetails,
         ZJVNUM: jvNumber,
         ZJVDT: jvDate,
         ZUTRNUM: utrNumber,
@@ -925,12 +1178,12 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           text: response.MESSAGE || "Freight Billing Saved Successfully",
         });
 
+        resetFormState();
+
         if (action === "next") {
           navigate({ to: "/service-level" });
         } else if (action === "previous") {
           navigate({ to: "/transit-info" });
-        } else {
-          // console.log("Reset Form");
         }
       } else {
         Swal.fire({
@@ -1064,6 +1317,12 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       return;
     }
 
+    const rowFiles = editSearchFiles[index] || {};
+    const frb64 = rowFiles.FRBILLUP ? await fileToBase64(rowFiles.FRBILLUP) : "";
+    const unb64 = rowFiles.UNLOADAPP ? await fileToBase64(rowFiles.UNLOADAPP) : "";
+    const deb64 = rowFiles.DETENTUP ? await fileToBase64(rowFiles.DETENTUP) : "";
+    const wob64 = rowFiles.WORDUP ? await fileToBase64(rowFiles.WORDUP) : "";
+
     const payload = {
       CHANGE: [
         {
@@ -1097,10 +1356,25 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           ZPROVDT: row.ZPROVDT,
           ZPROVAMT: row.ZPROVAMT,
 
-          ZFRBILLUP: row.ZFRBILLUP,
-          ZUNLOADAPP: row.ZUNLOADAPP,
-          ZDETENTUP: row.ZDETENTUP,
-          ZWORDUP: row.ZWORDUP,
+          ZFRBILLUP: frb64 || "",
+          FRBILLUP: frb64 || "",
+          FRBILLUP_NAME: rowFiles.FRBILLUP?.name || "",
+          ZFRBILLUP_NAME: rowFiles.FRBILLUP?.name || "",
+
+          ZUNLOADAPP: unb64 || "",
+          UNLOADAPP: unb64 || "",
+          UNLOADAPP_NAME: rowFiles.UNLOADAPP?.name || "",
+          ZUNLOADAPP_NAME: rowFiles.UNLOADAPP?.name || "",
+
+          ZDETENTUP: deb64 || "",
+          DETENTUP: deb64 || "",
+          DETENTUP_NAME: rowFiles.DETENTUP?.name || "",
+          ZDETENTUP_NAME: rowFiles.DETENTUP?.name || "",
+
+          ZWORDUP: wob64 || "",
+          WORDUP: wob64 || "",
+          WORDUP_NAME: rowFiles.WORDUP?.name || "",
+          ZWORDUP_NAME: rowFiles.WORDUP?.name || "",
 
           ZFRB_PATH: row.ZFRB_PATH,
           ZUNAPP_PATH: row.ZUNAPP_PATH,
@@ -1130,7 +1404,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           ZPR_OTHER: row.ZPR_OTHER || 0,
           ZPR_DEDUCT: row.ZPR_DEDUCT || 0,
 
-          ZFINDET: row.ZFINDET,
+          ZFINDET: row.ZFINDET === "Yes" ? "Y" : row.ZFINDET === "No" ? "N" : row.ZFINDET,
           ZJVNUM: row.ZJVNUM,
           ZJVDT: row.ZJVDT,
           ZUTRNUM: row.ZUTRNUM,
@@ -1151,6 +1425,12 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         await Swal.fire({
           icon: "success",
           text: res.MESSAGE || "Freight Billing updated successfully",
+        });
+
+        setEditSearchFiles((prev) => {
+          const next = { ...prev };
+          delete next[index];
+          return next;
         });
 
         const list = [...searchOptionsList];
@@ -1383,7 +1663,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     <div className="space-y-2">
 
       {/* Selection table */}
-      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+      <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
@@ -1393,114 +1673,188 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
               <th className="px-3 py-0.5 text-center">Work Order Number</th>
               <th className="px-3 py-0.5 text-center">LR Number</th>
               <th className="px-3 py-0.5 text-center">Transporter</th>
+              <th className="px-3 py-0.5 text-center whitespace-nowrap">Completed Invoices</th>
               <th className="px-3 py-0.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
-            {tableData.map((row, index) => (
-              <tr key={index}>
-                <td className="px-3 py-0.5 text-center">
-                  <input
-                    type="checkbox"
-                    checked={row.selected}
-                    onChange={(e) => {
-                      setTableData((prev) =>
-                        prev.map((item, i) => ({
-                          ...item,
-                          selected: i === index ? e.target.checked : false,
-                        }))
-                      );
-                    }}
-                  />
-                </td>
+            {tableData.map((row, index) => {
+              const isRowDisabled = Boolean(row.notAllowed);
+              return (
+                <tr
+                  key={index}
+                  className={
+                    isRowDisabled
+                      ? "border-t border-hairline/80 bg-slate-100/90 dark:bg-zinc-800/80 text-muted-foreground"
+                      : ""
+                  }
+                >
+                  <td className="px-3 py-0.5 text-center">
+                    <input
+                      type="checkbox"
+                      checked={row.selected}
+                      disabled={isRowDisabled}
+                      onChange={(e) => {
+                        if (isRowDisabled) return;
+                        setTableData((prev) =>
+                          prev.map((item, i) => ({
+                            ...item,
+                            selected: i === index ? e.target.checked : false,
+                          }))
+                        );
+                      }}
+                      className={
+                        "size-4 accent-sky-600 " +
+                        (isRowDisabled ? "cursor-not-allowed opacity-30" : "cursor-pointer")
+                      }
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5 text-center">
-                  {index + 1}
-                </td>
+                  <td className="px-3 py-0.5 text-center font-mono">
+                    {index + 1}
+                  </td>
 
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.REF_NO}
-                    placeholder="Enter Ref. No."
-                    onChange={(e) =>
-                      setTableData(prev => {
-                        const copy = [...prev];
-                        copy[index].REF_NO = e.target.value;
-                        return copy;
-                      })
-                    }
-                    onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
-                    }}
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.REF_NO}
+                      readOnly={index !== 0 || isRowDisabled}
+                      placeholder="Enter Ref. No."
+                      onChange={(e) =>
+                        setTableData((prev) => {
+                          const copy = [...prev];
+                          copy[index].REF_NO = e.target.value;
+                          return copy;
+                        })
+                      }
+                      onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
+                      }}
+                      className={
+                        (isRowDisabled
+                          ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed text-center"
+                          : GREEN_INPUT) + " text-center"
+                      }
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.WORK_ORDER_NO}
-                    placeholder="Enter Work Order No."
-                    onChange={(e) =>
-                      setTableData(prev => {
-                        const copy = [...prev];
-                        copy[index].WORK_ORDER_NO = e.target.value;
-                        return copy;
-                      })
-                    }
-                    onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
-                    }}
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.WORK_ORDER_NO}
+                      readOnly={index !== 0 || isRowDisabled}
+                      placeholder="Enter Work Order No."
+                      onChange={(e) =>
+                        setTableData((prev) => {
+                          const copy = [...prev];
+                          copy[index].WORK_ORDER_NO = e.target.value;
+                          return copy;
+                        })
+                      }
+                      onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
+                      }}
+                      className={
+                        (isRowDisabled
+                          ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed text-center"
+                          : GREEN_INPUT) + " text-center"
+                      }
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.LR_NO}
-                    placeholder="Enter LR No."
-                    onChange={(e) =>
-                      setTableData(prev => {
-                        const copy = [...prev];
-                        copy[index].LR_NO = e.target.value;
-                        return copy;
-                      })
-                    }
-                    onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
-                    }}
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  <td className="px-3 py-0.5">
+                    {row.lrOptions && row.lrOptions.length > 0 ? (
+                      <TableMultiSelect
+                        options={row.lrOptions}
+                        value={row.LR_NO}
+                        readOnly={isRowDisabled}
+                        onChange={(val) =>
+                          setTableData((prev) => {
+                            const copy = [...prev];
+                            copy[index].LR_NO = val;
+                            return copy;
+                          })
+                        }
+                        placeholder="Select LR No"
+                        className={
+                          (isRowDisabled
+                            ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer text-center"
+                            : GREEN_INPUT) + " text-center"
+                        }
+                      />
+                    ) : (
+                      <input
+                        value={row.LR_NO}
+                        readOnly={index !== 0 || isRowDisabled}
+                        placeholder="Enter LR No."
+                        onChange={(e) =>
+                          setTableData((prev) => {
+                            const copy = [...prev];
+                            copy[index].LR_NO = e.target.value;
+                            return copy;
+                          })
+                        }
+                        onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
+                        }}
+                        className={
+                          (isRowDisabled
+                            ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed text-center"
+                            : GREEN_INPUT) + " text-center"
+                        }
+                      />
+                    )}
+                  </td>
 
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.TRANSPORTER}
-                    placeholder="Enter Transporter"
-                    onChange={(e) =>
-                      setTableData(prev => {
-                        const copy = [...prev];
-                        copy[index].TRANSPORTER = e.target.value;
-                        return copy;
-                      })
-                    }
-                    onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
-                    }}
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.TRANSPORTER}
+                      readOnly={index !== 0 || isRowDisabled}
+                      placeholder="Enter Transporter"
+                      onChange={(e) =>
+                        setTableData((prev) => {
+                          const copy = [...prev];
+                          copy[index].TRANSPORTER = e.target.value;
+                          return copy;
+                        })
+                      }
+                      onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
+                      }}
+                      className={
+                        (isRowDisabled
+                          ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed text-center"
+                          : GREEN_INPUT) + " text-center"
+                      }
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5 text-center">
-                  <button>
-                    <MoreVertical className="size-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  <td className="px-3 py-0.5 text-center whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => openCompletedInvoicesModal(row)}
+                      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 transition-colors shadow-xs cursor-pointer"
+                    >
+                      <Eye className="size-3.5 text-sky-600 dark:text-sky-400" />
+                      <span>View</span>
+                      {row.compInvoices && row.compInvoices.length > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold rounded-full bg-sky-600 text-white">
+                          {row.compInvoices.length}
+                        </span>
+                      )}
+                    </button>
+                  </td>
+
+                  <td className="px-3 py-0.5 text-center">
+                    <button type="button" className="cursor-pointer">
+                      <MoreVertical className="size-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1616,9 +1970,9 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                       </button>
                     </td>
 
-                    {POST_PA_EDITABLE_FIELDS.map(({ field, type }) => (
+                    {POST_PA_EDITABLE_FIELDS.map(({ field, type, readonly }: any) => (
                       <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
-                        {item.isEdit ? (
+                        {item.isEdit && !readonly ? (
                           <input
                             type={type}
                             className={GREEN_INPUT}
@@ -1637,19 +1991,343 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                       </td>
                     ))}
 
-                    {/* Uploaded file name per document type (read-only):
-                        file found on disk for this record, else derived from the saved path. */}
+                    {/* Uploaded file name per document type:
+                        allow picking new file on edit row */}
                     <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.ZLOCALFILES?.Freight_Bill || fileNameFromPath(item.ZFRB_PATH) || "-"}
+                      {item.isEdit ? (
+                        <div className="flex flex-col items-center gap-1">
+                          {editSearchFiles[index]?.FRBILLUP?.name ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const file = editSearchFiles[index]?.FRBILLUP;
+                                const url = file ? URL.createObjectURL(file) : "";
+                                setPreviewDoc({ url, title: file?.name || "Freight Bill" });
+                              }}
+                              className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                              title={editSearchFiles[index]?.FRBILLUP?.name}
+                            >
+                              {editSearchFiles[index]?.FRBILLUP?.name}
+                            </button>
+                          ) : (
+                            (() => {
+                              const existingName = item.ZLOCALFILES?.Freight_Bill || fileNameFromPath(item.ZFRB_PATH) || "-";
+                              if (existingName && existingName !== "-") {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const url = getLocalDocumentUrl({
+                                        mode: isWithout ? "Without Sap" : "SAP",
+                                        screen: "Freight_Billing",
+                                        field: "Freight_Bill",
+                                        fileName: existingName,
+                                        storedPath: item.ZFRB_PATH,
+                                        row: item,
+                                      });
+                                      setPreviewDoc({ url, title: existingName });
+                                    }}
+                                    className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                                    title={existingName}
+                                  >
+                                    {existingName}
+                                  </button>
+                                );
+                              }
+                              return <span className="text-[12px] text-muted-foreground">-</span>;
+                            })()
+                          )}
+                          <label className="cursor-pointer inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 transition-colors">
+                            <span>{editSearchFiles[index]?.FRBILLUP ? "Change" : "Browse"}</span>
+                            <input
+                              type="file"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                              onChange={(e) => handleSearchPickDoc(index, "FRBILLUP", e.target.files?.[0] || null)}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        (() => {
+                          const fbName = item.ZLOCALFILES?.Freight_Bill || fileNameFromPath(item.ZFRB_PATH);
+                          if (!fbName || fbName === "-" || fbName === "NA") {
+                            return <span className="text-muted-foreground">-</span>;
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = getLocalDocumentUrl({
+                                  mode: isWithout ? "Without Sap" : "SAP",
+                                  screen: "Freight_Billing",
+                                  field: "Freight_Bill",
+                                  fileName: fbName,
+                                  storedPath: item.ZFRB_PATH,
+                                  row: item,
+                                });
+                                setPreviewDoc({ url, title: fbName });
+                              }}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline underline-offset-2 transition-colors cursor-pointer group max-w-[150px]"
+                              title={`View ${fbName}`}
+                            >
+                              <FileText className="size-3.5 shrink-0 opacity-70 group-hover:opacity-100 text-blue-600 dark:text-blue-400" />
+                              <span className="truncate">{fbName}</span>
+                            </button>
+                          );
+                        })()
+                      )}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.ZLOCALFILES?.Unloading_Charges_Approval || fileNameFromPath(item.ZUNAPP_PATH) || "-"}
+                      {item.isEdit ? (
+                        <div className="flex flex-col items-center gap-1">
+                          {editSearchFiles[index]?.UNLOADAPP?.name ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const file = editSearchFiles[index]?.UNLOADAPP;
+                                const url = file ? URL.createObjectURL(file) : "";
+                                setPreviewDoc({ url, title: file?.name || "Unloading Charges Approval" });
+                              }}
+                              className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                              title={editSearchFiles[index]?.UNLOADAPP?.name}
+                            >
+                              {editSearchFiles[index]?.UNLOADAPP?.name}
+                            </button>
+                          ) : (
+                            (() => {
+                              const existingName = item.ZLOCALFILES?.Unloading_Charges_Approval || fileNameFromPath(item.ZUNAPP_PATH) || "-";
+                              if (existingName && existingName !== "-") {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const url = getLocalDocumentUrl({
+                                        mode: isWithout ? "Without Sap" : "SAP",
+                                        screen: "Freight_Billing",
+                                        field: "Unloading_Charges_Approval",
+                                        fileName: existingName,
+                                        storedPath: item.ZUNAPP_PATH,
+                                        row: item,
+                                      });
+                                      setPreviewDoc({ url, title: existingName });
+                                    }}
+                                    className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                                    title={existingName}
+                                  >
+                                    {existingName}
+                                  </button>
+                                );
+                              }
+                              return <span className="text-[12px] text-muted-foreground">-</span>;
+                            })()
+                          )}
+                          <label className="cursor-pointer inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 transition-colors">
+                            <span>{editSearchFiles[index]?.UNLOADAPP ? "Change" : "Browse"}</span>
+                            <input
+                              type="file"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                              onChange={(e) => handleSearchPickDoc(index, "UNLOADAPP", e.target.files?.[0] || null)}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        (() => {
+                          const unName = item.ZLOCALFILES?.Unloading_Charges_Approval || fileNameFromPath(item.ZUNAPP_PATH);
+                          if (!unName || unName === "-" || unName === "NA") {
+                            return <span className="text-muted-foreground">-</span>;
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = getLocalDocumentUrl({
+                                  mode: isWithout ? "Without Sap" : "SAP",
+                                  screen: "Freight_Billing",
+                                  field: "Unloading_Charges_Approval",
+                                  fileName: unName,
+                                  storedPath: item.ZUNAPP_PATH,
+                                  row: item,
+                                });
+                                setPreviewDoc({ url, title: unName });
+                              }}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline underline-offset-2 transition-colors cursor-pointer group max-w-[150px]"
+                              title={`View ${unName}`}
+                            >
+                              <FileText className="size-3.5 shrink-0 opacity-70 group-hover:opacity-100 text-blue-600 dark:text-blue-400" />
+                              <span className="truncate">{unName}</span>
+                            </button>
+                          );
+                        })()
+                      )}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.ZLOCALFILES?.Detention_Charges || fileNameFromPath(item.ZDUP_PATH) || "-"}
+                      {item.isEdit ? (
+                        <div className="flex flex-col items-center gap-1">
+                          {editSearchFiles[index]?.DETENTUP?.name ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const file = editSearchFiles[index]?.DETENTUP;
+                                const url = file ? URL.createObjectURL(file) : "";
+                                setPreviewDoc({ url, title: file?.name || "Detention Charges" });
+                              }}
+                              className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                              title={editSearchFiles[index]?.DETENTUP?.name}
+                            >
+                              {editSearchFiles[index]?.DETENTUP?.name}
+                            </button>
+                          ) : (
+                            (() => {
+                              const existingName = item.ZLOCALFILES?.Detention_Charges || fileNameFromPath(item.ZDUP_PATH) || "-";
+                              if (existingName && existingName !== "-") {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const url = getLocalDocumentUrl({
+                                        mode: isWithout ? "Without Sap" : "SAP",
+                                        screen: "Freight_Billing",
+                                        field: "Detention_Charges",
+                                        fileName: existingName,
+                                        storedPath: item.ZDUP_PATH,
+                                        row: item,
+                                      });
+                                      setPreviewDoc({ url, title: existingName });
+                                    }}
+                                    className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                                    title={existingName}
+                                  >
+                                    {existingName}
+                                  </button>
+                                );
+                              }
+                              return <span className="text-[12px] text-muted-foreground">-</span>;
+                            })()
+                          )}
+                          <label className="cursor-pointer inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 transition-colors">
+                            <span>{editSearchFiles[index]?.DETENTUP ? "Change" : "Browse"}</span>
+                            <input
+                              type="file"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                              onChange={(e) => handleSearchPickDoc(index, "DETENTUP", e.target.files?.[0] || null)}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        (() => {
+                          const detName = item.ZLOCALFILES?.Detention_Charges || fileNameFromPath(item.ZDUP_PATH);
+                          if (!detName || detName === "-" || detName === "NA") {
+                            return <span className="text-muted-foreground">-</span>;
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = getLocalDocumentUrl({
+                                  mode: isWithout ? "Without Sap" : "SAP",
+                                  screen: "Freight_Billing",
+                                  field: "Detention_Charges",
+                                  fileName: detName,
+                                  storedPath: item.ZDUP_PATH,
+                                  row: item,
+                                });
+                                setPreviewDoc({ url, title: detName });
+                              }}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline underline-offset-2 transition-colors cursor-pointer group max-w-[150px]"
+                              title={`View ${detName}`}
+                            >
+                              <FileText className="size-3.5 shrink-0 opacity-70 group-hover:opacity-100 text-blue-600 dark:text-blue-400" />
+                              <span className="truncate">{detName}</span>
+                            </button>
+                          );
+                        })()
+                      )}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.ZLOCALFILES?.Work_Order || fileNameFromPath(item.ZWORDUP_PATH) || "-"}
+                      {item.isEdit ? (
+                        <div className="flex flex-col items-center gap-1">
+                          {editSearchFiles[index]?.WORDUP?.name ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const file = editSearchFiles[index]?.WORDUP;
+                                const url = file ? URL.createObjectURL(file) : "";
+                                setPreviewDoc({ url, title: file?.name || "Work Order" });
+                              }}
+                              className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                              title={editSearchFiles[index]?.WORDUP?.name}
+                            >
+                              {editSearchFiles[index]?.WORDUP?.name}
+                            </button>
+                          ) : (
+                            (() => {
+                              const existingName = item.ZLOCALFILES?.Work_Order || fileNameFromPath(item.ZWORDUP_PATH) || "-";
+                              if (existingName && existingName !== "-") {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const url = getLocalDocumentUrl({
+                                        mode: isWithout ? "Without Sap" : "SAP",
+                                        screen: "Freight_Billing",
+                                        field: "Work_Order",
+                                        fileName: existingName,
+                                        storedPath: item.ZWORDUP_PATH,
+                                        row: item,
+                                      });
+                                      setPreviewDoc({ url, title: existingName });
+                                    }}
+                                    className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                                    title={existingName}
+                                  >
+                                    {existingName}
+                                  </button>
+                                );
+                              }
+                              return <span className="text-[12px] text-muted-foreground">-</span>;
+                            })()
+                          )}
+                          <label className="cursor-pointer inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 transition-colors">
+                            <span>{editSearchFiles[index]?.WORDUP ? "Change" : "Browse"}</span>
+                            <input
+                              type="file"
+                              accept=".jpg,.jpeg,.png,.pdf"
+                              onChange={(e) => handleSearchPickDoc(index, "WORDUP", e.target.files?.[0] || null)}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        (() => {
+                          const woName = item.ZLOCALFILES?.Work_Order || fileNameFromPath(item.ZWORDUP_PATH);
+                          if (!woName || woName === "-" || woName === "NA") {
+                            return <span className="text-muted-foreground">-</span>;
+                          }
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = getLocalDocumentUrl({
+                                  mode: isWithout ? "Without Sap" : "SAP",
+                                  screen: "Freight_Billing",
+                                  field: "Work_Order",
+                                  fileName: woName,
+                                  storedPath: item.ZWORDUP_PATH,
+                                  row: item,
+                                });
+                                setPreviewDoc({ url, title: woName });
+                              }}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline underline-offset-2 transition-colors cursor-pointer group max-w-[150px]"
+                              title={`View ${woName}`}
+                            >
+                              <FileText className="size-3.5 shrink-0 opacity-70 group-hover:opacity-100 text-blue-600 dark:text-blue-400" />
+                              <span className="truncate">{woName}</span>
+                            </button>
+                          );
+                        })()
+                      )}
                     </td>
 
                     <td className="px-3 py-2 whitespace-nowrap text-center">
@@ -1658,6 +2336,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                           <button
                             className="bg-blue-500 text-white px-2 rounded"
                             onClick={() => {
+                              setEditSearchFiles((prev) => {
+                                const next = { ...prev };
+                                delete next[index];
+                                return next;
+                              });
                               const list = [...searchOptionsList];
                               list[index]._backup = { ...list[index] };
                               list[index].isEdit = true;
@@ -1686,6 +2369,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                           <button
                             className="bg-gray-500 text-white px-2 rounded"
                             onClick={() => {
+                              setEditSearchFiles((prev) => {
+                                const next = { ...prev };
+                                delete next[index];
+                                return next;
+                              });
                               const list = [...searchOptionsList];
                               list[index] = {
                                 ...list[index]._backup,
@@ -1783,11 +2471,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>Provision Date</label>
-                  <input
-                    type="date"
+                  <GateDatePicker
+                    label="Provision Date"
                     value={provisionDate}
-                    onChange={(e) => setProvisionDate(e.target.value)}
+                    onChange={(_, str) => setProvisionDate(str)}
                     className={GREEN_INPUT}
                   />
                 </div>
@@ -1806,20 +2493,18 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>Freight Bill Date</label>
-                  <input
-                    type="date"
+                  <GateDatePicker
+                    label="Freight Bill Date"
                     value={freightBillDate}
-                    onChange={(e) => setFreightBillDate(e.target.value)}
+                    onChange={(_, str) => setFreightBillDate(str)}
                     className={GREEN_INPUT}
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>Physical Submission Date</label>
-                  <input
-                    type="date"
+                  <GateDatePicker
+                    label="Physical Submission Date"
                     value={physicalSubmissionDate}
-                    onChange={(e) => setPhysicalSubmissionDate(e.target.value)}
+                    onChange={(_, str) => setPhysicalSubmissionDate(str)}
                     className={GREEN_INPUT}
                   />
                 </div>
@@ -1834,11 +2519,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={LABEL}>Bill Submission To F&amp;A</label>
-                  <input
-                    type="date"
+                  <GateDatePicker
+                    label="Bill Submission To F&A"
                     value={billSubmissionDate}
-                    onChange={(e) => setBillSubmissionDate(e.target.value)}
+                    onChange={(_, str) => setBillSubmissionDate(str)}
                     className={GREEN_INPUT}
                   />
                 </div>
@@ -1872,11 +2556,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={RED_LABEL}>JV Date</label>
-                  <input
-                    type="date"
+                  <GateDatePicker
+                    label={<span className="text-red-600">JV Date</span>}
                     value={jvDate}
-                    onChange={(e) => setJvDate(e.target.value)}
+                    onChange={(_, str) => setJvDate(str)}
                     className={RED_INPUT}
                   />
                 </div>
@@ -1890,11 +2573,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   />
                 </div>
                 <div className="animate-in fade-in slide-in-from-top-2">
-                  <label className={RED_LABEL}>UTR Date</label>
-                  <input
-                    type="date"
+                  <GateDatePicker
+                    label={<span className="text-red-600">UTR Date</span>}
                     value={utrDate}
-                    onChange={(e) => setUtrDate(e.target.value)}
+                    onChange={(_, str) => setUtrDate(str)}
                     className={RED_INPUT}
                   />
                 </div>
@@ -2027,6 +2709,151 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           setPaProvisionGst(gst);
         }}
       />
+
+      {/* ── Completed Invoices Modal ── */}
+      <Dialog open={compInvoicesModalOpen} onOpenChange={setCompInvoicesModalOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white dark:bg-surface border border-hairline shadow-2xl rounded-xl">
+          {/* Header */}
+          <div className="bg-gradient-primary px-5 py-3.5 text-primary-foreground flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="size-4" />
+              <DialogTitle className="text-[14px] font-bold tracking-wide text-white">
+                Completed Invoices
+              </DialogTitle>
+            </div>
+            {compInvoicesModalData.refNo && (
+              <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded text-white font-mono">
+                Ref: {compInvoicesModalData.refNo}
+              </span>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between text-[12px] text-muted-foreground border-b border-hairline/60 pb-2">
+              <span>Total Completed Invoices:</span>
+              <span className="font-bold text-foreground bg-muted px-2 py-0.5 rounded-full text-[11px]">
+                {compInvoicesModalData.invoices.length}
+              </span>
+            </div>
+
+            {compInvoicesModalData.invoices.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <FileText className="size-8 mx-auto mb-2 opacity-40" />
+                <p className="text-[12.5px] font-medium">No completed invoices found for this reference.</p>
+              </div>
+            ) : (
+              <div className="max-h-64 overflow-y-auto border border-hairline rounded-lg divide-y divide-hairline bg-surface">
+                <table className="w-full text-left text-[12px]">
+                  <thead className="bg-muted/50 text-[11px] font-semibold text-muted-foreground sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 w-12 text-center">#</th>
+                      <th className="px-3 py-2">Invoice Number</th>
+                      <th className="px-3 py-2 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/60">
+                    {compInvoicesModalData.invoices.map((inv, idx) => (
+                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2 text-center text-muted-foreground font-mono text-[11px]">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-2 font-mono font-medium text-foreground">
+                          {inv}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 py-3 bg-muted/30 border-t border-hairline flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCompInvoicesModalOpen(false)}
+              className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Local Document Viewer Modal ── */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => { if (!open) setPreviewDoc(null); }}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-white dark:bg-surface border border-hairline shadow-2xl rounded-xl">
+          <div className="bg-gradient-primary px-4 py-3 flex items-center justify-between text-white">
+            <div className="flex items-center gap-2 min-w-0 pr-4">
+              <FileText className="size-4 shrink-0 text-white/90" />
+              <DialogTitle className="text-[14px] font-bold tracking-wide text-white truncate">
+                {previewDoc?.title || "Document Preview"}
+              </DialogTitle>
+            </div>
+            {previewDoc?.url && (
+              <a
+                href={previewDoc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-medium bg-white/15 hover:bg-white/25 text-white px-2.5 py-1 rounded transition-colors flex items-center gap-1 shrink-0 mr-6 cursor-pointer"
+                title="Open in new window"
+              >
+                <ExternalLink className="size-3" />
+                Open in New Tab
+              </a>
+            )}
+          </div>
+          <div className="p-3 bg-muted/20 min-h-[350px] max-h-[78vh] flex items-center justify-center overflow-auto">
+            {previewDoc?.url ? (
+              (() => {
+                const target = (previewDoc.url || "").toLowerCase().split("?")[0];
+                const titleLower = (previewDoc.title || "").toLowerCase();
+                const isPdf = target.endsWith(".pdf") || titleLower.endsWith(".pdf");
+                const isImg = target.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/) || titleLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/);
+
+                if (isPdf) {
+                  return (
+                    <iframe
+                      src={previewDoc.url}
+                      title={previewDoc.title || "PDF Document"}
+                      className="w-full h-[72vh] border-0 rounded-lg shadow-inner bg-white"
+                    />
+                  );
+                }
+
+                if (isImg) {
+                  return (
+                    <img
+                      src={previewDoc.url}
+                      alt={previewDoc.title || "Image Document"}
+                      className="max-h-[72vh] max-w-full object-contain rounded-lg shadow-sm"
+                    />
+                  );
+                }
+
+                return (
+                  <iframe
+                    src={previewDoc.url}
+                    title={previewDoc.title || "Document"}
+                    className="w-full h-[72vh] border-0 rounded-lg shadow-inner bg-white"
+                  />
+                );
+              })()
+            ) : (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                No document URL available for preview.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

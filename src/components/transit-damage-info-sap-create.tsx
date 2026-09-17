@@ -1,9 +1,91 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, ChevronDown, Plus, X } from "lucide-react";
+import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, ChevronDown, Plus, X, Eye, FileText, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 // @ts-ignore
-import service from "../services/generalservice_service.js";
+import service, { getLocalDocumentUrl } from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
+import { GateDatePicker } from "@/components/ui/date-picker";
+
+function TableMultiSelect({
+  options,
+  selected,
+  onChange,
+  placeholder = "Select...",
+  readOnly = false,
+}: {
+  options: string[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+  placeholder?: string;
+  readOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const toggle = (val: string) => {
+    if (readOnly) return;
+    if (selected.includes(val)) {
+      onChange(selected.filter((x) => x !== val));
+    } else {
+      onChange([...selected, val]);
+    }
+  };
+
+  const displayText =
+    selected.length === 0
+      ? placeholder
+      : selected.length === 1
+        ? selected[0]
+        : `${selected.length} selected`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] font-medium outline-none flex items-center justify-between gap-1 text-left",
+            readOnly ? "cursor-default text-muted-foreground" : "text-foreground hover:bg-muted/50",
+          )}
+          title={selected.join(", ")}
+        >
+          <span className="truncate">{displayText}</span>
+          <ChevronDown className="size-3.5 opacity-50 shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-1 max-h-48 overflow-y-auto bg-surface border border-hairline shadow-md" align="start">
+        <div className="space-y-0.5">
+          {options.length === 0 ? (
+            <div className="p-2 text-center text-[11.5px] text-muted-foreground">
+              No options
+            </div>
+          ) : (
+            options.map((o) => (
+              <label
+                key={o}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1 text-[12px] rounded hover:bg-muted/60 select-none",
+                  readOnly ? "cursor-default" : "cursor-pointer",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  disabled={readOnly}
+                  onChange={() => toggle(o)}
+                  className="size-3.5 accent-primary rounded"
+                />
+                <span className="font-mono text-foreground">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -139,6 +221,9 @@ type TableRow = {
   TRANSPORTER: string;
   LINE_NO: number | string;
   selected: boolean;
+  lrOptions?: string[];
+  compInvoices?: string[];
+  notAllowed?: boolean;
 };
 
 const searchTypeMap: Record<string, string> = {
@@ -158,6 +243,9 @@ const EMPTY_ROW = (): TableRow => ({
   TRANSPORTER: "",
   LINE_NO: "",
   selected: false,
+  lrOptions: [],
+  compInvoices: [],
+  notAllowed: false,
 });
 
 const labelToKey = (label: string) => {
@@ -216,24 +304,93 @@ function getLoggedInUser(): string {
   } catch { return ""; }
 }
 
-// Reads a File as a base64 data URI, e.g. "data:application/pdf;base64,JVBERi0x..."
+// Reads a File as a base64 data URI, with automatic client-side compression for large images
+// to prevent 413 Payload Too Large errors while preserving high quality.
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
+    // If not an image (e.g. PDF), or if already small (< 1MB), read directly
+    if (!file.type.startsWith("image/") || file.size < 1024 * 1024) {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // For large images, scale to max 1920px and compress to avoid 413 Payload Too Large
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const maxDim = 1920;
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      const mime = file.type === "image/png" ? "image/png" : "image/jpeg";
+      resolve(canvas.toDataURL(mime, 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    };
+    img.src = url;
   });
 }
 
 // Show only the file name from a stored document path.
+// Show only the file name from a stored document path.
 //   "D:\Pravah\SAP\Transit_Damage_Info\Images\1000_5000_dmg1.jpg"
 //     -> "1000_5000_dmg1.jpg"
-// Returns "" when there is no path.
+// Returns "" when there is no path or when it is just a field identifier.
+const KNOWN_FIELD_NAMES = new Set([
+  "Freight_Bill",
+  "Unloading_Charges_Approval",
+  "Detention_Charges",
+  "Work_Order",
+  "Images",
+  "FSR_Report",
+  "FIR_Report",
+  "COF",
+  "POD",
+  "Supporting_Document",
+  "Approve_Document",
+  "ZFRBILLUP",
+  "ZUNLOADAPP",
+  "ZDETENTUP",
+  "ZWORDUP",
+  "ZDIMAGES",
+  "ZFSRREP",
+  "ZFIRREP",
+  "ZCOF",
+]);
+
 function fileNameFromPath(storedPath?: string): string {
   if (!storedPath) return "";
   const parts = String(storedPath).split(/[\\/]/);
-  return parts[parts.length - 1] || "";
+  const name = parts[parts.length - 1] || "";
+  return KNOWN_FIELD_NAMES.has(name) ? "" : name;
 }
 
 // The Images / FSR Report / FIR Report / COF columns hold the base64 only while
@@ -254,18 +411,35 @@ const DOC_PATH_KEY: Record<string, string> = {
 };
 function docFileName(headerData: any, field: string): string {
   const localKey = DOC_LOCAL_KEY[field];
-  return (
-    headerData?.ZLOCALFILES?.[localKey] ||
-    fileNameFromPath(headerData?.[DOC_PATH_KEY[field]]) ||
-    headerData?.[field] ||
-    "-"
-  );
+  const localFile = headerData?.ZLOCALFILES?.[localKey];
+  if (localFile && localFile !== localKey && !KNOWN_FIELD_NAMES.has(localFile)) return localFile;
+
+  const fromPath = fileNameFromPath(headerData?.[DOC_PATH_KEY[field]]);
+  if (fromPath && fromPath !== field && fromPath !== localKey && !KNOWN_FIELD_NAMES.has(fromPath)) return fromPath;
+
+  const raw = headerData?.[field];
+  if (raw && typeof raw === "string" && !KNOWN_FIELD_NAMES.has(raw) && raw.includes(".")) {
+    return fileNameFromPath(raw);
+  }
+
+  return "-";
 }
 
 export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
   const navigate = useNavigate();
   const isWithout = mode === "without";
   const isSap = !isWithout;
+  const currentUser = (() => {
+    try {
+      const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
+      const parsed = JSON.parse(raw || "{}");
+      const PLANTS = parsed?.PLANTS || parsed?.PLANT || [];
+      const DIV = parsed?.DIV || parsed?.DIVISION || [];
+      return { PLANTS, DIV };
+    } catch {
+      return { PLANTS: [], DIV: [] };
+    }
+  })();
   const [checked, setChecked] = useState(!isWithout);
   const [searchType, setSearchType] = useState("");
   const [searchValue, setSearchValue] = useState("");
@@ -275,7 +449,21 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
   const [headerData, setHeaderData] = useState<HeaderData>({});
   const [itemData, setItemData] = useState<any[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string } | null>(null);
   const [selectedItems, setSelectedItems] = useState<TableRow[]>([]);
+  const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
+  const [compInvoicesModalData, setCompInvoicesModalData] = useState<{
+    refNo: string;
+    invoices: string[];
+  }>({ refNo: "", invoices: [] });
+
+  const openCompletedInvoicesModal = (row: TableRow) => {
+    setCompInvoicesModalData({
+      refNo: row.REF_NO || "-",
+      invoices: row.compInvoices || [],
+    });
+    setCompInvoicesModalOpen(true);
+  };
 
   // file states
   const [imagesBase64, setImagesBase64] = useState("");
@@ -295,6 +483,20 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   const [fsrReportName, setFsrReportName] = useState("");
   const [firReportName, setFirReportName] = useState("");
   const [cofName, setCofName] = useState("");
+
+  // Search table edit files: fieldKey -> File
+  const [editSearchDamageFiles, setEditSearchDamageFiles] = useState<{ [key: string]: File }>({});
+  const handleSearchPickDamageDoc = (field: string, file: File | null) => {
+    setEditSearchDamageFiles((prev) => {
+      const next = { ...prev };
+      if (file) {
+        next[field] = file;
+      } else {
+        delete next[field];
+      }
+      return next;
+    });
+  };
 
   // Capture a picked document as base64 + its file name, keyed by the field label.
   const handlePickDoc = async (label: string, file: File | null) => {
@@ -503,8 +705,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     event: React.ChangeEvent<HTMLInputElement>,
     index: number
   ) => {
-    const checked = event.target.checked;
     const rowValue = tableData[index];
+    if (rowValue.notAllowed) return;
+    const checked = event.target.checked;
 
     const updatedTable = [...tableData];
     updatedTable[index].selected = checked;
@@ -595,14 +798,41 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
         }
 
+        let lrOptions: string[] = [];
+        if (Array.isArray(d.LR_NO)) {
+          lrOptions = d.LR_NO.map((x: any) =>
+            typeof x === "object" && x !== null ? x.LR : String(x)
+          ).filter(Boolean);
+        } else if (typeof d.LR_NO === "string" && d.LR_NO.trim()) {
+          lrOptions = [d.LR_NO.trim()];
+        }
+        lrOptions = Array.from(new Set(lrOptions));
+
+        let compInvoices: string[] = [];
+        if (Array.isArray(d.COMP_INV_NO)) {
+          compInvoices = d.COMP_INV_NO.map((x: any) =>
+            typeof x === "object" && x !== null
+              ? x.VBELN || x.INV_NO || x.INVOICE || x.inv_no
+              : String(x)
+          ).filter(Boolean);
+        } else if (typeof d.COMP_INV_NO === "string" && d.COMP_INV_NO.trim()) {
+          compInvoices = [d.COMP_INV_NO.trim()];
+        }
+        compInvoices = Array.from(new Set(compInvoices));
+
+        const isNotAllowed = String(d.ZNOT_ALLOWED || "").trim().toUpperCase() === "X";
+
         return {
           MAPID: d.MAPID || "",
-          REF_NO: d.REF_NO || d.referenceNumber || "",
-          WORK_ORDER_NO: d.WORK_ORDER_NO || d.workOrderNumber || "",
-          LR_NO: d.LR_NO || d.lrNumber || "",
-          TRANSPORTER: d.TRANSPORTER || d.transporter || "",
-          LINE_NO: d.LINE_NO || d.lineNumber || "",
+          REF_NO: d.REF_NO ? String(d.REF_NO) : (d.referenceNumber || ""),
+          WORK_ORDER_NO: d.WORK_ORDER_NO ? String(d.WORK_ORDER_NO) : (d.workOrderNumber || ""),
+          LR_NO: lrOptions.length > 0 ? lrOptions.join(", ") : (typeof d.LR_NO === "string" ? d.LR_NO : (d.lrNumber || "")),
+          TRANSPORTER: d.TRANSPORTER ? String(d.TRANSPORTER) : (d.transporter || ""),
+          LINE_NO: d.LINE_NO ? String(d.LINE_NO) : (d.lineNumber || ""),
           selected: false,
+          lrOptions,
+          compInvoices,
+          notAllowed: isNotAllowed,
         };
 
       });
@@ -1050,7 +1280,12 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
         selected: false,
       }));
 
-      setHeaderData(header);
+      const dmgRmk = header.ZDAMAGE_RMK ?? header.DAMAGE_RMK ?? "";
+      setHeaderData({
+        ...header,
+        ZDAMAGE_RMK: dmgRmk,
+        DAMAGE_RMK: dmgRmk,
+      });
       setItemData(items);
       setShowForm(true);
       setRevealed(true);
@@ -1304,28 +1539,37 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   };
 
   const updateSearchRow = async () => {
+    const imgB64 = editSearchDamageFiles.ZDIMAGES ? await fileToBase64(editSearchDamageFiles.ZDIMAGES) : "";
+    const fsrB64 = editSearchDamageFiles.ZFSRREP ? await fileToBase64(editSearchDamageFiles.ZFSRREP) : "";
+    const firB64 = editSearchDamageFiles.ZFIRREP ? await fileToBase64(editSearchDamageFiles.ZFIRREP) : "";
+    const cofB64 = editSearchDamageFiles.ZCOF ? await fileToBase64(editSearchDamageFiles.ZCOF) : "";
+
+    const { _backup, isEdit, ...cleanHeader } = headerData;
+
+    const updatedHead = {
+      ...cleanHeader,
+      ZUSER_CH: getLoggedInUser(),
+      ...(imgB64 ? { ZDIMAGES: imgB64, ZDIMAGES_NAME: editSearchDamageFiles.ZDIMAGES?.name || "" } : {}),
+      ...(fsrB64 ? { ZFSRREP: fsrB64, ZFSRREP_NAME: editSearchDamageFiles.ZFSRREP?.name || "" } : {}),
+      ...(firB64 ? { ZFIRREP: firB64, ZFIRREP_NAME: editSearchDamageFiles.ZFIRREP?.name || "" } : {}),
+      ...(cofB64 ? { ZCOF: cofB64, ZCOF_NAME: editSearchDamageFiles.ZCOF?.name || "" } : {}),
+    };
+
     const payload = {
-      ZDIMAGES: imagesBase64 || "",
-      ZDIMG_PATH: imagesPath || "",
+      ZDIMG_PATH: headerData.ZDIMG_PATH || "",
+      ZFSRREP_PATH: headerData.ZFSRREP_PATH || "",
+      ZFIRREP_PATH: headerData.ZFIRREP_PATH || "",
+      ZCOF_PATH: headerData.ZCOF_PATH || "",
 
-      ZFSRREP: fsrReportBase64 || "",
-      ZFSRREP_PATH: fsrReportPath || "",
+      HEAD: updatedHead,
 
-      ZFIRREP: firReportBase64 || "",
-      ZFIRREP_PATH: firReportPath || "",
-
-      ZCOF: cofBase64 || "",
-      ZCOF_PATH: cofPath || "",
-
-      HEAD: {
-        ...headerData,
-        ZUSER_CH: getLoggedInUser(),
-      },
-
-      ITEM: itemData.map((item: any) => ({
-        ...item,
-        ZUSER_CH: getLoggedInUser(),
-      })),
+      ITEM: itemData.map((item: any) => {
+        const { _backup: ib, isEdit: ie, ...cleanItem } = item;
+        return {
+          ...cleanItem,
+          ZUSER_CH: getLoggedInUser(),
+        };
+      }),
     };
 
     const result = await Swal.fire({
@@ -1343,11 +1587,27 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
         ? await service.TransitDamageInfoChangeWithSap(payload)
         : await service.TransitDamageInfoChangeWithoutSap(payload);
 
-      if (res.STATUS === "TRUE" || res.NUMBER === "200") {
-        Swal.fire("Success", res.MESSAGE, "success");
+      const isSuccess =
+        res?.STATUS === true ||
+        String(res?.STATUS ?? "").toUpperCase() === "TRUE" ||
+        String(res?.NUMBER ?? "") === "200" ||
+        String(res?.STATUS ?? "").toUpperCase() === "S";
+
+      if (isSuccess) {
+        Swal.fire("Success", res?.MESSAGE || "Updated Successfully", "success");
+
+        const updatedLocalFiles = { ...(headerData.ZLOCALFILES || {}) };
+        if (editSearchDamageFiles.ZDIMAGES) updatedLocalFiles.Images = editSearchDamageFiles.ZDIMAGES.name;
+        if (editSearchDamageFiles.ZFSRREP) updatedLocalFiles.FSR_Report = editSearchDamageFiles.ZFSRREP.name;
+        if (editSearchDamageFiles.ZFIRREP) updatedLocalFiles.FIR_Report = editSearchDamageFiles.ZFIRREP.name;
+        if (editSearchDamageFiles.ZCOF) updatedLocalFiles.COF = editSearchDamageFiles.ZCOF.name;
+
+        setEditSearchDamageFiles({});
 
         setHeaderData((prev: any) => ({
           ...prev,
+          ...cleanHeader,
+          ZLOCALFILES: updatedLocalFiles,
           isEdit: false,
         }));
 
@@ -1360,7 +1620,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
         onSearchReference();
       } else {
-        Swal.fire("Error", res.MESSAGE || "Update Failed", "error");
+        Swal.fire("Error", res?.MESSAGE || "Update Failed", "error");
       }
     } catch {
       Swal.fire("Error", "Internal Server Error", "error");
@@ -1426,7 +1686,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   return (
     <div className="space-y-2">
       {/* Reference table */}
-      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+      <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
@@ -1434,123 +1694,171 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
               <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
               <th className="px-3 py-0.5 text-center">Map ID</th>
               <th className="px-3 py-0.5 text-center">Reference Number</th>
-              <th className="px-3 py-0.5 text-center">Work Order Number</th>
+              <th className="px-3 py-0.5 text-center whitespace-nowrap">Work Order Number</th>
               <th className="px-3 py-0.5 text-center">LR Number</th>
               <th className="px-3 py-0.5 text-center">Transporter</th>
+              <th className="px-3 py-0.5 text-center whitespace-nowrap">Completed Invoices</th>
               <th className="px-3 py-0.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
-            {tableData.map((row, index) => (
-              <tr key={index}>
-                <td className="px-3 py-0.5 text-center">
-                  <input
-                    type="checkbox"
-                    checked={row.selected}
-                    onChange={(e) => onCheckboxChange(e, index)}
-                    className="size-4 accent-sky-600"
-                  />
-                </td>
+            {tableData.map((row, index) => {
+              const isRowDisabled = Boolean(row.notAllowed);
+              return (
+                <tr
+                  key={index}
+                  className={cn(
+                    "hover:bg-accent/[0.04]",
+                    isRowDisabled && "bg-slate-100/90 dark:bg-zinc-800/80 text-muted-foreground"
+                  )}
+                >
+                  <td className="px-3 py-0.5 text-center">
+                    <input
+                      type="checkbox"
+                      checked={!isRowDisabled && row.selected}
+                      disabled={isRowDisabled}
+                      onChange={(e) => onCheckboxChange(e, index)}
+                      className={cn("size-4 accent-sky-600", isRowDisabled && "cursor-not-allowed opacity-50")}
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5 text-center">{index + 1}</td>
+                  <td className="px-3 py-0.5 text-center">{index + 1}</td>
 
-                {/* MAP ID */}
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.MAPID}
-                    onChange={(e) => {
-                      const data = [...tableData];
-                      data[index].MAPID = e.target.value;
-                      setTableData(data);
-                    }}
-                    onBlur={() => fetchGlobalReferences(row, index, "MAPID")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "MAPID");
-                    }}
-                    placeholder="Enter Map ID"
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  {/* MAP ID */}
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.MAPID}
+                      readOnly={isRowDisabled}
+                      onChange={(e) => {
+                        const data = [...tableData];
+                        data[index].MAPID = e.target.value;
+                        setTableData(data);
+                      }}
+                      onBlur={() => fetchGlobalReferences(row, index, "MAPID")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "MAPID");
+                      }}
+                      placeholder="Enter Map ID"
+                      className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-not-allowed opacity-60")}
+                    />
+                  </td>
 
-                {/* Reference Number */}
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.REF_NO}
-                    onChange={(e) => {
-                      const data = [...tableData];
-                      data[index].REF_NO = e.target.value;
-                      setTableData(data);
-                    }}
-                    onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
-                    }}
-                    placeholder="Enter Ref. No."
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  {/* Reference Number */}
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.REF_NO}
+                      readOnly={isRowDisabled}
+                      onChange={(e) => {
+                        const data = [...tableData];
+                        data[index].REF_NO = e.target.value;
+                        setTableData(data);
+                      }}
+                      onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
+                      }}
+                      placeholder="Enter Ref. No."
+                      className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-not-allowed opacity-60")}
+                    />
+                  </td>
 
-                {/* Work Order */}
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.WORK_ORDER_NO}
-                    onChange={(e) => {
-                      const data = [...tableData];
-                      data[index].WORK_ORDER_NO = e.target.value;
-                      setTableData(data);
-                    }}
-                    onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
-                    }}
-                    placeholder="Enter Work Order No."
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  {/* Work Order */}
+                  <td className="px-3 py-0.5 whitespace-nowrap">
+                    <input
+                      value={row.WORK_ORDER_NO}
+                      readOnly={isRowDisabled}
+                      onChange={(e) => {
+                        const data = [...tableData];
+                        data[index].WORK_ORDER_NO = e.target.value;
+                        setTableData(data);
+                      }}
+                      onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
+                      }}
+                      placeholder="Enter Work Order No."
+                      className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-not-allowed opacity-60")}
+                    />
+                  </td>
 
-                {/* LR Number */}
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.LR_NO}
-                    onChange={(e) => {
-                      const data = [...tableData];
-                      data[index].LR_NO = e.target.value;
-                      setTableData(data);
-                    }}
-                    onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
-                    }}
-                    placeholder="Enter LR No."
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  {/* LR Number */}
+                  <td className="px-3 py-0.5">
+                    {row.lrOptions && row.lrOptions.length > 0 ? (
+                      <TableMultiSelect
+                        options={row.lrOptions}
+                        selected={row.LR_NO ? row.LR_NO.split(", ").filter(Boolean) : []}
+                        readOnly={isRowDisabled}
+                        onChange={(selected) => {
+                          const data = [...tableData];
+                          data[index].LR_NO = selected.join(", ");
+                          setTableData(data);
+                        }}
+                        placeholder="Select LR No"
+                      />
+                    ) : (
+                      <input
+                        value={row.LR_NO}
+                        readOnly={isRowDisabled}
+                        onChange={(e) => {
+                          const data = [...tableData];
+                          data[index].LR_NO = e.target.value;
+                          setTableData(data);
+                        }}
+                        onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
+                        }}
+                        placeholder="Enter LR No."
+                        className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-not-allowed opacity-60")}
+                      />
+                    )}
+                  </td>
 
-                {/* Transporter */}
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.TRANSPORTER}
-                    onChange={(e) => {
-                      const data = [...tableData];
-                      data[index].TRANSPORTER = e.target.value;
-                      setTableData(data);
-                    }}
-                    onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
-                    }}
-                    placeholder="Enter Transporter"
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  {/* Transporter */}
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.TRANSPORTER}
+                      readOnly={isRowDisabled}
+                      onChange={(e) => {
+                        const data = [...tableData];
+                        data[index].TRANSPORTER = e.target.value;
+                        setTableData(data);
+                      }}
+                      onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
+                      }}
+                      placeholder="Enter Transporter"
+                      className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-not-allowed opacity-60")}
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5 text-center">
-                  <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
-                    <MoreVertical className="size-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  {/* Completed Invoices */}
+                  <td className="px-3 py-0.5 text-center whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => openCompletedInvoicesModal(row)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800 transition-colors shadow-xs"
+                      title="View Completed Invoices"
+                    >
+                      <Eye className="size-3" />
+                      <span>View</span>
+                      {row.compInvoices && row.compInvoices.length > 0 && (
+                        <span className="ml-0.5 px-1 py-0.2 rounded-full text-[9px] bg-sky-200/70 text-sky-800 dark:bg-sky-800 dark:text-sky-100 font-bold">
+                          {row.compInvoices.length}
+                        </span>
+                      )}
+                    </button>
+                  </td>
+
+                  <td className="px-3 py-0.5 text-center">
+                    <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
+                      <MoreVertical className="size-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1682,19 +1990,48 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                   <tr className="bg-surface hover:bg-muted/50">
 
                     {[
-                      { field: "ZREFNO", type: "text" },
-                      { field: "ZLINE_NO", type: "text" },
-                      { field: "ZINV_NO", type: "text" },
+                      { field: "ZREFNO", type: "text", readonly: true },
+                      { field: "ZLINE_NO", type: "text", readonly: true },
+                      { field: "ZINV_NO", type: "text", readonly: true },
                       { field: "ZODN_NO", type: "text" },
                       { field: "ZSONO", type: "text" },
-                      { field: "ZINV_DATE", type: "date" },
+                      { field: "ZINV_DATE", type: "date", readonly: true },
                       { field: "ZFSR_RPT_DT", type: "date" },
                       { field: "ZBASIC_VALUE", type: "number" },
                       { field: "ZINC_DATE", type: "date" },
                       { field: "ZCUSTOMER", type: "text" },
                       { field: "ZCONSIGN_NAME", type: "text" },
-                      { field: "ZDAMAGE_RMK", type: "textarea" },
-                      { field: "ZSETTLEMENT", type: "text" },
+                      {
+                        field: "ZDAMAGE_RMK",
+                        type: "select",
+                        options: Array.from(
+                          new Set([
+                            "Packing material damage",
+                            "Pallet damage",
+                            "Cells damage",
+                            "Cell Bank damage",
+                            "Can damage",
+                            "Accident",
+                            "Prohibited material loading and seized by Police",
+                            "Damage during unloading",
+                            "Material in wet condition",
+                            "Damage due to other materials loaded",
+                            headerData.ZDAMAGE_RMK,
+                            headerData.DAMAGE_RMK,
+                          ].filter(Boolean))
+                        ),
+                      },
+                      {
+                        field: "ZSETTLEMENT",
+                        type: "select",
+                        options: [
+                          "Claim Settlement",
+                          "Direct Deduction",
+                          "Insurance claim",
+                          "Repair Locally with cost",
+                          "Repair Locally without cost",
+                        ],
+                      },
                       { field: "ZCLOSING_DT", type: "date" },
                       { field: "ZDIMAGES", type: "text" },
                       { field: "ZFSRREP", type: "text" },
@@ -1703,22 +2040,100 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       { field: "ZSALE_PERSON", type: "text" },
                       { field: "ZLOCATION", type: "text" },
                       { field: "ZROUTE", type: "text" },
-                      { field: "ZPLANT", type: "text" },
-                      { field: "ZDIVISION", type: "text" },
-                      { field: "ZCREATED_DT", type: "date" },
-                      { field: "ZVEH_TYPE", type: "text" },
-                    ].map(({ field, type }) => (
+                      {
+                        field: "ZPLANT",
+                        type: "select",
+                        options: Array.from(new Set([...(currentUser.PLANTS || []).map((p: any) => typeof p === "string" ? p : p?.PLANT || p?.PLANT_NAME || String(p)), headerData.ZPLANT].filter(Boolean))),
+                      },
+                      {
+                        field: "ZDIVISION",
+                        type: "select",
+                        options: Array.from(new Set([...(currentUser.DIV || []).map((d: any) => typeof d === "string" ? d : d?.DIVISION || d?.DIV || String(d)), headerData.ZDIVISION].filter(Boolean))),
+                      },
+                      { field: "ZCREATED_DT", type: "date", readonly: true },
+                      { field: "ZVEH_TYPE", type: "text", readonly: true },
+                    ].map(({ field, type, options, readonly }: any) => (
                       <td
                         key={field}
                         className="px-3 py-2 whitespace-nowrap text-center"
                       >
-                        {headerData.isEdit ? (
-                          type === "textarea" ? (
+                        {headerData.isEdit && !readonly ? (
+                          DOC_LOCAL_KEY[field] ? (
+                            <div className="flex flex-col items-center gap-1">
+                              {editSearchDamageFiles[field]?.name ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const file = editSearchDamageFiles[field];
+                                    const url = file ? URL.createObjectURL(file) : "";
+                                    setPreviewDoc({ url, title: file?.name || field });
+                                  }}
+                                  className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                                  title={editSearchDamageFiles[field]?.name}
+                                >
+                                  {editSearchDamageFiles[field]?.name}
+                                </button>
+                              ) : (
+                                (() => {
+                                  const existingName = docFileName(headerData, field);
+                                  if (existingName && existingName !== "-") {
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const url = getLocalDocumentUrl({
+                                            mode: isWithout ? "Without Sap" : "SAP",
+                                            screen: "Transit_Damage_Info",
+                                            field: DOC_LOCAL_KEY[field],
+                                            fileName: existingName,
+                                            storedPath: headerData?.[DOC_PATH_KEY[field]],
+                                            row: headerData,
+                                          });
+                                          setPreviewDoc({ url, title: existingName });
+                                        }}
+                                        className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                                        title={existingName}
+                                      >
+                                        {existingName}
+                                      </button>
+                                    );
+                                  }
+                                  return <span className="text-[12px] text-muted-foreground">-</span>;
+                                })()
+                              )}
+                              <label className="cursor-pointer inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 transition-colors">
+                                <span>{editSearchDamageFiles[field] ? "Change" : "Browse"}</span>
+                                <input
+                                  type="file"
+                                  accept=".jpg,.jpeg,.png,.pdf"
+                                  onChange={(e) => handleSearchPickDamageDoc(field, e.target.files?.[0] || null)}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
+                          ) : type === "select" ? (
+                            <select
+                              className={GREEN_INPUT + (field === "ZDAMAGE_RMK" ? " min-w-[220px]" : " min-w-[160px]")}
+                              value={headerData[field] || (field === "ZDAMAGE_RMK" ? headerData.DAMAGE_RMK : "") || ""}
+                              onChange={(e) =>
+                                setHeaderData((prev) => ({
+                                  ...prev,
+                                  [field]: e.target.value,
+                                  ...(field === "ZDAMAGE_RMK" ? { DAMAGE_RMK: e.target.value } : {}),
+                                }))
+                              }
+                            >
+                              <option value="">Select</option>
+                              {options?.map((o: string) => (
+                                <option key={o} value={o}>{o}</option>
+                              ))}
+                            </select>
+                          ) : type === "textarea" ? (
                             <textarea
-                              className={`${GREEN_INPUT} h-16`}
+                              className={`${GREEN_INPUT} h-16 min-w-[180px]`}
                               value={headerData[field] || ""}
                               onChange={(e) =>
-                                setSearchResults((prev: any[]) => ({
+                                setHeaderData((prev) => ({
                                   ...prev,
                                   [field]: e.target.value,
                                 }))
@@ -1727,7 +2142,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                           ) : (
                             <input
                               type={type}
-                              className={GREEN_INPUT}
+                              className={GREEN_INPUT + " min-w-[140px]"}
                               value={headerData[field] || ""}
                               onChange={(e) =>
                                 setHeaderData((prev) => ({
@@ -1739,12 +2154,38 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                           )
                         ) : DOC_LOCAL_KEY[field] ? (
                           // Images / FSR Report / FIR Report / COF -> uploaded file name
-                          <span>{docFileName(headerData, field)}</span>
+                          (() => {
+                            const fileName = docFileName(headerData, field);
+                            if (!fileName || fileName === "-" || fileName === "NA") {
+                              return <span className="text-muted-foreground">-</span>;
+                            }
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const url = getLocalDocumentUrl({
+                                    mode: isWithout ? "Without Sap" : "SAP",
+                                    screen: "Transit_Damage_Info",
+                                    field: DOC_LOCAL_KEY[field],
+                                    fileName,
+                                    storedPath: headerData?.[DOC_PATH_KEY[field]],
+                                    row: headerData,
+                                  });
+                                  setPreviewDoc({ url, title: fileName });
+                                }}
+                                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline underline-offset-2 transition-colors cursor-pointer group max-w-[150px]"
+                                title={`View ${fileName}`}
+                              >
+                                <FileText className="size-3.5 shrink-0 opacity-70 group-hover:opacity-100 text-blue-600 dark:text-blue-400" />
+                                <span className="truncate">{fileName}</span>
+                              </button>
+                            );
+                          })()
                         ) : (
                           <span>
                             {type === "date" && headerData[field]
                               ? new Date(headerData[field]).toLocaleDateString("en-GB")
-                              : headerData[field] || "-"}
+                              : headerData[field] || (field === "ZDAMAGE_RMK" ? headerData.DAMAGE_RMK : "") || "-"}
                           </span>
                         )}
                       </td>
@@ -1755,13 +2196,17 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       {!headerData.isEdit ? (
                         <div className="flex items-center gap-1 justify-center">
                           <button
-                            onClick={() =>
+                            onClick={() => {
+                              setEditSearchDamageFiles({});
+                              const dmgRmk = headerData.ZDAMAGE_RMK || headerData.DAMAGE_RMK || "";
                               setHeaderData((prev) => ({
                                 ...prev,
-                                _backup: { ...prev },
+                                ZDAMAGE_RMK: dmgRmk,
+                                DAMAGE_RMK: dmgRmk,
+                                _backup: { ...prev, ZDAMAGE_RMK: dmgRmk, DAMAGE_RMK: dmgRmk },
                                 isEdit: true,
-                              }))
-                            }
+                              }));
+                            }}
                             className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
                           >
                             <svg
@@ -1820,12 +2265,13 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                           </button>
 
                           <button
-                            onClick={() =>
+                            onClick={() => {
+                              setEditSearchDamageFiles({});
                               setHeaderData((prev) => ({
                                 ...prev._backup,
                                 isEdit: false,
-                              }))
-                            }
+                              }));
+                            }}
                             className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
                           >
                             <svg
@@ -1893,22 +2339,22 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       }
                     >
                       {[
-                        { field: "ZMAPID", type: "text" },
-                        { field: "ZREFNO", type: "text" },
-                        { field: "ZLINE_NO", type: "text" },
-                        { field: "ZINV_NO", type: "text" },
+                        { field: "ZMAPID", type: "text", readonly: true },
+                        { field: "ZREFNO", type: "text", readonly: true },
+                        { field: "ZLINE_NO", type: "text", readonly: true },
+                        { field: "ZINV_NO", type: "text", readonly: true },
                         { field: "ZTRUCK_NO", type: "text" },
                         { field: "ZBILLNO", type: "text" },
                         { field: "ZPRODUCT", type: "text" },
-                        { field: "ZWORK_ORDER", type: "text" },
-                        { field: "ZLRNO", type: "text" },
-                        { field: "ZTRANSPORTER", type: "text" },
-                      ].map(({ field, type }) => (
+                        { field: "ZWORK_ORDER", type: "text", readonly: true },
+                        { field: "ZLRNO", type: "text", readonly: true },
+                        { field: "ZTRANSPORTER", type: "text", readonly: true },
+                      ].map(({ field, type, readonly }: any) => (
                         <td
                           key={field}
                           className="px-3 py-2 whitespace-nowrap text-center"
                         >
-                          {item.isEdit ? (
+                          {item.isEdit && !readonly ? (
                             <input
                               type={type}
                               className={GREEN_INPUT}
@@ -2148,6 +2594,140 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
           )}
         </>
       )}
+
+      {/* Completed Invoices Modal */}
+      <Dialog open={compInvoicesModalOpen} onOpenChange={setCompInvoicesModalOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden border border-hairline shadow-soft bg-surface">
+          <div className="px-5 py-3.5 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-[14px] font-bold text-foreground">
+                Completed Invoices
+              </DialogTitle>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Reference No: <span className="font-semibold text-foreground">{compInvoicesModalData.refNo}</span>
+              </p>
+            </div>
+            <span className="px-2 py-0.5 text-[10.5px] font-bold rounded-full bg-accent/10 text-accent">
+              {compInvoicesModalData.invoices.length} {compInvoicesModalData.invoices.length === 1 ? "Invoice" : "Invoices"}
+            </span>
+          </div>
+
+          <div className="p-4 max-h-80 overflow-y-auto scrollbar-elegant">
+            {compInvoicesModalData.invoices.length > 0 ? (
+              <div className="border border-hairline rounded-lg overflow-hidden">
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+                      <th className="px-3 py-1.5 text-center w-14">#</th>
+                      <th className="px-3 py-1.5 text-left">Invoice Number</th>
+                      <th className="px-3 py-1.5 text-center w-24">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/60">
+                    {compInvoicesModalData.invoices.map((inv, idx) => (
+                      <tr key={idx} className="hover:bg-accent/[0.04] transition-colors">
+                        <td className="px-3 py-1.5 text-center font-mono text-[11px] text-muted-foreground">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-1.5 font-mono font-medium text-foreground">
+                          {inv}
+                        </td>
+                        <td className="px-3 py-1.5 text-center">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground text-[12px]">
+                No completed invoices available for this reference.
+              </div>
+            )}
+          </div>
+
+          <div className="px-4 py-2.5 border-t border-hairline bg-surface-2/40 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCompInvoicesModalOpen(false)}
+              className="px-3.5 py-1.5 text-[12px] font-semibold rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition-colors shadow-xs"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Local Document Viewer Modal ── */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => { if (!open) setPreviewDoc(null); }}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-white dark:bg-surface border border-hairline shadow-2xl rounded-xl">
+          <div className="bg-gradient-primary px-4 py-3 flex items-center justify-between text-white">
+            <div className="flex items-center gap-2 min-w-0 pr-4">
+              <FileText className="size-4 shrink-0 text-white/90" />
+              <DialogTitle className="text-[14px] font-bold tracking-wide text-white truncate">
+                {previewDoc?.title || "Document Preview"}
+              </DialogTitle>
+            </div>
+            {previewDoc?.url && (
+              <a
+                href={previewDoc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-medium bg-white/15 hover:bg-white/25 text-white px-2.5 py-1 rounded transition-colors flex items-center gap-1 shrink-0 mr-6 cursor-pointer"
+                title="Open in new window"
+              >
+                <ExternalLink className="size-3" />
+                Open in New Tab
+              </a>
+            )}
+          </div>
+          <div className="p-3 bg-muted/20 min-h-[350px] max-h-[78vh] flex items-center justify-center overflow-auto">
+            {previewDoc?.url ? (
+              (() => {
+                const target = (previewDoc.url || "").toLowerCase().split("?")[0];
+                const titleLower = (previewDoc.title || "").toLowerCase();
+                const isPdf = target.endsWith(".pdf") || titleLower.endsWith(".pdf");
+                const isImg = target.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/) || titleLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/);
+
+                if (isPdf) {
+                  return (
+                    <iframe
+                      src={previewDoc.url}
+                      title={previewDoc.title || "PDF Document"}
+                      className="w-full h-[72vh] border-0 rounded-lg shadow-inner bg-white"
+                    />
+                  );
+                }
+
+                if (isImg) {
+                  return (
+                    <img
+                      src={previewDoc.url}
+                      alt={previewDoc.title || "Image Document"}
+                      className="max-h-[72vh] max-w-full object-contain rounded-lg shadow-sm"
+                    />
+                  );
+                }
+
+                return (
+                  <iframe
+                    src={previewDoc.url}
+                    title={previewDoc.title || "Document"}
+                    className="w-full h-[72vh] border-0 rounded-lg shadow-inner bg-white"
+                  />
+                );
+              })()
+            ) : (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                No document URL available for preview.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -2214,11 +2794,10 @@ function SapField({
           </select>
         )
       ) : type === "date" ? (
-        <input
-          type="date"
+        <GateDatePicker
           value={value || ""}
-          readOnly={filled}
-          onChange={(e) => !filled && onChange(key, e.target.value)}
+          disabled={filled}
+          onChange={(_, str) => !filled && onChange(key, str)}
           className={cls}
         />
       ) : type === "file" ? (

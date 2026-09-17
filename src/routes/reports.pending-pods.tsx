@@ -16,6 +16,7 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { cn } from "@/lib/utils";
+import { GateDatePicker } from "@/components/ui/date-picker";
 
 type Option = { label: string; value: string };
 
@@ -850,16 +851,12 @@ function DateField({
 }) {
   return (
     <div>
-      <label className={LABEL}>{label}</label>
-      <div className="relative">
-        <input
-          type="date"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={cn(INPUT, "pr-9", error && "border-destructive")}
-        />
-        <Calendar className="size-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-      </div>
+      <GateDatePicker
+        label={label}
+        value={value}
+        onChange={(_, str) => onChange(str)}
+        className="h-9"
+      />
       {error && <p className="text-[11px] text-destructive mt-1">{error}</p>}
     </div>
   );

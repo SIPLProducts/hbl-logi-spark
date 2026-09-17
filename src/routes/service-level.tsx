@@ -7,8 +7,12 @@ import {
   Save,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   FileText,
+  Eye,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { ServiceLevelSapCreate } from "@/components/service-level-sap-create";
 // @ts-ignore
@@ -396,6 +400,143 @@ function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: S
  * src/app/pages/dashboards/service-level/service-level.component.{ts,html}
  * ──────────────────────────────────────────────────────────────────────────── */
 
+// Table Multi-Select Dropdown for LR Numbers
+function TableMultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select LR No",
+  className,
+  disabled = false,
+  readOnly = false,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const selected = value
+    ? value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    if (disabled || readOnly) return;
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const selectAll = () => {
+    if (disabled || readOnly) return;
+    onChange(options.join(","));
+  };
+
+  const clearAll = () => {
+    if (disabled || readOnly) return;
+    onChange("");
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          title={selected.join(", ")}
+          className={
+            (className ? className + " " : "") +
+            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+            (selected.length === 0 ? " text-muted-foreground" : "")
+          }
+        >
+          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
+        <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
+          <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
+          {options.length > 1 && !readOnly && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                All
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-muted-foreground hover:underline font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+        {options.length > 5 && (
+          <div className="p-1.5 border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search LR..."
+              className="h-6 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+        )}
+        <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
+          {filtered.length === 0 ? (
+            <div className="p-2 text-center text-[11px] text-muted-foreground">No LR found</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o}
+                className={
+                  "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] hover:bg-muted/60 transition-colors " +
+                  (readOnly ? "cursor-default" : "cursor-pointer")
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  disabled={readOnly}
+                  onChange={() => toggle(o)}
+                  className="size-3.5 accent-primary rounded"
+                />
+                <span className="font-mono text-foreground">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 type SLRow = {
   referenceNumber: string;
   workOrderNumber: string;
@@ -403,6 +544,9 @@ type SLRow = {
   transporter: string;
   lineNumber: string;
   mapId: string;
+  lrOptions?: string[];
+  compInvoices?: string[];
+  notAllowed?: boolean;
 };
 
 const slEmptyRow = (): SLRow => ({
@@ -412,6 +556,9 @@ const slEmptyRow = (): SLRow => ({
   transporter: "",
   lineNumber: "",
   mapId: "",
+  lrOptions: [],
+  compInvoices: [],
+  notAllowed: false,
 });
 
 type SLFeedbackKey =
@@ -569,6 +716,19 @@ function ServiceLevelFeedbackCreate({
   });
   const [disabledFields, setDisabledFields] = useState<SLFeedbackKey[]>([]);
   const [loading, setLoading] = useState(false);
+  const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
+  const [compInvoicesModalData, setCompInvoicesModalData] = useState<{
+    refNo: string;
+    invoices: string[];
+  }>({ refNo: "", invoices: [] });
+
+  const openCompletedInvoicesModal = (row: SLRow) => {
+    setCompInvoicesModalData({
+      refNo: row.referenceNumber || "-",
+      invoices: row.compInvoices || [],
+    });
+    setCompInvoicesModalOpen(true);
+  };
 
   const loggedInUser = slLoggedInUser();
 
@@ -583,12 +743,18 @@ function ServiceLevelFeedbackCreate({
       setInvoicenumber("");
       return;
     }
-    const selectedMapIds = new Set(selected.map((r) => r.mapId));
     const invoices: string[] = [];
-    fullReferenceData.forEach((refItem: any) => {
-      if (selectedMapIds.has(refItem.MAPID) && Array.isArray(refItem.INV_NO)) {
-        refItem.INV_NO.forEach((inv: any) => {
-          if (inv.VBELN && !invoices.includes(inv.VBELN)) invoices.push(inv.VBELN);
+    selected.forEach((sel) => {
+      const match = fullReferenceData.find(
+        (d: any) =>
+          String(d.REF_NO ?? "") === sel.referenceNumber &&
+          String(d.LINE_NO ?? "") === sel.lineNumber,
+      );
+      if (match && Array.isArray(match.INV_NO)) {
+        match.INV_NO.forEach((inv: any) => {
+          if (inv.VBELN && !invoices.includes(inv.VBELN)) {
+            invoices.push(inv.VBELN);
+          }
         });
       }
     });
@@ -597,6 +763,7 @@ function ServiceLevelFeedbackCreate({
   };
 
   const onCheckboxChange = (checked: boolean, row: SLRow): void => {
+    if (row.notAllowed) return;
     setSelectedItems((prev) => {
       const next = checked
         ? (prev.some((item) => slSameRow(item, row)) ? prev : [...prev, row])
@@ -637,13 +804,41 @@ function ServiceLevelFeedbackCreate({
               if (inv.VBELN && !invoices.includes(inv.VBELN)) invoices.push(inv.VBELN);
             });
           }
+
+          let lrOptions: string[] = [];
+          if (Array.isArray(d.LR_NO)) {
+            lrOptions = d.LR_NO.map((x: any) =>
+              typeof x === "object" && x !== null ? x.LR : String(x)
+            ).filter(Boolean);
+          } else if (typeof d.LR_NO === "string" && d.LR_NO.trim()) {
+            lrOptions = [d.LR_NO.trim()];
+          }
+          lrOptions = Array.from(new Set(lrOptions));
+
+          let compInvoices: string[] = [];
+          if (Array.isArray(d.COMP_INV_NO)) {
+            compInvoices = d.COMP_INV_NO.map((x: any) =>
+              typeof x === "object" && x !== null
+                ? x.VBELN || x.INV_NO || x.INVOICE || x.inv_no
+                : String(x)
+            ).filter(Boolean);
+          } else if (typeof d.COMP_INV_NO === "string" && d.COMP_INV_NO.trim()) {
+            compInvoices = [d.COMP_INV_NO.trim()];
+          }
+          compInvoices = Array.from(new Set(compInvoices));
+
+          const isNotAllowed = String(d.ZNOT_ALLOWED || "").trim().toUpperCase() === "X";
+
           return {
-            referenceNumber: d.REF_NO || "",
-            workOrderNumber: d.WORK_ORDER_NO || "",
-            lrNumber: d.LR_NO || "",
-            transporter: d.TRANSPORTER || "",
-            lineNumber: d.LINE_NO || "",
-            mapId: d.MAPID || "",
+            referenceNumber: d.REF_NO ? String(d.REF_NO) : "",
+            workOrderNumber: d.WORK_ORDER_NO ? String(d.WORK_ORDER_NO) : "",
+            lrNumber: lrOptions.length > 0 ? lrOptions.join(", ") : (typeof d.LR_NO === "string" ? d.LR_NO : ""),
+            transporter: d.TRANSPORTER ? String(d.TRANSPORTER) : "",
+            lineNumber: d.LINE_NO ? String(d.LINE_NO) : "",
+            mapId: d.MAPID ? String(d.MAPID) : "",
+            lrOptions,
+            compInvoices,
+            notAllowed: isNotAllowed,
           };
         }),
       );
@@ -957,86 +1152,125 @@ function ServiceLevelFeedbackCreate({
                     <th className="px-3 py-1 text-center">Work Order Number</th>
                     <th className="px-3 py-1 text-center">LR Number</th>
                     <th className="px-3 py-1 text-center">Transporter</th>
+                    <th className="px-3 py-1 text-center whitespace-nowrap">Completed Invoices</th>
                     <th className="px-3 py-1 text-center w-20">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-hairline/60">
-                  {rows.map((row, i) => (
-                    <tr key={i} className="hover:bg-accent/[0.04]">
-                      <td className="px-3 py-1 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isItemSelected(row)}
-                          onChange={(e) => onCheckboxChange(e.target.checked, row)}
-                          onMouseDown={(e) => e.preventDefault()}
-                        />
-                      </td>
-                      <td className="px-3 py-1 text-center">{i + 1}</td>
-                      <td className="px-3 py-1">
-                        <input
-                          type="text"
-                          value={row.referenceNumber}
-                          placeholder="Enter Ref. No."
-                          maxLength={10}
-                          readOnly={i !== 0}
-                          onChange={(e) =>
-                            updateRowField(i, "referenceNumber", e.target.value)
-                          }
-                          {...blurKeys(i, "REF_NO")}
-                          className={SL_INPUT + " text-center"}
-                        />
-                      </td>
-                      <td className="px-3 py-1">
-                        <input
-                          type="text"
-                          value={row.workOrderNumber}
-                          placeholder="Enter Work Order No."
-                          readOnly={i !== 0}
-                          onChange={(e) =>
-                            updateRowField(i, "workOrderNumber", e.target.value)
-                          }
-                          {...blurKeys(i, "WORK_ORDER_NO")}
-                          className={SL_INPUT + " text-center"}
-                        />
-                      </td>
-                      <td className="px-3 py-1">
-                        <input
-                          type="text"
-                          value={row.lrNumber}
-                          placeholder="Enter LR No."
-                          readOnly={i !== 0}
-                          onChange={(e) => updateRowField(i, "lrNumber", e.target.value)}
-                          {...blurKeys(i, "LR_NO")}
-                          className={SL_INPUT + " text-center"}
-                        />
-                      </td>
-                      <td className="px-3 py-1">
-                        <input
-                          type="text"
-                          value={row.transporter}
-                          placeholder="Enter Transporter"
-                          readOnly={i !== 0}
-                          onChange={(e) =>
-                            updateRowField(i, "transporter", e.target.value)
-                          }
-                          {...blurKeys(i, "TRANSPORTER")}
-                          className={SL_INPUT + " text-center"}
-                        />
-                      </td>
-                      <td className="px-3 py-1 text-center">
-                        {rows.length > 1 && (
+                  {rows.map((row, i) => {
+                    const isRowDisabled = Boolean(row.notAllowed);
+                    return (
+                      <tr
+                        key={i}
+                        className={cn(
+                          "hover:bg-accent/[0.04]",
+                          isRowDisabled && "bg-slate-100/90 dark:bg-zinc-800/80 text-muted-foreground"
+                        )}
+                      >
+                        <td className="px-3 py-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={!isRowDisabled && isItemSelected(row)}
+                            disabled={isRowDisabled}
+                            onChange={(e) => onCheckboxChange(e.target.checked, row)}
+                            onMouseDown={(e) => e.preventDefault()}
+                            className={cn(isRowDisabled && "cursor-not-allowed opacity-50")}
+                          />
+                        </td>
+                        <td className="px-3 py-1 text-center">{i + 1}</td>
+                        <td className="px-3 py-1">
+                          <input
+                            type="text"
+                            value={row.referenceNumber}
+                            placeholder="Enter Ref. No."
+                            maxLength={10}
+                            readOnly={i !== 0 || isRowDisabled}
+                            onChange={(e) =>
+                              updateRowField(i, "referenceNumber", e.target.value)
+                            }
+                            {...blurKeys(i, "REF_NO")}
+                            className={SL_INPUT + " text-center"}
+                          />
+                        </td>
+                        <td className="px-3 py-1">
+                          <input
+                            type="text"
+                            value={row.workOrderNumber}
+                            placeholder="Enter Work Order No."
+                            readOnly={i !== 0 || isRowDisabled}
+                            onChange={(e) =>
+                              updateRowField(i, "workOrderNumber", e.target.value)
+                            }
+                            {...blurKeys(i, "WORK_ORDER_NO")}
+                            className={SL_INPUT + " text-center"}
+                          />
+                        </td>
+                        <td className="px-3 py-1">
+                          {row.lrOptions && row.lrOptions.length > 0 ? (
+                            <TableMultiSelect
+                              options={row.lrOptions}
+                              value={row.lrNumber || ""}
+                              readOnly={isRowDisabled}
+                              onChange={(val) => updateRowField(i, "lrNumber", val)}
+                              placeholder="Select LR No"
+                              className={SL_INPUT + " text-center"}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={row.lrNumber}
+                              placeholder="Enter LR No."
+                              readOnly={i !== 0 || isRowDisabled}
+                              onChange={(e) => updateRowField(i, "lrNumber", e.target.value)}
+                              {...blurKeys(i, "LR_NO")}
+                              className={SL_INPUT + " text-center"}
+                            />
+                          )}
+                        </td>
+                        <td className="px-3 py-1">
+                          <input
+                            type="text"
+                            value={row.transporter}
+                            placeholder="Enter Transporter"
+                            readOnly={i !== 0 || isRowDisabled}
+                            onChange={(e) =>
+                              updateRowField(i, "transporter", e.target.value)
+                            }
+                            {...blurKeys(i, "TRANSPORTER")}
+                            className={SL_INPUT + " text-center"}
+                          />
+                        </td>
+                        <td className="px-3 py-1 text-center whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => removeRow(i)}
-                            aria-label="Remove row"
-                            className="inline-grid place-items-center size-7 rounded-md text-red-500 hover:bg-red-50"
+                            onClick={() => openCompletedInvoicesModal(row)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800 transition-colors shadow-xs"
+                            title="View Completed Invoices"
                           >
-                            <Trash2 className="size-3.5" />
+                            <Eye className="size-3" />
+                            <span>View</span>
+                            {row.compInvoices && row.compInvoices.length > 0 && (
+                              <span className="ml-0.5 px-1 py-0.2 rounded-full text-[9px] bg-sky-200/70 text-sky-800 dark:bg-sky-800 dark:text-sky-100 font-bold">
+                                {row.compInvoices.length}
+                              </span>
+                            )}
                           </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-3 py-1 text-center">
+                          {rows.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeRow(i)}
+                              aria-label="Remove row"
+                              className="inline-grid place-items-center size-7 rounded-md text-red-500 hover:bg-red-50"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1170,6 +1404,72 @@ function ServiceLevelFeedbackCreate({
           )}
         </>
       )}
+
+      {/* Completed Invoices Modal */}
+      <Dialog open={compInvoicesModalOpen} onOpenChange={setCompInvoicesModalOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden border border-hairline shadow-soft bg-surface">
+          <div className="px-5 py-3.5 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-[14px] font-bold text-foreground">
+                Completed Invoices
+              </DialogTitle>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Reference No: <span className="font-semibold text-foreground">{compInvoicesModalData.refNo}</span>
+              </p>
+            </div>
+            <span className="px-2 py-0.5 text-[10.5px] font-bold rounded-full bg-accent/10 text-accent">
+              {compInvoicesModalData.invoices.length} {compInvoicesModalData.invoices.length === 1 ? "Invoice" : "Invoices"}
+            </span>
+          </div>
+
+          <div className="p-4 max-h-80 overflow-y-auto scrollbar-elegant">
+            {compInvoicesModalData.invoices.length > 0 ? (
+              <div className="border border-hairline rounded-lg overflow-hidden">
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+                      <th className="px-3 py-1.5 text-center w-14">#</th>
+                      <th className="px-3 py-1.5 text-left">Invoice Number</th>
+                      <th className="px-3 py-1.5 text-center w-24">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/60">
+                    {compInvoicesModalData.invoices.map((inv, idx) => (
+                      <tr key={idx} className="hover:bg-accent/[0.04] transition-colors">
+                        <td className="px-3 py-1.5 text-center font-mono text-[11px] text-muted-foreground">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-1.5 font-mono font-medium text-foreground">
+                          {inv}
+                        </td>
+                        <td className="px-3 py-1.5 text-center">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground text-[12px]">
+                No completed invoices available for this reference.
+              </div>
+            )}
+          </div>
+
+          <div className="px-4 py-2.5 border-t border-hairline bg-surface-2/40 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCompInvoicesModalOpen(false)}
+              className="px-3.5 py-1.5 text-[12px] font-semibold rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition-colors shadow-xs"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

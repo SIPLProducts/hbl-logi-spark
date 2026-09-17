@@ -1,7 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import Swal from "sweetalert2";
-import { Search, Plus, Trash2, Save, ChevronLeft, ChevronRight, ChevronDown, Pencil, Check, X as XIcon } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Trash2,
+  Save,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Pencil,
+  Check,
+  X as XIcon,
+  Eye,
+  FileText,
+} from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
 
@@ -112,6 +127,143 @@ function F4MultiSelect({
   );
 }
 
+// Table Multi-Select Dropdown for LR Numbers
+function TableMultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select LR No",
+  className,
+  disabled = false,
+  readOnly = false,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const selected = value
+    ? value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    if (disabled || readOnly) return;
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const selectAll = () => {
+    if (disabled || readOnly) return;
+    onChange(options.join(","));
+  };
+
+  const clearAll = () => {
+    if (disabled || readOnly) return;
+    onChange("");
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          title={selected.join(", ")}
+          className={
+            (className ? className + " " : "") +
+            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+            (selected.length === 0 ? " text-muted-foreground" : "")
+          }
+        >
+          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
+        <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
+          <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
+          {options.length > 1 && !readOnly && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                All
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-muted-foreground hover:underline font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+        {options.length > 5 && (
+          <div className="p-1.5 border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search LR..."
+              className="h-6 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+        )}
+        <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
+          {filtered.length === 0 ? (
+            <div className="p-2 text-center text-[11px] text-muted-foreground">No LR found</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o}
+                className={
+                  "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] hover:bg-muted/60 transition-colors " +
+                  (readOnly ? "cursor-default" : "cursor-pointer")
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  disabled={readOnly}
+                  onChange={() => toggle(o)}
+                  className="size-3.5 accent-primary rounded"
+                />
+                <span className="font-mono text-foreground">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 const SEARCH_OPTIONS = [
   { key: "ref_no", label: "Reference No" },
   { key: "inv_no", label: "Invoice No" },
@@ -167,6 +319,9 @@ type RefRow = {
   plantCode: string;
   shippingPoint: string;
   lineNumber: string;
+  lrOptions?: string[];
+  compInvoices?: string[];
+  notAllowed?: boolean;
 };
 
 const emptyRefRow = (): RefRow => ({
@@ -181,6 +336,9 @@ const emptyRefRow = (): RefRow => ({
   plantCode: "",
   shippingPoint: "",
   lineNumber: "",
+  lrOptions: [],
+  compInvoices: [],
+  notAllowed: false,
 });
 
 type ProductRow = {
@@ -263,6 +421,24 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
   const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
   const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
 
+  // ---- Completed Invoices Modal State ----
+  const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
+  const [compInvoicesModalData, setCompInvoicesModalData] = useState<{
+    refNo: string;
+    invoices: string[];
+  }>({
+    refNo: "",
+    invoices: [],
+  });
+
+  const openCompletedInvoicesModal = (row: RefRow) => {
+    setCompInvoicesModalData({
+      refNo: row.referenceNumber || "",
+      invoices: row.compInvoices || [],
+    });
+    setCompInvoicesModalOpen(true);
+  };
+
   // ---- Invoice / DC reference / common fields ----
   const [invoicenumber, setInvoicenumber] = useState("");
   const [showForm, setShowForm] = useState(!isSap); // Non-SAP shows form immediately
@@ -302,11 +478,43 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
             if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
           });
         }
+
+        let lrOptions: string[] = [];
+        if (Array.isArray(d.LR_NO)) {
+          lrOptions = d.LR_NO.map((x: any) =>
+            typeof x === "object" && x !== null ? x.LR : String(x)
+          ).filter(Boolean);
+        } else if (typeof d.LR_NO === "string" && d.LR_NO.trim()) {
+          lrOptions = [d.LR_NO.trim()];
+        }
+        lrOptions = Array.from(new Set(lrOptions));
+
+        let compInvoices: string[] = [];
+        if (Array.isArray(d.COMP_INV_NO)) {
+          compInvoices = d.COMP_INV_NO.map((x: any) =>
+            typeof x === "object" && x !== null
+              ? x.VBELN || x.INV_NO || x.INVOICE || x.inv_no
+              : String(x)
+          ).filter(Boolean);
+        } else if (typeof d.COMP_INV_NO === "string" && d.COMP_INV_NO.trim()) {
+          compInvoices = [d.COMP_INV_NO.trim()];
+        }
+        compInvoices = Array.from(new Set(compInvoices));
+
+        const isNotAllowed = String(d.ZNOT_ALLOWED || "").trim().toUpperCase() === "X";
+
+        let initialLr = "";
+        if (Array.isArray(d.LR_NO)) {
+          initialLr = lrOptions.join(",");
+        } else if (typeof d.LR_NO === "string") {
+          initialLr = d.LR_NO;
+        }
+
         return {
           MAPID: d.MAPID || "",
           referenceNumber: d.REF_NO || d.referenceNumber || "",
           workOrderNumber: d.WORK_ORDER_NO || d.workOrderNumber || "",
-          lrNumber: d.LR_NO || d.lrNumber || "",
+          lrNumber: initialLr || d.lrNumber || "",
           transporter: d.TRANSPORTER || d.transporter || "",
           soNumber: d.SO_NO || d.soNumber || "",
           odnNumber: d.ODN_NO || d.odnNumber || "",
@@ -314,6 +522,9 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
           plantCode: d.PLANT_CODE || d.ZPIN_PLT || d.plantCode || "",
           shippingPoint: d.SHIPPING_POINT || d.ZPIN_STP || d.shippingPoint || "",
           lineNumber: d.LINE_NO || d.lineNumber || "",
+          lrOptions,
+          compInvoices,
+          notAllowed: isNotAllowed,
         };
       });
       setReferenceItems(rows);
@@ -395,6 +606,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
   const onCheckboxChange = (index: number, checked: boolean) => {
     const rowValue = referenceItems[index];
+    if (rowValue.notAllowed) return;
     setSelectedItems((prev) => {
       let next: RefRow[];
       if (checked) {
@@ -853,7 +1065,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
   return (
     <div className="space-y-2">
       {/* Reference table */}
-      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+      <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
@@ -861,86 +1073,155 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
               <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
               <th className="px-3 py-0.5 text-center">Map ID</th>
               <th className="px-3 py-0.5 text-center">Reference Number</th>
-              <th className="px-3 py-0.5 text-center">Work Order Number</th>
+              <th className="px-3 py-0.5 text-center whitespace-nowrap">Work Order Number</th>
               <th className="px-3 py-0.5 text-center">LR Number</th>
               <th className="px-3 py-0.5 text-center">Transporter</th>
+              <th className="px-3 py-0.5 text-center whitespace-nowrap">Completed Invoices</th>
               <th className="px-3 py-0.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
-            {referenceItems.map((row, idx) => (
-              <tr key={idx}>
-                <td className="px-3 py-0.5 text-center">
-                  <input
-                    type="checkbox"
-                    checked={isItemSelected(idx)}
-                    onChange={(e) => onCheckboxChange(idx, e.target.checked)}
-                    className="size-4 accent-sky-600"
-                  />
-                </td>
-                <td className="px-3 py-0.5 text-center">{idx + 1}</td>
-                <td className="px-3 py-0.5">
-                  <input value={row.MAPID} readOnly className={GREEN_INPUT + " text-center"} />
-                </td>
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.referenceNumber}
-                    maxLength={10}
-                    readOnly={idx !== 0}
-                    onChange={(e) => updateRefRow(idx, { referenceNumber: e.target.value })}
-                    onBlur={() => onFieldBlur(idx, "REF_NO")}
-                    onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "REF_NO")}
-                    placeholder="Enter Ref. No."
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.workOrderNumber}
-                    readOnly={idx !== 0}
-                    onChange={(e) => updateRefRow(idx, { workOrderNumber: e.target.value })}
-                    onBlur={() => onFieldBlur(idx, "WORK_ORDER_NO")}
-                    onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "WORK_ORDER_NO")}
-                    placeholder="Enter Work Order No."
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.lrNumber}
-                    readOnly={idx !== 0}
-                    onChange={(e) => updateRefRow(idx, { lrNumber: e.target.value })}
-                    onBlur={() => onFieldBlur(idx, "LR_NO")}
-                    onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "LR_NO")}
-                    placeholder="Enter LR No."
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.transporter}
-                    readOnly={idx !== 0}
-                    onChange={(e) => updateRefRow(idx, { transporter: e.target.value })}
-                    onBlur={() => onFieldBlur(idx, "TRANSPORTER")}
-                    onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "TRANSPORTER")}
-                    placeholder="Enter Transporter"
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
-                <td className="px-3 py-0.5 text-center">
-                  {referenceItems.length > 1 && (
+            {referenceItems.map((row, idx) => {
+              const isRowDisabled = Boolean(row.notAllowed);
+              return (
+                <tr
+                  key={idx}
+                  className={
+                    isRowDisabled
+                      ? "border-t border-hairline/80 bg-slate-100/90 dark:bg-zinc-800/80 text-muted-foreground"
+                      : ""
+                  }
+                >
+                  <td className="px-3 py-0.5 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isItemSelected(idx)}
+                      disabled={isRowDisabled}
+                      onChange={(e) => onCheckboxChange(idx, e.target.checked)}
+                      className={
+                        "size-4 accent-sky-600 " +
+                        (isRowDisabled ? "cursor-not-allowed opacity-30" : "cursor-pointer")
+                      }
+                    />
+                  </td>
+                  <td className="px-3 py-0.5 text-center font-mono">{idx + 1}</td>
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.MAPID}
+                      readOnly
+                      className={
+                        (isRowDisabled
+                          ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed"
+                          : GREEN_INPUT) + " text-center"
+                      }
+                    />
+                  </td>
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.referenceNumber}
+                      maxLength={10}
+                      readOnly={idx !== 0 || isRowDisabled}
+                      onChange={(e) => updateRefRow(idx, { referenceNumber: e.target.value })}
+                      onBlur={() => onFieldBlur(idx, "REF_NO")}
+                      onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "REF_NO")}
+                      placeholder="Enter Ref. No."
+                      className={
+                        (isRowDisabled
+                          ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed"
+                          : GREEN_INPUT) + " text-center"
+                      }
+                    />
+                  </td>
+                  <td className="px-3 py-0.5 whitespace-nowrap">
+                    <input
+                      value={row.workOrderNumber}
+                      readOnly={idx !== 0 || isRowDisabled}
+                      onChange={(e) => updateRefRow(idx, { workOrderNumber: e.target.value })}
+                      onBlur={() => onFieldBlur(idx, "WORK_ORDER_NO")}
+                      onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "WORK_ORDER_NO")}
+                      placeholder="Enter Work Order No."
+                      className={
+                        (isRowDisabled
+                          ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed"
+                          : GREEN_INPUT) + " text-center"
+                      }
+                    />
+                  </td>
+                  <td className="px-3 py-0.5">
+                    {row.lrOptions && row.lrOptions.length > 0 ? (
+                      <TableMultiSelect
+                        options={row.lrOptions}
+                        value={row.lrNumber}
+                        readOnly={isRowDisabled}
+                        onChange={(val) => updateRefRow(idx, { lrNumber: val })}
+                        placeholder="Select LR No"
+                        className={
+                          (isRowDisabled
+                            ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer"
+                            : GREEN_INPUT) + " text-center"
+                        }
+                      />
+                    ) : (
+                      <input
+                        value={row.lrNumber}
+                        readOnly={idx !== 0 || isRowDisabled}
+                        onChange={(e) => updateRefRow(idx, { lrNumber: e.target.value })}
+                        onBlur={() => onFieldBlur(idx, "LR_NO")}
+                        onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "LR_NO")}
+                        placeholder="Enter LR No."
+                        className={
+                          (isRowDisabled
+                            ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed"
+                            : GREEN_INPUT) + " text-center"
+                        }
+                      />
+                    )}
+                  </td>
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.transporter}
+                      readOnly={idx !== 0 || isRowDisabled}
+                      onChange={(e) => updateRefRow(idx, { transporter: e.target.value })}
+                      onBlur={() => onFieldBlur(idx, "TRANSPORTER")}
+                      onKeyDown={(e) => e.key === "Enter" && onFieldBlur(idx, "TRANSPORTER")}
+                      placeholder="Enter Transporter"
+                      className={
+                        (isRowDisabled
+                          ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed"
+                          : GREEN_INPUT) + " text-center"
+                      }
+                    />
+                  </td>
+                  <td className="px-3 py-0.5 text-center whitespace-nowrap">
                     <button
                       type="button"
-                      onClick={() => removeReferenceRow(idx)}
-                      aria-label="Remove row"
-                      className="inline-grid place-items-center size-7 rounded-md text-destructive hover:bg-destructive/10"
+                      onClick={() => openCompletedInvoicesModal(row)}
+                      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 transition-colors shadow-xs cursor-pointer"
                     >
-                      <Trash2 className="size-3.5" />
+                      <Eye className="size-3.5 text-sky-600 dark:text-sky-400" />
+                      <span>View</span>
+                      {row.compInvoices && row.compInvoices.length > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold rounded-full bg-sky-600 text-white">
+                          {row.compInvoices.length}
+                        </span>
+                      )}
                     </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-3 py-0.5 text-center">
+                    {referenceItems.length > 1 && !isRowDisabled && (
+                      <button
+                        type="button"
+                        onClick={() => removeReferenceRow(idx)}
+                        aria-label="Remove row"
+                        className="inline-grid place-items-center size-7 rounded-md text-destructive hover:bg-destructive/10 cursor-pointer"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1376,57 +1657,68 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                       Number(item.ZSHIP_WT ?? 0).toFixed(2)
                     )}
                   </td>
-                  {["ZBATCOND"].map((field) => (
-                    <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          value={item[field] ?? ""}
-                          onChange={(e) => patchSearchRow(i, { [field]: e.target.value })}
-                          className="h-6 w-24 rounded border border-hairline px-1 text-[11px]"
-                        />
-                      ) : (
-                        item[field] || "-"
-                      )}
-                    </td>
-                  ))}
-                  {/* <td className="px-3 py-2 whitespace-nowrap text-center">
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
                     {item.isEdit ? (
-                      <input
-                        type="number"
-                        value={item.ZKM ?? ""}
-                        onChange={(e) => patchSearchRow(i, { ZKM: e.target.value })}
-                        className="h-6 w-16 rounded border border-hairline px-1 text-[11px]"
-                      />
+                      <select
+                        value={item.ZBATCOND ?? ""}
+                        onChange={(e) => patchSearchRow(i, { ZBATCOND: e.target.value })}
+                        className="h-6 min-w-[100px] rounded border border-hairline px-1 text-[11px] bg-white dark:bg-surface"
+                      >
+                        <option value="">Select</option>
+                        {BATTERY_CONDITIONS.map((o) => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
                     ) : (
-                      item.ZKM
+                      item.ZBATCOND || "-"
                     )}
-                  </td> */}
-                  {["ZPLANT", "ZDIVISION", "ZWORK_ORDER", "ZLRNO", "ZTRANSPORTER"].map((field) => (
-                    <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
-                      {item.isEdit ? (
-                        <input
-                          value={item[field] ?? ""}
-                          onChange={(e) => patchSearchRow(i, { [field]: e.target.value })}
-                          className="h-6 w-24 rounded border border-hairline px-1 text-[11px]"
-                        />
-                      ) : (
-                        item[field] || "-"
-                      )}
-                    </td>
-                  ))}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
+                    {item.isEdit ? (
+                      <select
+                        value={item.ZPLANT ?? ""}
+                        onChange={(e) => patchSearchRow(i, { ZPLANT: e.target.value })}
+                        className="h-6 min-w-[90px] rounded border border-hairline px-1 text-[11px] bg-white dark:bg-surface"
+                      >
+                        <option value="">Select</option>
+                        {Array.from(new Set([...(currentUser.PLANTS || []).map((p: any) => typeof p === "string" ? p : p?.PLANT || p?.PLANT_NAME || String(p)), item.ZPLANT].filter(Boolean))).map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      item.ZPLANT || "-"
+                    )}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
+                    {item.isEdit ? (
+                      <select
+                        value={item.ZDIVISION ?? ""}
+                        onChange={(e) => patchSearchRow(i, { ZDIVISION: e.target.value })}
+                        className="h-6 min-w-[90px] rounded border border-hairline px-1 text-[11px] bg-white dark:bg-surface"
+                      >
+                        <option value="">Select</option>
+                        {Array.from(new Set([...(currentUser.DIV || []).map((d: any) => typeof d === "string" ? d : d?.DIVISION || d?.DIV || String(d)), item.ZDIVISION].filter(Boolean))).map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      item.ZDIVISION || "-"
+                    )}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
+                    {item.ZWORK_ORDER || "-"}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
+                    {item.ZLRNO || "-"}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-center">
+                    {item.ZTRANSPORTER || "-"}
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap text-center">
                     {item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : "-"}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-center">
-                    {item.isEdit ? (
-                      <input
-                        value={item.ZVEH_TYPE ?? ""}
-                        onChange={(e) => patchSearchRow(i, { ZVEH_TYPE: e.target.value })}
-                        className="h-6 w-24 rounded border border-hairline px-1 text-[11px]"
-                      />
-                    ) : (
-                      item.ZVEH_TYPE || "-"
-                    )}
+                    {item.ZVEH_TYPE || "-"}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-center">
                     <div className="inline-flex items-center gap-1">
@@ -1473,6 +1765,83 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
           </table>
         </div>
       )}
+
+      {/* ── Completed Invoices Modal ── */}
+      <Dialog open={compInvoicesModalOpen} onOpenChange={setCompInvoicesModalOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white dark:bg-surface border border-hairline shadow-2xl rounded-xl">
+          {/* Header */}
+          <div className="bg-gradient-primary px-5 py-3.5 text-primary-foreground flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="size-4" />
+              <DialogTitle className="text-[14px] font-bold tracking-wide text-white">
+                Completed Invoices
+              </DialogTitle>
+            </div>
+            {compInvoicesModalData.refNo && (
+              <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded text-white font-mono">
+                Ref: {compInvoicesModalData.refNo}
+              </span>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between text-[12px] text-muted-foreground border-b border-hairline/60 pb-2">
+              <span>Total Completed Invoices:</span>
+              <span className="font-bold text-foreground bg-muted px-2 py-0.5 rounded-full text-[11px]">
+                {compInvoicesModalData.invoices.length}
+              </span>
+            </div>
+
+            {compInvoicesModalData.invoices.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <FileText className="size-8 mx-auto mb-2 opacity-40" />
+                <p className="text-[12.5px] font-medium">No completed invoices found for this reference.</p>
+              </div>
+            ) : (
+              <div className="max-h-64 overflow-y-auto border border-hairline rounded-lg divide-y divide-hairline bg-surface">
+                <table className="w-full text-left text-[12px]">
+                  <thead className="bg-muted/50 text-[11px] font-semibold text-muted-foreground sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 w-12 text-center">#</th>
+                      <th className="px-3 py-2">Invoice Number</th>
+                      <th className="px-3 py-2 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/60">
+                    {compInvoicesModalData.invoices.map((inv, idx) => (
+                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2 text-center text-muted-foreground font-mono text-[11px]">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-2 font-mono font-medium text-foreground">
+                          {inv}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 py-3 bg-muted/30 border-t border-hairline flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCompInvoicesModalOpen(false)}
+              className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

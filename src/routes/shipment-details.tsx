@@ -19,6 +19,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { GateDatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -846,20 +847,11 @@ function DateField({
   onChange: (d: Date | undefined) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className={cn("h-8 justify-start text-left font-normal", !value && "text-muted-foreground")}>
-            <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
-            {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="single" selected={value} onSelect={onChange} initialFocus className={cn("p-3 pointer-events-auto")} />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <GateDatePicker
+      label={label}
+      value={value}
+      onChange={(d) => onChange(d)}
+    />
   );
 }
 

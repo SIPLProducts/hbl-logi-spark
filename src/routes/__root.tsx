@@ -77,35 +77,19 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-// True only for the very first route resolution after the page is loaded
-// (opening localhost / the deployed URL, or a hard refresh). Flipped to false
-// after that first run so later in-app navigations are not affected.
-let appJustOpened = true;
-
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: ({ location }) => {
-    // Skip during the build-time static-shell render (no window/localStorage
-    // there — see scripts/generate-static-shell.mjs) — only guard in the browser.
     if (typeof window === "undefined") return;
 
-    // On a fresh open of the app with no active session, start at the Login
-    // page and drop any stale stored flags. An already logged-in session is
-    // left intact so a page reload (e.g. the "Refresh" button / F5) does not
-    // sign the user out — same approach as the "/" route's first-load guard.
-    if (appJustOpened) {
-      appJustOpened = false;
-      if (
-        location.pathname !== "/login" &&
-        localStorage.getItem("isLoggedIn") !== "true"
-      ) {
-        localStorage.removeItem("userData");
-        localStorage.removeItem("isLoggedIn");
-        throw redirect({ to: "/login" });
-      }
-    }
+    const hasActiveSession =
+      localStorage.getItem("isLoggedIn") === "true" &&
+      sessionStorage.getItem("sessionActive") === "true";
 
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-    if (!isLoggedIn && location.pathname !== "/login") {
+    if (!hasActiveSession && location.pathname !== "/login") {
+      localStorage.removeItem("userData");
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("isLoggedIn");
+      sessionStorage.removeItem("sessionActive");
       throw redirect({ to: "/login" });
     }
   },
@@ -167,13 +151,6 @@ function RootComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAuthRoute = pathname === "/login";
 
-  // SSR (and the prerendered static shell, see scripts/generate-static-shell.mjs)
-  // has no window/localStorage, so it can't know the login state and always
-  // renders the matched route's content — hydration then trusts that render
-  // and never re-runs the route's beforeLoad. Without this gate, a protected
-  // page would flash on screen (already painted by SSR) before the effect
-  // below redirects to /login. Holding render until the client has actually
-  // checked login state closes that gap.
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
@@ -181,13 +158,48 @@ function RootComponent() {
       setAuthChecked(true);
       return;
     }
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-    if (!isLoggedIn) {
+    const hasActiveSession =
+      localStorage.getItem("isLoggedIn") === "true" &&
+      sessionStorage.getItem("sessionActive") === "true";
+
+    if (!hasActiveSession) {
+      localStorage.removeItem("userData");
+      localStorage.removeItem("currentUser");
+      localStorage.removeItem("isLoggedIn");
+      sessionStorage.removeItem("sessionActive");
       router.navigate({ to: "/login", replace: true });
       return;
     }
     setAuthChecked(true);
   }, [isAuthRoute, pathname, router]);
+
+  // Inactivity / Idle Timer: 30 minutes
+  useEffect(() => {
+    if (isAuthRoute) return;
+
+    const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+    let timeoutId: number;
+
+    const resetTimer = () => {
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        localStorage.removeItem("userData");
+        localStorage.removeItem("currentUser");
+        localStorage.removeItem("isLoggedIn");
+        sessionStorage.removeItem("sessionActive");
+        window.location.href = "/login?session=timeout";
+      }, TIMEOUT_MS);
+    };
+
+    const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      events.forEach((event) => window.removeEventListener(event, resetTimer));
+    };
+  }, [isAuthRoute]);
 
   return (
     <QueryClientProvider client={queryClient}>

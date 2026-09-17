@@ -1,6 +1,21 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, Trash2, Save, ChevronLeft, ChevronRight, ChevronDown, Loader2, Pencil, Check, X as XIcon } from "lucide-react";
+import {
+  Search,
+  Trash2,
+  Save,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Loader2,
+  Pencil,
+  Check,
+  X as XIcon,
+  Eye,
+  FileText,
+} from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import Swal from "sweetalert2";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -120,6 +135,143 @@ function F4MultiSelect({
   );
 }
 
+// Table Multi-Select Dropdown for LR Numbers
+function TableMultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select LR No",
+  className,
+  disabled = false,
+  readOnly = false,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const selected = value
+    ? value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    if (disabled || readOnly) return;
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const selectAll = () => {
+    if (disabled || readOnly) return;
+    onChange(options.join(","));
+  };
+
+  const clearAll = () => {
+    if (disabled || readOnly) return;
+    onChange("");
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          title={selected.join(", ")}
+          className={
+            (className ? className + " " : "") +
+            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+            (selected.length === 0 ? " text-muted-foreground" : "")
+          }
+        >
+          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
+        <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
+          <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
+          {options.length > 1 && !readOnly && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                All
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-muted-foreground hover:underline font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+        {options.length > 5 && (
+          <div className="p-1.5 border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search LR..."
+              className="h-6 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+        )}
+        <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
+          {filtered.length === 0 ? (
+            <div className="p-2 text-center text-[11px] text-muted-foreground">No LR found</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o}
+                className={
+                  "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] hover:bg-muted/60 transition-colors " +
+                  (readOnly ? "cursor-default" : "cursor-pointer")
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  disabled={readOnly}
+                  onChange={() => toggle(o)}
+                  className="size-3.5 accent-primary rounded"
+                />
+                <span className="font-mono text-foreground">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** Label with optional green "From SAP" badge (matches order-info-sap-create.tsx) */
 function FieldLabel({ label, fromSap }: { label: string; fromSap: boolean }) {
   return (
@@ -168,6 +320,9 @@ type TableRow = {
   ODN_NO: string;
   lineNumber: string;
   selected: boolean;
+  lrOptions?: string[];
+  compInvoices?: string[];
+  notAllowed?: boolean;
 };
 
 const EMPTY_ROW = (): TableRow => ({
@@ -182,6 +337,9 @@ const EMPTY_ROW = (): TableRow => ({
   ODN_NO: "",
   lineNumber: "",
   selected: false,
+  lrOptions: [],
+  compInvoices: [],
+  notAllowed: false,
 });
 
 type FormState = {
@@ -247,6 +405,18 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const isSap = !isWithout;
   const navigate = useNavigate();
 
+  const currentUser = (() => {
+    try {
+      const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
+      const parsed = JSON.parse(raw || "{}");
+      const PLANTS = parsed?.PLANTS || parsed?.PLANT || [];
+      const DIV = parsed?.DIV || parsed?.DIVISION || [];
+      return { PLANTS, DIV };
+    } catch {
+      return { PLANTS: [], DIV: [] };
+    }
+  })();
+
   // ── Reference table ──
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
   const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
@@ -266,6 +436,24 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   // Snapshot of which secondary fields SAP's GET response actually filled — used only for
   // "From SAP" (green) vs "manually entered" (red) colouring, mirrors order-info-sap-create.tsx.
   const [sapAuxFilled, setSapAuxFilled] = useState<Set<string>>(new Set());
+
+  // ── Completed Invoices Modal State ──
+  const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
+  const [compInvoicesModalData, setCompInvoicesModalData] = useState<{
+    refNo: string;
+    invoices: string[];
+  }>({
+    refNo: "",
+    invoices: [],
+  });
+
+  const openCompletedInvoicesModal = (row: TableRow) => {
+    setCompInvoicesModalData({
+      refNo: row.referenceNumber || "",
+      invoices: row.compInvoices || [],
+    });
+    setCompInvoicesModalOpen(true);
+  };
 
   // ── F4 master data ──
   const [supplierList, setSupplierList] = useState<any[]>([]);
@@ -293,6 +481,8 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setSearchType("");
     setSearchValue("");
     setSapAuxFilled(new Set());
+    setCompInvoicesModalOpen(false);
+    setCompInvoicesModalData({ refNo: "", invoices: [] });
     if (isWithout) {
       setShowF4(ALL_F4_ON);
       setShowForm(true);
@@ -331,11 +521,43 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
             if (inv.VBELN && !f4.includes(inv.VBELN)) f4.push(inv.VBELN);
           });
         }
+
+        let lrOptions: string[] = [];
+        if (Array.isArray(d.LR_NO)) {
+          lrOptions = d.LR_NO.map((x: any) =>
+            typeof x === "object" && x !== null ? x.LR : String(x)
+          ).filter(Boolean);
+        } else if (typeof d.LR_NO === "string" && d.LR_NO.trim()) {
+          lrOptions = [d.LR_NO.trim()];
+        }
+        lrOptions = Array.from(new Set(lrOptions));
+
+        let compInvoices: string[] = [];
+        if (Array.isArray(d.COMP_INV_NO)) {
+          compInvoices = d.COMP_INV_NO.map((x: any) =>
+            typeof x === "object" && x !== null
+              ? x.VBELN || x.INV_NO || x.INVOICE || x.inv_no
+              : String(x)
+          ).filter(Boolean);
+        } else if (typeof d.COMP_INV_NO === "string" && d.COMP_INV_NO.trim()) {
+          compInvoices = [d.COMP_INV_NO.trim()];
+        }
+        compInvoices = Array.from(new Set(compInvoices));
+
+        const isNotAllowed = String(d.ZNOT_ALLOWED || "").trim().toUpperCase() === "X";
+
+        let initialLr = "";
+        if (Array.isArray(d.LR_NO)) {
+          initialLr = lrOptions.join(",");
+        } else if (typeof d.LR_NO === "string") {
+          initialLr = d.LR_NO;
+        }
+
         return {
           MAPID: d.MAPID,
           referenceNumber: d.REF_NO || d.referenceNumber || "",
           workOrderNumber: d.WORK_ORDER_NO || d.workOrderNumber || "",
-          lrNumber: d.LR_NO || d.lrNumber || "",
+          lrNumber: initialLr || d.lrNumber || "",
           transporter: d.TRANSPORTER || d.transporter || "",
           soNumber: d.SO_NO || d.soNumber || "",
           odnNumber: d.ODN_NO || d.odnNumber || "",
@@ -343,6 +565,9 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           ODN_NO: "",
           lineNumber: d.LINE_NO || d.ZLINE_NO || d.lineNumber || "",
           selected: false,
+          lrOptions,
+          compInvoices,
+          notAllowed: isNotAllowed,
         };
       });
       setInvoiceF4List(f4);
@@ -418,6 +643,8 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   };
 
   const toggleRowSelect = (index: number) => {
+    const row = tableData[index];
+    if (row?.notAllowed) return;
     setTableData((prev) => {
       const next = prev.map((r, i) => (i === index ? { ...r, selected: !r.selected } : r));
       recomputeInvoiceList(next);
@@ -629,6 +856,19 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const updateSearchField = (index: number, key: string, value: any) => {
     setSearchResults((prev) => prev.map((r, i) => (i === index ? { ...r, [key]: value } : r)));
   };
+  const updateSearchBranch = async (index: number, branchDesc: string) => {
+    updateSearchField(index, "ZBRANCH", branchDesc);
+    if (!branchDesc) {
+      updateSearchField(index, "ZBRANCH_ZONE", "");
+      return;
+    }
+    try {
+      const res: any = await service.fetchzoneTat({ STATE: branchDesc });
+      updateSearchField(index, "ZBRANCH_ZONE", res?.ZZONE || "");
+    } catch (err) {
+      console.error("Error fetching Zone for branch:", err);
+    }
+  };
 
   const updateSearchRow = async (row: any, index: number) => {
     const result = await Swal.fire({
@@ -826,7 +1066,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   return (
     <div className="space-y-2">
       {/* Selection table */}
-      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+      <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
@@ -836,78 +1076,157 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               <th className="px-3 py-0.5 text-center">Work Order Number</th>
               <th className="px-3 py-0.5 text-center">LR Number</th>
               <th className="px-3 py-0.5 text-center">Transporter</th>
+              <th className="px-3 py-0.5 text-center whitespace-nowrap">Completed Invoices</th>
               <th className="px-3 py-0.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
-            {tableData.map((row, i) => (
-              <tr key={i}>
-                <td className="px-3 py-0.5 text-center">
-                  <input
-                    type="checkbox"
-                    checked={row.selected}
-                    onChange={() => toggleRowSelect(i)}
-                    className="size-4 accent-sky-600"
-                  />
-                </td>
-                <td className="px-3 py-0.5 text-center">{i + 1}</td>
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.referenceNumber}
-                    readOnly={i !== 0}
-                    maxLength={10}
-                    placeholder="Enter Ref. No."
-                    onChange={(e) => handleRowChange(i, "referenceNumber", e.target.value)}
-                    onBlur={() => onRowFieldCommit(i, "referenceNumber")}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Tab") onRowFieldCommit(i, "referenceNumber"); }}
-                    className={(i !== 0 ? READONLY_INPUT : GREEN_INPUT) + " text-center"}
-                  />
-                </td>
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.workOrderNumber}
-                    readOnly={i !== 0}
-                    placeholder="Enter Work Order No."
-                    onChange={(e) => handleRowChange(i, "workOrderNumber", e.target.value)}
-                    onBlur={() => onRowFieldCommit(i, "workOrderNumber")}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Tab") onRowFieldCommit(i, "workOrderNumber"); }}
-                    className={(i !== 0 ? READONLY_INPUT : GREEN_INPUT) + " text-center"}
-                  />
-                </td>
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.lrNumber}
-                    readOnly={i !== 0}
-                    placeholder="Enter LR No."
-                    onChange={(e) => handleRowChange(i, "lrNumber", e.target.value)}
-                    onBlur={() => onRowFieldCommit(i, "lrNumber")}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Tab") onRowFieldCommit(i, "lrNumber"); }}
-                    className={(i !== 0 ? READONLY_INPUT : GREEN_INPUT) + " text-center"}
-                  />
-                </td>
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.transporter}
-                    readOnly={i !== 0}
-                    placeholder="Enter Transporter"
-                    onChange={(e) => handleRowChange(i, "transporter", e.target.value)}
-                    onBlur={() => onRowFieldCommit(i, "transporter")}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Tab") onRowFieldCommit(i, "transporter"); }}
-                    className={(i !== 0 ? READONLY_INPUT : GREEN_INPUT) + " text-center"}
-                  />
-                </td>
-                <td className="px-3 py-0.5 text-center">
-                  {tableData.length > 1 && (
+            {tableData.map((row, i) => {
+              const isRowDisabled = Boolean(row.notAllowed);
+              return (
+                <tr
+                  key={i}
+                  className={
+                    isRowDisabled
+                      ? "border-t border-hairline/80 bg-slate-100/90 dark:bg-zinc-800/80 text-muted-foreground"
+                      : ""
+                  }
+                >
+                  <td className="px-3 py-0.5 text-center">
+                    <input
+                      type="checkbox"
+                      checked={row.selected}
+                      disabled={isRowDisabled}
+                      onChange={() => toggleRowSelect(i)}
+                      className={
+                        "size-4 accent-sky-600 " +
+                        (isRowDisabled ? "cursor-not-allowed opacity-30" : "cursor-pointer")
+                      }
+                    />
+                  </td>
+                  <td className="px-3 py-0.5 text-center font-mono">{i + 1}</td>
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.referenceNumber}
+                      readOnly={i !== 0 || isRowDisabled}
+                      maxLength={10}
+                      placeholder="Enter Ref. No."
+                      onChange={(e) => handleRowChange(i, "referenceNumber", e.target.value)}
+                      onBlur={() => onRowFieldCommit(i, "referenceNumber")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === "Tab") onRowFieldCommit(i, "referenceNumber");
+                      }}
+                      className={
+                        (isRowDisabled
+                          ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed"
+                          : i !== 0
+                          ? READONLY_INPUT
+                          : GREEN_INPUT) + " text-center"
+                      }
+                    />
+                  </td>
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.workOrderNumber}
+                      readOnly={i !== 0 || isRowDisabled}
+                      placeholder="Enter Work Order No."
+                      onChange={(e) => handleRowChange(i, "workOrderNumber", e.target.value)}
+                      onBlur={() => onRowFieldCommit(i, "workOrderNumber")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === "Tab") onRowFieldCommit(i, "workOrderNumber");
+                      }}
+                      className={
+                        (isRowDisabled
+                          ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed"
+                          : i !== 0
+                          ? READONLY_INPUT
+                          : GREEN_INPUT) + " text-center"
+                      }
+                    />
+                  </td>
+                  <td className="px-3 py-0.5">
+                    {row.lrOptions && row.lrOptions.length > 0 ? (
+                      <TableMultiSelect
+                        options={row.lrOptions}
+                        value={row.lrNumber}
+                        readOnly={isRowDisabled}
+                        onChange={(val) => handleRowChange(i, "lrNumber", val)}
+                        placeholder="Select LR No"
+                        className={
+                          (isRowDisabled
+                            ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer"
+                            : i !== 0
+                            ? READONLY_INPUT
+                            : GREEN_INPUT) + " text-center"
+                        }
+                      />
+                    ) : (
+                      <input
+                        value={row.lrNumber}
+                        readOnly={i !== 0 || isRowDisabled}
+                        placeholder="Enter LR No."
+                        onChange={(e) => handleRowChange(i, "lrNumber", e.target.value)}
+                        onBlur={() => onRowFieldCommit(i, "lrNumber")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === "Tab") onRowFieldCommit(i, "lrNumber");
+                        }}
+                        className={
+                          (isRowDisabled
+                            ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed"
+                            : i !== 0
+                            ? READONLY_INPUT
+                            : GREEN_INPUT) + " text-center"
+                        }
+                      />
+                    )}
+                  </td>
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.transporter}
+                      readOnly={i !== 0 || isRowDisabled}
+                      placeholder="Enter Transporter"
+                      onChange={(e) => handleRowChange(i, "transporter", e.target.value)}
+                      onBlur={() => onRowFieldCommit(i, "transporter")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === "Tab") onRowFieldCommit(i, "transporter");
+                      }}
+                      className={
+                        (isRowDisabled
+                          ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed"
+                          : i !== 0
+                          ? READONLY_INPUT
+                          : GREEN_INPUT) + " text-center"
+                      }
+                    />
+                  </td>
+                  <td className="px-3 py-0.5 text-center whitespace-nowrap">
                     <button
-                      onClick={() => removeRow(i)}
-                      className="inline-grid place-items-center size-7 rounded-md text-red-500 hover:bg-red-50"
+                      type="button"
+                      onClick={() => openCompletedInvoicesModal(row)}
+                      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 transition-colors shadow-xs cursor-pointer"
                     >
-                      <Trash2 className="size-4" />
+                      <Eye className="size-3.5 text-sky-600 dark:text-sky-400" />
+                      <span>View</span>
+                      {row.compInvoices && row.compInvoices.length > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold rounded-full bg-sky-600 text-white">
+                          {row.compInvoices.length}
+                        </span>
+                      )}
                     </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-3 py-0.5 text-center">
+                    {tableData.length > 1 && !isRowDisabled && (
+                      <button
+                        onClick={() => removeRow(i)}
+                        className="inline-grid place-items-center size-7 rounded-md text-red-500 hover:bg-red-50 cursor-pointer"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1020,33 +1339,85 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       { field: "ZODN_NO", type: "text" },
                       { field: "ZSO_NO", type: "text" },
                       { field: "ZSALE_PERSON", type: "text" },
-                      { field: "ZSEGMENT", type: "text" },
-                      { field: "ZAPPTYP", type: "text" },
-                      { field: "ZCUST_PROFILE", type: "text" },
-                      { field: "ZBRANCH", type: "text" },
+                      {
+                        field: "ZSEGMENT",
+                        type: "select",
+                        options: Array.from(new Set([...segmentList.map((s: any) => s.SEGMENT_DESC || s.SEGMENT || String(s)), item.ZSEGMENT].filter(Boolean))),
+                      },
+                      {
+                        field: "ZAPPTYP",
+                        type: "select",
+                        options: Array.from(new Set([...appTypeList.map((a: any) => a.DESC || a.APPTYP || (typeof a === "object" ? a.APPTYP : String(a))), typeof item.ZAPPTYP === "object" ? item.ZAPPTYP?.DESC || item.ZAPPTYP?.APPTYP : item.ZAPPTYP].filter(Boolean))),
+                      },
+                      {
+                        field: "ZCUST_PROFILE",
+                        type: "select",
+                        options: Array.from(new Set([...custGrpList.map((c: any) => c.CUST_PROF_DESC || c.CUST_PROF || String(c)), item.ZCUST_PROFILE].filter(Boolean))),
+                      },
+                      {
+                        field: "ZBRANCH",
+                        type: "branch",
+                        options: Array.from(new Set([...branchList.map((b: any) => b.BRANCH_DESC || b.BRANCH || String(b)), item.ZBRANCH].filter(Boolean))),
+                      },
                       { field: "ZBRANCH_ZONE", type: "text" },
                       // { field: "ZTAT_TYPE", type: "text" },
                       // { field: "ZTAT", type: "text" },
                       // { field: "ZETA", type: "date" },
-                      { field: "ZWORK_ORDER", type: "text" },
-                      { field: "ZLRNO", type: "text" },
-                      { field: "ZTRANSPORTER", type: "text" },
-                      { field: "ZPLANT", type: "text" },
-                      { field: "ZDIVISION", type: "text" },
-                      { field: "ZCREATED_DT", type: "date" },
-                      { field: "ZVEH_TYPE", type: "text" },
-                    ].map(({ field, type }) => (
+                      { field: "ZWORK_ORDER", type: "text", readonly: true },
+                      { field: "ZLRNO", type: "text", readonly: true },
+                      { field: "ZTRANSPORTER", type: "text", readonly: true },
+                      {
+                        field: "ZPLANT",
+                        type: "select",
+                        options: Array.from(new Set([...(currentUser.PLANTS || []).map((p: any) => typeof p === "string" ? p : p?.PLANT || p?.PLANT_NAME || String(p)), item.ZPLANT].filter(Boolean))),
+                      },
+                      {
+                        field: "ZDIVISION",
+                        type: "select",
+                        options: Array.from(new Set([...(currentUser.DIV || []).map((d: any) => typeof d === "string" ? d : d?.DIVISION || d?.DIV || String(d)), item.ZDIVISION].filter(Boolean))),
+                      },
+                      { field: "ZCREATED_DT", type: "date", readonly: true },
+                      { field: "ZVEH_TYPE", type: "text", readonly: true },
+                    ].map(({ field, type, options, readonly }: any) => (
                       <td key={field} className="px-2 py-1 whitespace-nowrap">
-                        {item.isEdit ? (
-                          <input
-                            type={type}
-                            value={item[field] || ""}
-                            onChange={(e) => updateSearchField(i, field, e.target.value)}
-                            className="h-6 w-24 rounded border border-input px-1 text-[11px] bg-white"
-                          />
+                        {item.isEdit && !readonly ? (
+                          type === "select" ? (
+                            <select
+                              value={typeof item[field] === "object" ? item[field]?.DESC || item[field]?.APPTYP || "" : item[field] || ""}
+                              onChange={(e) => updateSearchField(i, field, e.target.value)}
+                              className="h-6 min-w-[100px] rounded border border-input px-1 text-[11px] bg-white dark:bg-surface"
+                            >
+                              <option value="">Select</option>
+                              {options?.map((o: string) => (
+                                <option key={o} value={o}>{o}</option>
+                              ))}
+                            </select>
+                          ) : type === "branch" ? (
+                            <select
+                              value={item[field] || ""}
+                              onChange={(e) => updateSearchBranch(i, e.target.value)}
+                              className="h-6 min-w-[110px] rounded border border-input px-1 text-[11px] bg-white dark:bg-surface"
+                            >
+                              <option value="">Select Branch</option>
+                              {options?.map((o: string) => (
+                                <option key={o} value={o}>{o}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type={type}
+                              value={item[field] || ""}
+                              onChange={(e) => updateSearchField(i, field, e.target.value)}
+                              className="h-6 w-24 rounded border border-input px-1 text-[11px] bg-white"
+                            />
+                          )
                         ) : (
                           <span>
-                            {type === "date" && item[field] ? new Date(item[field]).toLocaleDateString("en-GB") : item[field] || ""}
+                            {type === "date" && item[field]
+                              ? new Date(item[field]).toLocaleDateString("en-GB")
+                              : typeof item[field] === "object"
+                              ? item[field]?.DESC || item[field]?.APPTYP || ""
+                              : item[field] || ""}
                           </span>
                         )}
                       </td>
@@ -1335,6 +1706,83 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           </div>
         </>
       )}
+
+      {/* ── Completed Invoices Modal ── */}
+      <Dialog open={compInvoicesModalOpen} onOpenChange={setCompInvoicesModalOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white dark:bg-surface border border-hairline shadow-2xl rounded-xl">
+          {/* Header */}
+          <div className="bg-gradient-primary px-5 py-3.5 text-primary-foreground flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="size-4" />
+              <DialogTitle className="text-[14px] font-bold tracking-wide text-white">
+                Completed Invoices
+              </DialogTitle>
+            </div>
+            {compInvoicesModalData.refNo && (
+              <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded text-white font-mono">
+                Ref: {compInvoicesModalData.refNo}
+              </span>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between text-[12px] text-muted-foreground border-b border-hairline/60 pb-2">
+              <span>Total Completed Invoices:</span>
+              <span className="font-bold text-foreground bg-muted px-2 py-0.5 rounded-full text-[11px]">
+                {compInvoicesModalData.invoices.length}
+              </span>
+            </div>
+
+            {compInvoicesModalData.invoices.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <FileText className="size-8 mx-auto mb-2 opacity-40" />
+                <p className="text-[12.5px] font-medium">No completed invoices found for this reference.</p>
+              </div>
+            ) : (
+              <div className="max-h-64 overflow-y-auto border border-hairline rounded-lg divide-y divide-hairline bg-surface">
+                <table className="w-full text-left text-[12px]">
+                  <thead className="bg-muted/50 text-[11px] font-semibold text-muted-foreground sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 w-12 text-center">#</th>
+                      <th className="px-3 py-2">Invoice Number</th>
+                      <th className="px-3 py-2 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/60">
+                    {compInvoicesModalData.invoices.map((inv, idx) => (
+                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2 text-center text-muted-foreground font-mono text-[11px]">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-2 font-mono font-medium text-foreground">
+                          {inv}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 py-3 bg-muted/30 border-t border-hairline flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCompInvoicesModalOpen(false)}
+              className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

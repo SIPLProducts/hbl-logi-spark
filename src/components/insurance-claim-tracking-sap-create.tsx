@@ -1,9 +1,91 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, ChevronDown, Plus, X } from "lucide-react";
+import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, ChevronDown, Plus, X, Eye, FileText, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 // @ts-ignore
-import service from "../services/generalservice_service.js";
+import service, { getLocalDocumentUrl } from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
+import { GateDatePicker } from "@/components/ui/date-picker";
+
+function TableMultiSelect({
+  options,
+  selected,
+  onChange,
+  placeholder = "Select...",
+  readOnly = false,
+}: {
+  options: string[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+  placeholder?: string;
+  readOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const toggle = (val: string) => {
+    if (readOnly) return;
+    if (selected.includes(val)) {
+      onChange(selected.filter((x) => x !== val));
+    } else {
+      onChange([...selected, val]);
+    }
+  };
+
+  const displayText =
+    selected.length === 0
+      ? placeholder
+      : selected.length === 1
+        ? selected[0]
+        : `${selected.length} selected`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] font-medium outline-none flex items-center justify-between gap-1 text-left",
+            readOnly ? "cursor-default text-muted-foreground" : "text-foreground hover:bg-muted/50",
+          )}
+          title={selected.join(", ")}
+        >
+          <span className="truncate">{displayText}</span>
+          <ChevronDown className="size-3.5 opacity-50 shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-1 max-h-48 overflow-y-auto bg-surface border border-hairline shadow-md" align="start">
+        <div className="space-y-0.5">
+          {options.length === 0 ? (
+            <div className="p-2 text-center text-[11.5px] text-muted-foreground">
+              No options
+            </div>
+          ) : (
+            options.map((o) => (
+              <label
+                key={o}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1 text-[12px] rounded hover:bg-muted/60 select-none",
+                  readOnly ? "cursor-default" : "cursor-pointer",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  disabled={readOnly}
+                  onChange={() => toggle(o)}
+                  className="size-3.5 accent-primary rounded"
+                />
+                <span className="font-mono text-foreground">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -145,6 +227,9 @@ type TableRow = {
   TRANSPORTER: string;
   LINE_NO: number | string;
   selected: boolean;
+  lrOptions?: string[];
+  compInvoices?: string[];
+  notAllowed?: boolean;
 };
 const EMPTY_ROW = (): TableRow => ({
   REF_NO: "",
@@ -154,6 +239,9 @@ const EMPTY_ROW = (): TableRow => ({
   TRANSPORTER: "",
   LINE_NO: "",
   selected: false,
+  lrOptions: [],
+  compInvoices: [],
+  notAllowed: false,
 });
 
 const SEARCH_FIELD_MAP: Record<string, string> = {
@@ -186,11 +274,34 @@ function fileToBase64(file: File): Promise<string> {
 // Show only the file name from a stored document path.
 //   "D:\Pravah\SAP\Insurance_Claim\Supporting_Document\1000_5000_claim.pdf"
 //     -> "1000_5000_claim.pdf"
-// Returns "" when there is no path.
+// Returns "" when there is no path or when it is just a field identifier.
+const KNOWN_FIELD_NAMES = new Set([
+  "Freight_Bill",
+  "Unloading_Charges_Approval",
+  "Detention_Charges",
+  "Work_Order",
+  "Images",
+  "FSR_Report",
+  "FIR_Report",
+  "COF",
+  "POD",
+  "Supporting_Document",
+  "Approve_Document",
+  "ZFRBILLUP",
+  "ZUNLOADAPP",
+  "ZDETENTUP",
+  "ZWORDUP",
+  "ZDIMAGES",
+  "ZFSRREP",
+  "ZFIRREP",
+  "ZCOF",
+]);
+
 function fileNameFromPath(storedPath?: string): string {
   if (!storedPath) return "";
   const parts = String(storedPath).split(/[\\/]/);
-  return parts[parts.length - 1] || "";
+  const name = parts[parts.length - 1] || "";
+  return KNOWN_FIELD_NAMES.has(name) ? "" : name;
 }
 
 const BASE_FIELDS: FieldSpec[] = [
@@ -223,6 +334,17 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
   const navigate = useNavigate();
   const isWithout = mode === "without";
   const isSap = !isWithout;
+  const currentUser = (() => {
+    try {
+      const raw = localStorage.getItem("currentUser") || localStorage.getItem("userData") || "{}";
+      const parsed = JSON.parse(raw || "{}");
+      const PLANTS = parsed?.PLANTS || parsed?.PLANT || [];
+      const DIV = parsed?.DIV || parsed?.DIVISION || [];
+      return { PLANTS, DIV };
+    } catch {
+      return { PLANTS: [], DIV: [] };
+    }
+  })();
 
   const [checked, setChecked] = useState(!isWithout);
   const [searchType, setSearchType] = useState("");
@@ -233,7 +355,21 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
   const [headerData, setHeaderData] = useState<any>({});
   const [itemData, setItemData] = useState<any[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string } | null>(null);
   const [selectedItems, setSelectedItems] = useState<TableRow[]>([]);
+  const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
+  const [compInvoicesModalData, setCompInvoicesModalData] = useState<{
+    refNo: string;
+    invoices: string[];
+  }>({ refNo: "", invoices: [] });
+
+  const openCompletedInvoicesModal = (row: TableRow) => {
+    setCompInvoicesModalData({
+      refNo: row.REF_NO || "-",
+      invoices: row.compInvoices || [],
+    });
+    setCompInvoicesModalOpen(true);
+  };
 
   const [supportingBase64, setSupportingBase64] = useState("");
   const [supportingPath, setSupportingPath] = useState("");
@@ -241,6 +377,20 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
   const [approveBase64, setApproveBase64] = useState("");
   const [approvePath, setApprovePath] = useState("");
   const [approveName, setApproveName] = useState("");
+
+  // Search table edit files: key ("ZSUPT_DOC" | "ZAPP_DOC") -> File
+  const [editSearchInsuranceFiles, setEditSearchInsuranceFiles] = useState<{ [key: string]: File }>({});
+  const handleSearchPickInsuranceDoc = (key: string, file: File | null) => {
+    setEditSearchInsuranceFiles((prev) => {
+      const next = { ...prev };
+      if (file) {
+        next[key] = file;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  };
 
   // Capture a picked document (Supporting / Approve) as base64 + its file name.
   const handlePickDoc = async (key: string, file: File | null) => {
@@ -324,8 +474,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     event: React.ChangeEvent<HTMLInputElement>,
     index: number
   ) => {
-    const checked = event.target.checked;
     const rowValue = tableData[index];
+    if (rowValue.notAllowed) return;
+    const checked = event.target.checked;
 
     const updatedTable = [...tableData];
     updatedTable[index].selected = checked;
@@ -376,14 +527,41 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
           });
         }
 
+        let lrOptions: string[] = [];
+        if (Array.isArray(d.LR_NO)) {
+          lrOptions = d.LR_NO.map((x: any) =>
+            typeof x === "object" && x !== null ? x.LR : String(x)
+          ).filter(Boolean);
+        } else if (typeof d.LR_NO === "string" && d.LR_NO.trim()) {
+          lrOptions = [d.LR_NO.trim()];
+        }
+        lrOptions = Array.from(new Set(lrOptions));
+
+        let compInvoices: string[] = [];
+        if (Array.isArray(d.COMP_INV_NO)) {
+          compInvoices = d.COMP_INV_NO.map((x: any) =>
+            typeof x === "object" && x !== null
+              ? x.VBELN || x.INV_NO || x.INVOICE || x.inv_no
+              : String(x)
+          ).filter(Boolean);
+        } else if (typeof d.COMP_INV_NO === "string" && d.COMP_INV_NO.trim()) {
+          compInvoices = [d.COMP_INV_NO.trim()];
+        }
+        compInvoices = Array.from(new Set(compInvoices));
+
+        const isNotAllowed = String(d.ZNOT_ALLOWED || "").trim().toUpperCase() === "X";
+
         return {
           MAPID: d.MAPID || "",
-          REF_NO: d.REF_NO || "",
-          WORK_ORDER_NO: d.WORK_ORDER_NO || "",
-          LR_NO: d.LR_NO || "",
-          TRANSPORTER: d.TRANSPORTER || "",
-          LINE_NO: d.LINE_NO || "",
+          REF_NO: d.REF_NO ? String(d.REF_NO) : "",
+          WORK_ORDER_NO: d.WORK_ORDER_NO ? String(d.WORK_ORDER_NO) : "",
+          LR_NO: lrOptions.length > 0 ? lrOptions.join(", ") : (typeof d.LR_NO === "string" ? d.LR_NO : ""),
+          TRANSPORTER: d.TRANSPORTER ? String(d.TRANSPORTER) : "",
+          LINE_NO: d.LINE_NO ? String(d.LINE_NO) : "",
           selected: false,
+          lrOptions,
+          compInvoices,
+          notAllowed: isNotAllowed,
         };
       });
 
@@ -877,7 +1055,23 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
       const header = res.HEADER[0];
       const items = (res.ITEMS || []).map((item: any) => ({ ...item, selected: false }));
 
-      setHeaderData(header);
+      const dmg = (
+        header.ZDAMAGE_RMK ||
+        header.DAMAGE_RMK ||
+        header.ZNATURE_DAMAGE ||
+        header.NATURE_DAMAGE ||
+        header.ZDAMAGE ||
+        header.DAMAGE ||
+        ""
+      );
+
+      const normalizedHeader = {
+        ...header,
+        ZDAMAGE_RMK: header.ZDAMAGE_RMK || dmg,
+        DAMAGE_RMK: header.DAMAGE_RMK || dmg,
+      };
+
+      setHeaderData(normalizedHeader);
       setItemData(items);
       setShowForm(true);
       setRevealed(true);
@@ -891,10 +1085,29 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
   };
 
   const editHeaderRow = () => {
-    setHeaderData((prev: any) => ({ ...prev, _backup: { ...prev }, isEdit: true }));
+    setEditSearchInsuranceFiles({});
+    setHeaderData((prev: any) => {
+      const dmg = (
+        prev.ZDAMAGE_RMK ||
+        prev.DAMAGE_RMK ||
+        prev.ZNATURE_DAMAGE ||
+        prev.NATURE_DAMAGE ||
+        prev.ZDAMAGE ||
+        prev.DAMAGE ||
+        ""
+      );
+      return {
+        ...prev,
+        ZDAMAGE_RMK: prev.ZDAMAGE_RMK || dmg,
+        DAMAGE_RMK: prev.DAMAGE_RMK || dmg,
+        _backup: { ...prev },
+        isEdit: true,
+      };
+    });
   };
 
   const cancelHeaderEdit = () => {
+    setEditSearchInsuranceFiles({});
     setHeaderData((prev: any) => {
       if (!prev._backup) return prev;
       return { ...prev._backup, isEdit: false };
@@ -929,11 +1142,18 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     // Strip UI-only fields (_backup, isEdit) before sending to backend
     const { _backup, isEdit, ...cleanHeader } = headerData;
 
+    const suptB64 = editSearchInsuranceFiles.ZSUPT_DOC ? await fileToBase64(editSearchInsuranceFiles.ZSUPT_DOC) : "";
+    const appB64 = editSearchInsuranceFiles.ZAPP_DOC ? await fileToBase64(editSearchInsuranceFiles.ZAPP_DOC) : "";
+
     const payload = {
-      ZSUPT_DOC: supportingBase64 || "",
-      ZSUPT_PATH: supportingPath || "",
-      ZAPP_DOC: approveBase64 || "",
-      ZAPP_PATH: approvePath || "",
+      ZSUPT_DOC: suptB64,
+      ZSUPT_DOC_NAME: editSearchInsuranceFiles.ZSUPT_DOC?.name || "",
+      ZSUPT_PATH: cleanHeader.ZSUPT_PATH || "",
+
+      ZAPP_DOC: appB64,
+      ZAPP_DOC_NAME: editSearchInsuranceFiles.ZAPP_DOC?.name || "",
+      ZAPP_PATH: cleanHeader.ZAPP_PATH || "",
+
       HEAD: { ...cleanHeader, ZUSER_CH: getLoggedInUser() },
       ITEM: itemData.map((item: any) => {
         const { _backup: ib, isEdit: ie, ...cleanItem } = item;
@@ -948,6 +1168,8 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
       if (res.STATUS === "TRUE" || res.NUMBER === "200") {
         Swal.fire("Success", res.MESSAGE || "Updated Successfully", "success");
+
+        setEditSearchInsuranceFiles({});
 
         setHeaderData((prev: any) => ({ ...prev, isEdit: false }));
         setItemData((prev: any[]) => prev.map((x) => ({ ...x, isEdit: false })));
@@ -1005,7 +1227,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
   return (
     <div className="space-y-2">
       {/* Reference table */}
-      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+      <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
@@ -1013,118 +1235,171 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
               <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
               <th className="px-3 py-0.5 text-center">Map ID</th>
               <th className="px-3 py-0.5 text-center">Reference Number</th>
-              <th className="px-3 py-0.5 text-center">Work Order Number</th>
+              <th className="px-3 py-0.5 text-center whitespace-nowrap">Work Order Number</th>
               <th className="px-3 py-0.5 text-center">LR Number</th>
               <th className="px-3 py-0.5 text-center">Transporter</th>
+              <th className="px-3 py-0.5 text-center whitespace-nowrap">Completed Invoices</th>
               <th className="px-3 py-0.5 text-center w-20">Action</th>
             </tr>
           </thead>
           <tbody>
-            {tableData.map((row, index) => (
-              <tr key={index}>
-                <td className="px-3 py-0.5 text-center">
-                  <input
-                    type="checkbox"
-                    checked={row.selected}
-                    onChange={(e) => onCheckboxChange(e, index)}
-                    className="size-4 accent-sky-600"
-                  />
-                </td>
+            {tableData.map((row, index) => {
+              const isRowDisabled = Boolean(row.notAllowed);
+              return (
+                <tr
+                  key={index}
+                  className={cn(
+                    "hover:bg-accent/[0.04]",
+                    isRowDisabled && "bg-slate-100/90 dark:bg-zinc-800/80 text-muted-foreground"
+                  )}
+                >
+                  <td className="px-3 py-0.5 text-center">
+                    <input
+                      type="checkbox"
+                      checked={!isRowDisabled && row.selected}
+                      disabled={isRowDisabled}
+                      onChange={(e) => onCheckboxChange(e, index)}
+                      className={cn("size-4 accent-sky-600", isRowDisabled && "cursor-not-allowed opacity-50")}
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5 text-center">{index + 1}</td>
+                  <td className="px-3 py-0.5 text-center">{index + 1}</td>
 
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.MAPID}
-                    onChange={(e) => {
-                      const data = [...tableData];
-                      data[index].MAPID = e.target.value;
-                      setTableData(data);
-                    }}
-                    onBlur={() => fetchGlobalReferences(row, index, "MAPID")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "MAPID");
-                    }}
-                    placeholder="Enter Map ID"
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  {/* MAP ID */}
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.MAPID}
+                      readOnly={isRowDisabled}
+                      onChange={(e) => {
+                        const data = [...tableData];
+                        data[index].MAPID = e.target.value;
+                        setTableData(data);
+                      }}
+                      onBlur={() => fetchGlobalReferences(row, index, "MAPID")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "MAPID");
+                      }}
+                      placeholder="Enter Map ID"
+                      className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-not-allowed opacity-60")}
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.REF_NO}
-                    onChange={(e) => {
-                      const data = [...tableData];
-                      data[index].REF_NO = e.target.value;
-                      setTableData(data);
-                    }}
-                    onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
-                    }}
-                    placeholder="Enter Ref. No."
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  {/* Reference Number */}
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.REF_NO}
+                      readOnly={isRowDisabled}
+                      onChange={(e) => {
+                        const data = [...tableData];
+                        data[index].REF_NO = e.target.value;
+                        setTableData(data);
+                      }}
+                      onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
+                      }}
+                      placeholder="Enter Ref. No."
+                      className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-not-allowed opacity-60")}
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.WORK_ORDER_NO}
-                    onChange={(e) => {
-                      const data = [...tableData];
-                      data[index].WORK_ORDER_NO = e.target.value;
-                      setTableData(data);
-                    }}
-                    onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
-                    }}
-                    placeholder="Enter Work Order No."
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  {/* Work Order */}
+                  <td className="px-3 py-0.5 whitespace-nowrap">
+                    <input
+                      value={row.WORK_ORDER_NO}
+                      readOnly={isRowDisabled}
+                      onChange={(e) => {
+                        const data = [...tableData];
+                        data[index].WORK_ORDER_NO = e.target.value;
+                        setTableData(data);
+                      }}
+                      onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
+                      }}
+                      placeholder="Enter Work Order No."
+                      className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-not-allowed opacity-60")}
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.LR_NO}
-                    onChange={(e) => {
-                      const data = [...tableData];
-                      data[index].LR_NO = e.target.value;
-                      setTableData(data);
-                    }}
-                    onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
-                    }}
-                    placeholder="Enter LR No."
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  {/* LR Number */}
+                  <td className="px-3 py-0.5">
+                    {row.lrOptions && row.lrOptions.length > 0 ? (
+                      <TableMultiSelect
+                        options={row.lrOptions}
+                        selected={row.LR_NO ? row.LR_NO.split(", ").filter(Boolean) : []}
+                        readOnly={isRowDisabled}
+                        onChange={(selected) => {
+                          const data = [...tableData];
+                          data[index].LR_NO = selected.join(", ");
+                          setTableData(data);
+                        }}
+                        placeholder="Select LR No"
+                      />
+                    ) : (
+                      <input
+                        value={row.LR_NO}
+                        readOnly={isRowDisabled}
+                        onChange={(e) => {
+                          const data = [...tableData];
+                          data[index].LR_NO = e.target.value;
+                          setTableData(data);
+                        }}
+                        onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
+                        }}
+                        placeholder="Enter LR No."
+                        className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-not-allowed opacity-60")}
+                      />
+                    )}
+                  </td>
 
-                <td className="px-3 py-0.5">
-                  <input
-                    value={row.TRANSPORTER}
-                    onChange={(e) => {
-                      const data = [...tableData];
-                      data[index].TRANSPORTER = e.target.value;
-                      setTableData(data);
-                    }}
-                    onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
-                    }}
-                    placeholder="Enter Transporter"
-                    className={GREEN_INPUT + " text-center"}
-                  />
-                </td>
+                  {/* Transporter */}
+                  <td className="px-3 py-0.5">
+                    <input
+                      value={row.TRANSPORTER}
+                      readOnly={isRowDisabled}
+                      onChange={(e) => {
+                        const data = [...tableData];
+                        data[index].TRANSPORTER = e.target.value;
+                        setTableData(data);
+                      }}
+                      onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
+                      }}
+                      placeholder="Enter Transporter"
+                      className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-not-allowed opacity-60")}
+                    />
+                  </td>
 
-                <td className="px-3 py-0.5 text-center">
-                  <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
-                    <MoreVertical className="size-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  {/* Completed Invoices */}
+                  <td className="px-3 py-0.5 text-center whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => openCompletedInvoicesModal(row)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800 transition-colors shadow-xs"
+                      title="View Completed Invoices"
+                    >
+                      <Eye className="size-3" />
+                      <span>View</span>
+                      {row.compInvoices && row.compInvoices.length > 0 && (
+                        <span className="ml-0.5 px-1 py-0.2 rounded-full text-[9px] bg-sky-200/70 text-sky-800 dark:bg-sky-800 dark:text-sky-100 font-bold">
+                          {row.compInvoices.length}
+                        </span>
+                      )}
+                    </button>
+                  </td>
+
+                  <td className="px-3 py-0.5 text-center">
+                    <button className="inline-grid place-items-center size-7 rounded-md text-muted-foreground hover:bg-muted">
+                      <MoreVertical className="size-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -1231,145 +1506,377 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
             <div className="max-h-[500px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant">
               <div className="p-2 font-semibold">Header Details</div>
 
-              <table className="w-full text-left border-collapse text-[12.5px]">
-                <thead className="sticky top-0 z-30">
-                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
-                    {[
-                      "Ref No", "Line No", "Invoice No", "ODN No", "SO No",
-                      "Fiscal Year", "Reported Date", "Claim Ref", "Invoice Date",
-                      "Base Value", "Loss Declared", "Customer", "Location",
-                      "Damage", "Claim Status", "Payment Status", "Plant",
-                      "Division", "Supporting Document", "Approve Document", "Action",
-                    ].map((h) => (
-                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
+              {(() => {
+                const HEADER_SEARCH_COLS = [
+                  { label: "Ref No", field: "REFNO", alt: "ZREFNO", type: "text", readonly: true, width: "min-w-[120px]" },
+                  { label: "Line No", field: "LINE_NO", alt: "ZLINE_NO", type: "text", readonly: true, width: "min-w-[80px]" },
+                  { label: "Invoice No", field: "INV_NO", alt: "ZINV_NO", type: "text", readonly: true, width: "min-w-[120px]" },
+                  { label: "ODN No", field: "ODN_NO", alt: "ZODN_NO", type: "text", width: "min-w-[150px]" },
+                  { label: "SO No", field: "SO_NO", alt: "ZSO_NO", type: "text", width: "min-w-[130px]" },
+                  { label: "Fiscal Year", field: "FI", alt: "ZFI", type: "text", width: "min-w-[120px]" },
+                  { label: "Reported Date", field: "REP_DATE", alt: "ZREP_DATE", type: "date", width: "min-w-[150px]" },
+                  { label: "Claim Ref", field: "CLAIM_REF", alt: "ZCLAIM_REF", type: "text", width: "min-w-[150px]" },
+                  { label: "Invoice Date", field: "INV_DATE", alt: "ZINV_DATE", type: "date", readonly: true, width: "min-w-[120px]" },
+                  { label: "Base Value", field: "INV_BV", alt: "ZINV_BV", type: "number", width: "min-w-[130px]" },
+                  { label: "Loss Declared", field: "LOSS_DCL", alt: "ZLOSS_DCL", type: "text", width: "min-w-[150px]" },
+                  { label: "Customer", field: "CUSTOMER", alt: "ZCUSTOMER", type: "text", width: "min-w-[160px]" },
+                  { label: "Location", field: "LOCATION", alt: "ZLOCATION", type: "text", width: "min-w-[150px]" },
+                  { label: "Damage", field: "DAMAGE_RMK", alt: "ZDAMAGE_RMK", type: "select", options: ["Wet", "Crushed", "Broken", "Leak"], width: "min-w-[150px]" },
+                  { label: "Claim Status", field: "CLM_ST", alt: "ZCLM_ST", type: "select", options: ["Under preparation", "Submitted", "Not submitted"], width: "min-w-[180px]" },
+                  { label: "Payment Status", field: "PAY_ST", alt: "ZPAY_ST", type: "select", options: ["Pending", "Settled"], width: "min-w-[150px]" },
+                  { label: "Plant", field: "PLANT", alt: "ZPLANT", type: "plant", width: "min-w-[180px]" },
+                  { label: "Division", field: "DIVISION", alt: "ZDIVISION", type: "division", width: "min-w-[180px]" },
+                ];
 
-                <tbody className="divide-y divide-hairline/70">
-                  <tr className="bg-surface hover:bg-muted/50">
-                    {[
-                      { field: "REFNO", alt: "ZREFNO", type: "text" },
-                      { field: "LINE_NO", alt: "ZLINE_NO", type: "text" },
-                      { field: "INV_NO", alt: "ZINV_NO", type: "text" },
-                      { field: "ODN_NO", alt: "ZODN_NO", type: "text" },
-                      { field: "SO_NO", alt: "ZSO_NO", type: "text" },
-                      { field: "FI", alt: "ZFI", type: "text" },
-                      { field: "REP_DATE", alt: "ZREP_DATE", type: "date" },
-                      { field: "CLAIM_REF", alt: "ZCLAIM_REF", type: "text" },
-                      { field: "INV_DATE", alt: "ZINV_DATE", type: "date" },
-                      { field: "INV_BV", alt: "ZINV_BV", type: "number" },
-                      { field: "LOSS_DCL", alt: "ZLOSS_DCL", type: "text" },
-                      { field: "CUSTOMER", alt: "ZCUSTOMER", type: "text" },
-                      { field: "LOCATION", alt: "ZLOCATION", type: "text" },
-                      { field: "DAMAGE_RMK", alt: "ZDAMAGE_RMK", type: "textarea" },
-                      { field: "CLM_ST", alt: "ZCLM_ST", type: "text" },
-                      { field: "PAY_ST", alt: "ZPAY_ST", type: "text" },
-                      { field: "PLANT", alt: "ZPLANT", type: "text" },
-                      { field: "DIVISION", alt: "ZDIVISION", type: "text" },
-                    ].map(({ field, alt, type }) => {
-                      // Backend response always carries the Z-prefixed key
-                      // (ZLOSS_DCL, ZCLM_ST, ...). Read AND write must use
-                      // the SAME key, otherwise edits land on a stray
-                      // non-Z key that the backend never looks at (that
-                      // was the original bug — see chat history).
-                      const key = headerData[alt] !== undefined ? alt : field;
-                      const value = headerData[key];
-                      return (
-                        <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
+                return (
+                  <table className="w-full text-left border-collapse text-[12.5px]">
+                    <thead className="sticky top-0 z-30">
+                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                        {HEADER_SEARCH_COLS.map((c) => (
+                          <th key={c.field} className={cn("px-3 py-2.5 whitespace-nowrap text-left", c.width)}>
+                            {c.label}
+                          </th>
+                        ))}
+                        <th className="px-3 py-2.5 whitespace-nowrap text-left min-w-[160px]">Supporting Document</th>
+                        <th className="px-3 py-2.5 whitespace-nowrap text-left min-w-[160px]">Approve Document</th>
+                        <th className="px-3 py-2.5 whitespace-nowrap text-center min-w-[90px]">Action</th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="divide-y divide-hairline/70">
+                      <tr className="bg-surface hover:bg-muted/50">
+                        {HEADER_SEARCH_COLS.map(({ field, alt, type, options, readonly, width }: any) => {
+                          const isDamageField = field === "DAMAGE_RMK";
+                          const key = headerData[alt] !== undefined ? alt : field;
+                          const rawVal = isDamageField
+                            ? (headerData.ZDAMAGE_RMK || headerData.DAMAGE_RMK || headerData.ZNATURE_DAMAGE || headerData.NATURE_DAMAGE || headerData.ZDAMAGE || headerData.DAMAGE || "")
+                            : headerData[key];
+                          const trimmedVal = typeof rawVal === "string" ? rawVal.trim() : (rawVal ?? "");
+
+                          return (
+                            <td key={field} className={cn("px-3 py-2 whitespace-nowrap text-left", width)}>
+                              {headerData.isEdit && !readonly ? (
+                                type === "select" ? (() => {
+                                  const damageOptionsList = [
+                                    "Wet", "Crushed", "Broken", "Leak",
+                                    "Packing material damage", "Pallet damage", "Cells damage",
+                                    "Cell Bank damage", "Can damage", "Accident",
+                                    "Prohibited material loading and seized by Police",
+                                    "Damage during unloading", "Material in wet condition",
+                                    "Damage due to other materials loaded",
+                                  ];
+                                  const baseOpts = isDamageField ? damageOptionsList : (options || []);
+                                  const selectOptions = Array.from(new Set([...baseOpts, trimmedVal].filter(Boolean)));
+                                  const matchedOpt = selectOptions.find(
+                                    (o) => String(o).toLowerCase() === String(trimmedVal).toLowerCase()
+                                  );
+                                  const curVal = matchedOpt || trimmedVal || "";
+
+                                  return (
+                                    <select
+                                      className={cn(GREEN_INPUT, width)}
+                                      value={curVal}
+                                      onChange={(e) => {
+                                        const newVal = e.target.value;
+                                        setHeaderData((prev: any) => ({
+                                          ...prev,
+                                          [key]: newVal,
+                                          ...(isDamageField ? { ZDAMAGE_RMK: newVal, DAMAGE_RMK: newVal } : {}),
+                                        }));
+                                      }}
+                                    >
+                                      <option value="">Select</option>
+                                      {selectOptions.map((o: string) => (
+                                        <option key={o} value={o}>{o}</option>
+                                      ))}
+                                    </select>
+                                  );
+                                })() : type === "plant" ? (
+                                  <select
+                                    className={cn(GREEN_INPUT, width)}
+                                    value={trimmedVal || ""}
+                                    onChange={(e) =>
+                                      setHeaderData((prev: any) => ({ ...prev, [key]: e.target.value }))
+                                    }
+                                  >
+                                    <option value="">Select Plant</option>
+                                    {Array.from(new Set([...(currentUser.PLANTS || []).map((p: any) => typeof p === "string" ? p : p?.PLANT || p?.PLANT_NAME || String(p)), trimmedVal].filter(Boolean))).map((p) => (
+                                      <option key={p} value={p}>{p}</option>
+                                    ))}
+                                  </select>
+                                ) : type === "division" ? (
+                                  <select
+                                    className={cn(GREEN_INPUT, width)}
+                                    value={trimmedVal || ""}
+                                    onChange={(e) =>
+                                      setHeaderData((prev: any) => ({ ...prev, [key]: e.target.value }))
+                                    }
+                                  >
+                                    <option value="">Select Division</option>
+                                    {Array.from(new Set([...(currentUser.DIV || []).map((d: any) => typeof d === "string" ? d : d?.DIVISION || d?.DIV || String(d)), trimmedVal].filter(Boolean))).map((d) => (
+                                      <option key={d} value={d}>{d}</option>
+                                    ))}
+                                  </select>
+                                ) : type === "textarea" ? (
+                                  <textarea
+                                    className={cn(GREEN_INPUT, "h-16", width)}
+                                    value={trimmedVal || ""}
+                                    onChange={(e) =>
+                                      setHeaderData((prev: any) => ({ ...prev, [key]: e.target.value }))
+                                    }
+                                  />
+                                ) : (
+                                  <input
+                                    type={type}
+                                    className={cn(GREEN_INPUT, width)}
+                                    value={trimmedVal || ""}
+                                    onChange={(e) =>
+                                      setHeaderData((prev: any) => ({ ...prev, [key]: e.target.value }))
+                                    }
+                                  />
+                                )
+                              ) : (
+                                <span>
+                                  {type === "date" && trimmedVal
+                                    ? new Date(trimmedVal).toLocaleDateString("en-GB")
+                                    : trimmedVal || "-"}
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
+
+                        {/* Uploaded file name per document type:
+                            allow picking new file on edit row */}
+                        <td className="px-3 py-2 whitespace-nowrap text-left min-w-[160px]">
                           {headerData.isEdit ? (
-                            type === "textarea" ? (
-                              <textarea
-                                className={`${GREEN_INPUT} h-16`}
-                                value={value || ""}
-                                onChange={(e) =>
-                                  setHeaderData((prev: any) => ({ ...prev, [key]: e.target.value }))
-                                }
-                              />
-                            ) : (
-                              <input
-                                type={type}
-                                className={GREEN_INPUT}
-                                value={value || ""}
-                                onChange={(e) =>
-                                  setHeaderData((prev: any) => ({ ...prev, [key]: e.target.value }))
-                                }
-                              />
-                            )
+                            <div className="flex flex-col items-start gap-1">
+                              {editSearchInsuranceFiles.ZSUPT_DOC?.name ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const file = editSearchInsuranceFiles.ZSUPT_DOC;
+                                    const url = file ? URL.createObjectURL(file) : "";
+                                    setPreviewDoc({ url, title: file?.name || "Supporting Document" });
+                                  }}
+                                  className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                                  title={editSearchInsuranceFiles.ZSUPT_DOC?.name}
+                                >
+                                  {editSearchInsuranceFiles.ZSUPT_DOC?.name}
+                                </button>
+                              ) : (
+                                (() => {
+                                  const existingName =
+                                    headerData.ZLOCALFILES?.Supporting_Document ||
+                                    fileNameFromPath(headerData.ZSUPT_PATH) ||
+                                    "-";
+                                  if (existingName && existingName !== "-") {
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const url = getLocalDocumentUrl({
+                                            mode: isWithout ? "Without Sap" : "SAP",
+                                            screen: "Insurance_Claim",
+                                            field: "Supporting_Document",
+                                            fileName: existingName,
+                                            storedPath: headerData.ZSUPT_PATH,
+                                            row: headerData,
+                                          });
+                                          setPreviewDoc({ url, title: existingName });
+                                        }}
+                                        className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                                        title={existingName}
+                                      >
+                                        {existingName}
+                                      </button>
+                                    );
+                                  }
+                                  return <span className="text-[12px] text-muted-foreground">-</span>;
+                                })()
+                              )}
+                              <label className="cursor-pointer inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 transition-colors">
+                                <span>{editSearchInsuranceFiles.ZSUPT_DOC ? "Change" : "Browse"}</span>
+                                <input
+                                  type="file"
+                                  accept=".jpg,.jpeg,.png,.pdf"
+                                  onChange={(e) => handleSearchPickInsuranceDoc("ZSUPT_DOC", e.target.files?.[0] || null)}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
                           ) : (
-                            <span>
-                              {type === "date" && value
-                                ? new Date(value).toLocaleDateString("en-GB")
-                                : value || "-"}
-                            </span>
+                            (() => {
+                              const suptName =
+                                headerData.ZLOCALFILES?.Supporting_Document ||
+                                fileNameFromPath(headerData.ZSUPT_PATH);
+                              if (!suptName || suptName === "-" || suptName === "NA") {
+                                return <span className="text-muted-foreground">-</span>;
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const url = getLocalDocumentUrl({
+                                      mode: isWithout ? "Without Sap" : "SAP",
+                                      screen: "Insurance_Claim",
+                                      field: "Supporting_Document",
+                                      fileName: suptName,
+                                      storedPath: headerData.ZSUPT_PATH,
+                                      row: headerData,
+                                    });
+                                    setPreviewDoc({ url, title: suptName });
+                                  }}
+                                  className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline underline-offset-2 transition-colors cursor-pointer group max-w-[150px]"
+                                  title={`View ${suptName}`}
+                                >
+                                  <FileText className="size-3.5 shrink-0 opacity-70 group-hover:opacity-100 text-blue-600 dark:text-blue-400" />
+                                  <span className="truncate">{suptName}</span>
+                                </button>
+                              );
+                            })()
                           )}
                         </td>
-                      );
-                    })}
+                        <td className="px-3 py-2 whitespace-nowrap text-left min-w-[160px]">
+                          {headerData.isEdit ? (
+                            <div className="flex flex-col items-start gap-1">
+                              {editSearchInsuranceFiles.ZAPP_DOC?.name ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const file = editSearchInsuranceFiles.ZAPP_DOC;
+                                    const url = file ? URL.createObjectURL(file) : "";
+                                    setPreviewDoc({ url, title: file?.name || "Approve Document" });
+                                  }}
+                                  className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                                  title={editSearchInsuranceFiles.ZAPP_DOC?.name}
+                                >
+                                  {editSearchInsuranceFiles.ZAPP_DOC?.name}
+                                </button>
+                              ) : (
+                                (() => {
+                                  const existingName =
+                                    headerData.ZLOCALFILES?.Approve_Document ||
+                                    fileNameFromPath(headerData.ZAPP_PATH) ||
+                                    "-";
+                                  if (existingName && existingName !== "-") {
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const url = getLocalDocumentUrl({
+                                            mode: isWithout ? "Without Sap" : "SAP",
+                                            screen: "Insurance_Claim",
+                                            field: "Approve_Document",
+                                            fileName: existingName,
+                                            storedPath: headerData.ZAPP_PATH,
+                                            row: headerData,
+                                          });
+                                          setPreviewDoc({ url, title: existingName });
+                                        }}
+                                        className="text-[12px] truncate max-w-[140px] text-blue-600 hover:underline font-medium cursor-pointer"
+                                        title={existingName}
+                                      >
+                                        {existingName}
+                                      </button>
+                                    );
+                                  }
+                                  return <span className="text-[12px] text-muted-foreground">-</span>;
+                                })()
+                              )}
+                              <label className="cursor-pointer inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 transition-colors">
+                                <span>{editSearchInsuranceFiles.ZAPP_DOC ? "Change" : "Browse"}</span>
+                                <input
+                                  type="file"
+                                  accept=".jpg,.jpeg,.png,.pdf"
+                                  onChange={(e) => handleSearchPickInsuranceDoc("ZAPP_DOC", e.target.files?.[0] || null)}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
+                          ) : (
+                            (() => {
+                              const appName =
+                                headerData.ZLOCALFILES?.Approve_Document ||
+                                fileNameFromPath(headerData.ZAPP_PATH);
+                              if (!appName || appName === "-" || appName === "NA") {
+                                return <span className="text-muted-foreground">-</span>;
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const url = getLocalDocumentUrl({
+                                      mode: isWithout ? "Without Sap" : "SAP",
+                                      screen: "Insurance_Claim",
+                                      field: "Approve_Document",
+                                      fileName: appName,
+                                      storedPath: headerData.ZAPP_PATH,
+                                      row: headerData,
+                                    });
+                                    setPreviewDoc({ url, title: appName });
+                                  }}
+                                  className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline underline-offset-2 transition-colors cursor-pointer group max-w-[150px]"
+                                  title={`View ${appName}`}
+                                >
+                                  <FileText className="size-3.5 shrink-0 opacity-70 group-hover:opacity-100 text-blue-600 dark:text-blue-400" />
+                                  <span className="truncate">{appName}</span>
+                                </button>
+                              );
+                            })()
+                          )}
+                        </td>
 
-                    {/* Uploaded file name per document type (read-only):
-                        file found on disk for this record, else derived from the saved path. */}
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {headerData.ZLOCALFILES?.Supporting_Document ||
-                        fileNameFromPath(headerData.ZSUPT_PATH) ||
-                        "-"}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {headerData.ZLOCALFILES?.Approve_Document ||
-                        fileNameFromPath(headerData.ZAPP_PATH) ||
-                        "-"}
-                    </td>
+                        <td className="px-2 py-2 text-center min-w-[90px]">
+                          {!headerData.isEdit ? (
+                            <div className="flex items-center gap-1 justify-center">
+                              <button
+                                onClick={editHeaderRow}
+                                className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                              >
+                                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                              </button>
 
-                    <td className="px-2 py-2 text-center">
-                      {!headerData.isEdit ? (
-                        <div className="flex items-center gap-1 justify-center">
-                          <button
-                            onClick={editHeaderRow}
-                            className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
-                          >
-                            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </button>
+                              <button
+                                onClick={() => deleteRow(headerData)}
+                                className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+                              >
+                                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 justify-center">
+                              <button
+                                onClick={updateSearchRow}
+                                className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                              >
+                                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              </button>
 
-                          <button
-                            onClick={() => deleteRow(headerData)}
-                            className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
-                          >
-                            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 justify-center">
-                          <button
-                            onClick={updateSearchRow}
-                            className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                          >
-                            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </button>
-
-                          <button
-                            onClick={cancelHeaderEdit}
-                            className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
-                          >
-                            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                              <button
+                                onClick={cancelHeaderEdit}
+                                className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              >
+                                <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                );
+              })()}
             </div>
           )}
 
@@ -1377,76 +1884,78 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
             <div className="max-h-[400px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant mt-3">
               <div className="p-2 font-semibold">Line Items</div>
 
-              <table className="w-full text-left border-collapse text-[12.5px]">
-                <thead className="sticky top-0 z-30">
-                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
-                    {[
-                      "Map ID", "Ref No", "Line No", "Invoice No", "Vehicle No",
-                      "Bill No", "Work Order", "LR No", "Transporter", "Action",
-                    ].map((h) => (
-                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
+              {(() => {
+                const ITEM_SEARCH_COLS = [
+                  { label: "Map ID", field: "ZMAPID", type: "text", readonly: true, width: "min-w-[110px]" },
+                  { label: "Ref No", field: "ZREFNO", type: "text", readonly: true, width: "min-w-[110px]" },
+                  { label: "Line No", field: "ZLINE_NO", type: "text", readonly: true, width: "min-w-[80px]" },
+                  { label: "Invoice No", field: "ZINV_NO", type: "text", readonly: true, width: "min-w-[120px]" },
+                  { label: "Vehicle No", field: "ZTRUCK_NO", type: "text", width: "min-w-[150px]" },
+                  { label: "Bill No", field: "ZBILLNO", type: "text", width: "min-w-[130px]" },
+                  { label: "Work Order", field: "ZWORK_ORDER", type: "text", readonly: true, width: "min-w-[120px]" },
+                  { label: "LR No", field: "ZLRNO", type: "text", readonly: true, width: "min-w-[110px]" },
+                  { label: "Transporter", field: "ZTRANSPORTER", type: "text", readonly: true, width: "min-w-[180px]" },
+                ];
 
-                <tbody className="divide-y divide-hairline/70">
-                  {itemData.map((item: any, index: number) => (
-                    <tr
-                      key={index}
-                      className={index % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}
-                    >
-                      {[
-                        { field: "ZMAPID", type: "text" },
-                        { field: "ZREFNO", type: "text" },
-                        { field: "ZLINE_NO", type: "text" },
-                        { field: "ZINV_NO", type: "text" },
-                        { field: "ZTRUCK_NO", type: "text" },
-                        { field: "ZBILLNO", type: "text" },
-                        { field: "ZWORK_ORDER", type: "text" },
-                        { field: "ZLRNO", type: "text" },
-                        { field: "ZTRANSPORTER", type: "text" },
-                      ].map(({ field, type }) => (
-                        <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
-                          {item.isEdit ? (
-                            <input
-                              type={type}
-                              className={GREEN_INPUT}
-                              value={item[field] || ""}
-                              onChange={(e) => {
-                                const rows = [...itemData];
-                                rows[index] = { ...rows[index], [field]: e.target.value };
-                                setItemData(rows);
-                              }}
-                            />
-                          ) : (
-                            <span>{item[field] || "-"}</span>
-                          )}
-                        </td>
-                      ))}
+                return (
+                  <table className="w-full text-left border-collapse text-[12.5px]">
+                    <thead className="sticky top-0 z-30">
+                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                        {ITEM_SEARCH_COLS.map((c) => (
+                          <th key={c.field} className={cn("px-3 py-2.5 whitespace-nowrap text-left", c.width)}>
+                            {c.label}
+                          </th>
+                        ))}
+                        <th className="px-3 py-2.5 whitespace-nowrap text-center min-w-[90px]">Action</th>
+                      </tr>
+                    </thead>
 
-                      <td className="px-2 py-2 text-center">
-                        {!item.isEdit ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => editItemRow(index)}
-                              className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
-                            >
-                              ✏️
-                            </button>
+                    <tbody className="divide-y divide-hairline/70">
+                      {itemData.map((item: any, index: number) => (
+                        <tr
+                          key={index}
+                          className={index % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}
+                        >
+                          {ITEM_SEARCH_COLS.map(({ field, type, readonly, width }: any) => (
+                            <td key={field} className={cn("px-3 py-2 whitespace-nowrap text-left", width)}>
+                              {item.isEdit && !readonly ? (
+                                <input
+                                  type={type}
+                                  className={cn(GREEN_INPUT, width)}
+                                  value={item[field] || ""}
+                                  onChange={(e) => {
+                                    const rows = [...itemData];
+                                    rows[index] = { ...rows[index], [field]: e.target.value };
+                                    setItemData(rows);
+                                  }}
+                                />
+                              ) : (
+                                <span>{item[field] || "-"}</span>
+                              )}
+                            </td>
+                          ))}
 
-                            <button
-                              onClick={() => deleteRow(item)}
-                              className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={updateSearchRow}
+                          <td className="px-2 py-2 text-center min-w-[90px]">
+                            {!item.isEdit ? (
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => editItemRow(index)}
+                                  className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                >
+                                  ✏️
+                                </button>
+
+                                <button
+                                  onClick={() => deleteRow(item)}
+                                  className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={updateSearchRow}
                               className="size-6 grid place-items-center rounded bg-green-50 text-green-600 hover:bg-green-100"
                             >
                               ✔
@@ -1465,8 +1974,10 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
+            );
+          })()}
+        </div>
+      )}
 
           {/* ================= GET SCREEN ================= */}
 
@@ -1623,6 +2134,140 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
           )}
         </>
       )}
+
+      {/* Completed Invoices Modal */}
+      <Dialog open={compInvoicesModalOpen} onOpenChange={setCompInvoicesModalOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden border border-hairline shadow-soft bg-surface">
+          <div className="px-5 py-3.5 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+            <div>
+              <DialogTitle className="text-[14px] font-bold text-foreground">
+                Completed Invoices
+              </DialogTitle>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Reference No: <span className="font-semibold text-foreground">{compInvoicesModalData.refNo}</span>
+              </p>
+            </div>
+            <span className="px-2 py-0.5 text-[10.5px] font-bold rounded-full bg-accent/10 text-accent">
+              {compInvoicesModalData.invoices.length} {compInvoicesModalData.invoices.length === 1 ? "Invoice" : "Invoices"}
+            </span>
+          </div>
+
+          <div className="p-4 max-h-80 overflow-y-auto scrollbar-elegant">
+            {compInvoicesModalData.invoices.length > 0 ? (
+              <div className="border border-hairline rounded-lg overflow-hidden">
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+                      <th className="px-3 py-1.5 text-center w-14">#</th>
+                      <th className="px-3 py-1.5 text-left">Invoice Number</th>
+                      <th className="px-3 py-1.5 text-center w-24">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/60">
+                    {compInvoicesModalData.invoices.map((inv, idx) => (
+                      <tr key={idx} className="hover:bg-accent/[0.04] transition-colors">
+                        <td className="px-3 py-1.5 text-center font-mono text-[11px] text-muted-foreground">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-1.5 font-mono font-medium text-foreground">
+                          {inv}
+                        </td>
+                        <td className="px-3 py-1.5 text-center">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground text-[12px]">
+                No completed invoices available for this reference.
+              </div>
+            )}
+          </div>
+
+          <div className="px-4 py-2.5 border-t border-hairline bg-surface-2/40 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCompInvoicesModalOpen(false)}
+              className="px-3.5 py-1.5 text-[12px] font-semibold rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition-colors shadow-xs"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Local Document Viewer Modal ── */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => { if (!open) setPreviewDoc(null); }}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-white dark:bg-surface border border-hairline shadow-2xl rounded-xl">
+          <div className="bg-gradient-primary px-4 py-3 flex items-center justify-between text-white">
+            <div className="flex items-center gap-2 min-w-0 pr-4">
+              <FileText className="size-4 shrink-0 text-white/90" />
+              <DialogTitle className="text-[14px] font-bold tracking-wide text-white truncate">
+                {previewDoc?.title || "Document Preview"}
+              </DialogTitle>
+            </div>
+            {previewDoc?.url && (
+              <a
+                href={previewDoc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-medium bg-white/15 hover:bg-white/25 text-white px-2.5 py-1 rounded transition-colors flex items-center gap-1 shrink-0 mr-6 cursor-pointer"
+                title="Open in new window"
+              >
+                <ExternalLink className="size-3" />
+                Open in New Tab
+              </a>
+            )}
+          </div>
+          <div className="p-3 bg-muted/20 min-h-[350px] max-h-[78vh] flex items-center justify-center overflow-auto">
+            {previewDoc?.url ? (
+              (() => {
+                const target = (previewDoc.url || "").toLowerCase().split("?")[0];
+                const titleLower = (previewDoc.title || "").toLowerCase();
+                const isPdf = target.endsWith(".pdf") || titleLower.endsWith(".pdf");
+                const isImg = target.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/) || titleLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/);
+
+                if (isPdf) {
+                  return (
+                    <iframe
+                      src={previewDoc.url}
+                      title={previewDoc.title || "PDF Document"}
+                      className="w-full h-[72vh] border-0 rounded-lg shadow-inner bg-white"
+                    />
+                  );
+                }
+
+                if (isImg) {
+                  return (
+                    <img
+                      src={previewDoc.url}
+                      alt={previewDoc.title || "Image Document"}
+                      className="max-h-[72vh] max-w-full object-contain rounded-lg shadow-sm"
+                    />
+                  );
+                }
+
+                return (
+                  <iframe
+                    src={previewDoc.url}
+                    title={previewDoc.title || "Document"}
+                    className="w-full h-[72vh] border-0 rounded-lg shadow-inner bg-white"
+                  />
+                );
+              })()
+            ) : (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                No document URL available for preview.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1704,15 +2349,13 @@ function SapField({
           </select>
         )
       ) : type === "date" ? (
-        <input
-          type="date"
+        <GateDatePicker
           value={value || ""}
-          readOnly={filled}
-          onChange={(e) => {
+          disabled={filled}
+          onChange={(_, str) => {
             if (filled) return;
-            const val = e.target.value;
-            setHeaderData((prev: any) => ({ ...prev, [field.key]: val }));
-            if (field.key === "REP_DATE") onReportedDateChange?.(val);
+            setHeaderData((prev: any) => ({ ...prev, [field.key]: str }));
+            if (field.key === "REP_DATE") onReportedDateChange?.(str);
           }}
           className={cls}
         />

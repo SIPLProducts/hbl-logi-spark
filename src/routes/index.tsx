@@ -74,24 +74,19 @@ export const Route = createFileRoute("/")({
   beforeLoad: () => {
     if (typeof window === "undefined") return;
 
+    const hasActiveSession =
+      localStorage.getItem("isLoggedIn") === "true" &&
+      sessionStorage.getItem("sessionActive") === "true";
+
+    if (!hasActiveSession) {
+      throw redirect({ to: "/login" });
+    }
+
     // Block the Dashboard for logged-in users without "Dashboard" access —
     // send them to their first accessible screen instead. Runs on every
     // in-app navigation to "/" (post-login redirect, logo, nav link).
-    if (localStorage.getItem("isLoggedIn") === "true") {
-      const target = dashboardRedirectTarget();
-      if (target) throw redirect({ to: target });
-    }
-
-    if (isFirstAppLoad) {
-      isFirstAppLoad = false;
-      // A successful login navigates here ("post-login redirect"). If the user
-      // reached /login without this route's beforeLoad having run yet (the root
-      // redirects "/" -> "/login" before it), this flag is still armed and would
-      // bounce the just-authenticated user back to /login. Only force the Login
-      // page on first load when the user is not actually logged in.
-      if (localStorage.getItem("isLoggedIn") === "true") return;
-      throw redirect({ to: "/login" });
-    }
+    const target = dashboardRedirectTarget();
+    if (target) throw redirect({ to: target });
   },
   component: DashboardPage,
 });

@@ -20,6 +20,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { GateDatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -255,15 +256,16 @@ function OrderInfoPage() {
           { header: "Invoice Date", value: (r: any) => (r.ZINV_DATE ? new Date(r.ZINV_DATE).toLocaleDateString("en-GB") : "") },
           { header: "Basic Value", value: (r: any) => r.ZBASIC_VALUE || "" },
           { header: "Invoice Value (GST)", value: (r: any) => r.ZINV_VALUE_GST || "" },
-          { header: "Physical Dispatch", value: (r: any) => r.ZPHY_DISPATCH || "" },
-          { header: "Fiscal Year", value: (r: any) => r.ZFYEAR || "" },
-          { header: "Fiscal Quarter", value: (r: any) => r.ZFIS_QUARTER || "" },
-          { header: "Fiscal Month", value: (r: any) => r.ZFIS_MONTH || "" },
+          // { header: "Physical Dispatch", value: (r: any) => r.ZPHY_DISPATCH || "" },
+          // { header: "Fiscal Year", value: (r: any) => r.ZFYEAR || "" },
+          // { header: "Fiscal Quarter", value: (r: any) => r.ZFIS_QUARTER || "" },
+          // { header: "Fiscal Month", value: (r: any) => r.ZFIS_MONTH || "" },
           { header: "Plant", value: (r: any) => r.ZPLANT || "" },
           { header: "Transaction Type", value: (r: any) => r.ZTRX_TYPE || "" },
           { header: "Billing Text", value: (r: any) => r.ZBILL_TRX_TEXT || "" },
           { header: "Division", value: (r: any) => r.ZDIVISION || "" },
           { header: "Sub Division", value: (r: any) => r.ZSUB_DIVISION || "" },
+          { header: "Incoterms", value: (r: any) => r.ZINCO || "" },
           { header: "SO Ref No", value: (r: any) => r.ZSO_NO || "" },
           { header: "Customer Name", value: (r: any) => r.ZCUST_NAME || "" },
           { header: "Customer Group", value: (r: any) => r.ZCUST_GRP || "" },
@@ -345,8 +347,13 @@ function OrderInfoPage() {
     if (fStatus === "Completed") {
       headers = [[
         "SI.No", "REFNO", "Invoice No", "Line No", "ODN No", "Invoice Date", "Basic Value",
-        "Invoice Value (GST)", "Physical Dispatch", "Fiscal Year", "System Date", "Fiscal Quarter",
-        "Fiscal Month", "Plant", "Transaction Type", "Bill Text", "Division", "Sub Division",
+        "Invoice Value (GST)",
+        // "Physical Dispatch",
+        // "Fiscal Year",
+        // "System Date",
+        // "Fiscal Quarter",
+        // "Fiscal Month",
+        "Plant", "Transaction Type", "Bill Text", "Division", "Sub Division", "Incoterms",
         "SO Ref No", "Customer Name", "Customer Group", "Consignee Name", "Destination Location",
         "State", "Zone", "Work Order", "LR No", "Transporter", "Created date", "Vehicle Type",
       ]];
@@ -354,10 +361,13 @@ function OrderInfoPage() {
       data = exportSource.map((record, index) => ([
         index + 1, record.ZREFNO || "", record.ZINV_NO || "", record.ZLINE_NO || "", record.ZODN_NO || "",
         record.ZINV_DATE ? new Date(record.ZINV_DATE).toLocaleDateString("en-GB") : "",
-        record.ZBASIC_VALUE || "", record.ZINV_VALUE_GST || "", record.ZPHY_DISPATCH || "",
-        record.ZFYEAR || "", record.ZSYS_DATE ? new Date(record.ZSYS_DATE).toLocaleDateString("en-GB") : "",
-        record.ZFIS_QUARTER || "", record.ZFIS_MONTH || "", record.ZPLANT || "", record.ZTRX_TYPE || "",
-        record.ZBILL_TRX_TEXT || "", record.ZDIVISION || "", record.ZSUB_DIVISION || "", record.ZSO_NO || "",
+        record.ZBASIC_VALUE || "", record.ZINV_VALUE_GST || "",
+        // record.ZPHY_DISPATCH || "",
+        // record.ZFYEAR || "", record.ZSYS_DATE ? new Date(record.ZSYS_DATE).toLocaleDateString("en-GB") : "",
+        // record.ZFIS_QUARTER || "", record.ZFIS_MONTH || "", 
+        record.ZPLANT || "", record.ZTRX_TYPE || "",
+        record.ZBILL_TRX_TEXT || "", record.ZDIVISION || "", record.ZSUB_DIVISION || "", record.ZINCO || "",
+        record.ZSO_NO || "",
         record.ZCUST_NAME || "", record.ZCUST_GRP || "", record.ZCONSIGN_NAME || "", record.ZDES_LOC || "",
         record.ZSTATE || "", record.ZZONE || "", record.ZWORK_ORDER || "", record.ZLRNO || "",
         record.ZTRANSPORTER || "", record.ZCREATED_DT ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB") : "",
@@ -626,8 +636,12 @@ function OrderInfoPage() {
                     <thead className="sticky top-0 z-30">
                       <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
                         {["SI.No", "REFNO", "Invoice No", "Line No", "ODN No", "Invoice Date", "Basic Value",
-                          "Invoice Value (GST)", "Physical Dispatch", "Fiscal Year", "System Date", "Fiscal Quarter",
-                          "Fiscal Month", "Plant", "Transaction Type", "Bill Text", "Division", "Sub Division",
+                          "Invoice Value (GST)",
+                          //  "Physical Dispatch", "Fiscal Year", 
+                          "System Date",
+                          // "Fiscal Quarter",
+                          // "Fiscal Month", 
+                          "Plant", "Transaction Type", "Bill Text", "Division", "Sub Division", "Incoterms",
                           "SO Ref No", "Customer Name", "Customer Group", "Consignee Name", "Destination Location",
                           "State", "Zone", "Work Order", "LR No", "Transporter", "Created Date", "Vehicle Type"].map((h) => (
                             <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
@@ -658,18 +672,19 @@ function OrderInfoPage() {
                             <td className="px-3 py-2 whitespace-nowrap tabular-nums">
                               {item.ZINV_VALUE_GST ? Number(item.ZINV_VALUE_GST).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""}
                             </td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZPHY_DISPATCH}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZFYEAR}</td>
+                            {/* <td className="px-3 py-2 whitespace-nowrap">{item.ZPHY_DISPATCH}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZFYEAR}</td> */}
                             <td className="px-3 py-2 whitespace-nowrap">
                               {item.ZSYS_DATE ? new Date(item.ZSYS_DATE).toLocaleDateString("en-GB") : ""}
                             </td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZFIS_QUARTER}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">{item.ZFIS_MONTH}</td>
+                            {/* <td className="px-3 py-2 whitespace-nowrap">{item.ZFIS_QUARTER}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZFIS_MONTH}</td> */}
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZPLANT}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZTRX_TYPE}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZBILL_TRX_TEXT}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZSUB_DIVISION}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">{item.ZINCO}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZSO_NO}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZCUST_NAME}</td>
                             <td className="px-3 py-2 whitespace-nowrap">{item.ZCUST_GRP}</td>
@@ -873,31 +888,11 @@ function DateField({
   onChange: (d: Date | undefined) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn("h-8 justify-start text-left font-normal", !value && "text-muted-foreground")}
-          >
-            <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
-            {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={value}
-            onSelect={onChange}
-            initialFocus
-            className={cn("p-3 pointer-events-auto")}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <GateDatePicker
+      label={label}
+      value={value}
+      onChange={(d) => onChange(d)}
+    />
   );
 }
 

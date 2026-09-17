@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import Swal from "sweetalert2";
 // @ts-ignore
-import service from "@/services/generalservice_service";
+import service, { getLocalDocumentUrl } from "@/services/generalservice_service";
 import { format } from "date-fns";
 import {
   Plus,
@@ -20,6 +20,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { GateDatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -30,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { VEHICLE_TYPES } from "@/lib/dispatch-mock";
 import { cn } from "@/lib/utils";
-import { TransitInfoSapCreate } from "@/components/transit-info-sap-create";
+import { TransitInfoSapCreate, formatDateTimeDisplay } from "@/components/transit-info-sap-create";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -450,7 +451,22 @@ function TransitInfoPage() {
       : dispatchData.length;
 
   const viewCertificate = (item: any) => {
-    if (!item?.ZPODFILE) {
+    let url = item?.ZPODFILE;
+    if (!url || typeof url !== "string" || !url.startsWith("http")) {
+      const fileName = item?.ZLOCALFILES?.POD || item?.ZPODNAME;
+      if (fileName && fileName !== "-") {
+        url = getLocalDocumentUrl({
+          mode: sap === "without" ? "Without Sap" : "SAP",
+          screen: "Transit_Info",
+          field: "POD",
+          fileName,
+          storedPath: item?.ZPATH || item?.ZPODFILE,
+          row: item,
+        });
+      }
+    }
+
+    if (!url) {
       Swal.fire({
         icon: "info",
         title: "No File",
@@ -459,7 +475,7 @@ function TransitInfoPage() {
       return;
     }
 
-    window.open(item.ZPODFILE, "_blank");
+    window.open(url, "_blank");
   };
 
   return (
@@ -742,30 +758,29 @@ function TransitInfoPage() {
                                   </td>
 
                                   <td className="px-3 py-2 whitespace-nowrap">
-                                    {item.ZPY_ARRIVED_DEST}
+                                    {formatDateTimeDisplay(item.ZPY_ARRIVED_DEST)}
                                   </td>
 
                                   <td className="px-3 py-2 whitespace-nowrap">
-                                    {item.ZUNLOADING_DT}
+                                    {formatDateTimeDisplay(item.ZUNLOADING_DT)}
                                   </td>
 
                                   <td className="px-3 py-2 whitespace-nowrap">
-                                    {item.ZPODNAME ? (
+                                    {(item.ZPODNAME || item.ZLOCALFILES?.POD) && (item.ZPODNAME || item.ZLOCALFILES?.POD) !== "-" ? (
                                       <button
                                         type="button"
-                                        className="text-blue-600 underline"
+                                        className="text-blue-600 hover:underline font-medium cursor-pointer"
                                         onClick={() => viewCertificate(item)}
                                       >
-                                        {item.ZPODNAME}
+                                        {item.ZPODNAME || item.ZLOCALFILES?.POD}
                                       </button>
                                     ) : (
-                                      // fall back to the file name found on disk for this record
-                                      item.ZLOCALFILES?.POD || "-"
+                                      "-"
                                     )}
                                   </td>
 
                                   <td className="px-3 py-2 whitespace-nowrap">
-                                    {item.ZPOD_SCAN}
+                                    {formatDateTimeDisplay(item.ZPOD_SCAN)}
                                   </td>
 
                                   <td className="px-3 py-2 whitespace-nowrap">
@@ -1088,20 +1103,11 @@ function SearchSapToggle({ value, onChange }: { value: SapMode | null; onChange:
 
 function DateField({ label, value, onChange }: { label: string; value: Date | undefined; onChange: (d: Date | undefined) => void }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className={cn("h-8 justify-start text-left font-normal", !value && "text-muted-foreground")}>
-            <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
-            {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="single" selected={value} onSelect={onChange} initialFocus className={cn("p-3 pointer-events-auto")} />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <GateDatePicker
+      label={label}
+      value={value}
+      onChange={(d) => onChange(d)}
+    />
   );
 }
 

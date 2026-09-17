@@ -1,9 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, Save, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Search, Save, ChevronLeft, ChevronRight, Loader2, Eye, ChevronDown, FileText } from "lucide-react";
 import Swal from "sweetalert2";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
+import { VEHICLE_TYPES } from "@/lib/dispatch-mock";
 
 // ── Style constants ───────────────────────────────────────────────────────────
 // Normal editable field
@@ -29,6 +32,12 @@ const LABEL_YELLOW = "block text-[11px] font-semibold text-yellow-700 mb-0.5";
 
 const LABEL = "block text-[11px] font-semibold text-muted-foreground mb-0.5";
 
+// Reference table disabled row styles (when ZNOT_ALLOWED === "X")
+const ROW_DISABLED =
+  "border-t border-hairline/80 bg-slate-100/90 dark:bg-zinc-800/80 text-muted-foreground";
+const INPUT_DISABLED_ROW =
+  "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed text-center";
+
 // Reference table field placeholders (matches Segment Info screen)
 const REF_FIELD_PLACEHOLDER: Record<"REF_NO" | "WORK_ORDER_NO" | "LR_NO" | "TRANSPORTER", string> = {
   REF_NO: "Enter Ref. No.",
@@ -44,6 +53,23 @@ const SEARCH_OPTIONS = [
   { key: "odn_no", label: "ODN No" },
   { key: "so_no", label: "SO No" },
   { key: "lr_no", label: "LR No" },
+];
+
+// ── Dropdown option constants ──────────────────────────────────────────────────
+const TRANSACTION_TYPES = [
+  { value: "FULL TRUCK LOAD", label: "FULL TRUCK LOAD" },
+  { value: "CARGO", label: "CARGO" },
+  { value: "RATECONTRACT", label: "RATE CONTRACT" },
+  { value: "LOCALTRANSPORTATION", label: "LOCAL TRANSPORTATION" },
+  { value: "CUSTOMERTRANSPORTER", label: "CUSTOMER TRANSPORTER" },
+  { value: "COMPANYVEHICLE", label: "COMPANY VEHICLE" },
+  { value: "COURIER", label: "COURIER" },
+  { value: "BYHAND", label: "BY HAND" },
+];
+
+const SUB_DIVISIONS = [
+  "FUZE", "IPS SYSTEM", "LITHIUM", "NCFP", "NCPP", "NCPP-VSEZ", "NCPP/ETP",
+  "NCSP", "PE", "SILVER ZINC", "SYSTEM ORDERS", "THERMAL", "THERMAL,FUZE,SZ", "VRLA"
 ];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -189,11 +215,158 @@ type TableRow = {
   TRANSPORTER: string;
   LINE_NO: string;
   selected: boolean;
+  lrOptions?: string[];
+  compInvoices?: string[];
+  notAllowed?: boolean;
 };
 
 const EMPTY_ROW = (): TableRow => ({
-  REF_NO: "", WORK_ORDER_NO: "", LR_NO: "", TRANSPORTER: "", LINE_NO: "", selected: false,
+  REF_NO: "",
+  WORK_ORDER_NO: "",
+  LR_NO: "",
+  TRANSPORTER: "",
+  LINE_NO: "",
+  selected: false,
+  lrOptions: [],
+  compInvoices: [],
+  notAllowed: false,
 });
+
+/** Multi-select dropdown for LR Number in reference table rows */
+function TableMultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select LR No",
+  className,
+  disabled = false,
+  readOnly = false,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  readOnly?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const selected = value
+    ? value
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+    : [];
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    if (disabled || readOnly) return;
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const selectAll = () => {
+    if (disabled || readOnly) return;
+    onChange(options.join(","));
+  };
+
+  const clearAll = () => {
+    if (disabled || readOnly) return;
+    onChange("");
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          title={selected.join(", ")}
+          className={
+            (className ? className + " " : "") +
+            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+            (selected.length === 0 ? " text-muted-foreground" : "")
+          }
+        >
+          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
+        <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
+          <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
+          {options.length > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                All
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-muted-foreground hover:underline font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+        {options.length > 5 && (
+          <div className="p-1.5 border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search LR..."
+              className="h-6 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+        )}
+        <div className="max-h-52 overflow-y-auto p-1 space-y-0.5">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[11px] text-muted-foreground text-center">No LR options</div>
+          ) : (
+            filtered.map((o) => {
+              const isChecked = selected.includes(o);
+              return (
+                <label
+                  key={o}
+                  className="flex items-center gap-2 px-2 py-1 text-[11.5px] rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggle(o)}
+                    className="size-3.5 accent-sky-600 rounded cursor-pointer"
+                  />
+                  <span className="truncate font-mono">{o}</span>
+                </label>
+              );
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function convertPhysDispatchFormat(v: string): string {
@@ -243,6 +416,21 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
   // table rows
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
 
+  // Completed invoices popup/modal state
+  const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
+  const [compInvoicesModalData, setCompInvoicesModalData] = useState<{
+    refNo: string;
+    invoices: string[];
+  }>({ refNo: "", invoices: [] });
+
+  const openCompletedInvoicesModal = (row: TableRow) => {
+    setCompInvoicesModalData({
+      refNo: row.REF_NO || "",
+      invoices: row.compInvoices || [],
+    });
+    setCompInvoicesModalOpen(true);
+  };
+
   // invoice / search bar
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [searchType, setSearchType] = useState("");
@@ -270,6 +458,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
   const [statesList, setStatesList] = useState<StateData[]>([]);
   const [customerList, setCustomerList] = useState<CustomerData[]>([]);
   const [incotermsList, setIncotermsList] = useState<any[]>([]);
+  const [transporterList, setTransporterList] = useState<string[]>([]);
 
   // loading
   const [loadingGet, setLoadingGet] = useState(false);
@@ -350,8 +539,13 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
           )
           : [];
 
+        const transporters: string[] = Array.isArray(data.VEND_CODE)
+          ? Array.from(new Set(data.VEND_CODE.map((v: any) => String(v.TRANSPORTER || "")).filter(Boolean)))
+          : [];
+
         setPlantList(plants);
         setDivisionList(divisions);
+        setTransporterList(transporters);
       } catch (err) {
         // ignore failures for now — leave defaults in place
         // console.error('F4 fetch failed', err);
@@ -525,14 +719,50 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
         return;
       }
       if (Array.isArray(res) && res.length > 0) {
-        setTableData(res.map((item: any) => ({
-          REF_NO: item.REF_NO || "",
-          WORK_ORDER_NO: item.WORK_ORDER_NO || "",
-          LR_NO: item.LR_NO || "",
-          TRANSPORTER: item.TRANSPORTER || "",
-          LINE_NO: item.LINE_NO || "",
-          selected: false,
-        })));
+        setTableData(
+          res.map((item: any) => {
+            // Extract all LR values from LR_NO (could be array of objects [{ LR: "..." }] or string)
+            let lrOptions: string[] = [];
+            if (Array.isArray(item.LR_NO)) {
+              lrOptions = item.LR_NO
+                .map((x: any) => (typeof x === "object" && x !== null ? x.LR : String(x)))
+                .filter(Boolean);
+            } else if (typeof item.LR_NO === "string" && item.LR_NO.trim()) {
+              lrOptions = [item.LR_NO.trim()];
+            }
+            lrOptions = Array.from(new Set(lrOptions));
+
+            // Extract all Completed Invoice numbers from COMP_INV_NO
+            let compInvoices: string[] = [];
+            if (Array.isArray(item.COMP_INV_NO)) {
+              compInvoices = item.COMP_INV_NO
+                .map((x: any) =>
+                  typeof x === "object" && x !== null
+                    ? x.VBELN || x.INV_NO || x.INVOICE || x.inv_no
+                    : String(x)
+                )
+                .filter(Boolean);
+            } else if (typeof item.COMP_INV_NO === "string" && item.COMP_INV_NO.trim()) {
+              compInvoices = [item.COMP_INV_NO.trim()];
+            }
+            compInvoices = Array.from(new Set(compInvoices));
+
+            // Check if this reference row is disabled / not allowed by SAP (ZNOT_ALLOWED === "X")
+            const isNotAllowed = String(item.ZNOT_ALLOWED || "").trim().toUpperCase() === "X";
+
+            return {
+              REF_NO: item.REF_NO != null ? String(item.REF_NO) : "",
+              WORK_ORDER_NO: item.WORK_ORDER_NO != null ? String(item.WORK_ORDER_NO) : "",
+              LR_NO: lrOptions.length > 0 ? lrOptions.join(",") : "",
+              lrOptions,
+              TRANSPORTER: item.TRANSPORTER != null ? String(item.TRANSPORTER) : "",
+              LINE_NO: item.LINE_NO != null ? String(item.LINE_NO) : "",
+              selected: false,
+              compInvoices,
+              notAllowed: isNotAllowed,
+            };
+          })
+        );
       } else {
         setTableData([EMPTY_ROW()]);
       }
@@ -686,6 +916,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       CUST_GROUP: row.ZCUST_GRP || "", CNEE_NAME: row.ZCONSIGN_NAME || "",
       DEST_LOC: row.ZDES_LOC || "", DEST_STATE: row.ZSTATE || "",
       DEST_ZONE: row.ZZONE || "", ZINCO: row.ZINCO || "",
+      VEH_TYPE: row.ZVEH_TYPE || row.VEH_TYPE || "",
       ZUSER: row.ZUSER,
       ZUSER_CH: getLoggedInUser(),
     };
@@ -735,12 +966,342 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     }
   };
 
+  // ── Search result edit helpers ───────────────────────────────────────────────
+
+  /**
+   * Updates a specific field for a search result row being edited
+   */
+  const updateSearchResultField = (rowIndex: number, field: string, value: any) => {
+    setSearchResults((prev) =>
+      prev.map((row, idx) => (idx === rowIndex ? { ...row, [field]: value } : row))
+    );
+  };
+
+  /**
+   * Handles state selection change in edit mode:
+   * updates ZSTATE and auto-fetches the corresponding ZZONE from SAP
+   */
+  const handleSearchResultStateChange = async (rowIndex: number, stateValue: string) => {
+    updateSearchResultField(rowIndex, "ZSTATE", stateValue);
+    if (!stateValue) {
+      updateSearchResultField(rowIndex, "ZZONE", "");
+      return;
+    }
+    try {
+      const res: any = await service.fetchzone({ STATE: stateValue });
+      if (res?.ZONE) {
+        updateSearchResultField(rowIndex, "ZZONE", res.ZONE);
+      }
+    } catch (err) {
+      console.error("Zone fetch error in edit mode:", err);
+    }
+  };
+
+  /**
+   * Handles customer selection in edit mode:
+   * updates customer name and auto-syncs customer code
+   */
+  const handleSearchResultCustomerChange = (rowIndex: number, customerName: string) => {
+    const matched = customerList.find((c) => c.CUSTOMER_NAME === customerName);
+    setSearchResults((prev) =>
+      prev.map((row, idx) => {
+        if (idx !== rowIndex) return row;
+        return {
+          ...row,
+          ZCUST_NAME: customerName,
+          ZCUST_CODE: matched ? matched.CUSTOMER : row.ZCUST_CODE,
+        };
+      })
+    );
+  };
+
+  /**
+   * Formats date string to YYYY-MM-DD for standard HTML date input
+   */
+  const formatForDateInput = (val: string) => {
+    if (!val) return "";
+    if (val.includes("T")) return val.split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    const parts = val.split("-");
+    if (parts.length === 3 && parts[0].length === 2 && parts[2].length === 4) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return val;
+  };
+
+  /**
+   * Renders the appropriate dropdown or input cell in Edit mode for search results
+   */
+  const renderSearchResultEditCell = (item: any, rowIndex: number, field: string, type: string) => {
+    const currentValue = item[field] || "";
+
+    // 1. Plant dropdown (from SAP F4 plantList)
+    if (field === "ZPLANT") {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => updateSearchResultField(rowIndex, "ZPLANT", e.target.value)}
+          className="h-7 min-w-[140px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select Plant</option>
+          {currentValue && !plantList.some((p: any) => p.PLANT_DESC === currentValue || p.PLANT === currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {plantList.map((p: any) => (
+            <option key={p.WERKS || p.PLANT} value={p.PLANT_DESC}>
+              {p.WERKS || p.PLANT} - {p.PLANT_DESC}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    // 2. Transaction Type dropdown
+    if (field === "ZTRX_TYPE") {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => updateSearchResultField(rowIndex, "ZTRX_TYPE", e.target.value)}
+          className="h-7 min-w-[140px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select Mode of Transport</option>
+          {currentValue && !TRANSACTION_TYPES.some((t) => t.value === currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {TRANSACTION_TYPES.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+      );
+    }
+
+    // 3. Billing Transaction Type dropdown (from SAP F4 billingList)
+    if (field === "ZBILL_TRX_TEXT") {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => updateSearchResultField(rowIndex, "ZBILL_TRX_TEXT", e.target.value)}
+          className="h-7 min-w-[140px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select Billing Type</option>
+          {currentValue && !billingList.some((b) => b.BILL_TYPE_DESC === currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {billingList.map((b) => (
+            <option key={b.BILL_TYPE} value={b.BILL_TYPE_DESC}>
+              {b.BILL_TYPE} - {b.BILL_TYPE_DESC}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    // 4. Division dropdown (from SAP F4 divisionList)
+    if (field === "ZDIVISION") {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => updateSearchResultField(rowIndex, "ZDIVISION", e.target.value)}
+          className="h-7 min-w-[120px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select Division</option>
+          {currentValue && !divisionList.some((d) => d.DIVISION === currentValue || d.DIV_TEXT === currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {divisionList.map((d) => (
+            <option key={d.DIVISION} value={d.DIVISION}>{d.DIV_TEXT}</option>
+          ))}
+        </select>
+      );
+    }
+
+    // 5. Sub Division dropdown
+    if (field === "ZSUB_DIVISION") {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => updateSearchResultField(rowIndex, "ZSUB_DIVISION", e.target.value)}
+          className="h-7 min-w-[120px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select Sub Division</option>
+          {currentValue && !SUB_DIVISIONS.includes(currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {SUB_DIVISIONS.map((v) => (
+            <option key={v} value={v}>{v}</option>
+          ))}
+        </select>
+      );
+    }
+
+    // 6. Incoterms dropdown (from SAP F4 incotermsList)
+    if (field === "ZINCO") {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => updateSearchResultField(rowIndex, "ZINCO", e.target.value)}
+          className="h-7 min-w-[120px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select Incoterm</option>
+          {currentValue && !incotermsList.some((inc) => inc.INCO1 === currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {incotermsList.map((inc, idx) => (
+            <option key={idx} value={inc.INCO1}>
+              {inc.INCO1} - {inc.BEZEI}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    // 7. Customer Name dropdown (from SAP F4 customerList)
+    if (field === "ZCUST_NAME") {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => handleSearchResultCustomerChange(rowIndex, e.target.value)}
+          className="h-7 min-w-[150px] max-w-[220px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select Customer</option>
+          {currentValue && !customerList.some((c) => c.CUSTOMER_NAME === currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {customerList.map((c) => (
+            <option key={c.CUSTOMER} value={c.CUSTOMER_NAME}>
+              {c.CUSTOMER} - {c.CUSTOMER_NAME}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    // 8. Consignee Name dropdown (from SAP F4 customerList)
+    if (field === "ZCONSIGN_NAME") {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => updateSearchResultField(rowIndex, "ZCONSIGN_NAME", e.target.value)}
+          className="h-7 min-w-[150px] max-w-[220px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select Consignee</option>
+          {currentValue && !customerList.some((c) => c.CUSTOMER_NAME === currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {customerList.map((c) => (
+            <option key={c.CUSTOMER} value={c.CUSTOMER_NAME}>
+              {c.CUSTOMER} - {c.CUSTOMER_NAME}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    // 9. Destination State dropdown (from SAP F4 statesList)
+    if (field === "ZSTATE") {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => handleSearchResultStateChange(rowIndex, e.target.value)}
+          className="h-7 min-w-[120px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select State</option>
+          {currentValue && !statesList.some((s) => s.STATE === currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {statesList.map((s) => (
+            <option key={s.STATE} value={s.STATE}>{s.STATE}</option>
+          ))}
+        </select>
+      );
+    }
+
+    // 10. Destination Zone (auto-filled by SAP state logic)
+    if (field === "ZZONE") {
+      return (
+        <input
+          type="text"
+          value={currentValue}
+          readOnly
+          title="Auto-filled from State"
+          className="h-6 w-24 rounded border border-input px-1 text-[11px] bg-muted/60 text-muted-foreground cursor-not-allowed text-center"
+        />
+      );
+    }
+
+    // 11. Transporter dropdown (from SAP F4 transporterList if loaded)
+    if (field === "ZTRANSPORTER" && transporterList.length > 0) {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => updateSearchResultField(rowIndex, "ZTRANSPORTER", e.target.value)}
+          className="h-7 min-w-[140px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select Transporter</option>
+          {currentValue && !transporterList.includes(currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {transporterList.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+      );
+    }
+
+    // 12. Vehicle Type dropdown
+    if (field === "ZVEH_TYPE") {
+      return (
+        <select
+          value={currentValue}
+          onChange={(e) => updateSearchResultField(rowIndex, "ZVEH_TYPE", e.target.value)}
+          className="h-7 min-w-[140px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+        >
+          <option value="">Select Vehicle Type</option>
+          {currentValue && !VEHICLE_TYPES.includes(currentValue) && (
+            <option value={currentValue}>{currentValue}</option>
+          )}
+          {VEHICLE_TYPES.map((v) => (
+            <option key={v} value={v}>{v}</option>
+          ))}
+        </select>
+      );
+    }
+
+    // 13. Standard input (text, date, number)
+    return (
+      <input
+        type={type}
+        value={type === "date" ? formatForDateInput(currentValue) : currentValue}
+        onChange={(e) => updateSearchResultField(rowIndex, field, e.target.value)}
+        className="h-6 w-24 rounded border border-input px-1 text-[11px] bg-white dark:bg-surface text-foreground"
+      />
+    );
+  };
+
   // ── Table helpers ──
   const handleRowChange = (index: number, field: keyof TableRow, value: string) =>
-    setTableData((prev) => prev.map((r, i) => i === index ? { ...r, [field]: value } : r));
+    setTableData((prev) =>
+      prev.map((r, i) => {
+        if (i === index) {
+          // Do not allow editing disabled / not allowed rows
+          if (r.notAllowed) return r;
+          return { ...r, [field]: value };
+        }
+        return r;
+      })
+    );
 
   const toggleRowSelect = (index: number) =>
-    setTableData((prev) => prev.map((r, i) => i === index ? { ...r, selected: !r.selected } : r));
+    setTableData((prev) =>
+      prev.map((r, i) => {
+        if (i === index) {
+          // Prevent selecting disabled / not allowed rows
+          if (r.notAllowed) return r;
+          return { ...r, selected: !r.selected };
+        }
+        return r;
+      })
+    );
 
   const removeRow = (index: number) => {
     if (tableData.length === 1) return;
@@ -833,49 +1394,109 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     <div className="space-y-2">
 
       {/* ── Reference table ── */}
-      <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
+      <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-              {["Select", "Sl.No", "Reference Number", "Work Order Number", "LR Number", "Transporter", "Action"].map(h => (
-                <th key={h} className="px-3 py-1 text-center">{h}</th>
+              {["Select", "Sl.No", "Reference Number", "Work Order Number", "LR Number", "Transporter", "Completed Invoices", "Action"].map(h => (
+                <th key={h} className="px-3 py-1 text-center whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {tableData.map((row, i) => (
-              <tr key={i} className="border-t border-hairline/60">
-                <td className="px-3 py-1 text-center">
-                  <input type="checkbox" checked={row.selected}
-                    onChange={() => toggleRowSelect(i)} className="size-4 accent-sky-600" />
-                </td>
-                <td className="px-3 py-1 text-center">{i + 1}</td>
-                {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
-                  <td key={field} className="px-3 py-1">
+            {tableData.map((row, i) => {
+              const isRowDisabled = Boolean(row.notAllowed);
+
+              return (
+                <tr
+                  key={i}
+                  className={
+                    isRowDisabled
+                      ? ROW_DISABLED
+                      : "border-t border-hairline/60 hover:bg-muted/20 transition-colors"
+                  }
+                >
+                  <td className="px-3 py-1 text-center">
                     <input
-                      value={(row as any)[field] || ""}
-                      readOnly={i !== 0}
-                      placeholder={REF_FIELD_PLACEHOLDER[field]}
-                      onChange={(e) => handleRowChange(i, field, e.target.value)}
-                      onBlur={() => fetchGlobalReferences(row, i, field)}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Tab") fetchGlobalReferences(row, i, field); }}
-                      className={(i !== 0 ? INPUT_READONLY : INPUT_NORMAL) + " text-center"}
+                      type="checkbox"
+                      checked={row.selected}
+                      disabled={isRowDisabled}
+                      onChange={() => toggleRowSelect(i)}
+                      className={
+                        "size-4 accent-sky-600 " +
+                        (isRowDisabled ? "cursor-not-allowed opacity-30" : "cursor-pointer")
+                      }
+                      title={isRowDisabled ? "This reference is not allowed" : undefined}
                     />
                   </td>
-                ))}
-                <td className="px-3 py-1 text-center">
-                  {tableData.length > 1 && (
-                    <button onClick={() => removeRow(i)}
-                      className="size-6 grid place-items-center rounded-md text-red-500 hover:bg-red-50">
-                      <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                  <td className="px-3 py-1 text-center font-medium">{i + 1}</td>
+                  {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
+                    <td key={field} className="px-3 py-1">
+                      {field === "LR_NO" && ((row.lrOptions && row.lrOptions.length > 0) || row.LR_NO) ? (
+                        <TableMultiSelect
+                          options={row.lrOptions && row.lrOptions.length > 0 ? row.lrOptions : [row.LR_NO]}
+                          value={row.LR_NO || ""}
+                          onChange={(val) => handleRowChange(i, "LR_NO", val)}
+                          placeholder="Select LR No"
+                          readOnly={isRowDisabled}
+                          className={
+                            isRowDisabled
+                              ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer"
+                              : INPUT_NORMAL
+                          }
+                        />
+                      ) : (
+                        <input
+                          value={(row as any)[field] || ""}
+                          readOnly={i !== 0 || isRowDisabled}
+                          disabled={isRowDisabled}
+                          placeholder={REF_FIELD_PLACEHOLDER[field]}
+                          onChange={(e) => handleRowChange(i, field, e.target.value)}
+                          onBlur={() => fetchGlobalReferences(row, i, field)}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Tab") fetchGlobalReferences(row, i, field); }}
+                          className={
+                            (isRowDisabled
+                              ? INPUT_DISABLED_ROW
+                              : i !== 0
+                                ? INPUT_READONLY
+                                : INPUT_NORMAL) + " text-center"
+                          }
+                        />
+                      )}
+                    </td>
+                  ))}
+
+                  {/* ── Completed Invoices column next to Transporter ── */}
+                  <td className="px-3 py-1 text-center whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => openCompletedInvoicesModal(row)}
+                      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 transition-colors shadow-xs cursor-pointer"
+                    >
+                      <Eye className="size-3.5 text-sky-600 dark:text-sky-400" />
+                      <span>View</span>
+                      {row.compInvoices && row.compInvoices.length > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold rounded-full bg-sky-600 text-white">
+                          {row.compInvoices.length}
+                        </span>
+                      )}
                     </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+
+                  <td className="px-3 py-1 text-center">
+                    {tableData.length > 1 && (
+                      <button onClick={() => removeRow(i)}
+                        className="size-6 grid place-items-center rounded-md text-red-500 hover:bg-red-50 cursor-pointer">
+                        <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -972,8 +1593,10 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
               <thead className="sticky top-0 z-30">
                 <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
                   {["REFNO", "Invoice No", "Line No", "ODN No", "Invoice Date", "Basic Value", "Invoice Value (GST)",
-                    "Required D&T", "Reported D&T", "Physical Dispatch", "Fiscal Year", "System Date",
-                    "Fiscal Quarter", "Fiscal Month", "Plant", "Txn Type", "Bill Text", "Division", "Sub Division",
+                    // "Required D&T", "Reported D&T", "Physical Dispatch", "Fiscal Year", 
+                    "System Date",
+                    // "Fiscal Quarter", "Fiscal Month", 
+                    "Plant", "Txn Type", "Bill Text", "Division", "Sub Division", "Incoterms",
                     "SO Ref No", "Customer", "Cust. Group", "Consignee", "Dest. Location", "State", "Zone",
                     "Work Order", "LR No", "Transporter", "Created Date", "Veh. Type", "Action"].map(h => (
                       <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
@@ -995,21 +1618,22 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                     <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZODN_NO}</td>
                     {[
-                      { field: "ZINV_DATE", type: "date" },
+                      { field: "ZINV_DATE", type: "date", readonly: true },
                       { field: "ZBASIC_VALUE", type: "number" },
                       { field: "ZINV_VALUE_GST", type: "number" },
-                      { field: "ZVEHREQDT", type: "datetime-local" },
-                      { field: "ZVEHREPDT", type: "datetime-local" },
-                      { field: "ZPHY_DISPATCH", type: "datetime-local" },
-                      { field: "ZFYEAR", type: "text" },
-                      { field: "ZSYS_DATE", type: "date" },
-                      { field: "ZFIS_QUARTER", type: "text" },
-                      { field: "ZFIS_MONTH", type: "text" },
+                      // { field: "ZVEHREQDT", type: "datetime-local" },
+                      // { field: "ZVEHREPDT", type: "datetime-local" },
+                      // { field: "ZPHY_DISPATCH", type: "datetime-local" },
+                      // { field: "ZFYEAR", type: "text" },
+                      { field: "ZSYS_DATE", type: "date", readonly: true },
+                      // { field: "ZFIS_QUARTER", type: "text" },
+                      // { field: "ZFIS_MONTH", type: "text" },
                       { field: "ZPLANT", type: "text" },
                       { field: "ZTRX_TYPE", type: "text" },
                       { field: "ZBILL_TRX_TEXT", type: "text" },
                       { field: "ZDIVISION", type: "text" },
                       { field: "ZSUB_DIVISION", type: "text" },
+                      { field: "ZINCO", type: "text" },
                       { field: "ZSO_NO", type: "text" },
                       { field: "ZCUST_NAME", type: "text" },
                       { field: "ZCUST_GRP", type: "text" },
@@ -1017,18 +1641,15 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                       { field: "ZDES_LOC", type: "text" },
                       { field: "ZSTATE", type: "text" },
                       { field: "ZZONE", type: "text" },
-                      { field: "ZWORK_ORDER", type: "text" },
-                      { field: "ZLRNO", type: "text" },
-                      { field: "ZTRANSPORTER", type: "text" },
-                      { field: "ZCREATED_DT", type: "date" },
-                      { field: "ZVEH_TYPE", type: "text" },
-                    ].map(({ field, type }) => (
+                      { field: "ZWORK_ORDER", type: "text", readonly: true },
+                      { field: "ZLRNO", type: "text", readonly: true },
+                      { field: "ZTRANSPORTER", type: "text", readonly: true },
+                      { field: "ZCREATED_DT", type: "date", readonly: true },
+                      { field: "ZVEH_TYPE", type: "text", readonly: true },
+                    ].map(({ field, type, readonly }: any) => (
                       <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
-                        {item.isEdit ? (
-                          <input type={type} value={item[field] || ""}
-                            onChange={(e) => setSearchResults((prev) =>
-                              prev.map((r, idx) => idx === i ? { ...r, [field]: e.target.value } : r))}
-                            className="h-6 w-24 rounded border border-input px-1 text-[11px] bg-white" />
+                        {item.isEdit && !readonly ? (
+                          renderSearchResultEditCell(item, i, field, type)
                         ) : (
                           <span>{type === "date" && item[field]
                             ? new Date(item[field]).toLocaleDateString("en-GB")
@@ -1379,6 +2000,82 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
 
       )}
 
+      {/* ── Completed Invoices Modal ── */}
+      <Dialog open={compInvoicesModalOpen} onOpenChange={setCompInvoicesModalOpen}>
+        <DialogContent className="max-w-md p-0 overflow-hidden bg-white dark:bg-surface border border-hairline shadow-2xl rounded-xl">
+          {/* Header */}
+          <div className="bg-gradient-primary px-5 py-3.5 text-primary-foreground flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileText className="size-4" />
+              <DialogTitle className="text-[14px] font-bold tracking-wide text-white">
+                Completed Invoices
+              </DialogTitle>
+            </div>
+            {compInvoicesModalData.refNo && (
+              <span className="text-[11px] bg-white/20 px-2 py-0.5 rounded text-white font-mono">
+                Ref: {compInvoicesModalData.refNo}
+              </span>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="p-5 space-y-3">
+            <div className="flex items-center justify-between text-[12px] text-muted-foreground border-b border-hairline/60 pb-2">
+              <span>Total Completed Invoices:</span>
+              <span className="font-bold text-foreground bg-muted px-2 py-0.5 rounded-full text-[11px]">
+                {compInvoicesModalData.invoices.length}
+              </span>
+            </div>
+
+            {compInvoicesModalData.invoices.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <FileText className="size-8 mx-auto mb-2 opacity-40" />
+                <p className="text-[12.5px] font-medium">No completed invoices found for this reference.</p>
+              </div>
+            ) : (
+              <div className="max-h-64 overflow-y-auto border border-hairline rounded-lg divide-y divide-hairline bg-surface">
+                <table className="w-full text-left text-[12px]">
+                  <thead className="bg-muted/50 text-[11px] font-semibold text-muted-foreground sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 w-12 text-center">#</th>
+                      <th className="px-3 py-2">Invoice Number</th>
+                      <th className="px-3 py-2 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/60">
+                    {compInvoicesModalData.invoices.map((inv, idx) => (
+                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2 text-center text-muted-foreground font-mono text-[11px]">
+                          {idx + 1}
+                        </td>
+                        <td className="px-3 py-2 font-mono font-medium text-foreground">
+                          {inv}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            Completed
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 py-3 bg-muted/30 border-t border-hairline flex justify-end">
+            <button
+              type="button"
+              onClick={() => setCompInvoicesModalOpen(false)}
+              className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

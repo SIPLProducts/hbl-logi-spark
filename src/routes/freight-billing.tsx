@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import Swal from "sweetalert2";
 // @ts-ignore
-import service from "@/services/generalservice_service";
+import service, { getLocalDocumentUrl } from "@/services/generalservice_service";
 import { format } from "date-fns";
 import {
   Plus,
@@ -16,6 +16,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { GateDatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -606,6 +607,18 @@ function FreightBillingPage() {
     Swal.fire({ icon: "success", title: "Success", text: `${fileName} downloaded successfully.` });
   };
 
+  const viewDoc = (item: any, field: string, fileName?: string) => {
+    if (!fileName || fileName === "-" || fileName === "NA") return;
+    const url = getLocalDocumentUrl({
+      mode: searchSap === "without" ? "Without Sap" : "SAP",
+      screen: "Freight_Billing",
+      field,
+      fileName,
+      row: item,
+    });
+    if (url) window.open(url, "_blank");
+  };
+
   const resultCount = fStatus === "Completed" ? freightBillingData.length : pendingData.length;
 
   const showProvisionCols = fPACheck !== "Account";
@@ -985,10 +998,58 @@ function FreightBillingPage() {
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
                               {/* Uploaded file name per document type (found on disk for this record) */}
-                              <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.Freight_Bill || "-"}</td>
-                              <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.Unloading_Charges_Approval || "-"}</td>
-                              <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.Detention_Charges || "-"}</td>
-                              <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.Work_Order || "-"}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {item.ZLOCALFILES?.Freight_Bill && item.ZLOCALFILES?.Freight_Bill !== "-" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => viewDoc(item, "Freight_Bill", item.ZLOCALFILES?.Freight_Bill)}
+                                    className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                  >
+                                    {item.ZLOCALFILES?.Freight_Bill}
+                                  </button>
+                                ) : (
+                                  "-"
+                                )}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {item.ZLOCALFILES?.Unloading_Charges_Approval && item.ZLOCALFILES?.Unloading_Charges_Approval !== "-" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => viewDoc(item, "Unloading_Charges_Approval", item.ZLOCALFILES?.Unloading_Charges_Approval)}
+                                    className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                  >
+                                    {item.ZLOCALFILES?.Unloading_Charges_Approval}
+                                  </button>
+                                ) : (
+                                  "-"
+                                )}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {item.ZLOCALFILES?.Detention_Charges && item.ZLOCALFILES?.Detention_Charges !== "-" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => viewDoc(item, "Detention_Charges", item.ZLOCALFILES?.Detention_Charges)}
+                                    className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                  >
+                                    {item.ZLOCALFILES?.Detention_Charges}
+                                  </button>
+                                ) : (
+                                  "-"
+                                )}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {item.ZLOCALFILES?.Work_Order && item.ZLOCALFILES?.Work_Order !== "-" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => viewDoc(item, "Work_Order", item.ZLOCALFILES?.Work_Order)}
+                                    className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                  >
+                                    {item.ZLOCALFILES?.Work_Order}
+                                  </button>
+                                ) : (
+                                  "-"
+                                )}
+                              </td>
                             </tr>
                           ))
                         )}
@@ -1148,20 +1209,11 @@ function SearchSapToggle({ value, onChange }: { value: SapMode | null; onChange:
 
 function DateField({ label, value, onChange }: { label: string; value: Date | undefined; onChange: (d: Date | undefined) => void }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className={cn("h-8 justify-start text-left font-normal", !value && "text-muted-foreground")}>
-            <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
-            {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="single" selected={value} onSelect={onChange} initialFocus className={cn("p-3 pointer-events-auto")} />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <GateDatePicker
+      label={label}
+      value={value}
+      onChange={(d) => onChange(d)}
+    />
   );
 }
 

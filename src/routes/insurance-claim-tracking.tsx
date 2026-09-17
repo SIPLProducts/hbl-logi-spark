@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import Swal from "sweetalert2";
 // @ts-ignore
-import service from "@/services/generalservice_service";
+import service, { getLocalDocumentUrl } from "@/services/generalservice_service";
 import { format } from "date-fns";
 import {
   Plus,
@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { GateDatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -874,9 +875,39 @@ function InsuranceClaimTrackingPage() {
   // ---------------------------------------------------------------------
 
   const viewCertificate = (item: any, kind: "supporting" | "approve") => {
-    const path = kind === "supporting" ? item.ZSUPT_PATH || item.ZSUPT_DOC : item.ZAPP_PATH || item.ZAPP_DOC;
-    if (!path) return;
-    window.open(path, "_blank");
+    const field = kind === "supporting" ? "Supporting_Document" : "Approve_Document";
+    const localName = item.ZLOCALFILES?.[field];
+    const docName = kind === "supporting" ? item.ZSUPT_DOC : item.ZAPP_DOC;
+    const path = kind === "supporting" ? item.ZSUPT_PATH : item.ZAPP_PATH;
+
+    let url = "";
+    if (path && typeof path === "string" && path.startsWith("http")) {
+      url = path;
+    } else {
+      const fileName = localName || docName;
+      if (fileName && fileName !== "-" && fileName !== "NA") {
+        url = getLocalDocumentUrl({
+          mode: searchSap === "without" ? "Without Sap" : "SAP",
+          screen: "Insurance_Claim",
+          field,
+          fileName,
+          storedPath: path,
+          row: item,
+        });
+      }
+    }
+
+    if (url) {
+      window.open(url, "_blank");
+    } else if (path) {
+      window.open(path, "_blank");
+    } else {
+      Swal.fire({
+        icon: "info",
+        title: "No Document",
+        text: "Document is not available for this record.",
+      });
+    }
   };
 
   const fetchPendingAndCompletedCounts = async (sapMode: SapMode) => {
@@ -1252,29 +1283,29 @@ function InsuranceClaimTrackingPage() {
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZINV_DATE}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZINV_BV}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">
-                                    {item.ZSUPT_DOC ? (
+                                    {(item.ZSUPT_DOC || item.ZLOCALFILES?.Supporting_Document) && (item.ZSUPT_DOC || item.ZLOCALFILES?.Supporting_Document) !== "-" ? (
                                       <button
+                                        type="button"
                                         onClick={() => viewCertificate(item, "supporting")}
-                                        className="text-accent underline hover:no-underline"
+                                        className="text-accent underline hover:no-underline font-medium cursor-pointer"
                                       >
-                                        {item.ZSUPT_DOC}
+                                        {item.ZSUPT_DOC || item.ZLOCALFILES?.Supporting_Document}
                                       </button>
                                     ) : (
-                                      // fall back to the file name found on disk for this record
-                                      item.ZLOCALFILES?.Supporting_Document || "-"
+                                      "-"
                                     )}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap">
-                                    {item.ZAPP_DOC ? (
+                                    {(item.ZAPP_DOC || item.ZLOCALFILES?.Approve_Document) && (item.ZAPP_DOC || item.ZLOCALFILES?.Approve_Document) !== "-" ? (
                                       <button
+                                        type="button"
                                         onClick={() => viewCertificate(item, "approve")}
-                                        className="text-accent underline hover:no-underline"
+                                        className="text-accent underline hover:no-underline font-medium cursor-pointer"
                                       >
-                                        {item.ZAPP_DOC}
+                                        {item.ZAPP_DOC || item.ZLOCALFILES?.Approve_Document}
                                       </button>
                                     ) : (
-                                      // fall back to the file name found on disk for this record
-                                      item.ZLOCALFILES?.Approve_Document || "-"
+                                      "-"
                                     )}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZLOSS_DCL}</td>
@@ -1618,34 +1649,11 @@ function DateField({
   onChange: (d: Date | undefined) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn(
-              "h-8 justify-start text-left font-normal",
-              !value && "text-muted-foreground",
-            )}
-          >
-            <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
-            {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={value}
-            onSelect={onChange}
-            initialFocus
-            className={cn("p-3 pointer-events-auto")}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <GateDatePicker
+      label={label}
+      value={value}
+      onChange={(d) => onChange(d)}
+    />
   );
 }
 

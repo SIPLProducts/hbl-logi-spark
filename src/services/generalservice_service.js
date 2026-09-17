@@ -10,7 +10,79 @@ const request = async (url, method, data = null) => {
         options.body = JSON.stringify(data);
     }
     const res = await fetch(`${BASE_URL}${url}`, options);
+    if (res.status === 401) {
+        if (typeof window !== "undefined") {
+            localStorage.removeItem("userData");
+            localStorage.removeItem("currentUser");
+            localStorage.removeItem("isLoggedIn");
+            sessionStorage.removeItem("sessionActive");
+            if (window.location.pathname !== "/login") {
+                window.location.href = "/login?session=expired";
+            }
+        }
+    }
     return res.json();
+};
+
+export const getLocalDocumentUrl = ({ mode, screen, field, fileName, storedPath, row } = {}) => {
+    let backendBase = import.meta.env.VITE_BACKEND_BASE_URL || "";
+    if (!backendBase) {
+        backendBase = typeof window !== "undefined" && window.location?.hostname
+            ? `${window.location.protocol}//${window.location.hostname}:3001`
+            : "http://localhost:3001";
+    }
+    // If backendBase points to localhost but the app is accessed via IP or remote domain
+    if (typeof window !== "undefined" && window.location?.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        if (backendBase.includes("localhost") || backendBase.includes("127.0.0.1")) {
+            backendBase = backendBase.replace(/localhost|127\.0\.0\.1/, window.location.hostname);
+        }
+    }
+    backendBase = backendBase.replace(/\/+$/, "");
+
+    // 1. Direct row ZLOCALFILE_URLS if present
+    if (row?.ZLOCALFILE_URLS?.[field]) {
+        const rel = String(row.ZLOCALFILE_URLS[field]).replace(/^\/+/, "");
+        return `${backendBase}/${rel}`;
+    }
+
+    // 2. Direct HTTP storedPath
+    if (storedPath && typeof storedPath === "string") {
+        if (storedPath.startsWith("http://") || storedPath.startsWith("https://")) {
+            return storedPath;
+        }
+        const match = storedPath.match(/[\\/]?(SAP|Without\s+Sap)[\\/](.+)$/i);
+        if (match) {
+            const relPath = match[0].replace(/\\/g, "/").replace(/^\/+/, "");
+            const parts = relPath.split("/").map(p => encodeURIComponent(decodeURIComponent(p)));
+            return `${backendBase}/pravah-files/${parts.join("/")}`;
+        }
+    }
+
+    if (!fileName || fileName === "-" || fileName === "NA") return "";
+
+    const cleanFileName = decodeURIComponent(fileName).trim();
+    const modeFolder = String(mode || "").toLowerCase().includes("without") ? "Without Sap" : "SAP";
+    const screenMap = {
+        "TRANSIT INFO": "Transit_Info",
+        "Transit_Info": "Transit_Info",
+        "FREIGHT BILLING": "Freight_Billing",
+        "Freight_Billing": "Freight_Billing",
+        "TRANSIT DAMAGE INFO": "Transit_Damage_Info",
+        "Transit_Damage_Info": "Transit_Damage_Info",
+        "INSURANCE CLAIM STATUS": "Insurance_Claim",
+        "Insurance_Claim": "Insurance_Claim",
+    };
+    const screenFolder = screenMap[screen] || screen;
+
+    // Attach refNo / invNo query params if available to help backend resolution
+    const refNo = row?.ZREFNO || row?.REFNO || row?.REF_NO;
+    const invNo = row?.ZINV_NO || row?.INV_NO || row?.INVNO;
+    const qp = [];
+    if (refNo) qp.push(`refNo=${encodeURIComponent(refNo)}`);
+    if (invNo) qp.push(`invNo=${encodeURIComponent(invNo)}`);
+    const query = qp.length ? `?${qp.join("&")}` : "";
+
+    return `${backendBase}/pravah-files/${encodeURIComponent(modeFolder)}/${encodeURIComponent(screenFolder)}/${encodeURIComponent(field)}/${encodeURIComponent(cleanFileName)}${query}`;
 };
 
 

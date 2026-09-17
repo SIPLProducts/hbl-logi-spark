@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import Swal from "sweetalert2";
 // @ts-ignore
-import service from "@/services/generalservice_service";
+import service, { getLocalDocumentUrl } from "@/services/generalservice_service";
 import { format } from "date-fns";
 import {
   Plus,
@@ -23,6 +23,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { GateDatePicker } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
@@ -859,6 +860,18 @@ function TransitDamageInfoPage() {
     }
   };
 
+  const viewDoc = (item: any, field: string, fileName?: string) => {
+    if (!fileName || fileName === "-" || fileName === "NA") return;
+    const url = getLocalDocumentUrl({
+      mode: searchSap === "without" ? "Without Sap" : "SAP",
+      screen: "Transit_Damage_Info",
+      field,
+      fileName,
+      row: item,
+    });
+    if (url) window.open(url, "_blank");
+  };
+
   return (
     <div className="flex flex-col min-h-full">
       <Tabs
@@ -1201,10 +1214,58 @@ function TransitDamageInfoPage() {
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZFSR_RPT_DT}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZBASIC_VALUE}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZINC_DATE}</td>
-                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.Images || item.ZDIMAGES || "-"}</td>
-                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.FSR_Report || item.ZFSRREP || "-"}</td>
-                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.FIR_Report || item.ZFIRREP || "-"}</td>
-                                  <td className="px-3 py-2 whitespace-nowrap">{item.ZLOCALFILES?.COF || item.ZCOF || "-"}</td>
+                                   <td className="px-3 py-2 whitespace-nowrap">
+                                     {(item.ZLOCALFILES?.Images || item.ZDIMAGES) && (item.ZLOCALFILES?.Images || item.ZDIMAGES) !== "-" ? (
+                                       <button
+                                         type="button"
+                                         onClick={() => viewDoc(item, "Images", item.ZLOCALFILES?.Images || item.ZDIMAGES)}
+                                         className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                       >
+                                         {item.ZLOCALFILES?.Images || item.ZDIMAGES}
+                                       </button>
+                                     ) : (
+                                       "-"
+                                     )}
+                                   </td>
+                                   <td className="px-3 py-2 whitespace-nowrap">
+                                     {(item.ZLOCALFILES?.FSR_Report || item.ZFSRREP) && (item.ZLOCALFILES?.FSR_Report || item.ZFSRREP) !== "-" ? (
+                                       <button
+                                         type="button"
+                                         onClick={() => viewDoc(item, "FSR_Report", item.ZLOCALFILES?.FSR_Report || item.ZFSRREP)}
+                                         className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                       >
+                                         {item.ZLOCALFILES?.FSR_Report || item.ZFSRREP}
+                                       </button>
+                                     ) : (
+                                       "-"
+                                     )}
+                                   </td>
+                                   <td className="px-3 py-2 whitespace-nowrap">
+                                     {(item.ZLOCALFILES?.FIR_Report || item.ZFIRREP) && (item.ZLOCALFILES?.FIR_Report || item.ZFIRREP) !== "-" ? (
+                                       <button
+                                         type="button"
+                                         onClick={() => viewDoc(item, "FIR_Report", item.ZLOCALFILES?.FIR_Report || item.ZFIRREP)}
+                                         className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                       >
+                                         {item.ZLOCALFILES?.FIR_Report || item.ZFIRREP}
+                                       </button>
+                                     ) : (
+                                       "-"
+                                     )}
+                                   </td>
+                                   <td className="px-3 py-2 whitespace-nowrap">
+                                     {(item.ZLOCALFILES?.COF || item.ZCOF) && (item.ZLOCALFILES?.COF || item.ZCOF) !== "-" ? (
+                                       <button
+                                         type="button"
+                                         onClick={() => viewDoc(item, "COF", item.ZLOCALFILES?.COF || item.ZCOF)}
+                                         className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                       >
+                                         {item.ZLOCALFILES?.COF || item.ZCOF}
+                                       </button>
+                                     ) : (
+                                       "-"
+                                     )}
+                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZCUSTOMER}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZCONSIGN_NAME}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZDAMAGE_RMK}</td>
@@ -1605,34 +1666,11 @@ function DateField({
   onChange: (d: Date | undefined) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </label>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn(
-              "h-8 justify-start text-left font-normal",
-              !value && "text-muted-foreground",
-            )}
-          >
-            <CalendarIcon className="size-4 mr-2 text-muted-foreground" />
-            {value ? format(value, "dd-MM-yyyy") : <span>dd-mm-yyyy</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={value}
-            onSelect={onChange}
-            initialFocus
-            className={cn("p-3 pointer-events-auto")}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
+    <GateDatePicker
+      label={label}
+      value={value}
+      onChange={(d) => onChange(d)}
+    />
   );
 }
 

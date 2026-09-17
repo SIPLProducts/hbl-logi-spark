@@ -17,6 +17,7 @@ import autoTable from "jspdf-autotable";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
+import { GateDatePicker } from "@/components/ui/date-picker";
 
 // ⚠️ Adjust this import to wherever your generalService lives in this project.
 // It should expose: FetchInsuranceReports, fetchVendorCode, getpdb, getssc, Incoterms
@@ -882,16 +883,12 @@ function DateField({
 }) {
   return (
     <div>
-      <label className={LABEL}>{label}</label>
-      <div className="relative">
-        <input
-          type="date"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={INPUT + " pr-9"}
-        />
-        <Calendar className="size-4 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-      </div>
+      <GateDatePicker
+        label={label}
+        value={value}
+        onChange={(_, str) => onChange(str)}
+        className="h-9"
+      />
       {error && <span className="text-red-500 text-[11px] mt-1 block">{error}</span>}
     </div>
   );
