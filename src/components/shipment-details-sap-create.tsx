@@ -623,18 +623,60 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
   // ---------- Invoice GET (SAP) ----------
   const fetchInvoiceDetails = async () => {
-    if (!invoicenumber.trim()) {
+    // 1. Split multiple invoice numbers entered/selected by comma
+    const selectedInvoiceNumbers = invoicenumber
+      .split(",")
+      .map((num) => num.trim())
+      .filter(Boolean);
+
+    if (selectedInvoiceNumbers.length === 0) {
       Swal.fire({ icon: "warning", title: "Please enter a valid Invoice Number" });
       return;
     }
+
+    // 2. Map each selected invoice number to its owner reference row
+    const invGetPayload = selectedInvoiceNumbers.map((inv, idx) => {
+      const ownerRef = selectedItems.find((refItem: any) => {
+        const raw = fullReferenceData.find(
+          (f: any) =>
+            (refItem.MAPID && String(f.MAPID) === String(refItem.MAPID)) ||
+            (refItem.referenceNumber && String(f.REF_NO) === String(refItem.referenceNumber))
+        );
+        const invList = raw?.INV_NO || refItem.INV_NO;
+        if (Array.isArray(invList)) {
+          return invList.some((x: any) => {
+            const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return val && String(val).trim() === inv;
+          });
+        }
+        return false;
+      }) || fullReferenceData.find((refItem: any) => {
+        if (Array.isArray(refItem.INV_NO)) {
+          return refItem.INV_NO.some((x: any) => {
+            const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return val && String(val).trim() === inv;
+          });
+        }
+        return (
+          (refItem.INV_NO && String(refItem.INV_NO).trim() === inv) ||
+          (refItem.ZINV_NO && String(refItem.ZINV_NO).trim() === inv) ||
+          (refItem.VBELN && String(refItem.VBELN).trim() === inv)
+        );
+      });
+
+      const matchedRef = ownerRef || (selectedItems.length === selectedInvoiceNumbers.length ? selectedItems[idx] : (selectedItems[0] || referenceItems[0]));
+
+      return {
+        INVOICE: inv,
+        ZREFNO: matchedRef?.referenceNumber || matchedRef?.REF_NO || "",
+        ZLINE_NO: matchedRef?.lineNumber || matchedRef?.LINE_NO || "",
+      };
+    });
+
     setLoading(true);
     try {
       const res = await service.shipmentdetailsfetch({
-        INV_GET: selectedItems.map((ref) => ({
-          INVOICE: invoicenumber.trim(),
-          ZREFNO: ref.referenceNumber || "",
-          ZLINE_NO: ref.lineNumber || "",
-        })),
+        INV_GET: invGetPayload,
       });
       const result = Array.isArray(res) ? res : [];
       if (result.length === 0) {

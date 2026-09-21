@@ -34,7 +34,7 @@ type NavItem = {
   key: string;
 };
 
-// key ni ACT tho match cheyyadaniki normalize chestham:
+
 // lowercase + "outward" word remove + non-alphanumeric remove
 // Ex: "Outward-DispatchOrders" -> "dispatchorders", "Dispatch Orders" -> "dispatchorders"
 function normalizeKey(input: string) {

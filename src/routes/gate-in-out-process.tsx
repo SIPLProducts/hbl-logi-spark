@@ -16,7 +16,6 @@ import {
   ChevronRight,
   Save,
   Search,
-  Loader2,
   ChevronDown,
   Check,
   X,
@@ -2064,9 +2063,21 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     }[]
   >([]);
 
-  const [searchResultHeader, setSearchResultHeader] = useState<any>({});
+  const [searchResultHeaders, setSearchResultHeaders] = useState<any[]>([]);
   const [searchResultItems, setSearchResultItems] = useState<any[]>([]);
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
+  const searchResultHeader = searchResultHeaders[0] || {};
+  const setSearchResultHeader = (updater: any) => {
+    setSearchResultHeaders((prev) => {
+      const current = prev[0] || {};
+      const updated = typeof updater === "function" ? updater(current) : updater;
+      if (!updated || Object.keys(updated).length === 0) return [];
+      if (prev.length === 0) return [updated];
+      const next = [...prev];
+      next[0] = updated;
+      return next;
+    });
+  };
 
   // ── Truck Type F4 (gettypeofvehicle) ──
   const [gateRows, setGateRows] = useState<GateRow[]>([EMPTY_GATE_ROW()]);
@@ -2289,15 +2300,6 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     });
 
     setInvoiceF4List(f4);
-
-    // When reference rows are selected, automatically populate the Invoice Number field if empty
-    if (f4.length > 0) {
-      const currentInvs = invoiceNumber.split(",").map((s) => s.trim()).filter(Boolean);
-      const stillValid = currentInvs.filter((inv) => f4.includes(inv));
-      if (stillValid.length === 0) {
-        setInvoiceNumber(f4.join(","));
-      }
-    }
   }, [refTableData, fullReferenceData]);
 
   const handleRefRowChange = (index: number, field: keyof GateRefRow, value: string) =>
@@ -2544,7 +2546,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     if (result.length === 0) {
       result.push({
         ...EMPTY_GATE_ROW(),
-        invoiceNumber: selectedInvoices[0] || invoiceNumber || "",
+        invoiceNumber: "",
       });
     }
 
@@ -2690,7 +2692,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         generatedItemRows.push({
           selected: false,
           mapId: referenceRow.MAPID || "",
-          invoiceNumber: correspondingInvoiceNumber,
+          invoiceNumber: "", // Remains unselected; user manually selects from dropdown in Items table
           invoiceLineNo: lineNo,
           requiredDateTime: templateItem.REQUIRED_DATE_AND_TIME || templateItem.requiredDateTime || "",
           reportedDateTime: templateItem.REPORTED_DATE_AND_TIME || templateItem.reportedDateTime || "",
@@ -2760,7 +2762,6 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       });
       if (refInvoices.length > 0) {
         selectedInvoiceNumbers = refInvoices;
-        setInvoiceNumber(refInvoices.join(","));
       }
     }
     const payload = {
@@ -2841,7 +2842,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           ? entry.ITEMS.map((item: any) => ({
             selected: false,
             mapId: "",
-            invoiceNumber: item.ZINV_NO || "",
+            invoiceNumber: "",
             invoiceLineNo: item.INVOICE_LINE_ITEM != null ? String(item.INVOICE_LINE_ITEM) : "",
             requiredDateTime: item.REQUIRED_DATE_AND_TIME || "",
             reportedDateTime: item.REPORTED_DATE_AND_TIME || "",
@@ -2960,7 +2961,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           ? entry.ITEMS.map((item: any) => ({
             selected: false,
             mapId: "",
-            invoiceNumber: item.ZINV_NO || "",
+            invoiceNumber: "",
             invoiceLineNo: item.INVOICE_LINE_ITEM != null ? String(item.INVOICE_LINE_ITEM) : "",
             requiredDateTime: item.REQUIRED_DATE_AND_TIME || "",
             reportedDateTime: item.REPORTED_DATE_AND_TIME || "",
@@ -3031,33 +3032,58 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       const res: any = isSap
         ? await service.SearchGateInOutWithSap(payload)
         : await service.SearchGateInOutWithoutSap(payload);
-      const data = Array.isArray(res) && res.length > 0 ? res[0] : res;
+      const records = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.DATA)
+          ? res.DATA
+          : (res?.HEADER || res?.ITEMS)
+            ? [res]
+            : [];
 
-      if (data?.HEADER) {
-        const headerData = Array.isArray(data.HEADER) ? data.HEADER[0] : data.HEADER;
+      const extractedHeaders: any[] = [];
+      const extractedItems: any[] = [];
 
-        if (headerData) {
-          setSearchResultHeader({ ...headerData, isEdit: false });
-          setSearchResultItems(
-            Array.isArray(data.ITEMS)
-              ? data.ITEMS.map((item: any) => ({ ...item, isEdit: false }))
-              : []
-          );
-          setIsGlobalSearch(true);
-          setShowDetails(false);
-          Swal.fire({
-            icon: "success",
-            title: "Success",
-            text: "Search results fetched successfully.",
-            timer: 1500,
-            showConfirmButton: false,
-          });
-          return;
+      records.forEach((record: any) => {
+        if (!record) return;
+        if (record.HEADER) {
+          if (Array.isArray(record.HEADER)) {
+            record.HEADER.forEach((h: any) => {
+              if (h && typeof h === "object" && Object.keys(h).length > 0) {
+                extractedHeaders.push({ ...h, isEdit: false });
+              }
+            });
+          } else if (typeof record.HEADER === "object" && Object.keys(record.HEADER).length > 0) {
+            extractedHeaders.push({ ...record.HEADER, isEdit: false });
+          }
         }
+        if (Array.isArray(record.ITEMS)) {
+          record.ITEMS.forEach((item: any) => {
+            if (item && typeof item === "object") {
+              extractedItems.push({ ...item, isEdit: false });
+            }
+          });
+        }
+      });
+
+      if (extractedHeaders.length > 0 || extractedItems.length > 0) {
+        setSearchResultHeaders(extractedHeaders);
+        setSearchResultItems(extractedItems);
+        setIsGlobalSearch(true);
+        setShowDetails(false);
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Search results fetched successfully.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        return;
       }
 
-      if (data?.STATUS === "FALSE") {
-        Swal.fire("Error", data.MESSAGE || "No matching records found.", "error");
+      const firstStatus = Array.isArray(res) ? res[0]?.STATUS : res?.STATUS;
+      const firstMessage = Array.isArray(res) ? res[0]?.MESSAGE : res?.MESSAGE;
+      if (firstStatus === "FALSE") {
+        Swal.fire("Error", firstMessage || "No matching records found.", "error");
       } else {
         Swal.fire("No Results", "No matching records found.", "info");
       }
@@ -3440,12 +3466,17 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     };
   };
 
-  const handleUpdateRecord = async (target: "header" | "item", itemIndex?: number) => {
+  const handleUpdateRecord = async (target: "header" | "item", itemIndex?: number, headerIndex?: number) => {
     try {
-      const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
-
+      let targetHeader: any = {};
       let cleanItems: any[] = [];
-      if (target === "item" && itemIndex !== undefined) {
+
+      if (target === "header") {
+        targetHeader = (headerIndex !== undefined && searchResultHeaders[headerIndex])
+          ? searchResultHeaders[headerIndex]
+          : searchResultHeaders[0] || {};
+        cleanItems = [];
+      } else if (target === "item" && itemIndex !== undefined) {
         const { isEdit, _backup, ...cleanItem } = searchResultItems[itemIndex];
         if (
           cleanItem.REQUIRED_DATE_AND_TIME &&
@@ -3473,9 +3504,15 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           return;
         }
         cleanItems = [formatGateItemForPayload(cleanItem)];
-      } else {
-        cleanItems = [];
+
+        targetHeader = searchResultHeaders.find(
+          (h: any) =>
+            (cleanItem.ZINV_NO && String(h.ZINV_NO) === String(cleanItem.ZINV_NO)) ||
+            (cleanItem.REFERENCE_NUMBER && String(h.REFERENCE_NUMBER) === String(cleanItem.REFERENCE_NUMBER))
+        ) || searchResultHeaders[0] || {};
       }
+
+      const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = targetHeader;
 
       const payload = {
         CREATE: "",
@@ -3503,7 +3540,13 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         });
 
         if (target === "header") {
-          setSearchResultHeader((prev: any) => ({ ...prev, isEdit: false }));
+          if (headerIndex !== undefined) {
+            const nextHeaders = [...searchResultHeaders];
+            nextHeaders[headerIndex] = { ...nextHeaders[headerIndex], isEdit: false };
+            setSearchResultHeaders(nextHeaders);
+          } else {
+            setSearchResultHeaders((prev) => prev.map((h) => ({ ...h, isEdit: false })));
+          }
         } else if (target === "item" && itemIndex !== undefined) {
           const next = [...searchResultItems];
           next[itemIndex] = { ...next[itemIndex], isEdit: false };
@@ -3719,165 +3762,199 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         </div>
       )}
 
-      {/* ── Global Search Results (With SAP) ── */}
-      {isSap && isGlobalSearch && Object.keys(searchResultHeader).length > 0 && (
+      {/* ── Global Search Results ── */}
+      {isGlobalSearch && (searchResultHeaders.length > 0 || searchResultItems.length > 0) && (
         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="max-h-[500px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant">
-            <div className="px-3 py-2 border-b border-hairline bg-surface-2/60 font-semibold text-[13px] flex items-center justify-between">
-              Header Details
-            </div>
-            <table className="w-full text-left border-collapse text-[12px]">
-              <thead className="sticky top-0 z-30">
-                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
-                  {[
-                    "Ref No", "Line No", "Invoice No", "Plant", "E-way Bill App",
-                    "E-Way Date", "E-Way No", "Expire Date", "Insurance Scope",
-                    "Kilometres", "Work Order", "LR No", "Transporter", "Created Date", "Action"
-                  ].map((h) => (
-                    <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-hairline/70">
-                <tr className="bg-surface hover:bg-muted/50">
-                  {(() => {
+          {searchResultHeaders.length > 0 && (
+            <div className="max-h-[500px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant">
+              <div className="px-3 py-2 border-b border-hairline bg-surface-2/60 font-semibold text-[13px] flex items-center justify-between">
+                Header Details
+              </div>
+              <table className="w-full text-left border-collapse text-[12px]">
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                    {[
+                      "Ref No", "Line No", "Invoice No", "Plant", "E-way Bill App",
+                      "E-Way Date", "E-Way No", "Expire Date", "Insurance Scope",
+                      "Kilometres", "Work Order", "LR No", "Transporter", "Created Date", "Action"
+                    ].map((h) => (
+                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline/70">
+                  {searchResultHeaders.map((headerRow, hIndex) => {
                     const availablePlants = Array.from(
-                      new Set([...plantList, ...PLANTS, searchResultHeader.ZPLANT].filter(Boolean))
+                      new Set([...plantList, ...PLANTS, headerRow.ZPLANT].filter(Boolean))
                     );
-                    return [
-                      { field: "REFERENCE_NUMBER", type: "text", readonly: true },
-                      { field: "REFERENCE_LINE_ITEM", type: "text", readonly: true },
-                      { field: "ZINV_NO", type: "text", readonly: true },
-                      { field: "ZPLANT", type: "select", options: availablePlants },
-                      { field: "EWAY_BILL_APPLICABLE", type: "select", options: ["No", "Yes"] },
-                      { field: "EWAY_BILL_DATE", type: "date" },
-                      { field: "EWAY_BILL_NUMBER", type: "text" },
-                      { field: "EWAY_BILL_EXPIRE_DATE", type: "date" },
-                      { field: "INSURANCE_SCOPE", type: "select", options: ["Buyer", "Supplier"] },
-                      { field: "KILLOMETERS", type: "number" },
-                      { field: "ZWORK_ORDER", type: "text", readonly: true },
-                      { field: "ZLRNO", type: "text", readonly: true },
-                      { field: "ZTRANSPORTER", type: "text", readonly: true },
-                      { field: "ZCREATED_DT", type: "date", readonly: true },
-                    ].map(({ field, type, options, readonly }: any) => (
-                      <td key={field} className="px-3 py-2 whitespace-nowrap">
-                        {searchResultHeader.isEdit && !readonly ? (
-                          type === "select" ? (
-                            <select
-                              className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
-                              value={searchResultHeader[field] || ""}
-                              onChange={(e) => setSearchResultHeader((prev: any) => ({ ...prev, [field]: e.target.value }))}
-                            >
-                              <option value="">Select</option>
-                              {options?.map((o: string) => <option key={o} value={o}>{o}</option>)}
-                            </select>
-                          ) : type === "date" ? (
-                            <GateDatePicker
-                              value={searchResultHeader[field] || ""}
-                              onChange={(_, str) => setSearchResultHeader((prev: any) => ({ ...prev, [field]: str }))}
-                              className="h-7 min-w-[130px] text-[11px]"
-                            />
+                    return (
+                      <tr key={hIndex} className="bg-surface hover:bg-muted/50">
+                        {[
+                          { field: "REFERENCE_NUMBER", type: "text", readonly: true },
+                          { field: "REFERENCE_LINE_ITEM", type: "text", readonly: true },
+                          { field: "ZINV_NO", type: "text", readonly: true },
+                          { field: "ZPLANT", type: "select", options: availablePlants },
+                          { field: "EWAY_BILL_APPLICABLE", type: "select", options: ["No", "Yes"] },
+                          { field: "EWAY_BILL_DATE", type: "date" },
+                          { field: "EWAY_BILL_NUMBER", type: "text" },
+                          { field: "EWAY_BILL_EXPIRE_DATE", type: "date" },
+                          { field: "INSURANCE_SCOPE", type: "select", options: ["Buyer", "Supplier"] },
+                          { field: "KILLOMETERS", type: "number" },
+                          { field: "ZWORK_ORDER", type: "text", readonly: true },
+                          { field: "ZLRNO", type: "text", readonly: true },
+                          { field: "ZTRANSPORTER", type: "text", readonly: true },
+                          { field: "ZCREATED_DT", type: "date", readonly: true },
+                        ].map(({ field, type, options, readonly }: any) => (
+                          <td key={field} className="px-3 py-2 whitespace-nowrap">
+                            {headerRow.isEdit && !readonly ? (
+                              type === "select" ? (
+                                <select
+                                  className="h-7 w-full min-w-[120px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
+                                  value={headerRow[field] || ""}
+                                  onChange={(e) => {
+                                    const next = [...searchResultHeaders];
+                                    next[hIndex] = { ...next[hIndex], [field]: e.target.value };
+                                    setSearchResultHeaders(next);
+                                  }}
+                                >
+                                  <option value="">Select</option>
+                                  {options?.map((o: string) => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                              ) : type === "date" ? (
+                                <GateDatePicker
+                                  value={headerRow[field] || ""}
+                                  onChange={(_, str) => {
+                                    const next = [...searchResultHeaders];
+                                    next[hIndex] = { ...next[hIndex], [field]: str };
+                                    setSearchResultHeaders(next);
+                                  }}
+                                  className="h-7 min-w-[130px] text-[11px]"
+                                />
+                              ) : (
+                                <input
+                                  type={type}
+                                  inputMode={field === "EWAY_BILL_NUMBER" ? "numeric" : undefined}
+                                  className="h-7 w-full min-w-[80px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] outline-none"
+                                  value={headerRow[field] || ""}
+                                  onChange={(e) => {
+                                    const v = field === "EWAY_BILL_NUMBER" ? e.target.value.replace(/\D/g, "") : e.target.value;
+                                    const next = [...searchResultHeaders];
+                                    next[hIndex] = { ...next[hIndex], [field]: v };
+                                    setSearchResultHeaders(next);
+                                  }}
+                                />
+                              )
+                            ) : (
+                              <span>
+                                {type === "date" && headerRow[field]
+                                  ? isNaN(new Date(headerRow[field]).getTime())
+                                    ? headerRow[field]
+                                    : format(new Date(headerRow[field]), "dd-MM-yyyy")
+                                  : headerRow[field] || "-"}
+                              </span>
+                            )}
+                          </td>
+                        ))}
+                        <td className="px-2 py-2 text-center">
+                          {!headerRow.isEdit ? (
+                            <div className="flex items-center gap-1 justify-center">
+                              <button
+                                onClick={() => {
+                                  const next = [...searchResultHeaders];
+                                  next[hIndex] = { ...next[hIndex], _backup: { ...next[hIndex] }, isEdit: true };
+                                  setSearchResultHeaders(next);
+                                }}
+                                className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                              >
+                                <Pencil className="size-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  Swal.fire({
+                                    title: "Are you sure?",
+                                    text: "Do you want to delete this record?",
+                                    icon: "warning",
+                                    showCancelButton: true,
+                                  }).then(async (result) => {
+                                    if (result.isConfirmed) {
+                                      try {
+                                        const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = headerRow;
+                                        const cleanItems = (searchResultItems || [])
+                                          .filter((it: any) =>
+                                            cleanHeader.ZINV_NO
+                                              ? String(it.ZINV_NO) === String(cleanHeader.ZINV_NO)
+                                              : String(it.REFERENCE_NUMBER) === String(cleanHeader.REFERENCE_NUMBER)
+                                          )
+                                          .map(formatGateItemForPayload);
+
+                                        const payload = {
+                                          CREATE: "",
+                                          CHANGE: "",
+                                          DELETE: "X",
+                                          DATA: [
+                                            {
+                                              HEADER: { ...cleanHeader, ZUSER: getLoggedInUser() },
+                                              ITEMS: cleanItems,
+                                            },
+                                          ],
+                                        };
+
+                                        const res: any = isSap
+                                          ? await service.DeleteGateInOutWithSap(payload)
+                                          : await service.DeleteGateInOutWithoutSap(payload);
+                                        if (res?.MSG || res?.MESSAGE || res?.NUMBER === "200" || res?.STATUS === "TRUE" || res?.STATUS === true) {
+                                          Swal.fire("Success", res?.MSG || res?.MESSAGE || "Record deleted successfully", "success");
+                                          setSearchResultHeaders((prev) => prev.filter((_, idx) => idx !== hIndex));
+                                          setSearchResultItems((prev) =>
+                                            prev.filter((it: any) =>
+                                              cleanHeader.ZINV_NO
+                                                ? String(it.ZINV_NO) !== String(cleanHeader.ZINV_NO)
+                                                : String(it.REFERENCE_NUMBER) !== String(cleanHeader.REFERENCE_NUMBER)
+                                            )
+                                          );
+                                        } else {
+                                          Swal.fire("Error", res?.MSG || res?.MESSAGE || "Failed to delete the record.", "error");
+                                        }
+                                      } catch (err) {
+                                        console.error("Delete API failed:", err);
+                                        Swal.fire("Error", "API Error occurred while deleting.", "error");
+                                      }
+                                    }
+                                  });
+                                }}
+                                className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            </div>
                           ) : (
-                            <input
-                              type={type}
-                              inputMode={field === "EWAY_BILL_NUMBER" ? "numeric" : undefined}
-                              className="h-7 w-full min-w-[80px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] outline-none"
-                              value={searchResultHeader[field] || ""}
-                              onChange={(e) => {
-                                const v = field === "EWAY_BILL_NUMBER" ? e.target.value.replace(/\D/g, "") : e.target.value;
-                                setSearchResultHeader((prev: any) => ({ ...prev, [field]: v }));
-                              }}
-                            />
-                          )
-                        ) : (
-                          <span>
-                            {type === "date" && searchResultHeader[field]
-                              ? isNaN(new Date(searchResultHeader[field]).getTime())
-                                ? searchResultHeader[field]
-                                : format(new Date(searchResultHeader[field]), "dd-MM-yyyy")
-                              : searchResultHeader[field] || "-"}
-                          </span>
-                        )}
-                      </td>
-                    ));
-                  })()}
-                  <td className="px-2 py-2 text-center">
-                    {!searchResultHeader.isEdit ? (
-                      <div className="flex items-center gap-1 justify-center">
-                        <button
-                          onClick={() => setSearchResultHeader((prev: any) => ({ ...prev, _backup: { ...prev }, isEdit: true }))}
-                          className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            Swal.fire({
-                              title: "Are you sure?",
-                              text: "Do you want to delete this record?",
-                              icon: "warning",
-                              showCancelButton: true,
-                            }).then(async (result) => {
-                              if (result.isConfirmed) {
-                                try {
-                                  const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
-                                  const cleanItems = (searchResultItems || []).map(formatGateItemForPayload);
-
-                                  const payload = {
-                                    CREATE: "",
-                                    CHANGE: "",
-                                    DELETE: "X",
-                                    DATA: [
-                                      {
-                                        HEADER: { ...cleanHeader, ZUSER: getLoggedInUser() },
-                                        ITEMS: cleanItems,
-                                      },
-                                    ],
-                                  };
-
-                                  const res: any = isSap
-                                    ? await service.DeleteGateInOutWithSap(payload)
-                                    : await service.DeleteGateInOutWithoutSap(payload);
-                                  if (res?.MSG || res?.MESSAGE || res?.NUMBER === "200" || res?.STATUS === "TRUE" || res?.STATUS === true) {
-                                    Swal.fire("Success", res?.MSG || res?.MESSAGE || "Record deleted successfully", "success");
-                                    setSearchResultHeader({});
-                                    setSearchResultItems([]);
-                                  } else {
-                                    Swal.fire("Error", res?.MSG || res?.MESSAGE || "Failed to delete the record.", "error");
-                                  }
-                                } catch (err) {
-                                  console.error("Delete API failed:", err);
-                                  Swal.fire("Error", "API Error occurred while deleting.", "error");
-                                }
-                              }
-                            });
-                          }}
-                          className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 justify-center">
-                        <button
-                          onClick={() => handleUpdateRecord("header")}
-                          className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                        >
-                          <Check className="size-4" strokeWidth={3} />
-                        </button>
-                        <button
-                          onClick={() => setSearchResultHeader((prev: any) => ({ ...prev._backup, isEdit: false }))}
-                          className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        >
-                          <X className="size-4" strokeWidth={3} />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                            <div className="flex items-center gap-1 justify-center">
+                              <button
+                                onClick={() => handleUpdateRecord("header", undefined, hIndex)}
+                                className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                              >
+                                <Check className="size-4" strokeWidth={3} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const next = [...searchResultHeaders];
+                                  next[hIndex] = { ...next[hIndex]._backup, isEdit: false };
+                                  setSearchResultHeaders(next);
+                                }}
+                                className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              >
+                                <X className="size-4" strokeWidth={3} />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {searchResultItems.length > 0 && (
             <div className="max-h-[500px] overflow-auto rounded-xl border border-hairline bg-surface shadow-elegant">
@@ -4130,7 +4207,12 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                 }).then(async (result) => {
                                   if (result.isConfirmed) {
                                     try {
-                                      const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = searchResultHeader;
+                                      const targetHeader = searchResultHeaders.find(
+                                        (h: any) =>
+                                          (item.ZINV_NO && String(h.ZINV_NO) === String(item.ZINV_NO)) ||
+                                          (item.REFERENCE_NUMBER && String(h.REFERENCE_NUMBER) === String(item.REFERENCE_NUMBER))
+                                      ) || searchResultHeaders[0] || {};
+                                      const { isEdit: hEdit, _backup: hBackup, ...cleanHeader } = targetHeader;
                                       const cleanItem = formatGateItemForPayload(item);
 
                                       const payload = {
@@ -4567,7 +4649,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               disabled={loadingSave}
               className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
             >
-              {loadingSave ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+              <Save className="size-3.5" />
               Save
             </button>
             <button

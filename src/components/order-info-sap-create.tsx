@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, Save, ChevronLeft, ChevronRight, Loader2, Eye, ChevronDown, FileText } from "lucide-react";
+import { Search, Save, ChevronLeft, ChevronRight, Eye, ChevronDown, FileText } from "lucide-react";
 import Swal from "sweetalert2";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -1523,7 +1523,6 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                 disabled={!invoiceNumber.trim() || loadingGet}
                 className="h-7 px-4 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm flex items-center gap-1.5"
               >
-                {loadingGet && <Loader2 className="size-3.5 animate-spin" />}
                 GET
               </button>
             </>
@@ -1558,7 +1557,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
               disabled={loadingSearch}
               className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta disabled:opacity-50"
             >
-              {loadingSearch ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+              <Search className="size-4" />
             </button>
           </div>
         </div>
@@ -1984,7 +1983,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
               disabled={loadingSave}
               className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
             >
-              {loadingSave ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+              <Save className="size-3.5" />
               Save
             </button>
             <button

@@ -10,7 +10,6 @@ import {
   ChevronDown,
   Check,
   X,
-  Loader2,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
@@ -628,11 +627,7 @@ const [customerList, setCustomerList] = useState<{ value: string; label: string 
               disabled={loading}
               className="h-9 px-5 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:pointer-events-none"
             >
-              {loading ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Search className="size-4" />
-              )}
+              <Search className="size-4" />
               Execute Report
             </button>
           </div>

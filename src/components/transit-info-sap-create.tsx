@@ -6,10 +6,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Loader2,
   Eye,
   FileText,
   ExternalLink,
+  Download,
   Trash2,
   CalendarIcon,
 } from "lucide-react";
@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 // @ts-ignore
-import service, { getLocalDocumentUrl } from "../services/generalservice_service.js";
+import service, { getLocalDocumentUrl, downloadDocument } from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
 import { GateDatePicker } from "@/components/ui/date-picker";
 
@@ -415,6 +415,38 @@ export function formatDateDisplay(val?: string): string {
   return String(val);
 }
 
+export function parseDateTimeToComparison(val?: string) {
+  if (!val || !String(val).trim()) return null;
+  const parsed = parseDateTimeParts(val);
+  if (!parsed) return null;
+  const dateStr = `${parsed.year}-${padZero(parsed.month + 1)}-${padZero(parsed.day)}`;
+  return {
+    ...parsed,
+    dateStr,
+  };
+}
+
+export function isDateTimeNotEarlier(baseVal?: string, targetVal?: string): boolean {
+  if (!baseVal || !targetVal) return true;
+  const base = parseDateTimeToComparison(baseVal);
+  const target = parseDateTimeToComparison(targetVal);
+  if (!base || !target) return true;
+
+  if (target.dateStr < base.dateStr) {
+    return false;
+  }
+  if (target.dateStr > base.dateStr) {
+    return true;
+  }
+
+  // Same calendar date:
+  if (base.hasTime && target.hasTime && base.timeStr && target.timeStr) {
+    return target.timeStr >= base.timeStr;
+  }
+
+  return true;
+}
+
 export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
   const isSap = mode === "with";
   const currentUser = (() => {
@@ -443,6 +475,11 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [sitSale, setSitSale] = useState("");
   const [headerData, setHeaderData] = useState<any>(null);
   const [itemsList, setItemsList] = useState<any[]>([]);
+  // Every HEADER row returned by the search (one per invoice). headerData below stays the
+  // "active" header that the existing header row edits / saves / deletes; the other headers
+  // are listed as extra rows and become active when their Edit / Delete is used.
+  const [searchHeaders, setSearchHeaders] = useState<any[]>([]);
+  const [activeHeaderIdx, setActiveHeaderIdx] = useState(0);
   const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string } | null>(null);
   const [showTable, setShowTable] = useState(false);
   const [tableData, setTableData] = useState<TableRow[]>([EMPTY_ROW()]);
@@ -483,6 +520,68 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [podFile, setPodFile] = useState<File | null>(null);
   const [editSearchPodFile, setEditSearchPodFile] = useState<File | null>(null);
   const podInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhysicalArrivedDateChange = (val: string) => {
+    if (val && unloadingDate && !isDateTimeNotEarlier(val, unloadingDate)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Date & Time",
+        text: "Physical Arrived at Destination Date must not be later than Unloading Date and Time.",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    setPhysicalArrivedDate(val);
+  };
+
+  const handleUnloadingDateChange = (val: string) => {
+    if (val && physicalArrivedDate && !isDateTimeNotEarlier(physicalArrivedDate, val)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Date & Time",
+        text: "Unloading Date and Time must not be earlier than Physical Arrived at Destination Date.",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (val && podScanDate && !isDateTimeNotEarlier(val, podScanDate)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Date & Time",
+        text: "POD Scan Received Date must not be earlier than Unloading Date and Time.",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    setUnloadingDate(val);
+  };
+
+  const handlePodScanDateChange = (val: string) => {
+    if (val && unloadingDate && !isDateTimeNotEarlier(unloadingDate, val)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Date & Time",
+        text: "POD Scan Received Date must not be earlier than Unloading Date and Time.",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (val && !unloadingDate && physicalArrivedDate && !isDateTimeNotEarlier(physicalArrivedDate, val)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Date & Time",
+        text: "POD Scan Received Date must not be earlier than Physical Arrived at Destination Date.",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    setPodScanDate(val);
+  };
 
   useEffect(() => {
     // Reset search fields
@@ -566,6 +665,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
     setHeaderData(null);
     setItemsList([]);
+    setSearchHeaders([]);
+    setActiveHeaderIdx(0);
     setShowTable(false);
 
     setTableData([EMPTY_ROW()]);
@@ -723,10 +824,113 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       return;
     }
 
+    if (physicalArrivedDate && unloadingDate && !isDateTimeNotEarlier(physicalArrivedDate, unloadingDate)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Validation Error",
+        text: "Unloading Date and Time must not be earlier than Physical Arrived at Destination Date.",
+      });
+      return;
+    }
+
+    if (unloadingDate && podScanDate && !isDateTimeNotEarlier(unloadingDate, podScanDate)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Validation Error",
+        text: "POD Scan Received Date must not be earlier than Unloading Date and Time.",
+      });
+      return;
+    }
+
     setLoadingSave(true);
     try {
       // Convert the chosen POD document to base64 (empty string when none picked).
       const podBase64 = podFile ? await fileToBase64(podFile) : "";
+
+      // Invoice(s) selected → ONE save call whose body is an array with a separate
+      // { HEAD, ITEM } record per selected invoice (the structure the Transit save API
+      // now expects), with the screen's input-field values mapped to each invoice. No line
+      // items are generated; ITEM only carries the ticked reference rows that own that
+      // invoice. With no invoice selected the original payload below is used unchanged.
+      const selectedInvoices = (invoiceNumber || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      if (selectedInvoices.length >= 1) {
+        const invoiceRecords = selectedInvoices.map((inv) => {
+          // Ticked rows that own this invoice (fullReferenceData[].INV_NO[].VBELN);
+          // fall back to all ticked rows if the invoice can't be matched to a row.
+          const ownerRows = selectedRows.filter((r) =>
+            fullReferenceData.some(
+              (ref: any) =>
+                String(ref.MAPID) === String(r.MAPID) &&
+                Array.isArray(ref.INV_NO) &&
+                ref.INV_NO.some((i: any) => i.VBELN === inv)
+            )
+          );
+          const rowsForInv = ownerRows.length > 0 ? ownerRows : selectedRows;
+
+          return {
+            HEAD: {
+              REFNO: rowsForInv[0]?.REF_NO || "",
+              INV_NO: inv,
+
+              PY_ARRIVED_DEST: physicalArrivedDate,
+              UNLOADING_DT: unloadingDate,
+              POD_SCAN: podScanDate,
+              SIT_SALE: sitSale || "",
+
+              ZUSER: getLoggedInUser(),
+              ZUSER_CH: "",
+              ZPOD_FNAME: podBase64,                       // base64 file; backend saves it then clears this
+              ZPOD_DOCNAME: podFile ? podFile.name : "",   // original document name
+              ZPATH: "",                                   // backend fills this with the saved file path
+            },
+            ITEM: rowsForInv.map((item, idx) => ({
+              REFNO: item.REF_NO,
+              INV_NO: inv,
+              POSNR: (idx + 1) * 10,
+              VEH_LINE: idx + 1,
+              VEH_NUM: "",
+              LRNO: item.LR_NO,
+              WORK_ORDER: item.WORK_ORDER_NO,
+              TRANSPORTER: item.TRANSPORTER,
+              LINE_NO: item.LINE_NO,
+            })),
+          };
+        });
+
+        console.log("TRANSIT PAYLOAD", invoiceRecords);
+
+        const multiResponse: any = isSap
+          ? await service.TransitInfoSave(invoiceRecords)
+          : await service.TransitInfoNonSap(invoiceRecords);
+
+        if (
+          multiResponse?.STATUS?.toUpperCase() === "TRUE" ||
+          multiResponse?.NUMBER === "200"
+        ) {
+          await Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: "Data saved successfully",
+            confirmButtonText: "OK",
+          });
+
+          if (action === "next") navigate({ to: "/freight-billing" });
+          else if (action === "previous") navigate({ to: "/segment-info" });
+          else resetAll();
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: multiResponse?.MESSAGE || "Save Failed",
+            confirmButtonText: "OK",
+          });
+        }
+        return;
+      }
 
       const HEAD = {
         REFNO: selectedRows[0]?.REF_NO || "",
@@ -816,6 +1020,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     // Reset old data
     setHeaderData(null);
     setItemsList([]);
+    setSearchHeaders([]);
+    setActiveHeaderIdx(0);
     setShowTable(false);
 
     if (!searchValue.trim()) {
@@ -911,6 +1117,9 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       // itemsList — so header and items must stay in sync as one unit,
       // exactly like TransitInfoComponent.updateSearchRow(headerData, itemsList).
       setHeaderData({ ...res.HEADER[0], isEdit: false });
+      // Keep every header of the response (one per invoice) so all of them are listed.
+      setSearchHeaders(res.HEADER.map((h: any) => ({ ...h, isEdit: false })));
+      setActiveHeaderIdx(0);
       setItemsList((res.ITEMS || []).map((item: any) => ({ ...item, isEdit: false })));
       setShowTable(true);
 
@@ -953,6 +1162,90 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     }
   };
 
+  // ── Multiple headers (one per invoice) ─────────────────────────────────────
+  const hasMultiHeaders = searchHeaders.length > 1;
+
+  // Header that owns an item: the active one (may hold unsaved edits) or its list entry.
+  const headerForInvoice = (inv: any) => {
+    if (!hasMultiHeaders) return headerData;
+    const key = String(inv ?? "");
+    if (String(headerData?.ZINV_NO ?? "") === key) return headerData;
+    return searchHeaders.find((h) => String(h.ZINV_NO ?? "") === key) ?? headerData;
+  };
+
+  // Make another header the active one (optionally straight into edit mode). The header being
+  // left is written back to the list without any unsaved edit.
+  const activateSearchHeader = (idx: number, edit: boolean) => {
+    const target = searchHeaders[idx];
+    if (!target) return;
+    setEditSearchPodFile(null);
+    setSearchHeaders((prev) =>
+      prev.map((h, i) => {
+        if (i !== activeHeaderIdx || !headerData) return h;
+        const src = headerData.isEdit && headerData._backup ? headerData._backup : headerData;
+        const { _backup, isEdit, ...clean } = src;
+        return { ...clean, isEdit: false };
+      }),
+    );
+    setActiveHeaderIdx(idx);
+    const { _backup: _b, isEdit: _e, ...cleanTarget } = target;
+    setHeaderData(
+      edit
+        ? { ...cleanTarget, _backup: { ...cleanTarget }, isEdit: true }
+        : { ...cleanTarget, isEdit: false },
+    );
+  };
+
+  // Read-only row for a header that is not the active one.
+  const renderReadonlyHeaderRow = (h: any, idx: number) => {
+    const podName =
+      h.ZLOCALFILES?.POD || h.ZPODNAME || fileNameFromPath(h.ZPATH) || fileNameFromPath(h.ZPODFILE);
+    return (
+      <tr key={`hdr-${h.ZREFNO}-${h.ZINV_NO}-${idx}`} className="bg-surface hover:bg-muted/50">
+        {HEADER_FIELDS.map(({ field, type }: any) => (
+          <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
+            {type === "datetime-local" && h[field]
+              ? formatDateTimeDisplay(h[field])
+              : type === "date" && h[field]
+              ? formatDateDisplay(h[field])
+              : h[field] || "-"}
+          </td>
+        ))}
+        <td className="px-3 py-2 whitespace-nowrap text-center">
+          {!podName || podName === "-" || podName === "NA" ? (
+            <span className="text-muted-foreground">-</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                const url = getLocalDocumentUrl({
+                  mode: isWithout ? "Without Sap" : "SAP",
+                  screen: "Transit_Info",
+                  field: "POD",
+                  fileName: podName,
+                  storedPath: h.ZPATH || h.ZPODFILE,
+                  row: h,
+                });
+                setPreviewDoc({ url, title: podName });
+              }}
+              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline underline-offset-2 transition-colors cursor-pointer group max-w-[160px]"
+              title={`View ${podName}`}
+            >
+              <FileText className="size-3.5 shrink-0 opacity-70 group-hover:opacity-100 text-blue-600 dark:text-blue-400" />
+              <span className="truncate">{podName}</span>
+            </button>
+          )}
+        </td>
+        <td className="px-3 py-2 whitespace-nowrap text-center">
+          <div className="flex gap-2 justify-center">
+            <IconButton variant="blue" title="Edit" path={EDIT_PATH} onClick={() => activateSearchHeader(idx, true)} />
+            <IconButton variant="red" title="Delete" path={DELETE_PATH} onClick={() => deleteRow("header", idx, h)} />
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   const editSearchRow = (type: "header" | "item", index: number) => {
     if (type === "header") {
       if (!headerData) return;
@@ -982,8 +1275,31 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
   if (!result.isConfirmed) return;
 
+  // Several headers (one per invoice): only the items of THIS header's invoice belong to it.
+  const isMultiUpdate = searchHeaders.length > 1;
+  const sameInvoice = (it: any) => String(it?.ZINV_NO ?? "") === String(headerRow?.ZINV_NO ?? "");
+  if (isMultiUpdate) itemRows = itemRows.filter(sameInvoice);
+
   if (!headerRow?.ZREFNO) {
     Swal.fire("Error", "Missing mandatory ZREFNO in header", "error");
+    return;
+  }
+
+  if (headerRow.ZPY_ARRIVED_DEST && headerRow.ZUNLOADING_DT && !isDateTimeNotEarlier(headerRow.ZPY_ARRIVED_DEST, headerRow.ZUNLOADING_DT)) {
+    Swal.fire({
+      icon: "warning",
+      title: "Validation Error",
+      text: "Unloading Date and Time must not be earlier than Physical Arrived at Destination Date.",
+    });
+    return;
+  }
+
+  if (headerRow.ZUNLOADING_DT && headerRow.ZPOD_SCAN && !isDateTimeNotEarlier(headerRow.ZUNLOADING_DT, headerRow.ZPOD_SCAN)) {
+    Swal.fire({
+      icon: "warning",
+      title: "Validation Error",
+      text: "POD Scan Received Date must not be earlier than Unloading Date and Time.",
+    });
     return;
   }
 
@@ -1072,8 +1388,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
     const response =
       isSap
-        ? await service.TransitInfoChangeWithSap(payload)
-        : await service.TransitInfoChangeWithoutSap(payload);
+        ? await service.TransitInfoChangeWithSap([payload])
+        : await service.TransitInfoChangeWithoutSap([payload]);
 
     console.log(
       "========== TRANSIT UPDATE RESPONSE =========="
@@ -1099,21 +1415,40 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
      * First update the UI with the values that were actually submitted.
      */
     setEditSearchPodFile(null);
-    setHeaderData({
+    const updatedHeader = {
       ...headerPayload,
       ZLOCALFILES: editSearchPodFile
         ? { ...headerRow.ZLOCALFILES, POD: editSearchPodFile.name }
         : headerRow.ZLOCALFILES,
       ZPODNAME: editSearchPodFile ? editSearchPodFile.name : headerRow.ZPODNAME,
       isEdit: false,
-    });
+    };
+    // With several headers, the header being saved may not be the active one (item edit).
+    if (!isMultiUpdate || String(headerData?.ZINV_NO ?? "") === String(headerRow?.ZINV_NO ?? "")) {
+      setHeaderData(updatedHeader);
+    }
+    if (isMultiUpdate) {
+      setSearchHeaders((prev) =>
+        prev.map((h) => (String(h.ZINV_NO ?? "") === String(headerRow?.ZINV_NO ?? "") ? updatedHeader : h)),
+      );
+    }
 
-    setItemsList(
-      itemPayload.map((item: any) => ({
-        ...item,
-        isEdit: false,
-      }))
-    );
+    if (isMultiUpdate) {
+      // Replace only this invoice's items (in place); the other invoices' items stay as they are.
+      let k = 0;
+      setItemsList(
+        itemsList.map((it: any) =>
+          sameInvoice(it) && k < itemPayload.length ? { ...itemPayload[k++], isEdit: false } : it,
+        ),
+      );
+    } else {
+      setItemsList(
+        itemPayload.map((item: any) => ({
+          ...item,
+          isEdit: false,
+        }))
+      );
+    }
 
     /*
      * Also keep the top form fields synchronized.
@@ -1201,8 +1536,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   };
 
 
-  const deleteRow = async (type: "header" | "item", index: number) => {
-    const row = type === "header" ? headerData : itemsList[index];
+  const deleteRow = async (type: "header" | "item", index: number, headerOverride?: any) => {
+    const row = type === "header" ? (headerOverride ?? headerData) : itemsList[index];
     if (!row) return;
 
     const result = await Swal.fire({
@@ -1239,10 +1574,29 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           confirmButtonText: "Ok",
         });
 
-        if (type === "header") {
+        if (type === "header" && hasMultiHeaders) {
+          // Several headers (one per invoice): remove just this invoice's header and items.
+          const delInv = String(row.ZINV_NO ?? "");
+          const remaining = searchHeaders.filter((h) => String(h.ZINV_NO ?? "") !== delInv);
+          setSearchHeaders(remaining);
+          setItemsList((prev) => prev.filter((it) => String(it.ZINV_NO ?? "") !== delInv));
+          if (String(headerData?.ZINV_NO ?? "") === delInv) {
+            // The active header was deleted — activate the first remaining one.
+            setEditSearchPodFile(null);
+            setActiveHeaderIdx(0);
+            const { _backup: _b, isEdit: _e, ...first } = remaining[0] ?? {};
+            setHeaderData(remaining[0] ? { ...first, isEdit: false } : null);
+            if (remaining.length === 0) setShowTable(false);
+          } else {
+            const at = remaining.findIndex((h) => String(h.ZINV_NO ?? "") === String(headerData?.ZINV_NO ?? ""));
+            setActiveHeaderIdx(at >= 0 ? at : 0);
+          }
+        } else if (type === "header") {
           // Deleting the header removes the whole record — clear everything.
           setHeaderData(null);
           setItemsList([]);
+          setSearchHeaders([]);
+          setActiveHeaderIdx(0);
           setShowTable(false);
         } else {
           setItemsList((prev) => prev.filter((_, i) => i !== index));
@@ -1503,7 +1857,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               disabled={loadingSearch}
               className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta disabled:opacity-50"
             >
-              {loadingSearch ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+              <Search className="size-4" />
             </button>
           </div>
         </div>
@@ -1529,19 +1883,21 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
             <SapField
               field={FIELDS[1]}
               value={physicalArrivedDate}
-              onChange={setPhysicalArrivedDate}
+              onChange={handlePhysicalArrivedDateChange}
             />
 
             <SapField
               field={FIELDS[2]}
               value={unloadingDate}
-              onChange={setUnloadingDate}
+              min={physicalArrivedDate}
+              onChange={handleUnloadingDateChange}
             />
 
             <SapField
               field={FIELDS[3]}
               value={podScanDate}
-              onChange={setPodScanDate}
+              min={unloadingDate || physicalArrivedDate}
+              onChange={handlePodScanDateChange}
             />
 
             <SapField
@@ -1581,6 +1937,10 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                 </thead>
 
                 <tbody className="divide-y divide-hairline/70">
+                  {hasMultiHeaders &&
+                    searchHeaders
+                      .slice(0, activeHeaderIdx)
+                      .map((h, i) => renderReadonlyHeaderRow(h, i))}
                   <tr className="bg-surface hover:bg-muted/50">
                     {HEADER_FIELDS.map(({ field, type, options, readonly }: any) => (
                       <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
@@ -1634,9 +1994,60 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                           ) : type === "datetime-local" ? (
                             <TransitDateTimePicker
                               value={headerData[field] || ""}
-                              onChange={(val) =>
-                                setHeaderData((prev: any) => ({ ...prev, [field]: val }))
+                              min={
+                                field === "ZUNLOADING_DT"
+                                  ? headerData.ZPY_ARRIVED_DEST
+                                  : field === "ZPOD_SCAN"
+                                  ? (headerData.ZUNLOADING_DT || headerData.ZPY_ARRIVED_DEST)
+                                  : undefined
                               }
+                              onChange={(val) => {
+                                if (field === "ZUNLOADING_DT") {
+                                  if (headerData.ZPY_ARRIVED_DEST && val && !isDateTimeNotEarlier(headerData.ZPY_ARRIVED_DEST, val)) {
+                                    Swal.fire({
+                                      icon: "warning",
+                                      title: "Invalid Date & Time",
+                                      text: "Unloading Date and Time must not be earlier than Physical Arrived at Destination Date.",
+                                      timer: 2500,
+                                      showConfirmButton: false,
+                                    });
+                                    return;
+                                  }
+                                  if (headerData.ZPOD_SCAN && val && !isDateTimeNotEarlier(val, headerData.ZPOD_SCAN)) {
+                                    Swal.fire({
+                                      icon: "warning",
+                                      title: "Invalid Date & Time",
+                                      text: "POD Scan Received Date must not be earlier than Unloading Date and Time.",
+                                      timer: 2500,
+                                      showConfirmButton: false,
+                                    });
+                                    return;
+                                  }
+                                } else if (field === "ZPY_ARRIVED_DEST") {
+                                  if (headerData.ZUNLOADING_DT && val && !isDateTimeNotEarlier(val, headerData.ZUNLOADING_DT)) {
+                                    Swal.fire({
+                                      icon: "warning",
+                                      title: "Invalid Date & Time",
+                                      text: "Physical Arrived at Destination Date must not be later than Unloading Date and Time.",
+                                      timer: 2500,
+                                      showConfirmButton: false,
+                                    });
+                                    return;
+                                  }
+                                } else if (field === "ZPOD_SCAN") {
+                                  if (headerData.ZUNLOADING_DT && val && !isDateTimeNotEarlier(headerData.ZUNLOADING_DT, val)) {
+                                    Swal.fire({
+                                      icon: "warning",
+                                      title: "Invalid Date & Time",
+                                      text: "POD Scan Received Date must not be earlier than Unloading Date and Time.",
+                                      timer: 2500,
+                                      showConfirmButton: false,
+                                    });
+                                    return;
+                                  }
+                                }
+                                setHeaderData((prev: any) => ({ ...prev, [field]: val }));
+                              }}
                               className="h-6 min-w-[150px] text-[11px]"
                             />
                           ) : (
@@ -1773,6 +2184,10 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       )}
                     </td>
                   </tr>
+                  {hasMultiHeaders &&
+                    searchHeaders
+                      .slice(activeHeaderIdx + 1)
+                      .map((h, i) => renderReadonlyHeaderRow(h, activeHeaderIdx + 1 + i))}
                 </tbody>
               </table>
             </div>
@@ -1874,7 +2289,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                                 variant="emerald"
                                 title="Save"
                                 path={CHECK_PATH}
-                                onClick={() => updateSearchRow(headerData, itemsList)}
+                                onClick={() => updateSearchRow(headerForInvoice(item.ZINV_NO), itemsList)}
                               />
                               <IconButton variant="gray" title="Cancel" path={X_PATH} onClick={() => cancelSearchEdit("item", index)} />
                             </div>
@@ -1897,7 +2312,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           disabled={loadingSave}
           className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
         >
-          {loadingSave ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+          <Save className="size-3.5" />
           Save
         </button>
         <button
@@ -2060,6 +2475,27 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               </div>
             )}
           </div>
+
+          {/* Footer */}
+          <div className="px-4 py-2.5 bg-muted/30 border-t border-hairline flex items-center justify-end gap-2">
+            {previewDoc?.url && (
+              <button
+                type="button"
+                onClick={() => downloadDocument(previewDoc.url, previewDoc.title)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-[12px] font-semibold transition-colors cursor-pointer shadow-sm"
+              >
+                <Download className="size-3.5" />
+                Download
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setPreviewDoc(null)}
+              className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -2189,6 +2625,7 @@ function parseIsoDateTime(val?: string) {
     hour24: parsed.hour24,
     minute: parsed.minute,
     timeStr: parsed.timeStr,
+    hasTime: parsed.hasTime,
   };
 }
 
@@ -2297,7 +2734,8 @@ function TransitDateTimePicker({
     const curDateStr = `${selectedYear}-${padZero(selectedMonth + 1)}-${padZero(selectedDay)}`;
     const minDateStr = `${minParsed.year}-${padZero(minParsed.month + 1)}-${padZero(minParsed.day)}`;
     if (curDateStr === minDateStr) {
-      return timeStr <= minParsed.timeStr;
+      if (!minParsed.hasTime) return false;
+      return timeStr < minParsed.timeStr;
     }
     return curDateStr < minDateStr;
   };
@@ -2686,6 +3124,7 @@ function SapField({
   onFileChange,
   inputRef,
   disabledOptions = [],
+  min,
 }: {
   field: FieldSpec;
   value?: string;
@@ -2693,6 +3132,7 @@ function SapField({
   onFileChange?: (file: File | null) => void;
   inputRef?: Ref<HTMLInputElement>;
   disabledOptions?: string[];
+  min?: string;
 }) {
   const {
     label,
@@ -2708,12 +3148,14 @@ function SapField({
       {type === "datetime" ? (
         <TransitDateTimePicker
           value={value}
+          min={min}
           onChange={onChange}
           placeholder={placeholder ?? `Select ${label}`}
         />
       ) : type === "date" ? (
         <GateDatePicker
           value={value}
+          min={min}
           onChange={(_, str) => onChange?.(str)}
           placeholder={placeholder ?? `Select ${label}`}
           className={INPUT_NORMAL}

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, ChevronDown, Plus, X, Eye, FileText, ExternalLink } from "lucide-react";
+import { Search, MoreVertical, Save, ChevronLeft, ChevronRight, ChevronDown, Plus, X, Eye, FileText, ExternalLink, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 // @ts-ignore
-import service, { getLocalDocumentUrl } from "../services/generalservice_service.js";
+import service, { getLocalDocumentUrl, downloadDocument } from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
 import { GateDatePicker } from "@/components/ui/date-picker";
 
@@ -938,7 +938,13 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
 
   const fetchInvoiceDetails = async () => {
-    if (!lookupValue.trim()) {
+    // 1. Split multiple invoice numbers entered/selected by comma
+    const selectedInvoiceNumbers = lookupValue
+      .split(",")
+      .map((num) => num.trim())
+      .filter(Boolean);
+
+    if (selectedInvoiceNumbers.length === 0) {
       Swal.fire({
         icon: "warning",
         title: "Warning",
@@ -947,27 +953,59 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       return;
     }
 
-    const selectedRow = tableData.find((row) => row.selected);
+    const selectedRows = tableData.filter((row) => row.selected);
+    const activeRefs = selectedRows.length > 0 ? selectedRows : tableData.filter((r) => r.REF_NO);
 
-    console.log("Selected Row:", selectedRow);
-
-    if (!selectedRow) {
+    if (activeRefs.length === 0) {
       Swal.fire({
         icon: "warning",
         title: "Warning",
-        text: "Please select one reference row",
+        text: "Please select at least one reference row",
       });
       return;
     }
 
+    // 2. Map each selected invoice number to its owner reference row
+    const invGetPayload = selectedInvoiceNumbers.map((inv, idx) => {
+      const ownerRef = activeRefs.find((refItem: any) => {
+        const raw = fullReferenceData.find(
+          (f: any) =>
+            (refItem.MAPID && String(f.MAPID) === String(refItem.MAPID)) ||
+            (refItem.REF_NO && String(f.REF_NO) === String(refItem.REF_NO))
+        );
+        const invList = raw?.INV_NO;
+        if (Array.isArray(invList)) {
+          return invList.some((x: any) => {
+            const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return val && String(val).trim() === inv;
+          });
+        }
+        return false;
+      }) || fullReferenceData.find((refItem: any) => {
+        if (Array.isArray(refItem.INV_NO)) {
+          return refItem.INV_NO.some((x: any) => {
+            const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return val && String(val).trim() === inv;
+          });
+        }
+        return (
+          (refItem.INV_NO && String(refItem.INV_NO).trim() === inv) ||
+          (refItem.ZINV_NO && String(refItem.ZINV_NO).trim() === inv) ||
+          (refItem.VBELN && String(refItem.VBELN).trim() === inv)
+        );
+      });
+
+      const matchedRef = ownerRef || (activeRefs.length === selectedInvoiceNumbers.length ? activeRefs[idx] : (selectedRows[0] || tableData[0]));
+
+      return {
+        INVOICE: inv,
+        ZREFNO: matchedRef?.REF_NO || "",
+        ZLINE_NO: matchedRef?.LINE_NO || "",
+      };
+    });
+
     const payload = {
-      INV_GET: [
-        {
-          INVOICE: lookupValue,
-          ZREFNO: selectedRow.REF_NO || "",
-          ZLINE_NO: selectedRow.LINE_NO || "",
-        },
-      ],
+      INV_GET: invGetPayload,
     };
 
     console.log("Invoice Payload", payload);
@@ -992,7 +1030,8 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       });
 
       const header = res?.[0]?.HEADER || {};
-      const items = res?.[0]?.ITEM || [];
+      const allItems = Array.isArray(res) ? res.flatMap((r: any) => r?.ITEM || []) : [];
+      const items = allItems.length > 0 ? allItems : (res?.[0]?.ITEM || []);
 
       setHeaderData(header);
       setItemData(
@@ -1311,8 +1350,13 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
  const fetchInvoiceDetailsNonSap = async (valueOverride?: string) => {
   const dcRef = (valueOverride ?? lookupValue).trim();
 
-  // Validation
-  if (!dcRef) {
+  // 1. Split multiple invoice / DC Reference numbers
+  const selectedInvoiceNumbers = dcRef
+    .split(",")
+    .map((num) => num.trim())
+    .filter(Boolean);
+
+  if (selectedInvoiceNumbers.length === 0) {
     Swal.fire({
       icon: "warning",
       title: "Warning",
@@ -1321,27 +1365,59 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     return;
   }
 
-  // Get selected reference row
-  const selectedRow = tableData.find((row) => row.selected);
+  const selectedRows = tableData.filter((row) => row.selected);
+  const activeRefs = selectedRows.length > 0 ? selectedRows : tableData.filter((r) => r.REF_NO);
 
-  if (!selectedRow) {
+  if (activeRefs.length === 0) {
     Swal.fire({
       icon: "warning",
       title: "Warning",
-      text: "Please select one reference row",
+      text: "Please select at least one reference row",
     });
     return;
   }
 
-  // Payload
+  // 2. Map each selected invoice/DC to its owner reference row
+  const invGetPayload = selectedInvoiceNumbers.map((inv, idx) => {
+    const ownerRef = activeRefs.find((refItem: any) => {
+      const raw = fullReferenceData.find(
+        (f: any) =>
+          (refItem.MAPID && String(f.MAPID) === String(refItem.MAPID)) ||
+          (refItem.REF_NO && String(f.REF_NO) === String(refItem.REF_NO))
+      );
+      const invList = raw?.INV_NO;
+      if (Array.isArray(invList)) {
+        return invList.some((x: any) => {
+          const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+          return val && String(val).trim() === inv;
+        });
+      }
+      return false;
+    }) || fullReferenceData.find((refItem: any) => {
+      if (Array.isArray(refItem.INV_NO)) {
+        return refItem.INV_NO.some((x: any) => {
+          const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+          return val && String(val).trim() === inv;
+        });
+      }
+      return (
+        (refItem.INV_NO && String(refItem.INV_NO).trim() === inv) ||
+        (refItem.ZINV_NO && String(refItem.ZINV_NO).trim() === inv) ||
+        (refItem.VBELN && String(refItem.VBELN).trim() === inv)
+      );
+    });
+
+    const matchedRef = ownerRef || (activeRefs.length === selectedInvoiceNumbers.length ? activeRefs[idx] : (selectedRows[0] || tableData[0]));
+
+    return {
+      INVOICE: inv,
+      ZREFNO: matchedRef?.REF_NO || "",
+      ZLINE_NO: matchedRef?.LINE_NO || "",
+    };
+  });
+
   const payload = {
-    INV_GET: [
-      {
-        INVOICE: dcRef,
-        ZREFNO: selectedRow.REF_NO || "",
-        ZLINE_NO: selectedRow.LINE_NO || "",
-      },
-    ],
+    INV_GET: invGetPayload,
   };
 
   console.log("Non-SAP Payload:", payload);
@@ -1360,15 +1436,17 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       return;
     }
 
+    const primaryRef = selectedRows[0] || tableData[0];
     const header = res?.[0]?.HEADER || {};
-    const items = res?.[0]?.ITEM || [];
+    const allItems = Array.isArray(res) ? res.flatMap((r: any) => r?.ITEM || []) : [];
+    const items = allItems.length > 0 ? allItems : (res?.[0]?.ITEM || []);
 
     // Header
     setHeaderData({
       ...header,
       INV_NO: header.INV_NO || dcRef,
-      REFNO: selectedRow.REF_NO,
-      LINE_NO: selectedRow.LINE_NO,
+      REFNO: primaryRef?.REF_NO || "",
+      LINE_NO: primaryRef?.LINE_NO || "",
     });
 
     // Item Table
@@ -1378,9 +1456,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       selected: false,
 
       // Reference Details
-      ZMAPID: selectedRow.MAPID,
-      REFNO: selectedRow.REF_NO,
-      ZLINE_NO: selectedRow.LINE_NO,
+      ZMAPID: primaryRef?.MAPID || "",
+      REFNO: primaryRef?.REF_NO || "",
+      ZLINE_NO: primaryRef?.LINE_NO || "",
 
       // Display Columns (Only API values)
       VEHICLE_NO: item.TRUCK_NO ?? "",
@@ -2725,6 +2803,27 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                 No document URL available for preview.
               </div>
             )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-4 py-2.5 bg-muted/30 border-t border-hairline flex items-center justify-end gap-2">
+            {previewDoc?.url && (
+              <button
+                type="button"
+                onClick={() => downloadDocument(previewDoc.url, previewDoc.title)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-[12px] font-semibold transition-colors cursor-pointer shadow-sm"
+              >
+                <Download className="size-3.5" />
+                Download
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setPreviewDoc(null)}
+              className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
           </div>
         </DialogContent>
       </Dialog>

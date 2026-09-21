@@ -254,3 +254,10 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in oklab, var(--foregro
 @keyframes status-ping {
   75%, 100% { transform: scale(2.2); opacity: 0; }
 }
+
+/* Global API loader: five pulsing bars (same look as the Angular app's ngx-spinner line-scale-pulse-out-rapid) */
+@keyframes api-line-scale-pulse-out-rapid {
+  0% { transform: scaleY(1); }
+  80% { transform: scaleY(0.3); }
+  90% { transform: scaleY(1); }
+}

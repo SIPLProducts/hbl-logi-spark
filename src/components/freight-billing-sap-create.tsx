@@ -10,12 +10,13 @@ import {
   Eye,
   FileText,
   ExternalLink,
+  Download,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 // @ts-ignore
-import service, { getLocalDocumentUrl } from "../services/generalservice_service.js";
+import service, { getLocalDocumentUrl, downloadDocument } from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
 import { GateDatePicker } from "@/components/ui/date-picker";
 
@@ -715,6 +716,43 @@ function PACheckDialog({
   );
 }
 
+// Small reusable icon-button set (matches Transit Info screen design)
+function IconButton({
+  variant,
+  onClick,
+  title,
+  path,
+}: {
+  variant: "blue" | "red" | "emerald" | "gray";
+  onClick: () => void;
+  title?: string;
+  path: string;
+}) {
+  const styles: Record<string, string> = {
+    blue: "bg-blue-50 text-blue-600 hover:bg-blue-100",
+    red: "bg-red-50 text-red-600 hover:bg-red-100",
+    emerald: "bg-emerald-50 text-emerald-600 hover:bg-emerald-100",
+    gray: "bg-gray-100 text-gray-600 hover:bg-gray-200",
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={`size-6 grid place-items-center rounded ${styles[variant]}`}
+    >
+      <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path} />
+      </svg>
+    </button>
+  );
+}
+
+const EDIT_PATH = "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z";
+const DELETE_PATH = "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16";
+const CHECK_PATH = "M5 13l4 4L19 7";
+const X_PATH = "M6 18L18 6M6 6l12 12";
+
 export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "without" }) {
   const navigate = useNavigate();
   const isWithout = mode === "without";
@@ -1166,11 +1204,49 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         ZGSTAMT: (provision ? provisionGst : 0) + (account ? freightGst : 0),
       };
 
-      console.log(record);
+      // Multiple invoices selected → one separate record per invoice in the same SAVE / CREATE
+      // array (same idea as Transit Info). Every record carries the screen's input-field values;
+      // the reference-row fields come from the ticked row that owns that invoice. With one (or
+      // no) invoice this is just [record], exactly as before.
+      const selectedInvoices = (invoiceNumber || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const records =
+        selectedInvoices.length > 0 &&
+        (selectedInvoices.length > 1 || tableData.filter((row) => row.selected).length > 1)
+          ? selectedInvoices.map((inv) => {
+              const ownerRow =
+                tableData.find(
+                  (row) =>
+                    row.selected &&
+                    fullReferenceData.some(
+                      (ref: any) =>
+                        String(ref.MAPID) === String(row.MAPID) &&
+                        Array.isArray(ref.INV_NO) &&
+                        ref.INV_NO.some((i: any) => i.VBELN === inv)
+                    )
+                ) || selectedRow;
+
+              return {
+                ...record,
+                INV_NO: inv,
+                REFNO: ownerRow.REF_NO,
+                LINE_NO: ownerRow.LINE_NO,
+                ORDER_NO: ownerRow.WORK_ORDER_NO,
+                WORKORDER: ownerRow.WORK_ORDER_NO,
+                LRNO: ownerRow.LR_NO,
+                TRANSPORTER: ownerRow.TRANSPORTER,
+              };
+            })
+          : [record];
+
+      console.log(records);
 
       const response = isSap
-        ? await service.FreightBillingSave({ SAVE: [record] })
-        : await service.FreightBillingNonSap({ CREATE: [record] });
+        ? await service.FreightBillingSave({ SAVE: records })
+        : await service.FreightBillingNonSap({ CREATE: records });
 
       if (response.STATUS === "true" || response.NUMBER === "200") {
         await Swal.fire({
@@ -1699,7 +1775,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                         setTableData((prev) =>
                           prev.map((item, i) => ({
                             ...item,
-                            selected: i === index ? e.target.checked : false,
+                            selected: i === index ? e.target.checked : item.selected,
                           }))
                         );
                       }}
@@ -2333,8 +2409,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     <td className="px-3 py-2 whitespace-nowrap text-center">
                       {!item.isEdit ? (
                         <div className="flex gap-2 justify-center">
-                          <button
-                            className="bg-blue-500 text-white px-2 rounded"
+                          <IconButton
+                            variant="blue"
+                            title="Edit"
+                            path={EDIT_PATH}
                             onClick={() => {
                               setEditSearchFiles((prev) => {
                                 const next = { ...prev };
@@ -2346,28 +2424,26 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                               list[index].isEdit = true;
                               setSearchOptionsList(list);
                             }}
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            className="bg-red-500 text-white px-2 rounded"
+                          />
+                          <IconButton
+                            variant="red"
+                            title="Delete"
+                            path={DELETE_PATH}
                             onClick={() => deleteRow(item, index)}
-                          >
-                            Delete
-                          </button>
+                          />
                         </div>
                       ) : (
                         <div className="flex gap-2 justify-center">
-                          <button
-                            className="bg-green-500 text-white px-2 rounded"
+                          <IconButton
+                            variant="emerald"
+                            title="Save"
+                            path={CHECK_PATH}
                             onClick={() => updateSearchRow(item, index)}
-                          >
-                            Save
-                          </button>
-
-                          <button
-                            className="bg-gray-500 text-white px-2 rounded"
+                          />
+                          <IconButton
+                            variant="gray"
+                            title="Cancel"
+                            path={X_PATH}
                             onClick={() => {
                               setEditSearchFiles((prev) => {
                                 const next = { ...prev };
@@ -2382,9 +2458,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                               delete list[index]._backup;
                               setSearchOptionsList(list);
                             }}
-                          >
-                            Cancel
-                          </button>
+                          />
                         </div>
                       )}
                     </td>
@@ -2851,6 +2925,27 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                 No document URL available for preview.
               </div>
             )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-4 py-2.5 bg-muted/30 border-t border-hairline flex items-center justify-end gap-2">
+            {previewDoc?.url && (
+              <button
+                type="button"
+                onClick={() => downloadDocument(previewDoc.url, previewDoc.title)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-[12px] font-semibold transition-colors cursor-pointer shadow-sm"
+              >
+                <Download className="size-3.5" />
+                Download
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setPreviewDoc(null)}
+              className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
           </div>
         </DialogContent>
       </Dialog>

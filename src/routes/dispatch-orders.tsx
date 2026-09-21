@@ -8,7 +8,6 @@ import {
   RotateCcw,
   Download,
   Search,
-  Loader2,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -211,10 +210,10 @@ function DispatchOrdersPage() {
       const raw = Array.isArray(response?.LIST)
         ? response.LIST
         : Array.isArray(response?.data)
-        ? response.data
-        : Array.isArray(response)
-        ? response
-        : [];
+          ? response.data
+          : Array.isArray(response)
+            ? response
+            : [];
 
       // Map API UPPERCASE keys to camelCase DispatchOrderRow shape
       const data: DispatchOrderRow[] = raw.map((item: any, index: number) => ({
@@ -400,7 +399,7 @@ function DispatchOrdersPage() {
                 </select>
               </div>
 
-              <div className="flex flex-col gap-1 w-[190px]">
+              {/* <div className="flex flex-col gap-1 w-[190px]">
                 <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   Division
                 </label>
@@ -416,7 +415,7 @@ function DispatchOrdersPage() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
             </div>
 
             {error && (
@@ -534,7 +533,6 @@ function DispatchOrdersPage() {
           <div className="relative">
             {status === "loading" && (
               <div className="py-20 grid place-items-center text-muted-foreground">
-                <Loader2 className="size-6 animate-spin text-accent mb-2" />
                 <div className="text-[12.5px]">Loading dispatch orders…</div>
               </div>
             )}

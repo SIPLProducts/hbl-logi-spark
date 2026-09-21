@@ -268,6 +268,9 @@ function LoadTableMultiSelect({
   className,
   disabled = false,
   readOnly = false,
+  title = "Select LR",
+  searchPlaceholder = "Search LR...",
+  emptyText = "No LR found",
 }: {
   options: string[];
   value: string;
@@ -276,6 +279,9 @@ function LoadTableMultiSelect({
   className?: string;
   disabled?: boolean;
   readOnly?: boolean;
+  title?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -335,7 +341,7 @@ function LoadTableMultiSelect({
       </PopoverTrigger>
       <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
         <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
-          <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
+          <span className="font-semibold text-muted-foreground">{title} ({options.length})</span>
           {options.length > 1 && !readOnly && (
             <div className="flex items-center gap-1.5">
               <button
@@ -362,14 +368,14 @@ function LoadTableMultiSelect({
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search LR..."
+              placeholder={searchPlaceholder}
               className="h-6 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground outline-none focus:border-accent"
             />
           </div>
         )}
         <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
           {filtered.length === 0 ? (
-            <div className="p-2 text-center text-[11px] text-muted-foreground">No LR found</div>
+            <div className="p-2 text-center text-[11px] text-muted-foreground">{emptyText}</div>
           ) : (
             filtered.map((o) => {
               const isChecked = selected.includes(o);
@@ -464,6 +470,8 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const [referenceItems, setReferenceItems] = useState<ReferenceRow[]>([emptyReferenceRow()]);
   const [selectedItems, setSelectedItems] = useState<ReferenceRow[]>([]);
   const [fullReferenceData, setFullReferenceData] = useState<any[]>([]);
+  // Item details (POSNR, ODN, SO, week) fetched for each Invoice Number, used to save every invoice separately
+  const [invoiceDetails, setInvoiceDetails] = useState<Record<string, any>>({});
   const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
   const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
   const [compInvoicesModalData, setCompInvoicesModalData] = useState<{ refNo: string; invoices: string[] }>({ refNo: "", invoices: [] });
@@ -676,6 +684,61 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setInvoiceF4List(f4);
   };
 
+  /* ── Row creation (same idea as Gate In/Out buildItemRowsFromSelectedReferences) ──
+     For every selected Reference row add exactly ZNO_TRUCKS load rows (0 = no row),
+     using that Reference row's own Map ID and the selected invoices that belong to it. ── */
+  const addRowsFromSelectedReferences = (
+    built: LoadRow[],
+    startId: number,
+    invoices: string[],
+    res: any[],
+    withSap: boolean,
+  ) => {
+    let id = startId;
+
+    // Fetched details of each selected invoice
+    const details: Record<string, any> = {};
+    invoices.forEach((inv, idx) => {
+      details[inv] =
+        res.find((r: any) => String(r.VBELN || r.INVOICE || r.INV_NO || "").trim() === inv) || res[idx] || res[0];
+    });
+    setInvoiceDetails(details);
+
+    selectedItems.forEach((ref) => {
+      const truckCount = Number(ref.ZNO_TRUCKS);
+      if (!(truckCount > 0)) return;
+
+      // Selected invoices that belong to this Reference row
+      const refInvoices = (ref.INV_NO || []).map((x) => String(x.VBELN || "").trim());
+      const refSelectedInvoices = invoices.filter((inv) => refInvoices.includes(inv));
+      const detail = details[refSelectedInvoices[0]] || res[0];
+
+      for (let i = 0; i < truckCount; i++) {
+        built.push(
+          newRow(id++, {
+            VBELN: refSelectedInvoices.join(","),
+            ...(withSap
+              ? { POSNR: detail?.POSNR || "", ZODN_NO: detail?.ZODN_NO || "", ZSO_NO: detail?.ZSO_NO || "" }
+              : {}),
+            ZMAPID: String(ref.MAPID ?? ""),
+            ZREFNO: ref.referenceNumber || "",
+            ZWORK_ORDER: ref.workOrderNumber || "",
+            ZLRNO: ref.lrNumber || "",
+            ZTRANSPORTER: ref.transporter || "",
+            ZLINE_NO: ref.lineNumber || "",
+            ZTRUCK_LINE: i + 1,
+            ZWEEK_SF: detail?.ZWEEK_SF || "",
+            ZTRUC_TYPE: detail?.ZTRUC_TYPE || "",
+            ZTRUC_WT: detail?.ZTRUC_WT || "",
+            ZTRUC_VOL: detail?.ZTRUC_VOL || "",
+          }),
+        );
+      }
+    });
+
+    return id;
+  };
+
   /* ── GET (With SAP): fetchInvoiceDetails ── */
   const handleGetInvoice = async () => {
     if (!invoiceNumber.trim()) {
@@ -691,43 +754,64 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
       return;
     }
 
+    const selectedInvoiceNumbers = invoiceNumber
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+
+    const invGetPayload = selectedInvoiceNumbers.map((inv, idx) => {
+      const owner: any = selectedItems.find((refItem: any) => {
+        if (Array.isArray(refItem.INV_NO)) {
+          return refItem.INV_NO.some((x: any) => {
+            const v = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return v && String(v).trim() === inv;
+          });
+        }
+        return (
+          (refItem.INV_NO && String(refItem.INV_NO).trim() === inv) ||
+          (refItem.ZINV_NO && String(refItem.ZINV_NO).trim() === inv) ||
+          (refItem.VBELN && String(refItem.VBELN).trim() === inv)
+        );
+      }) || fullReferenceData.find((refItem: any) => {
+        if (Array.isArray(refItem.INV_NO)) {
+          return refItem.INV_NO.some((x: any) => {
+            const v = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return v && String(v).trim() === inv;
+          });
+        }
+        return (
+          (refItem.INV_NO && String(refItem.INV_NO).trim() === inv) ||
+          (refItem.ZINV_NO && String(refItem.ZINV_NO).trim() === inv) ||
+          (refItem.VBELN && String(refItem.VBELN).trim() === inv)
+        );
+      });
+
+      const matchedRef = owner || (selectedItems.length === selectedInvoiceNumbers.length ? selectedItems[idx] : selectedItems[0]);
+
+      return {
+        INVOICE: inv,
+        ZREFNO: matchedRef?.referenceNumber || matchedRef?.REF_NO || "",
+        ZLINE_NO: matchedRef?.lineNumber || matchedRef?.LINE_NO || "",
+      };
+    });
+
     try {
       const res: any = await service.Invoiceloaddetailsfetch({
-        INV_GET: selectedItems.map((ref) => ({
-          INVOICE: invoiceNumber.trim(),
-          ZREFNO: ref.referenceNumber || "",
-          ZLINE_NO: ref.lineNumber || "",
-        })),
+        INV_GET: invGetPayload,
         SCREEN: "WITHSAP",
       });
 
       if (Array.isArray(res) && res.length > 0) {
         const built: LoadRow[] = [];
         let id = nextId;
-        selectedItems.forEach((ref) => {
-          const truckCount = Number(ref.ZNO_TRUCKS) || 1;
-          for (let i = 0; i < truckCount; i++) {
-            built.push(
-              newRow(id++, {
-                VBELN: invoiceNumber,
-                POSNR: res[0]?.POSNR || "",
-                ZMAPID: ref.MAPID || "",
-                ZREFNO: ref.referenceNumber || "",
-                ZWORK_ORDER: ref.workOrderNumber || "",
-                ZLRNO: ref.lrNumber || "",
-                ZTRANSPORTER: ref.transporter || "",
-                ZLINE_NO: ref.lineNumber || "",
-                ZTRUCK_LINE: i + 1,
-                ZWEEK_SF: res[0]?.ZWEEK_SF || "",
-                ZODN_NO: res[0]?.ZODN_NO || "",
-                ZSO_NO: res[0]?.ZSO_NO || "",
-                ZTRUC_TYPE: res[0]?.ZTRUC_TYPE || "",
-                ZTRUC_WT: res[0]?.ZTRUC_WT || "",
-                ZTRUC_VOL: res[0]?.ZTRUC_VOL || "",
-              }),
-            );
-          }
-        });
+
+        // One set of rows per selected Reference row, count = its ZNO_TRUCKS (same as Gate In/Out)
+        id = addRowsFromSelectedReferences(built, id, selectedInvoiceNumbers, res, true);
+        if (built.length === 0) {
+          Swal.fire('Warning', 'No trucks (ZNO_TRUCKS) available for the selected reference rows', 'warning');
+          return;
+        }
+
         setRows(built);
         setNextId(id);
         setRevealed(true);
@@ -761,40 +845,64 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
       return;
     }
 
+    const selectedDcRefs = value
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+
+    const invGetPayload = selectedDcRefs.map((inv, idx) => {
+      const owner: any = selectedItems.find((refItem: any) => {
+        if (Array.isArray(refItem.INV_NO)) {
+          return refItem.INV_NO.some((x: any) => {
+            const v = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return v && String(v).trim() === inv;
+          });
+        }
+        return (
+          (refItem.INV_NO && String(refItem.INV_NO).trim() === inv) ||
+          (refItem.ZINV_NO && String(refItem.ZINV_NO).trim() === inv) ||
+          (refItem.VBELN && String(refItem.VBELN).trim() === inv)
+        );
+      }) || fullReferenceData.find((refItem: any) => {
+        if (Array.isArray(refItem.INV_NO)) {
+          return refItem.INV_NO.some((x: any) => {
+            const v = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return v && String(v).trim() === inv;
+          });
+        }
+        return (
+          (refItem.INV_NO && String(refItem.INV_NO).trim() === inv) ||
+          (refItem.ZINV_NO && String(refItem.ZINV_NO).trim() === inv) ||
+          (refItem.VBELN && String(refItem.VBELN).trim() === inv)
+        );
+      });
+
+      const matchedRef = owner || (selectedItems.length === selectedDcRefs.length ? selectedItems[idx] : selectedItems[0]);
+
+      return {
+        INVOICE: inv,
+        ZREFNO: matchedRef?.referenceNumber || matchedRef?.REF_NO || "",
+        ZLINE_NO: matchedRef?.lineNumber || matchedRef?.LINE_NO || "",
+      };
+    });
+
     try {
       const res: any = await service.Invoiceloaddetailsfetch({
-        INV_GET: selectedItems.map((ref) => ({
-          INVOICE: value.trim(),
-          ZREFNO: ref.referenceNumber || "",
-          ZLINE_NO: ref.lineNumber || "",
-        })),
+        INV_GET: invGetPayload,
         SCREEN: "WITHOUTSAP",
       });
 
       if (Array.isArray(res) && res.length > 0) {
         const built: LoadRow[] = [];
         let id = nextId;
-        selectedItems.forEach((ref) => {
-          const truckCount = Number(ref.ZNO_TRUCKS) || 1;
-          for (let i = 0; i < truckCount; i++) {
-            built.push(
-              newRow(id++, {
-                VBELN: value,
-                ZMAPID: ref.MAPID || "",
-                ZREFNO: ref.referenceNumber || "",
-                ZLINE_NO: ref.lineNumber || "",
-                ZWORK_ORDER: ref.workOrderNumber || "",
-                ZLRNO: ref.lrNumber || "",
-                ZTRANSPORTER: ref.transporter || "",
-                ZTRUCK_LINE: i + 1,
-                ZWEEK_SF: res[0]?.ZWEEK_SF || "",
-                ZTRUC_TYPE: res[0]?.ZTRUC_TYPE || "",
-                ZTRUC_WT: res[0]?.ZTRUC_WT || "",
-                ZTRUC_VOL: res[0]?.ZTRUC_VOL || "",
-              }),
-            );
-          }
-        });
+
+        // One set of rows per selected Reference row, count = its ZNO_TRUCKS (same as Gate In/Out)
+        id = addRowsFromSelectedReferences(built, id, selectedDcRefs, res, false);
+        if (built.length === 0) {
+          Swal.fire('Warning', 'No trucks (ZNO_TRUCKS) available for the selected reference rows', 'warning');
+          return;
+        }
+
         setRows(built);
         setNextId(id);
         Swal.fire(
@@ -827,9 +935,18 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setRows((prev) => prev.map((r) => ({ ...r, checked })));
   };
 
+  // Options for the table's Map ID / Invoice Number multi-selects
+  // (API may return Map ID as a number, so everything is turned into text first)
+  const mapIdOptions = selectedItems.map((i) => String(i.MAPID ?? "")).filter(Boolean);
+  const invoiceOptions = (isWithout ? dcRef : invoiceNumber)
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+
   /* ── Row Map ID change -> patch from selectedItems (Angular: onchangeMAPID) ── */
   const onMapIdChange = (rowId: number, mapId: string) => {
-    const match = selectedItems.find((i) => i.MAPID === mapId);
+    // Map ID can now hold several comma-joined values; reference details follow the first one
+    const match = selectedItems.find((i) => String(i.MAPID) === mapId.split(",")[0]);
     updateRow(rowId, {
       ZMAPID: mapId,
       ZREFNO: match?.referenceNumber || "",
@@ -1137,9 +1254,46 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setSelectedItems([]);
     setInvoiceF4List([]);
     setFullReferenceData([]);
+    setInvoiceDetails({});
     setInvoiceNumber("");
     setDcRef("");
     setRevealed(false);
+  };
+
+  /* ── Save (same idea as Gate In/Out handleSave): one separate record per Invoice Number ──
+     A row may hold several comma-joined invoices. Each invoice becomes its own record with the
+     Map ID, Reference and Item (POSNR / ODN / SO) data that belong to that invoice only. ── */
+  const buildInvoiceRecords = (row: LoadRow): LoadRow[] => {
+    const invoices = String(row.VBELN || "").split(",").map((v) => v.trim()).filter(Boolean);
+    if (invoices.length === 0) return [row];
+
+    const rowMapIds = String(row.ZMAPID || "").split(",").map((v) => v.trim()).filter(Boolean);
+
+    return invoices.map((inv) => {
+      // Reference row that owns this invoice
+      const owner = selectedItems.find((ref) => (ref.INV_NO || []).some((x) => String(x.VBELN || "").trim() === inv));
+      const ownerMapId = String(owner?.MAPID ?? "");
+
+      // Owner's Map ID, unless the user picked different Map ID(s) for this row
+      const mapId = rowMapIds.length === 0 || rowMapIds.includes(ownerMapId) ? ownerMapId : rowMapIds[0];
+      const ref = selectedItems.find((r) => String(r.MAPID) === mapId);
+      const detail = invoiceDetails[inv];
+
+      return {
+        ...row,
+        VBELN: inv,
+        ZMAPID: mapId,
+        ZREFNO: ref ? ref.referenceNumber || "" : row.ZREFNO,
+        ZWORK_ORDER: ref ? ref.workOrderNumber || "" : row.ZWORK_ORDER,
+        ZLRNO: ref ? ref.lrNumber || "" : row.ZLRNO,
+        ZTRANSPORTER: ref ? ref.transporter || "" : row.ZTRANSPORTER,
+        ZLINE_NO: ref ? ref.lineNumber ?? "" : row.ZLINE_NO,
+        POSNR: detail?.POSNR ?? row.POSNR,
+        ZODN_NO: detail?.ZODN_NO ?? row.ZODN_NO,
+        ZSO_NO: detail?.ZSO_NO ?? row.ZSO_NO,
+        ZWEEK_SF: detail?.ZWEEK_SF ?? row.ZWEEK_SF,
+      };
+    });
   };
 
   const handleSave = async (action: "stay" | "next" | "previous" = "stay") => {
@@ -1158,13 +1312,13 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
       if (isWithout) {
         const payload = {
           CHANGE: "",
-          NSAP_LOAD: selected.map((inv, index) => ({
+          NSAP_LOAD: selected.flatMap(buildInvoiceRecords).map((inv, index) => ({
             MANDT: "",
             ZREFNO: inv.ZREFNO || "",
             ZWORK_ORDER: inv.ZWORK_ORDER || "",
             ZLRNO: inv.ZLRNO || "",
             ZTRANSPORTER: inv.ZTRANSPORTER || "",
-            VBELN: dcRef,
+            VBELN: inv.VBELN || dcRef,
             POSNR: index + 10,
             ZLINE_NO: inv.ZLINE_NO || 1,
             ZTRUC_TYPE: inv.ZTRUC_TYPE || "",
@@ -1190,7 +1344,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
       } else {
         const payload = {
           CHANGE: "",
-          INV_SAP: selected.map(({ id, checked, ...rest }) => ({
+          INV_SAP: selected.flatMap(buildInvoiceRecords).map(({ id, checked, ...rest }) => ({
             ...rest,
             ZUSER: user.USER,
             ZUSER_CH: "",
@@ -1505,6 +1659,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                     </th>
                     <th className="px-2 py-1.5 text-center w-14">Sl.No</th>
                     <th className="px-2 py-1.5 text-center">Map ID</th>
+                    <th className="px-2 py-1.5 text-center">Invoice Number</th>
                     <th className="px-2 py-1.5 text-center">Truck Type</th>
                     <th className="px-2 py-1.5 text-center">
                       Passing Weight
@@ -1545,18 +1700,28 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         </td>
                         <td className="px-2 py-1 text-center">{idx + 1}</td>
                         <td className="px-2 py-1">
-                          <select
-                            value={row.ZMAPID}
-                            onChange={(e) => onMapIdChange(row.id, e.target.value)}
+                          <LoadTableMultiSelect
+                            options={mapIdOptions}
+                            value={String(row.ZMAPID ?? "")}
+                            onChange={(val) => onMapIdChange(row.id, val)}
+                            placeholder="Select Map ID"
+                            title="Select Map ID"
+                            searchPlaceholder="Search Map ID..."
+                            emptyText="No Map ID found"
                             className={GREEN_INPUT}
-                          >
-                            <option value="">Select</option>
-                            {selectedItems.map((opt) => (
-                              <option key={opt.MAPID} value={opt.MAPID}>
-                                {opt.MAPID}
-                              </option>
-                            ))}
-                          </select>
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <LoadTableMultiSelect
+                            options={invoiceOptions.length > 0 ? invoiceOptions : [String(row.VBELN ?? "")].filter(Boolean)}
+                            value={String(row.VBELN ?? "")}
+                            onChange={(val) => updateRow(row.id, { VBELN: val })}
+                            placeholder="Select Invoice"
+                            title="Select Invoice"
+                            searchPlaceholder="Search Invoice..."
+                            emptyText="No Invoice found"
+                            className={GREEN_INPUT}
+                          />
                         </td>
                         <td className="px-2 py-1">
                           <select

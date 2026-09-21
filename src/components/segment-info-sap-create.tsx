@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Loader2,
   Pencil,
   Check,
   X as XIcon,
@@ -696,19 +695,62 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   };
 
   const handleGet = async () => {
-    if (!invoiceNumber.trim()) return;
+    // 1. Split multiple invoice numbers entered/selected by comma
+    const selectedInvoiceNumbers = invoiceNumber
+      .split(",")
+      .map((num) => num.trim())
+      .filter(Boolean);
+
+    if (selectedInvoiceNumbers.length === 0) return;
+
+    // 2. Identify candidate reference rows
+    const candidateRows = tableData.filter((row) => row.referenceNumber);
+    const selectedRows = candidateRows.filter((row) => row.selected);
+    const activeRefs = selectedRows.length > 0 ? selectedRows : candidateRows;
+
+    // 3. Map each selected invoice number to its owner reference row
+    const invGetPayload = selectedInvoiceNumbers.map((inv, idx) => {
+      const ownerRef = activeRefs.find((refItem: any) => {
+        const raw = fullReferenceData.find(
+          (f: any) =>
+            (refItem.MAPID && String(f.MAPID) === String(refItem.MAPID)) ||
+            (refItem.referenceNumber && String(f.REF_NO) === String(refItem.referenceNumber))
+        );
+        const invList = raw?.INV_NO;
+        if (Array.isArray(invList)) {
+          return invList.some((x: any) => {
+            const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return val && String(val).trim() === inv;
+          });
+        }
+        return false;
+      }) || fullReferenceData.find((refItem: any) => {
+        if (Array.isArray(refItem.INV_NO)) {
+          return refItem.INV_NO.some((x: any) => {
+            const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return val && String(val).trim() === inv;
+          });
+        }
+        return (
+          (refItem.INV_NO && String(refItem.INV_NO).trim() === inv) ||
+          (refItem.ZINV_NO && String(refItem.ZINV_NO).trim() === inv) ||
+          (refItem.VBELN && String(refItem.VBELN).trim() === inv)
+        );
+      });
+
+      const matchedRef = ownerRef || (activeRefs.length === selectedInvoiceNumbers.length ? activeRefs[idx] : activeRefs[0]);
+
+      return {
+        INVOICE: inv,
+        ZREFNO: matchedRef?.referenceNumber || matchedRef?.REF_NO || "",
+        ZLINE_NO: matchedRef?.lineNumber || matchedRef?.LINE_NO || "",
+      };
+    });
+
     setLoadingGet(true);
     try {
-      // Reference rows are fetched (not checkbox-selected) before GET, so send every
-      // fetched row that has a reference number — same rows already used to build invoiceF4List.
       const res: any = await service.SegmentInfoOutwardFetch({
-        INV_GET: tableData
-          .filter((row) => row.referenceNumber)
-          .map((row) => ({
-            INVOICE: invoiceNumber.trim(),
-            ZREFNO: row.referenceNumber,
-            ZLINE_NO: row.lineNumber || "",
-          })),
+        INV_GET: invGetPayload,
         SCREEN: "WITHSAP",
       });
       if (res && res.length > 0) {
@@ -729,21 +771,67 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const onInvoiceChange = async (invNo: string) => {
     setField("INV_VBELN", invNo);
     if (!invNo) return;
+
+    // 1. Split multiple invoice numbers entered/selected by comma
+    const selectedInvoiceNumbers = invNo
+      .split(",")
+      .map((num) => num.trim())
+      .filter(Boolean);
+
+    if (selectedInvoiceNumbers.length === 0) return;
+
+    const candidateRows = tableData.filter((row) => row.referenceNumber);
+    const selectedRows = candidateRows.filter((row) => row.selected);
+    const activeRefs = selectedRows.length > 0 ? selectedRows : candidateRows;
+
+    const invGetPayload = selectedInvoiceNumbers.map((inv, idx) => {
+      const ownerRef = activeRefs.find((refItem: any) => {
+        const raw = fullReferenceData.find(
+          (f: any) =>
+            (refItem.MAPID && String(f.MAPID) === String(refItem.MAPID)) ||
+            (refItem.referenceNumber && String(f.REF_NO) === String(refItem.referenceNumber))
+        );
+        const invList = raw?.INV_NO;
+        if (Array.isArray(invList)) {
+          return invList.some((x: any) => {
+            const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return val && String(val).trim() === inv;
+          });
+        }
+        return false;
+      }) || fullReferenceData.find((refItem: any) => {
+        if (Array.isArray(refItem.INV_NO)) {
+          return refItem.INV_NO.some((x: any) => {
+            const val = typeof x === "object" && x !== null ? (x.VBELN || x.INV_NO || x.INVOICE || x.inv_no) : String(x);
+            return val && String(val).trim() === inv;
+          });
+        }
+        return (
+          (refItem.INV_NO && String(refItem.INV_NO).trim() === inv) ||
+          (refItem.ZINV_NO && String(refItem.ZINV_NO).trim() === inv) ||
+          (refItem.VBELN && String(refItem.VBELN).trim() === inv)
+        );
+      });
+
+      const matchedRef = ownerRef || (activeRefs.length === selectedInvoiceNumbers.length ? activeRefs[idx] : activeRefs[0]);
+
+      return {
+        INVOICE: inv,
+        ZREFNO: matchedRef?.referenceNumber || matchedRef?.REF_NO || "",
+        ZLINE_NO: matchedRef?.lineNumber || matchedRef?.LINE_NO || "",
+      };
+    });
+
     try {
       const res: any = await service.SegmentInfoOutwardwithoutSapFetch({
-        INV_GET: tableData
-          .filter((row) => row.referenceNumber)
-          .map((row) => ({
-            INVOICE: invNo,
-            ZREFNO: row.referenceNumber,
-            ZLINE_NO: row.lineNumber || "",
-          })),
+        INV_GET: invGetPayload,
         SCREEN: "WITHOUTSAP",
       });
       if (res?.STATUS === "FALSE") {
         Swal.fire("Error", res?.MESSAGE || "Error fetching invoice details", "error");
       } else if (res) {
-        setForm((p) => ({ ...p, ZSTATE: res.ZSTATE || "", ZZONE: res.ZZONE || "" }));
+        const data = Array.isArray(res) ? res[0] : res;
+        setForm((p) => ({ ...p, ZSTATE: data.ZSTATE || "", ZZONE: data.ZZONE || "" }));
       } else {
         Swal.fire("No Data Found", "", "info");
       }
@@ -1252,7 +1340,6 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                 disabled={!invoiceNumber.trim() || loadingGet}
                 className="h-7 px-4 rounded-md bg-[#8f1e42] hover:bg-[#7a1938] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold tracking-wider shadow-sm flex items-center gap-1.5"
               >
-                {loadingGet && <Loader2 className="size-3.5 animate-spin" />}
                 GET
               </button>
             </>
@@ -1282,7 +1369,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               disabled={loadingSearch}
               className="h-7 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta disabled:opacity-50"
             >
-              {loadingSearch ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+              <Search className="size-4" />
             </button>
           </div>
         </div>
@@ -1694,7 +1781,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               disabled={loadingSave}
               className="inline-flex items-center gap-1.5 px-3 h-7 rounded-md bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white text-[12px] font-semibold shadow-sm"
             >
-              {loadingSave ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />} Save
+              <Save className="size-3.5" /> Save
             </button>
             <button
               onClick={() => handleSave("next")}

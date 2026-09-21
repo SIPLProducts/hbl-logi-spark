@@ -1,7 +1,9 @@
+import { trackApiCall } from "../lib/api-loading";
+
 const BASE_URL = import.meta.env.VITE_BACKEND_BASE_URL;
 
 // Common helper to reduce repetitive fetch headers & JSON parsing
-const request = async (url, method, data = null) => {
+const requestRaw = async (url, method, data = null) => {
     const options = {
         method: method,
         headers: { "Content-Type": "application/json" }
@@ -23,6 +25,9 @@ const request = async (url, method, data = null) => {
     }
     return res.json();
 };
+
+// Every API call goes through here so the global loading indicator (<ApiLoader />) reflects it.
+const request = (url, method, data = null) => trackApiCall(() => requestRaw(url, method, data));
 
 export const getLocalDocumentUrl = ({ mode, screen, field, fileName, storedPath, row } = {}) => {
     let backendBase = import.meta.env.VITE_BACKEND_BASE_URL || "";
@@ -83,6 +88,51 @@ export const getLocalDocumentUrl = ({ mode, screen, field, fileName, storedPath,
     const query = qp.length ? `?${qp.join("&")}` : "";
 
     return `${backendBase}/pravah-files/${encodeURIComponent(modeFolder)}/${encodeURIComponent(screenFolder)}/${encodeURIComponent(field)}/${encodeURIComponent(cleanFileName)}${query}`;
+};
+
+export const downloadDocument = async (url, title) => {
+    if (!url) return;
+
+    let fileName = "";
+    if (title && typeof title === "string" && /\.[a-zA-Z0-9]+$/.test(title.trim())) {
+        fileName = title.trim();
+    } else {
+        try {
+            const rawName = url.split("?")[0].split("/").pop();
+            if (rawName) {
+                const decoded = decodeURIComponent(rawName);
+                if (/\.[a-zA-Z0-9]+$/.test(decoded)) {
+                    fileName = decoded;
+                }
+            }
+        } catch (_e) {}
+    }
+    if (!fileName) {
+        fileName = (title && typeof title === "string" ? title.trim() : "") || "document";
+    }
+
+    try {
+        const response = await trackApiCall(() => fetch(url));
+        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+        console.warn("Direct blob download failed, falling back to direct link download:", err);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
 };
 
 

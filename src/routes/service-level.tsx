@@ -537,6 +537,130 @@ function TableMultiSelect({
   );
 }
 
+// Multi-select dropdown for the Invoice Number field (same behaviour as the F4 invoice
+// multi-select used in the other screens): tick one or many, All / Clear, search.
+// Value is the selected invoices joined with ",".
+function SLInvoiceMultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select Invoice Number",
+  className,
+}: {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const selected = value
+    ? value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setSearch("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title={selected.join(", ")}
+          className={
+            (className ? className + " " : "") +
+            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+            (selected.length === 0 ? " text-muted-foreground" : "")
+          }
+        >
+          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
+        <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
+          <span className="font-semibold text-muted-foreground">Select Invoice ({options.length})</span>
+          {options.length > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => onChange(options.join(","))}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                All
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                className="text-muted-foreground hover:underline font-medium cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+        {options.length > 5 && (
+          <div className="p-1.5 border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search Invoice..."
+              className="h-6 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+        )}
+        <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
+          {filtered.length === 0 ? (
+            <div className="p-2 text-center text-[11px] text-muted-foreground">No invoice found</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o}
+                className="flex items-center gap-2 px-2 py-1 rounded text-[11.5px] hover:bg-muted/60 transition-colors cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  onChange={() => toggle(o)}
+                  className="size-3.5 accent-primary rounded"
+                />
+                <span className="font-mono text-foreground">{o}</span>
+              </label>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 type SLRow = {
   referenceNumber: string;
   workOrderNumber: string;
@@ -930,11 +1054,31 @@ function ServiceLevelFeedbackCreate({
     ) {
       const selected = selectedItems[0]; // take first selected row
 
-      const obj = {
-        INV_DEF: invoicenumber,
-        ZREFNO: selected.referenceNumber,
-        ZLINE_NO: selected.lineNumber || "",
-      };
+      // Request body is an array: one { INV_DEF, ZREFNO, ZLINE_NO } entry per selected
+      // invoice, using the ticked reference row(s) that own that invoice (falls back to the
+      // first ticked row when the invoice can't be matched to a row).
+      const invoicesToFetch = invoicenumber
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const obj = invoicesToFetch.flatMap((inv) => {
+        const owners = selectedItems.filter((item) => {
+          const match = fullReferenceData.find(
+            (d: any) =>
+              String(d.REF_NO ?? "") === item.referenceNumber &&
+              String(d.LINE_NO ?? "") === item.lineNumber,
+          );
+          return (
+            Array.isArray(match?.INV_NO) &&
+            match.INV_NO.some((x: any) => String(x?.VBELN ?? "").trim() === inv)
+          );
+        });
+        return (owners.length > 0 ? owners : [selected]).map((row) => ({
+          INV_DEF: inv,
+          ZREFNO: row.referenceNumber,
+          ZLINE_NO: row.lineNumber || "",
+        }));
+      });
 
       setLoading(true);
       try {
@@ -1074,13 +1218,41 @@ function ServiceLevelFeedbackCreate({
       ZSUBMIT_DT: new Date().toISOString().slice(0, 10),
     }));
 
-    console.log("📦 Payload:", payload);
+    // Several invoices selected → one separate record per invoice (each with the ticked
+    // reference row(s) that own it) in the same array. One invoice → payload unchanged.
+    const invoicesSelected = invoicenumber
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const invoicesOfItem = (item: SLRow): string[] => {
+      const match = fullReferenceData.find(
+        (d: any) =>
+          String(d.REF_NO ?? "") === item.referenceNumber &&
+          String(d.LINE_NO ?? "") === item.lineNumber,
+      );
+      return Array.isArray(match?.INV_NO)
+        ? match.INV_NO.map((x: any) => String(x?.VBELN ?? "").trim()).filter(Boolean)
+        : [];
+    };
+    const finalPayload =
+      invoicesSelected.length > 0 &&
+      (invoicesSelected.length > 1 || selectedItems.length > 1)
+        ? invoicesSelected.flatMap((inv) => {
+            const owned = selectedItems
+              .map((item, i) => (invoicesOfItem(item).includes(inv) ? i : -1))
+              .filter((i) => i >= 0);
+            const idxs = owned.length > 0 ? owned : selectedItems.map((_, i) => i);
+            return idxs.map((i) => ({ ...payload[i], VBELN: inv }));
+          })
+        : payload;
+
+    console.log("📦 Payload:", finalPayload);
 
     setLoading(true);
     try {
       const res: any = isSap
-        ? await service.FeedbackCreationwithsap(payload)
-        : await service.FeedbackCreationwithoutsap(payload);
+        ? await service.FeedbackCreationwithsap(finalPayload)
+        : await service.FeedbackCreationwithoutsap(finalPayload);
 
       setLoading(false);
 
@@ -1125,12 +1297,6 @@ function ServiceLevelFeedbackCreate({
 
   return (
     <div className="space-y-2">
-      {loading && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/30">
-          <div className="size-10 rounded-full border-4 border-white/30 border-t-white animate-spin" />
-        </div>
-      )}
-
       {!loadType && (
         <p className="text-[12px] text-muted-foreground px-1">
           Select <span className="font-semibold">Full Truck Load</span> or{" "}
@@ -1283,18 +1449,13 @@ function ServiceLevelFeedbackCreate({
                 <label className="block text-[11px] font-semibold text-muted-foreground mb-0.5">
                   Invoice Number
                 </label>
-                <select
+                <SLInvoiceMultiSelect
+                  options={invoiceList}
                   value={invoicenumber}
-                  onChange={(e) => setInvoicenumber(e.target.value)}
+                  onChange={setInvoicenumber}
+                  placeholder="Select Invoice Number"
                   className={SL_INPUT}
-                >
-                  <option value="">Select Invoice Number</option>
-                  {invoiceList.map((inv, idx) => (
-                    <option key={`${inv}-${idx}`} value={inv}>
-                      {inv}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <button
                 type="button"

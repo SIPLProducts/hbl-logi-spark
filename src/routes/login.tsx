@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, type FormEvent } from "react";
-import { Eye, EyeOff, LogIn, Loader2, User, Lock } from "lucide-react";
+import { Eye, EyeOff, LogIn, User, Lock } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import Swal from "sweetalert2";
@@ -387,9 +387,7 @@ function LoginPage() {
                 className="w-full h-10 mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-primary text-white text-[13.5px] font-semibold shadow-cta hover:shadow-lg hover:-translate-y-px active:translate-y-0 transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
               >
                 {submitting ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" /> Signing in…
-                  </>
+                  <>Signing in…</>
                 ) : (
                   <>
                     Log In <LogIn className="size-4" />

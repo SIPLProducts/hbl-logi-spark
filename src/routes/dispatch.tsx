@@ -209,6 +209,47 @@ type PlantData = {
 
 /* ──────────────────────────────────── Mode 1 — Create ──────────────────────────────────── */
 
+// F4 returns one PLANT row per plant + division, so the same plant repeats. Show each plant
+// once (keyed on the plant code, i.e. the part before "_").
+function dedupePlantOptions(options: string[]): string[] {
+  const seen = new Set<string>();
+  return options.filter((o) => {
+    const code = String(o).split("_")[0].trim();
+    if (seen.has(code)) return false;
+    seen.add(code);
+    return true;
+  });
+}
+
+// Divisions that belong to the selected plant (from the F4 plant + division rows). With no
+// plant selected, or a plant that has no division of its own, the full division list is kept.
+function divisionsForPlant(
+  plantValue: string,
+  entries: { plant: string; division: string }[],
+  allDivisions: string[],
+): string[] {
+  const code = String(plantValue || "").split("_")[0].trim();
+  if (!code) return allDivisions;
+  const own = Array.from(
+    new Set(entries.filter((e) => e.plant === code).map((e) => e.division).filter(Boolean)),
+  );
+  return own.length > 0 ? own : allDivisions;
+}
+
+// Division to pre-fill when a plant is chosen: the plant's only division, otherwise keep the
+// current one if it still belongs to the plant, otherwise clear it so the user picks.
+function divisionAfterPlantChange(
+  plantValue: string,
+  currentDivision: string,
+  entries: { plant: string; division: string }[],
+  allDivisions: string[],
+): string {
+  if (entries.length === 0) return currentDivision;
+  const divs = divisionsForPlant(plantValue, entries, allDivisions);
+  if (divs.length === 1) return divs[0];
+  return divs.includes(currentDivision) ? currentDivision : "";
+}
+
 function CreateDispatch() {
   const navigate = useNavigate();
   const [sap, setSap] = useState<SapMode | null>(null);
@@ -216,6 +257,7 @@ function CreateDispatch() {
   const [fetchedVendors, setFetchedVendors] = useState<{ vendorCode: string; transporter: string }[]>([]);
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
+  const [fetchedPlantDivisions, setFetchedPlantDivisions] = useState<{ plant: string; division: string }[]>([]);
   const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
   const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
   const [searchType, setSearchType] = useState<string>(SEARCH_TYPES[1]);
@@ -599,8 +641,16 @@ function CreateDispatch() {
         const transporters: string[] = Array.from(new Set(vend.map((v) => v.transporter).filter(Boolean)));
 
         setFetchedVendors(vend);
-        setFetchedPlants(plants);
+        setFetchedPlants(dedupePlantOptions(plants));
         setFetchedDivisions(divisions.map((d) => d));
+        setFetchedPlantDivisions(
+          Array.isArray(data.PLANT)
+            ? data.PLANT.map((p: PlantData) => ({
+                plant: String(p.PLANT ?? "").trim(),
+                division: String(p.DIVISION ?? "").trim(),
+              }))
+            : [],
+        );
         setFetchedTransporters(transporters);
       } catch (err) {
         // ignore failures for now — leave defaults in place
@@ -982,13 +1032,18 @@ function CreateDispatch() {
                       <CellSelect
                         value={row.plant}
                         options={fetchedPlants.length > 0 ? fetchedPlants : PLANTS}
-                        onChange={(v) => updateRow(row.id, { plant: v })}
+                        onChange={(v) =>
+                          updateRow(row.id, {
+                            plant: v,
+                            division: divisionAfterPlantChange(v, row.division, fetchedPlantDivisions, fetchedDivisions),
+                          })
+                        }
                         minWidth={110}
                         invalid={showErrors && isFieldEmpty(row, "plant")}
                       />
                       <CellSelect
                         value={row.division}
-                        options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}
+                        options={fetchedDivisions.length > 0 ? divisionsForPlant(row.plant, fetchedPlantDivisions, fetchedDivisions) : DIVISIONS}
                         onChange={(v) => updateRow(row.id, { division: v })}
                         minWidth={100}
                         invalid={showErrors && isFieldEmpty(row, "division")}
@@ -1292,6 +1347,7 @@ function SearchDispatch() {
   const [sap, setSap] = useState<SapMode | null>(null);
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
+  const [fetchedPlantDivisions, setFetchedPlantDivisions] = useState<{ plant: string; division: string }[]>([]);
   const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
@@ -1510,8 +1566,16 @@ function SearchDispatch() {
         const transporters: string[] = Array.isArray(data.VEND_CODE)
           ? Array.from(new Set(data.VEND_CODE.map((v: VendorData) => String(v.TRANSPORTER)).filter(Boolean)))
           : [];
-        setFetchedPlants(plants);
+        setFetchedPlants(dedupePlantOptions(plants));
         setFetchedDivisions(divisions.map((d) => d));
+        setFetchedPlantDivisions(
+          Array.isArray(data.PLANT)
+            ? data.PLANT.map((p: PlantData) => ({
+                plant: String(p.PLANT ?? "").trim(),
+                division: String(p.DIVISION ?? "").trim(),
+              }))
+            : [],
+        );
         setFetchedTransporters(transporters);
       } catch (err) {
         // ignore
@@ -1560,7 +1624,10 @@ function SearchDispatch() {
               <SelectField
                 label="Plant"
                 value={plant}
-                onChange={setPlant}
+                onChange={(v) => {
+                  setPlant(v);
+                  setDivision(divisionAfterPlantChange(v, division, fetchedPlantDivisions, fetchedDivisions));
+                }}
                 options={fetchedPlants.length > 0 ? fetchedPlants : PLANTS}
                 placeholder="Select Plant"
               />
@@ -1568,7 +1635,7 @@ function SearchDispatch() {
                 label="Division"
                 value={division}
                 onChange={setDivision}
-                options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}
+                options={fetchedDivisions.length > 0 ? divisionsForPlant(plant, fetchedPlantDivisions, fetchedDivisions) : DIVISIONS}
                 placeholder="Select Division"
               />
               <SelectField

@@ -14,6 +14,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "../components/app-shell";
+import { ApiLoader } from "../components/api-loader";
 import faviconAsset from "../assets/hbl-favicon.png.asset.json";
 import favicon from "../favicon.ico";
 
@@ -208,6 +209,7 @@ function RootComponent() {
       ) : authChecked ? (
         <AppShell><Outlet /></AppShell>
       ) : null}
+      <ApiLoader />
     </QueryClientProvider>
   );
 }
