@@ -448,6 +448,10 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   const [revealed, setRevealed] = useState(false);
 
   const [headerData, setHeaderData] = useState<HeaderData>({});
+  // Search bar (onSearchReference) can return several HEADER rows for one reference
+  // (one per line item). headerData/the editable row above stays HEADER[0], unchanged;
+  // this holds HEADER[1..] purely for display in the same table, read-only.
+  const [extraHeaderRows, setExtraHeaderRows] = useState<any[]>([]);
   const [itemData, setItemData] = useState<any[]>([]);
   const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string } | null>(null);
   const [selectedItems, setSelectedItems] = useState<TableRow[]>([]);
@@ -580,6 +584,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   setTableData([EMPTY_ROW()]);
   setRevealed(false);
   setHeaderData({});
+  setExtraHeaderRows([]);
   setItemData([]);
   setSelectedItems([]);
   setImagesBase64("");
@@ -1207,6 +1212,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   setTableData([EMPTY_ROW()]);
   setRevealed(false);
   setHeaderData({});
+  setExtraHeaderRows([]);
   setItemData([]);
   setSelectedItems([]);
   setImagesBase64("");
@@ -1235,6 +1241,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   const onSearchReference = async () => {
     // Reset
     setHeaderData({});
+    setExtraHeaderRows([]);
     setItemData([]);
     setShowForm(false);
     setRevealed(false);
@@ -1325,6 +1332,14 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
         ZDAMAGE_RMK: dmgRmk,
         DAMAGE_RMK: dmgRmk,
       });
+      // Any further HEADER rows (e.g. one per ZLINE_NO) — shown read-only below the
+      // editable row above so every HEADER record from the response is visible.
+      setExtraHeaderRows(
+        res.HEADER.slice(1).map((h: any) => {
+          const rmk = h.ZDAMAGE_RMK ?? h.DAMAGE_RMK ?? "";
+          return { ...h, ZDAMAGE_RMK: rmk, DAMAGE_RMK: rmk };
+        })
+      );
       setItemData(items);
       setShowForm(true);
       setRevealed(true);
@@ -1750,6 +1765,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
           headerData.ZINV_NO === row.ZINV_NO
         ) {
           setHeaderData({});
+          setExtraHeaderRows([]);
           setShowForm(false);
         }
       } else {
@@ -2370,6 +2386,132 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       )}
                     </td>
                   </tr>
+
+                  {/* Any further HEADER rows from the search response (e.g. one per
+                      ZLINE_NO) — read-only, same columns as above, so every HEADER
+                      record is visible. Editing stays on the row above only. */}
+                  {extraHeaderRows.map((row: any, rowIndex: number) => (
+                    <tr key={`extra-header-${rowIndex}`} className="bg-surface hover:bg-muted/50">
+                      {[
+                        { field: "ZREFNO", type: "text" },
+                        { field: "ZLINE_NO", type: "text" },
+                        { field: "ZINV_NO", type: "text" },
+                        { field: "ZODN_NO", type: "text" },
+                        { field: "ZSONO", type: "text" },
+                        { field: "ZINV_DATE", type: "date" },
+                        { field: "ZFSR_RPT_DT", type: "date" },
+                        { field: "ZBASIC_VALUE", type: "number" },
+                        { field: "ZINC_DATE", type: "date" },
+                        { field: "ZCUSTOMER", type: "text" },
+                        { field: "ZCONSIGN_NAME", type: "text" },
+                        { field: "ZDAMAGE_RMK", type: "text" },
+                        { field: "ZSETTLEMENT", type: "text" },
+                        { field: "ZCLOSING_DT", type: "date" },
+                        { field: "ZDIMAGES", type: "text" },
+                        { field: "ZFSRREP", type: "text" },
+                        { field: "ZFIRREP", type: "text" },
+                        { field: "ZCOF", type: "text" },
+                        { field: "ZSALE_PERSON", type: "text" },
+                        { field: "ZLOCATION", type: "text" },
+                        { field: "ZROUTE", type: "text" },
+                        { field: "ZPLANT", type: "text" },
+                        { field: "ZDIVISION", type: "text" },
+                        { field: "ZCREATED_DT", type: "date" },
+                        { field: "ZVEH_TYPE", type: "text" },
+                      ].map(({ field, type }) => (
+                        <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
+                          {DOC_LOCAL_KEY[field] ? (
+                            (() => {
+                              const fileName = docFileName(row, field);
+                              if (!fileName || fileName === "-" || fileName === "NA") {
+                                return <span className="text-muted-foreground">-</span>;
+                              }
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const url = getLocalDocumentUrl({
+                                      mode: isWithout ? "Without Sap" : "SAP",
+                                      screen: "Transit_Damage_Info",
+                                      field: DOC_LOCAL_KEY[field],
+                                      fileName,
+                                      storedPath: row?.[DOC_PATH_KEY[field]],
+                                      row,
+                                    });
+                                    setPreviewDoc({ url, title: fileName });
+                                  }}
+                                  className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium underline underline-offset-2 transition-colors cursor-pointer group max-w-[150px]"
+                                  title={`View ${fileName}`}
+                                >
+                                  <FileText className="size-3.5 shrink-0 opacity-70 group-hover:opacity-100 text-blue-600 dark:text-blue-400" />
+                                  <span className="truncate">{fileName}</span>
+                                </button>
+                              );
+                            })()
+                          ) : (
+                            <span>
+                              {type === "date" && row[field]
+                                ? new Date(row[field]).toLocaleDateString("en-GB")
+                                : row[field] || (field === "ZDAMAGE_RMK" ? row.DAMAGE_RMK : "") || "-"}
+                            </span>
+                          )}
+                        </td>
+                      ))}
+
+                      <td className="px-2 py-2 text-center">
+                        <div className="flex items-center gap-1 justify-center">
+                          <button
+                            onClick={() => {
+                              // Edit is only wired to the single headerData row above, so make
+                              // this row that one: swap it into headerData (same edit init the
+                              // row above uses) and put the row it displaced back here in its
+                              // place, so every row stays visible and only headerData is "live".
+                              setEditSearchDamageFiles({});
+                              const dmgRmk = row.ZDAMAGE_RMK || row.DAMAGE_RMK || "";
+                              const nextEdit = {
+                                ...row,
+                                ZDAMAGE_RMK: dmgRmk,
+                                DAMAGE_RMK: dmgRmk,
+                                _backup: { ...row, ZDAMAGE_RMK: dmgRmk, DAMAGE_RMK: dmgRmk },
+                                isEdit: true,
+                              };
+                              const { isEdit: _prevIsEdit, _backup: _prevBackup, ...displaced } = headerData;
+                              setExtraHeaderRows((prev) =>
+                                prev.map((r, i) => (i === rowIndex ? displaced : r))
+                              );
+                              setHeaderData(nextEdit);
+                            }}
+                            className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
+                            title="Edit"
+                          >
+                            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                              />
+                            </svg>
+                          </button>
+
+                          <button
+                            onClick={() => deleteRow(row)}
+                            className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+                            title="Delete"
+                          >
+                            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
 
@@ -2460,14 +2602,38 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                               onClick={() => editItemRow(index)}
                               className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100"
                             >
-                              ✏️
+                              <svg
+                                className="size-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                />
+                              </svg>
                             </button>
 
                             <button
                               onClick={() => deleteRow(item)}
                               className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100"
                             >
-                              🗑️
+                              <svg
+                                className="size-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
                             </button>
                           </div>
                         ) : (
