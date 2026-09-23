@@ -610,7 +610,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         : await service.GlobalReferenceNoFetchwithoutsap(payload);
 
       if (res?.STATUS === "FALSE") {
-        Swal.fire({ icon: "info", title: "No Records Found", text: "No matching reference details found.", timer: 1500, showConfirmButton: false });
+        Swal.fire({ icon: "error", title: "Error", text: res?.MESSAGE || "No matching reference details found." });
         setTableData([EMPTY_ROW()]);
         return;
       }

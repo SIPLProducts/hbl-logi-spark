@@ -67,9 +67,12 @@ const TRANSACTION_TYPES = [
   { value: "BYHAND", label: "BY HAND" },
 ];
 
+// LITHIUM is renamed into LIBESS / Lithium-NGN / CPD; Lead acid, Electronic, PLT, Submarine,
+// T-CAS and Others are new.
 const SUB_DIVISIONS = [
-  "FUZE", "IPS SYSTEM", "LITHIUM", "NCFP", "NCPP", "NCPP-VSEZ", "NCPP/ETP",
-  "NCSP", "PE", "SILVER ZINC", "SYSTEM ORDERS", "THERMAL", "THERMAL,FUZE,SZ", "VRLA"
+  "FUZE", "IPS SYSTEM", "LIBESS", "Lithium-NGN", "CPD", "NCFP", "NCPP", "NCPP-VSEZ", "NCPP/ETP",
+  "NCSP", "PE", "SILVER ZINC", "SYSTEM ORDERS", "THERMAL", "THERMAL,FUZE,SZ", "VRLA",
+  "Lead acid", "Electronic", "PLT", "Submarine", "T-CAS", "Others"
 ];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1865,14 +1868,25 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                 {(() => {
                   const filled = sapFetched && sapFilledKeys.has("DestinationState");
                   const unfilled = sapFetched && !sapFilledKeys.has("DestinationState");
-                  if (filled) return <input value={form.DestinationState} readOnly className={INPUT_SAP_FILLED} />;
+                  // SAP-filled still gets the green "from SAP" styling, but as an editable
+                  // dropdown (not readonly) so the user can change it and patch the data —
+                  // same change handler (sets the field + auto-fetches the Zone) the
+                  // not-yet-filled dropdown below already used.
+                  const className = filled
+                    ? "h-7 w-full rounded-md bg-emerald-50 border-2 border-emerald-400 px-2 text-[12px] text-emerald-900 font-semibold outline-none cursor-pointer focus:border-emerald-500 focus:ring-2 focus:ring-emerald-300"
+                    : unfilled
+                      ? INPUT_SAP_EMPTY
+                      : INPUT_NORMAL;
                   return (
                     <select
                       value={form.DestinationState}
                       onChange={(e) => onDestinationStateChange(e.target.value)}
-                      className={unfilled ? INPUT_SAP_EMPTY : INPUT_NORMAL}
+                      className={className}
                     >
                       <option value="">Select State</option>
+                      {form.DestinationState && !statesList.some((s) => s.STATE === form.DestinationState) && (
+                        <option value={form.DestinationState}>{form.DestinationState}</option>
+                      )}
                       {statesList.map((s) => (
                         <option key={s.STATE} value={s.STATE}>{s.STATE}</option>
                       ))}
@@ -1912,6 +1926,12 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                   className={isSap ? INPUT_YELLOW : INPUT_NORMAL}
                 >
                   <option value="">Select Mode of Transport</option>
+                  {form.TransactionType && ![
+                    "FULL TRUCK LOAD", "CARGO", "RATECONTRACT", "LOCALTRANSPORTATION",
+                    "CUSTOMERTRANSPORTER", "COMPANYVEHICLE", "COURIER", "BYHAND",
+                  ].includes(form.TransactionType) && (
+                    <option value={form.TransactionType}>{form.TransactionType}</option>
+                  )}
                   {[
                     { value: "FULL TRUCK LOAD", label: "FULL TRUCK LOAD" },
                     { value: "CARGO", label: "CARGO" },
@@ -1936,10 +1956,12 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                   className={isSap ? INPUT_YELLOW : INPUT_NORMAL}
                 >
                   <option value="">Select Sub Division</option>
-                  {["FUZE", "IPS SYSTEM", "LITHIUM", "NCFP", "NCPP", "NCPP-VSEZ", "NCPP/ETP",
-                    "NCSP", "PE", "SILVER ZINC", "SYSTEM ORDERS", "THERMAL", "THERMAL,FUZE,SZ", "VRLA"].map(v => (
-                      <option key={v} value={v}>{v}</option>
-                    ))}
+                  {form.SubDivision && !SUB_DIVISIONS.includes(form.SubDivision) && (
+                    <option value={form.SubDivision}>{form.SubDivision}</option>
+                  )}
+                  {SUB_DIVISIONS.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
                 </select>
               </div>
 

@@ -861,25 +861,33 @@ function PremiumRadio({
 }
 
 function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: SapMode) => void }) {
-  const idx = value === "without" ? 1 : 0;
   return (
     <div className="relative inline-flex items-center p-0 rounded-full bg-accent/10 text-[12px]">
-      {value && (
-        <span
-          className="absolute top-0 bottom-0 left-0 w-1/2 rounded-full bg-surface shadow-sm transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(${idx * 100}%)` }}
-          aria-hidden
-        />
-      )}
       {(["with", "without"] as const).map((m) => (
         <button
           key={m}
           onClick={() => onChange(m)}
           className={cn(
-            "relative z-10 px-3 py-1 rounded-full font-medium transition-colors cursor-pointer",
-            value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            "relative z-10 inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-colors cursor-pointer",
+            value === m ? "bg-[#2E86C1] text-white shadow-sm" : "text-muted-foreground hover:text-foreground",
           )}
+          role="radio"
+          aria-checked={value === m}
         >
+          <span
+            className={cn(
+              "grid place-items-center size-3.5 rounded-full border-2 transition-colors",
+              value === m ? "border-white" : "border-muted-foreground/40",
+            )}
+            aria-hidden
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full transition-all",
+                value === m ? "bg-white scale-100" : "bg-transparent scale-0",
+              )}
+            />
+          </span>
           {m === "with" ? "With SAP" : "Without SAP"}
         </button>
       ))}
@@ -894,25 +902,33 @@ function SearchSapToggle({
   value: SapMode | null;
   onChange: (v: SapMode) => void;
 }) {
-  const idx = value === "with" ? 0 : value === "without" ? 1 : -1;
   return (
     <div className="relative inline-flex items-center p-0 rounded-full bg-accent/10 text-[12px]">
-      {idx >= 0 && (
-        <span
-          className="absolute top-0 bottom-0 left-0 w-1/2 rounded-full bg-surface shadow-sm transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(${idx * 100}%)` }}
-          aria-hidden
-        />
-      )}
       {(["with", "without"] as const).map((m) => (
         <button
           key={m}
           onClick={() => onChange(m)}
           className={cn(
-            "relative z-10 px-3 py-1 rounded-full font-medium transition-colors cursor-pointer",
-            value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            "relative z-10 inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-colors cursor-pointer",
+            value === m ? "bg-[#2E86C1] text-white shadow-sm" : "text-muted-foreground hover:text-foreground",
           )}
+          role="radio"
+          aria-checked={value === m}
         >
+          <span
+            className={cn(
+              "grid place-items-center size-3.5 rounded-full border-2 transition-colors",
+              value === m ? "border-white" : "border-muted-foreground/40",
+            )}
+            aria-hidden
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full transition-all",
+                value === m ? "bg-white scale-100" : "bg-transparent scale-0",
+              )}
+            />
+          </span>
           {m === "with" ? "With SAP" : "Without SAP"}
         </button>
       ))}
@@ -1445,34 +1461,20 @@ function parseIsoDateTime(val?: string) {
 }
 
 /**
- * Returns the earliest allowed Reported Date and Time (start of the next calendar date: YYYY-MM-DDT00:00).
- * If Required Date is "2026-09-08 15:48", returns "2026-09-09T00:00".
- * The same date or any earlier date cannot be selected or entered.
- */
-function getNextCalendarDate(isoDateTime?: string): string {
-  if (!isoDateTime) return "";
-  const parsed = parseIsoDateTime(isoDateTime);
-  if (!parsed) return "";
-  const nextDay = new Date(parsed.year, parsed.month, parsed.day);
-  nextDay.setDate(nextDay.getDate() + 1);
-  return `${nextDay.getFullYear()}-${padZero(nextDay.getMonth() + 1)}-${padZero(nextDay.getDate())}T00:00`;
-}
-
-/**
- * Validates whether Reported Date and Time is on or after the next calendar day
- * relative to Required Date and Time.
- * Returns false if Reported Date is on the same calendar day or earlier.
+ * Validates whether Reported Date and Time is the same as, or later than,
+ * Required Date and Time. Any moment earlier than Required Date and Time is not allowed.
  */
 function isReportedDateValid(requiredDateTime?: string, reportedDateTime?: string): boolean {
   if (!requiredDateTime || !reportedDateTime) return true;
-  const minAllowedDateTime = getNextCalendarDate(requiredDateTime);
-  if (!minAllowedDateTime) return true;
+  const required = parseIsoDateTime(requiredDateTime);
+  const reported = parseIsoDateTime(reportedDateTime);
+  if (!required || !reported) return true;
 
-  const minCalendarDate = minAllowedDateTime.slice(0, 10);
-  const reportedCalendarDate = reportedDateTime.slice(0, 10);
+  const requiredDateStr = `${required.year}-${padZero(required.month + 1)}-${padZero(required.day)}`;
+  const reportedDateStr = `${reported.year}-${padZero(reported.month + 1)}-${padZero(reported.day)}`;
 
-  // Must be strictly on or after the next calendar date
-  return reportedCalendarDate >= minCalendarDate;
+  if (reportedDateStr !== requiredDateStr) return reportedDateStr > requiredDateStr;
+  return reported.timeStr >= required.timeStr;
 }
 
 /* ── Custom Date & Time Picker Matching Reference Design ── */
@@ -1780,7 +1782,7 @@ function GateDateTimePicker({
                   Swal.fire({
                     icon: "warning",
                     title: "Invalid Date & Time",
-                    text: "Reported Date and Time must be at least one calendar day after Required Date and Time.",
+                    text: "Reported Date and Time cannot be earlier than Required Date and Time.",
                     timer: 2500,
                     showConfirmButton: false,
                   });
@@ -3183,7 +3185,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         Swal.fire({
           icon: "warning",
           title: "Validation Error",
-          text: `Row ${i + 1}: Reported Date and Time must be at least one calendar day after Required Date and Time.`,
+          text: `Row ${i + 1}: Reported Date and Time cannot be earlier than Required Date and Time.`,
         });
         return;
       }
@@ -3486,7 +3488,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           Swal.fire({
             icon: "warning",
             title: "Validation Error",
-            text: "Reported Date and Time must be at least one calendar day after Required Date and Time.",
+            text: "Reported Date and Time cannot be earlier than Required Date and Time.",
           });
           return;
         }
@@ -4083,10 +4085,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                     field === "PHYSICAL_DISPATCH_DATE_TIME" && item.REPORTED_DATE_AND_TIME
                                       ? item.REPORTED_DATE_AND_TIME
                                       : field === "REPORTED_DATE_AND_TIME" && item.REQUIRED_DATE_AND_TIME
-                                        ? getNextCalendarDate(item.REQUIRED_DATE_AND_TIME)
+                                        ? item.REQUIRED_DATE_AND_TIME
                                         : undefined
                                   }
-                                  minDateOnly={field === "REPORTED_DATE_AND_TIME"}
                                   className={cn(
                                     "h-7 w-full min-w-[150px] text-[11px]",
                                     field === "REPORTED_DATE_AND_TIME" &&
@@ -4107,7 +4108,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                       Swal.fire({
                                         icon: "warning",
                                         title: "Invalid Date & Time",
-                                        text: "Reported Date and Time must be at least one calendar day after Required Date and Time.",
+                                        text: "Reported Date and Time cannot be earlier than Required Date and Time.",
                                         timer: 2500,
                                         showConfirmButton: false,
                                       });
@@ -4547,7 +4548,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           const isReported = c === "Reported Date and Time";
                           const isDateTime = c.toLowerCase().includes("date");
                           const val = row[field] || "";
-                          const minReported = isReported && row.requiredDateTime ? getNextCalendarDate(row.requiredDateTime) : undefined;
+                          const minReported = isReported && row.requiredDateTime ? row.requiredDateTime : undefined;
 
                           if (isDateTime) {
                             return (
@@ -4555,7 +4556,6 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                 <GateDateTimePicker
                                   value={val}
                                   min={isPd ? minPd : isReported ? minReported : undefined}
-                                  minDateOnly={isReported}
                                   className={cn(
                                     "h-7 min-w-[150px]",
                                     isPd && minPd && val && val <= minPd
@@ -4570,7 +4570,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                       Swal.fire({
                                         icon: "warning",
                                         title: "Invalid Date & Time",
-                                        text: "Reported Date and Time must be at least one calendar day after Required Date and Time.",
+                                        text: "Reported Date and Time cannot be earlier than Required Date and Time.",
                                         timer: 2500,
                                         showConfirmButton: false,
                                       });

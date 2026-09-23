@@ -71,17 +71,22 @@ function F4MultiSelect({
     ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
     : options;
 
+  // Invoice Number allows only one selection: picking an option replaces the current
+  // value (instead of adding to it), and closes the dropdown; clicking the already
+  // selected option clears it.
   const toggle = (v: string) => {
-    const next = selected.includes(v)
-      ? selected.filter((x) => x !== v)
-      : [...selected, v];
-    onChange(next.join(","));
+    if (selected.includes(v)) {
+      onChange("");
+      return;
+    }
+    onChange(v);
+    setOpen(false);
+    setSearch("");
   };
 
   const displayLabel = () => {
     if (selected.length === 0) return "";
-    if (selected.length === 1) return selected[0];
-    return `${selected.length} Selected`;
+    return selected[0];
   };
 
   return (
@@ -101,31 +106,20 @@ function F4MultiSelect({
 
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
-          <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline">
-            <input
-              autoFocus
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search..."
-              className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
-            />
-          </div>
           {filtered.length === 0 ? (
             <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
           ) : (
             filtered.map((o) => (
-              <label
+              <div
                 key={o}
-                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+                onClick={() => toggle(o)}
+                className={
+                  "px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer truncate" +
+                  (selected.includes(o) ? " bg-accent/10 font-semibold" : "")
+                }
               >
-                <input
-                  type="checkbox"
-                  checked={selected.includes(o)}
-                  onChange={() => toggle(o)}
-                  className="size-3.5"
-                />
-                <span className="truncate">{o}</span>
-              </label>
+                {o}
+              </div>
             ))
           )}
         </div>
@@ -1425,7 +1419,13 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                     {[
                       { field: "ZODN_NO", type: "text" },
                       { field: "ZSO_NO", type: "text" },
-                      { field: "ZSALE_PERSON", type: "text" },
+                      {
+                        field: "ZSALE_PERSON",
+                        type: "select",
+                        // Same list the create form's Sales Person dropdown uses (supplierList),
+                        // plus the fetched value itself so it's never missing from the list.
+                        options: Array.from(new Set([...supplierList.map((s: any) => s.SUPPLIER_NAME), item.ZSALE_PERSON].filter(Boolean))),
+                      },
                       {
                         field: "ZSEGMENT",
                         type: "select",

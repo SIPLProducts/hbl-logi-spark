@@ -1655,19 +1655,38 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                   <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-center">{item.POSNR}</td>
                   {[
-                    ["ZODN_NO"],
-                    ["ZSO_NO"],
-                    ["ZPRODUCT"],
-                    ["MTART"],
-                    ["MAKTX"],
-                  ].map(([field]) => (
+                    { field: "ZODN_NO" },
+                    { field: "ZSO_NO" },
+                    // Product / Type of Material — same option lists the create form's
+                    // dropdowns use (PRODUCTS / MATERIAL_TYPES), plus the fetched value
+                    // itself so it's never missing from the list.
+                    { field: "ZPRODUCT", options: PRODUCTS, placeholder: "Select Product" },
+                    { field: "MTART", options: MATERIAL_TYPES, placeholder: "Select Type" },
+                    { field: "MAKTX" },
+                  ].map(({ field, options, placeholder }) => (
                     <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
                       {item.isEdit ? (
-                        <input
-                          value={item[field] ?? ""}
-                          onChange={(e) => patchSearchRow(i, { [field]: e.target.value })}
-                          className="h-6 w-24 rounded border border-hairline px-1 text-[11px]"
-                        />
+                        options ? (
+                          <select
+                            value={item[field] ?? ""}
+                            onChange={(e) => patchSearchRow(i, { [field]: e.target.value })}
+                            className="h-6 min-w-[100px] rounded border border-hairline px-1 text-[11px] bg-white dark:bg-surface"
+                          >
+                            <option value="">{placeholder}</option>
+                            {item[field] && !options.includes(item[field]) && (
+                              <option value={item[field]}>{item[field]}</option>
+                            )}
+                            {options.map((o) => (
+                              <option key={o} value={o}>{o}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            value={item[field] ?? ""}
+                            onChange={(e) => patchSearchRow(i, { [field]: e.target.value })}
+                            className="h-6 w-24 rounded border border-hairline px-1 text-[11px]"
+                          />
+                        )
                       ) : (
                         item[field] || "-"
                       )}
@@ -1707,6 +1726,9 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         className="h-6 min-w-[100px] rounded border border-hairline px-1 text-[11px] bg-white dark:bg-surface"
                       >
                         <option value="">Select</option>
+                        {item.ZBATCOND && !BATTERY_CONDITIONS.includes(item.ZBATCOND) && (
+                          <option value={item.ZBATCOND}>{item.ZBATCOND}</option>
+                        )}
                         {BATTERY_CONDITIONS.map((o) => (
                           <option key={o} value={o}>{o}</option>
                         ))}

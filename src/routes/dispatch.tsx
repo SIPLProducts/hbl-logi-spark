@@ -94,8 +94,15 @@ function isFieldEmpty(row: DispatchRow, key: keyof DispatchRow) {
   return !v || String(v).trim() === "";
 }
 
+// Work Order is only mandatory when the Vehicle Type is FULL TRUCK LOAD (it's disabled otherwise).
+function isWorkOrderRequired(row: DispatchRow) {
+  return row.vehicleType === "FULL TRUCK LOAD";
+}
+
 function getMissingFields(row: DispatchRow) {
-  return MANDATORY_KEYS.filter((k) => isFieldEmpty(row, k));
+  const missing = MANDATORY_KEYS.filter((k) => isFieldEmpty(row, k));
+  if (isWorkOrderRequired(row) && isFieldEmpty(row, "workOrder")) missing.push("workOrder");
+  return missing;
 }
 
 function getLoggedInUser() {
@@ -236,6 +243,36 @@ function divisionsForPlant(
   return own.length > 0 ? own : allDivisions;
 }
 
+// Division dropdown options for the selected plant, labelled with DIV_TEXT (e.g. "1100_NCPP")
+// while the option's value stays the bare DIVISION code (e.g. "NCPP") — that's what gets
+// saved. Falls back to the bare code as its own label when there's no plant-specific
+// DIV_TEXT to show (e.g. before a plant is chosen).
+function divisionOptionsForPlant(
+  plantValue: string,
+  entries: { plant: string; division: string; divText?: string }[],
+  allDivisions: string[],
+): { value: string; label: string }[] {
+  const code = String(plantValue || "").split("_")[0].trim();
+  const own = entries.filter((e) => e.plant === code && e.division);
+  if (own.length > 0) {
+    const seen = new Set<string>();
+    return own
+      .filter((e) => {
+        if (seen.has(e.division)) return false;
+        seen.add(e.division);
+        return true;
+      })
+      .map((e) => ({ value: e.division, label: e.divText || e.division }));
+  }
+  // No plant selected (or it has no divisions of its own) — show every division, still
+  // labelled with its DIV_TEXT (from whichever plant/division entry carries that code),
+  // falling back to the bare code only if no DIV_TEXT is available for it.
+  return allDivisions.map((d) => {
+    const match = entries.find((e) => e.division === d && e.divText);
+    return { value: d, label: match?.divText || d };
+  });
+}
+
 // Division to pre-fill when a plant is chosen: the plant's only division, otherwise keep the
 // current one if it still belongs to the plant, otherwise clear it so the user picks.
 function divisionAfterPlantChange(
@@ -257,12 +294,35 @@ function CreateDispatch() {
   const [fetchedVendors, setFetchedVendors] = useState<{ vendorCode: string; transporter: string }[]>([]);
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
-  const [fetchedPlantDivisions, setFetchedPlantDivisions] = useState<{ plant: string; division: string }[]>([]);
+  const [fetchedPlantDivisions, setFetchedPlantDivisions] = useState<{ plant: string; division: string; divText: string }[]>([]);
   const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
   const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
   const [searchType, setSearchType] = useState<string>(SEARCH_TYPES[1]);
   const [searchValue, setSearchValue] = useState("");
   const [rows, setRows] = useState<DispatchRow[]>([emptyDispatchRow(1)]);
+  // Row selection for the fetched/created dispatch lines table — purely local, not wired
+  // to any action yet.
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+  const allRowsSelected = rows.length > 0 && rows.every((r) => selectedRowIds.has(r.id));
+  const toggleRowSelected = (id: string) => {
+    setSelectedRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const toggleAllRowsSelected = () => {
+    setSelectedRowIds((prev) => {
+      const next = new Set(prev);
+      if (allRowsSelected) {
+        rows.forEach((r) => next.delete(r.id));
+      } else {
+        rows.forEach((r) => next.add(r.id));
+      }
+      return next;
+    });
+  };
   const [showErrors, setShowErrors] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -608,6 +668,75 @@ function CreateDispatch() {
     }
   };
 
+  const handleDelete = async () => {
+    if (selectedRowIds.size === 0) return;
+
+    try {
+      const loggedInUser = getLoggedInUser();
+
+      // Same field mapping as handleUpdate's payload, but only for the ticked rows, and
+      // wrapped in a DELETE array.
+      const payload = {
+        DELETE: rows
+          .filter((row) => selectedRowIds.has(row.id))
+          .map((row) => ({
+            ZMAPID: row.zMapId || 0,
+            REFNO: Number(searchReference) || Number(row.referenceNo) || 0,
+            LINE_NO: Number(row.lineNo) || 0,
+            CREATED_DT: row.createdDate || "",
+            VEH_TYPE: row.vehicleType || "",
+            NO_TRUCKS: Number(row.noOfTrucks) || 0,
+            NO_INVOICES: Number(row.noOfInvoices) || 0,
+            WORK_ORDER: row.workOrder || "",
+            VENDOR_CD: Number(row.vendorCode) || 0,
+            TRANSPORTER: row.transporter || "",
+            WERKS: row.plant || "",
+            DIVISION: row.division || "",
+            NO_LRS: Number(row.noOfLRs) || 0,
+            LR_NO: row.lrNumber || "",
+            ZLRSPEC: row.lrSpec || "0",
+            LOAD_PT: row.loadingPoints || "",
+            UNLOAD_PT: row.unloadingPoints || "",
+            ZDIS_RM: row.remarks || "",
+            ZUSER: row.zUser || "",
+            ZUSER_CH: loggedInUser,
+          })),
+      };
+
+      console.log("🔴 Delete Payload:", JSON.stringify(payload, null, 2));
+
+      // Same DELETE payload / response handling as With SAP — only the endpoint differs.
+      const res =
+        sap === "with"
+          ? await service.DispatchReferenceNumberDelete(payload)
+          : await service.DispatchWithoutSapDelete(payload);
+
+      console.log("🔴 Delete Response:", res);
+
+      if (res?.STATUS === "TRUE" || res?.NUMBER === "200") {
+        Swal.fire({
+          text: res.MSG || "Dispatch data deleted successfully!",
+          icon: "success",
+          confirmButtonText: "OK",
+        }).then(() => {
+          setSelectedRowIds(new Set());
+          resetForm();
+          setSearchReference("");
+        });
+      } else {
+        Swal.fire({
+          text: res?.MSG || "Error while Deleting Dispatch Data",
+          icon: "error",
+        });
+      }
+    } catch (err: any) {
+      Swal.fire({
+        text: err?.response?.data?.MSG || "Failed to delete Dispatch data!",
+        icon: "error",
+      });
+    }
+  };
+
   // Fetch F4 lookup data (vendor codes, plants, divisions, transporters) when SAP selection changes
   useEffect(() => {
     resetForm();
@@ -648,6 +777,7 @@ function CreateDispatch() {
             ? data.PLANT.map((p: PlantData) => ({
                 plant: String(p.PLANT ?? "").trim(),
                 division: String(p.DIVISION ?? "").trim(),
+                divText: String(p.DIV_TEXT ?? "").trim(),
               }))
             : [],
         );
@@ -684,23 +814,23 @@ function CreateDispatch() {
     let vendorCode = "";
 
     switch (vehicleType) {
-      case "RATE CONTRACT":
-        vendorCode = "111111";
-        break;
-      case "LOCAL TRANSPORTATION":
-        vendorCode = "222222";
-        break;
-      case "CUSTOMER TRANSPORTER":
-        vendorCode = "333333";
-        break;
       case "COMPANY VEHICLE":
-        vendorCode = "444444";
+        vendorCode = "1111111";
         break;
       case "COURIER":
-        vendorCode = "555555";
+        vendorCode = "2222222";
         break;
       case "BY HAND":
-        vendorCode = "666666";
+        vendorCode = "3333333";
+        break;
+      case "LOCAL TRANSPORTATION":
+        vendorCode = "4444444";
+        break;
+      case "CUSTOMER TRANSPORTER":
+        vendorCode = "5555555";
+        break;
+      case "RATE CONTRACT":
+        vendorCode = "6666666";
         break;
       default:
         break;
@@ -918,6 +1048,17 @@ function CreateDispatch() {
               <table className="w-full text-[12.5px] border-collapse">
                 <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-primary text-[9px] font-bold uppercase tracking-widest text-primary-foreground border-b border-hairline">
+                    {isEditMode && (
+                      <th className="w-8 px-2 py-2 text-center align-middle">
+                        <input
+                          type="checkbox"
+                          checked={allRowsSelected}
+                          onChange={toggleAllRowsSelected}
+                          aria-label="Select all rows"
+                          className="size-3.5 cursor-pointer accent-white"
+                        />
+                      </th>
+                    )}
                     {[
                       "Sl.No",
                       "Vehicle Type",
@@ -947,7 +1088,7 @@ function CreateDispatch() {
                         {/* Wrap in an inline-flex container to keep label and asterisk rigidly together */}
                         <span className="inline-flex items-center gap-0.5">
                           {h}
-                          {MANDATORY_HEADERS.has(h) && <span className="text-destructive font-bold text-[12px]">{"*"}</span>}
+                          {(MANDATORY_HEADERS.has(h) || (h === "Work Order" && rows.some(isWorkOrderRequired))) && <span className="text-destructive font-bold text-[12px]">{"*"}</span>}
                         </span>
                       </th>
                     ))}
@@ -956,6 +1097,17 @@ function CreateDispatch() {
                 <tbody className="divide-y divide-hairline/60">
                   {rows.map((row, index) => (
                     <tr key={row.id} className="hover:bg-accent/[0.04] transition-colors group text-[11.5px]">
+                      {isEditMode && (
+                        <td className="px-2 py-0.5 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedRowIds.has(row.id)}
+                            onChange={() => toggleRowSelected(row.id)}
+                            aria-label={`Select row ${row.slNo}`}
+                            className="size-3.5 cursor-pointer"
+                          />
+                        </td>
+                      )}
                       <td className="px-1 py-0.5 text-center font-mono text-muted-foreground text-[11px]">{row.slNo}</td>
                       <CellSelect
                         value={row.vehicleType}
@@ -973,6 +1125,7 @@ function CreateDispatch() {
 
                         mono
                         disabled={row.vehicleType !== "FULL TRUCK LOAD" || (workOrderMode === "same" && index > 0)}
+                        invalid={showErrors && isWorkOrderRequired(row) && isFieldEmpty(row, "workOrder")}
                       />
                       <CellNumber
                         value={row.noOfTrucks}
@@ -1043,7 +1196,7 @@ function CreateDispatch() {
                       />
                       <CellSelect
                         value={row.division}
-                        options={fetchedDivisions.length > 0 ? divisionsForPlant(row.plant, fetchedPlantDivisions, fetchedDivisions) : DIVISIONS}
+                        options={fetchedDivisions.length > 0 ? divisionOptionsForPlant(row.plant, fetchedPlantDivisions, fetchedDivisions) : DIVISIONS}
                         onChange={(v) => updateRow(row.id, { division: v })}
                         minWidth={100}
                         invalid={showErrors && isFieldEmpty(row, "division")}
@@ -1130,7 +1283,10 @@ function CreateDispatch() {
             >
               <ChevronLeft className="size-3.5" /> Previous
             </Button>
-            <Button
+            {/* Update / Update & Next — commented out, replaced by Delete / Delete & Next below
+                for the fetched-records (isEditMode) case. Save / Save & Next (create mode)
+                are unchanged. */}
+            {/* <Button
               variant="outline"
               size="sm"
               className="gap-1.5 h-7 px-3 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent"
@@ -1144,7 +1300,47 @@ function CreateDispatch() {
               onClick={() => validateAndRun(() => (isEditMode ? handleUpdate() : handleSave("next")))}
             >
               {isEditMode ? "Update & Next" : "Save & Next"}
-            </Button>
+            </Button> */}
+
+            {isEditMode ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={selectedRowIds.size === 0}
+                  className="gap-1.5 h-7 px-3 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent"
+                  onClick={handleDelete}
+                >
+                  <Trash2 className="size-3.5" /> Delete
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={selectedRowIds.size === 0}
+                  className="gap-1.5 h-7 px-3 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0"
+                  onClick={handleDelete}
+                >
+                  Delete & Next
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-7 px-3 rounded-lg border-accent/30 text-accent hover:bg-accent/10 hover:text-accent"
+                  onClick={() => validateAndRun(() => handleSave())}
+                >
+                  <Save className="size-3.5" /> Save
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-1.5 h-7 px-3 rounded-lg bg-gradient-primary text-primary-foreground shadow-cta hover:shadow-lg hover:-translate-y-0.5 transition-all border-0"
+                  onClick={() => validateAndRun(() => handleSave("next"))}
+                >
+                  Save & Next
+                </Button>
+              </>
+            )}
           </div>
         </>
       )}
@@ -1153,25 +1349,33 @@ function CreateDispatch() {
 }
 
 function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: SapMode) => void }) {
-  const idx = value === "with" ? 0 : value === "without" ? 1 : -1;
   return (
     <div className="relative inline-flex items-center p-0 rounded-full bg-accent/10 text-[12px]">
-      {idx >= 0 && (
-        <span
-          className="absolute top-0 bottom-0 left-0 w-1/2 rounded-full bg-surface shadow-soft transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(${idx * 100}%)` }}
-          aria-hidden
-        />
-      )}
       {(["with", "without"] as const).map((m) => (
         <button
           key={m}
           onClick={() => onChange(m)}
           className={cn(
-            "relative z-10 px-3 py-1 rounded-full font-medium transition-colors cursor-pointer",
-            value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            "relative z-10 inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-colors cursor-pointer",
+            value === m ? "bg-[#2E86C1] text-white shadow-sm" : "text-muted-foreground hover:text-foreground",
           )}
+          role="radio"
+          aria-checked={value === m}
         >
+          <span
+            className={cn(
+              "grid place-items-center size-3.5 rounded-full border-2 transition-colors",
+              value === m ? "border-white" : "border-muted-foreground/40",
+            )}
+            aria-hidden
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full transition-all",
+                value === m ? "bg-white scale-100" : "bg-transparent scale-0",
+              )}
+            />
+          </span>
           {m === "with" ? "With SAP" : "Without SAP"}
         </button>
       ))}
@@ -1302,14 +1506,19 @@ function CellSelect({
   disabled,
 }: {
   value: string;
-  options: string[];
+  // Plain strings (existing behaviour, unchanged: label === value) or, e.g. for Division,
+  // { value, label } pairs so the option can be labelled differently from what's saved.
+  options: string[] | { value: string; label: string }[];
   onChange: (v: string) => void;
   placeholder?: string;
   minWidth?: number;
   invalid?: boolean;
   disabled?: boolean;
 }) {
-  const showCurrentOption = value !== "" && !options.includes(value);
+  const normalizedOptions: { value: string; label: string }[] = options.map((o) =>
+    typeof o === "string" ? { value: o, label: o } : o,
+  );
+  const showCurrentOption = value !== "" && !normalizedOptions.some((o) => o.value === value);
 
   return (
     <td className="px-1.5 py-1">
@@ -1329,9 +1538,9 @@ function CellSelect({
               {value}
             </option>
           )}
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
+          {normalizedOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
             </option>
           ))}
         </select>
@@ -1347,7 +1556,7 @@ function SearchDispatch() {
   const [sap, setSap] = useState<SapMode | null>(null);
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
-  const [fetchedPlantDivisions, setFetchedPlantDivisions] = useState<{ plant: string; division: string }[]>([]);
+  const [fetchedPlantDivisions, setFetchedPlantDivisions] = useState<{ plant: string; division: string; divText: string }[]>([]);
   const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
@@ -1470,10 +1679,31 @@ function SearchDispatch() {
         VEHICLE_TYPE: vehicleType || "",
       };
 
-      const res =
+      const rawRes =
         sap === "with"
           ? await service.fetchDispatchFiltered(payload)
           : await service.fetchDispatchFilteredNonSap(payload);
+
+      // This endpoint sometimes double-encodes its array as a JSON string
+      // (e.g. "[{\"ZREFNO\":...}]") instead of returning it already parsed — detect that
+      // and parse it once more before reading it, instead of treating the raw string as data.
+      // Some records also come back with a field whose value is missing entirely
+      // (e.g. "ZNO_TRUCKS":,"ZNO_LRS":1 — nothing between the colon and the comma), which
+      // is invalid JSON and makes the first parse attempt fail. Patch that pattern to a
+      // literal null before parsing again, so one bad field doesn't lose the whole response.
+      let res: any = rawRes;
+      if (typeof rawRes === "string") {
+        try {
+          res = JSON.parse(rawRes);
+        } catch {
+          try {
+            const repaired = rawRes.replace(/"([A-Za-z0-9_]+)":(\s*)([,}])/g, '"$1":null$3');
+            res = JSON.parse(repaired);
+          } catch {
+            res = rawRes;
+          }
+        }
+      }
 
       if (res?.STATUS === "FALSE" || res?.NUMBER === "100") {
         Swal.fire({
@@ -1573,6 +1803,7 @@ function SearchDispatch() {
             ? data.PLANT.map((p: PlantData) => ({
                 plant: String(p.PLANT ?? "").trim(),
                 division: String(p.DIVISION ?? "").trim(),
+                divText: String(p.DIV_TEXT ?? "").trim(),
               }))
             : [],
         );
@@ -1635,7 +1866,7 @@ function SearchDispatch() {
                 label="Division"
                 value={division}
                 onChange={setDivision}
-                options={fetchedDivisions.length > 0 ? divisionsForPlant(plant, fetchedPlantDivisions, fetchedDivisions) : DIVISIONS}
+                options={fetchedDivisions.length > 0 ? divisionOptionsForPlant(plant, fetchedPlantDivisions, fetchedDivisions) : DIVISIONS}
                 placeholder="Select Division"
               />
               <SelectField
@@ -1730,9 +1961,14 @@ function SelectField({
   label: string;
   value: string;
   onChange: (v: string) => void;
-  options: string[];
+  // Plain strings (existing behaviour, unchanged: label === value) or, e.g. for Division,
+  // { value, label } pairs so the option can be labelled differently from what's saved.
+  options: string[] | { value: string; label: string }[];
   placeholder: string;
 }) {
+  const normalizedOptions: { value: string; label: string }[] = options.map((o) =>
+    typeof o === "string" ? { value: o, label: o } : o,
+  );
   return (
     <div className="flex flex-col gap-1">
       <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</label>
@@ -1741,9 +1977,9 @@ function SelectField({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {options.map((o) => (
-            <SelectItem key={o} value={o}>
-              {o}
+          {normalizedOptions.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
             </SelectItem>
           ))}
         </SelectContent>

@@ -369,25 +369,33 @@ function KpiCard({ label, value, delta, tone = "default" }: KpiTile) {
 }
 
 function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: SapMode) => void }) {
-  const idx = value === "without" ? 1 : 0;
   return (
     <div className="relative inline-flex items-center p-0 rounded-full bg-accent/10 text-[12px]">
-      {value && (
-        <span
-          className="absolute top-0 bottom-0 left-0 w-1/2 rounded-full bg-surface shadow-sm transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(${idx * 100}%)` }}
-          aria-hidden
-        />
-      )}
       {(["with", "without"] as const).map((m) => (
         <button
           key={m}
           onClick={() => onChange(m)}
           className={cn(
-            "relative z-10 px-3 py-1 rounded-full font-medium transition-colors",
-            value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            "relative z-10 inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-colors",
+            value === m ? "bg-[#2E86C1] text-white shadow-sm" : "text-muted-foreground hover:text-foreground",
           )}
+          role="radio"
+          aria-checked={value === m}
         >
+          <span
+            className={cn(
+              "grid place-items-center size-3.5 rounded-full border-2 transition-colors",
+              value === m ? "border-white" : "border-muted-foreground/40",
+            )}
+            aria-hidden
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full transition-all",
+                value === m ? "bg-white scale-100" : "bg-transparent scale-0",
+              )}
+            />
+          </span>
           {m === "with" ? "With SAP" : "Without SAP"}
         </button>
       ))}
@@ -970,14 +978,18 @@ function ServiceLevelFeedbackCreate({
       setInvoicenumber("");
     } else {
       setFullReferenceData([]);
-      Swal.fire({
-        icon: "info",
-        title: "No Records Found",
-        text: "No matching reference details were found.",
-        timer: 1500,
-        showConfirmButton: false,
-        width: "300px",
-      });
+      if (data?.STATUS === "FALSE") {
+        Swal.fire({ icon: "error", title: "Error", text: data?.MESSAGE || "No matching reference details found." });
+      } else {
+        Swal.fire({
+          icon: "info",
+          title: "No Records Found",
+          text: "No matching reference details were found.",
+          timer: 1500,
+          showConfirmButton: false,
+          width: "300px",
+        });
+      }
       setRows([slEmptyRow()]);
     }
   };

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
 import {
@@ -120,7 +120,10 @@ function DispatchOrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [error, setError] = useState<string | null>(null);
-  const [plant, setPlant] = useState("");
+  // Multi-select (search + tick several) — same behaviour as the Reports screens' Plant
+  // field. A single selection behaves exactly as the old single-select did (see payload
+  // build below); this only adds the ability to tick more than one.
+  const [plant, setPlant] = useState<string[]>([]);
   const [division, setDivision] = useState("");
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
@@ -164,7 +167,9 @@ function DispatchOrdersPage() {
     const payload = {
       from_date: fromDate,
       to_date: toDate,
-      werks: plant || " ", // plant
+      // Options are stored as "<code>_<description>" (see fetchedPlants below); the API
+      // wants only the plant code, as [{ plant: "1300" }, ...] — one entry per selection.
+      plants: plant.map((p) => ({ plant: p.split("_")[0].trim() })),
       spart: division || " ", // division
     };
 
@@ -245,7 +250,7 @@ function DispatchOrdersPage() {
   const onClear = () => {
     setFromDate("");
     setToDate("");
-    setPlant("");
+    setPlant([]);
     setDivision("");
     setSearch("");
     setRows([]);
@@ -261,12 +266,24 @@ function DispatchOrdersPage() {
         const res: any = await service.fetchVendorCode();
         const data = Array.isArray(res) ? res[0] ?? {} : res ?? {};
 
-        const plants: string[] = Array.isArray(data.PLANT)
-          ? data.PLANT.map((p: PlantData) => {
-            const desc = String(p.PLANT_DESC || "").split("_")[0].trim();
-            return `${p.PLANT}_${desc}`;
+        // F4 returns one row per plant + division, so the same plant can repeat (leading
+        // zeros / spacing can differ between rows too, e.g. "1101" vs "01101") — dedupe on
+        // the normalized plant code BEFORE building the dropdown's display strings, so a
+        // plant like 1101 is kept only once regardless of which of its rows came first.
+        const seenPlantCodes = new Set<string>();
+        const dedupedPlantRecords: PlantData[] = Array.isArray(data.PLANT)
+          ? data.PLANT.filter((p: PlantData) => {
+            const code = String(p.PLANT ?? "").trim().replace(/^0+(?=\d)/, "");
+            if (!code || seenPlantCodes.has(code)) return false;
+            seenPlantCodes.add(code);
+            return true;
           })
           : [];
+
+        const plants: string[] = dedupedPlantRecords.map((p: PlantData) => {
+          const desc = String(p.PLANT_DESC || "").split("_")[0].trim();
+          return `${p.PLANT}_${desc}`;
+        });
 
         const divisions: string[] = Array.isArray(data.PLANT)
           ? Array.from(
@@ -349,8 +366,10 @@ function DispatchOrdersPage() {
       <div className="p-6 space-y-5 flex-1">
         {/* Filter Card */}
         {/* Filter Card */}
-        <section className="bg-surface border border-hairline rounded-lg shadow-xs overflow-hidden">
-          <header className="px-4 py-2.5 border-b border-hairline bg-muted/50 flex items-center gap-2">
+        <section className="bg-surface border border-hairline rounded-lg shadow-xs">
+          {/* rounded-t-lg here (section no longer clips via overflow-hidden) so the Plant
+              dropdown below can open over the Status row instead of being cut off */}
+          <header className="px-4 py-2.5 border-b border-hairline bg-muted/50 rounded-t-lg flex items-center gap-2">
             <Filter className="size-3.5 text-accent" />
             <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
               Dispatch Order Filter
@@ -385,18 +404,13 @@ function DispatchOrdersPage() {
                 <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                   Plant
                 </label>
-                <select
+                <MultiSelectField
+                  options={fetchedPlants.map((p) => ({ label: p, value: p }))}
                   value={plant}
-                  onChange={(e) => setPlant(e.target.value)}
-                  className="h-9 bg-surface border border-hairline rounded-md px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-                >
-                  <option value="">Select plant…</option>
-                  {fetchedPlants.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setPlant}
+                  placeholder="Select plant…"
+                  searchable
+                />
               </div>
 
               {/* <div className="flex flex-col gap-1 w-[190px]">
@@ -426,7 +440,7 @@ function DispatchOrdersPage() {
           </div>
 
           {/* Status row — left: status pills, right: Execute/Reset */}
-          <div className="px-4 py-3 border-t border-hairline flex items-center justify-between gap-3 flex-wrap">
+          <div className="px-4 py-3 border-t border-hairline rounded-b-lg flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                 Status
@@ -684,6 +698,112 @@ function DispatchOrdersPage() {
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+// Search + multi-select dropdown for the Plant filter — same design as the Reports
+// screens' MultiSelectField (e.g. reports.freight-bills.tsx): tick one or many, an
+// optional search box, and a "N Selected" summary label.
+type MultiSelectOption = { label: string; value: string };
+
+function MultiSelectField({
+  options,
+  value,
+  onChange,
+  placeholder = "Select",
+  searchable = false,
+}: {
+  options: MultiSelectOption[];
+  value: string[];
+  onChange: (v: string[]) => void;
+  placeholder?: string;
+  searchable?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const filtered = searchable && search
+    ? options.filter((o) => o.label?.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    if (value.includes(v)) onChange(value.filter((x) => x !== v));
+    else onChange([...value, v]);
+  };
+
+  const displayLabel = () => {
+    if (value.length === 0) return "";
+    if (value.length === 1) {
+      const opt = options.find((o) => o.value === value[0]);
+      return opt?.label ?? value[0];
+    }
+    return `${value.length} Selected`;
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={
+          // Same box as GateDatePicker (border-input, bg-white/dark:surface, text-[12px],
+          // rounded-md, focus ring) so From Date / To Date / Plant line up visually.
+          "h-9 w-full bg-white dark:bg-surface border border-input rounded-md px-2.5 text-[12px] outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30 flex items-center justify-between gap-2 text-left " +
+          (value.length === 0 ? "text-muted-foreground" : "text-foreground")
+        }
+      >
+        <span className="truncate">{displayLabel() || placeholder}</span>
+        <ChevronDown
+          className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 min-w-full w-max max-w-[420px] rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+          {searchable && (
+            <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline">
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
+              />
+            </div>
+          )}
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o.value}
+                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={value.includes(o.value)}
+                  onChange={() => toggle(o.value)}
+                  className="size-3.5"
+                />
+                <span className="whitespace-normal break-words">{o.label}</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

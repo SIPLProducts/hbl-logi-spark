@@ -970,15 +970,11 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
       ZTRUC_TYPE: truckType,
       ZTRUC_WT: weight,
       ZTRUC_VOL: volume,
-      ...(truckType === "PART LOAD" ? { ZACT_LOAD: weight } : {}),
     });
   };
 
   const onPassingWeightChange = (rowId: number, value: string) => {
-    const row = rows.find((r) => r.id === rowId);
-    const patch: Partial<LoadRow> = { ZTRUC_WT: value };
-    if (row?.ZTRUC_TYPE === "PART LOAD") patch.ZACT_LOAD = value;
-    updateRow(rowId, patch);
+    updateRow(rowId, { ZTRUC_WT: value });
   };
 
   /* ── Actual Volume change -> SAP truck lookup (Angular: onTruckTypeChange -> service.sapget) ── */
@@ -990,9 +986,15 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
         TRUCK: row.ZTRUC_TYPE,
         ZACT_LOAD: Number(row.ZACT_LOAD),
         ZACT_VOL: Number(row.ZACT_VOL),
+        ZTRUC_WT: Number(row.ZTRUC_WT),
       });
       const data = Array.isArray(res) ? res[0] : res;
       if (!data) return;
+      // PART LOAD: only the loading factor (weight) comes from this response — nothing else is patched.
+      if (row.ZTRUC_TYPE === "PART LOAD") {
+        updateRow(rowId, { ZLF_WT: data.ZLF_WT ?? row.ZLF_WT });
+        return;
+      }
       updateRow(rowId, {
         ZTRUC_TYPE: data.ZTRUC_TYPE ?? row.ZTRUC_TYPE,
         ZACT_LOAD: data.ZACT_LOAD !== undefined ? String(data.ZACT_LOAD) : row.ZACT_LOAD,
@@ -1676,9 +1678,17 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                       <br />
                       (w.r.t weight)
                     </th>
-                    <th className="px-2 py-1.5 text-center">Truck Volume<br />(Cubic Feet)</th>
-                    <th className="px-2 py-1.5 text-center">Actual Volume Occupied<br />(Input in %)</th>
-                    <th className="px-2 py-1.5 text-center">Actual Volume<br />(Cubic Feet)</th>
+                    {/* PART LOAD: these 3 columns are dropped from the header entirely (not just
+                        blanked per-cell) when every row is PART LOAD, so the header and body
+                        stay in sync. With a mix of truck types the columns stay, so
+                        non-PART-LOAD rows keep showing their volume data. */}
+                    {!(rows.length > 0 && rows.every((r) => r.ZTRUC_TYPE === "PART LOAD")) && (
+                      <>
+                        <th className="px-2 py-1.5 text-center">Truck Volume<br />(Cubic Feet)</th>
+                        <th className="px-2 py-1.5 text-center">Actual Volume Occupied<br />(Input in %)</th>
+                        <th className="px-2 py-1.5 text-center">Actual Volume<br />(Cubic Feet)</th>
+                      </>
+                    )}
                     {/* <th className="px-2 py-1.5 text-center">Week Wise Shipment Flow</th>
                     <th className="px-2 py-1.5 text-center">Eway Bill Number</th>
                     <th className="px-2 py-1.5 text-center">Eway Bill Expiry Date</th> */}
@@ -1688,6 +1698,9 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                 <tbody>
                   {rows.map((row, idx) => {
                     const isPartLoad = row.ZTRUC_TYPE === "PART LOAD";
+                    // Matches the header's condition above: only drop these 3 cells from every
+                    // row (instead of leaving them blank) when every row is PART LOAD.
+                    const volumeColumnsHidden = rows.length > 0 && rows.every((r) => r.ZTRUC_TYPE === "PART LOAD");
                     return (
                       <tr key={row.id}>
                         <td className="px-2 py-1 text-center">
@@ -1738,12 +1751,16 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                           </select>
                         </td>
                         <td className="px-2 py-1">
+                          {/* PART LOAD: enabled for manual input (onPassingWeightChange also
+                              syncs Actual Load). Every other truck type: unchanged — disabled,
+                              auto-filled from the selected truck type. */}
                           <input
                             type="number"
                             value={row.ZTRUC_WT}
-                            disabled
-                            readOnly
-                            className={DISABLED_INPUT}
+                            disabled={!isPartLoad}
+                            readOnly={!isPartLoad}
+                            onChange={(e) => onPassingWeightChange(row.id, e.target.value)}
+                            className={isPartLoad ? INPUT_SAP_GREEN : DISABLED_INPUT}
                           />
                         </td>
                         <td className="px-2 py-1">
@@ -1751,6 +1768,15 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                             type="number"
                             value={row.ZACT_LOAD}
                             onChange={(e) => updateRow(row.id, { ZACT_LOAD: e.target.value })}
+                            onKeyDown={(e) => {
+                              // PART LOAD hides Actual Volume (which normally triggers sapget
+                              // on blur), so Enter here calls the same existing sapget lookup
+                              // instead — same function, same payload, nothing else changed.
+                              if (isPartLoad && e.key === "Enter") {
+                                e.preventDefault();
+                                onActualVolumeBlur(row.id);
+                              }
+                            }}
                             className={INPUT_SAP_GREEN}
                           />
                         </td>
@@ -1762,34 +1788,43 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                             className={INPUT_LOGIC_PURPLE}
                           />
                         </td>
-                        <td className="px-2 py-1">
-                          <input
-                            value={row.ZTRUC_VOL}
-                            disabled
-                            readOnly
-                            className={DISABLED_INPUT}
-                          />
-                        </td>
-                        <td className="px-2 py-1">
-                          <input
-                            value={row.ZACT_VOL}
-                            disabled={isPartLoad}
-                            onChange={(e) => updateRow(row.id, { ZACT_VOL: e.target.value })}
-                            onBlur={() => onActualVolumeBlur(row.id)}
-                            className={cn(
-                              INPUT_SAP_GREEN,
-                              isPartLoad && "opacity-50 cursor-not-allowed"
-                            )}
-                          />
-                        </td>
-                        <td className="px-2 py-1">
-                          <input
-                            value={row.ZLF_VOL}
-                            disabled
-                            readOnly
-                            className={INPUT_LOGIC_PURPLE}
-                          />
-                        </td>
+                        {/* PART LOAD: when every row is PART LOAD these 3 cells are dropped
+                            entirely (matches the header above). With a mix of truck types the
+                            cells stay (so columns line up) but are left blank on PART LOAD rows. */}
+                        {!volumeColumnsHidden && (
+                          <>
+                            <td className="px-2 py-1">
+                              {!isPartLoad && (
+                                <input
+                                  value={row.ZTRUC_VOL}
+                                  disabled
+                                  readOnly
+                                  className={DISABLED_INPUT}
+                                />
+                              )}
+                            </td>
+                            <td className="px-2 py-1">
+                              {!isPartLoad && (
+                                <input
+                                  value={row.ZACT_VOL}
+                                  onChange={(e) => updateRow(row.id, { ZACT_VOL: e.target.value })}
+                                  onBlur={() => onActualVolumeBlur(row.id)}
+                                  className={INPUT_SAP_GREEN}
+                                />
+                              )}
+                            </td>
+                            <td className="px-2 py-1">
+                              {!isPartLoad && (
+                                <input
+                                  value={row.ZLF_VOL}
+                                  disabled
+                                  readOnly
+                                  className={INPUT_LOGIC_PURPLE}
+                                />
+                              )}
+                            </td>
+                          </>
+                        )}
                         {/* <td className="px-2 py-1">
                           <select
                             value={row.ZWEEK_SF}
@@ -2048,43 +2083,52 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         )}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-center tabular-nums min-w-[140px]">
-                        {item.isEdit ? (
-                          <input
-                            type="number"
-                            value={item.ZTRUC_VOL ?? ""}
-                            onChange={(e) => patchSearchRow(i, { ZTRUC_VOL: e.target.value })}
-                            className={GREEN_INPUT + " min-w-[140px] text-center"}
-                          />
-                        ) : (
-                          <span>{item.ZTRUC_VOL}</span>
+                        {/* PART LOAD: hidden — cell left blank so columns stay aligned. */}
+                        {item.ZTRUC_TYPE !== "PART LOAD" && (
+                          item.isEdit ? (
+                            <input
+                              type="number"
+                              value={item.ZTRUC_VOL ?? ""}
+                              onChange={(e) => patchSearchRow(i, { ZTRUC_VOL: e.target.value })}
+                              className={GREEN_INPUT + " min-w-[140px] text-center"}
+                            />
+                          ) : (
+                            <span>{item.ZTRUC_VOL}</span>
+                          )
                         )}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-center tabular-nums min-w-[160px]">
-                        {item.isEdit ? (
-                          <input
-                            value={item.ZACT_VOL ?? item.ACT_VOL ?? item.ZACT_VOLUME ?? item.ACTUAL_VOLUME ?? item.ZACT_VOL_OCC ?? item.ACT_VOL_OCC ?? item.ZACTUAL_VOL ?? item.ACTUAL_VOL ?? ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              const vol = item.ZTRUC_VOL;
-                              const lfVol = Number(vol) > 0 && Number(val) > 0 ? ((Number(val) / Number(vol)) * 100).toFixed(2) : "";
-                              patchSearchRow(i, { ZACT_VOL: val, ZLF_VOL: lfVol });
-                            }}
-                            className={GREEN_INPUT + " min-w-[160px] text-center"}
-                          />
-                        ) : (
-                          <span>{item.ZACT_VOL ?? item.ACT_VOL ?? item.ZACT_VOLUME ?? item.ACTUAL_VOLUME ?? item.ZACT_VOL_OCC ?? item.ACT_VOL_OCC ?? item.ZACTUAL_VOL ?? item.ACTUAL_VOL ?? ""}</span>
+                        {/* PART LOAD: hidden. */}
+                        {item.ZTRUC_TYPE !== "PART LOAD" && (
+                          item.isEdit ? (
+                            <input
+                              value={item.ZACT_VOL ?? item.ACT_VOL ?? item.ZACT_VOLUME ?? item.ACTUAL_VOLUME ?? item.ZACT_VOL_OCC ?? item.ACT_VOL_OCC ?? item.ZACTUAL_VOL ?? item.ACTUAL_VOL ?? ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const vol = item.ZTRUC_VOL;
+                                const lfVol = Number(vol) > 0 && Number(val) > 0 ? ((Number(val) / Number(vol)) * 100).toFixed(2) : "";
+                                patchSearchRow(i, { ZACT_VOL: val, ZLF_VOL: lfVol });
+                              }}
+                              className={GREEN_INPUT + " min-w-[160px] text-center"}
+                            />
+                          ) : (
+                            <span>{item.ZACT_VOL ?? item.ACT_VOL ?? item.ZACT_VOLUME ?? item.ACTUAL_VOLUME ?? item.ZACT_VOL_OCC ?? item.ACT_VOL_OCC ?? item.ZACTUAL_VOL ?? item.ACTUAL_VOL ?? ""}</span>
+                          )
                         )}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-center tabular-nums min-w-[140px]">
-                        {item.isEdit ? (
-                          <input
-                            type="number"
-                            value={item.ZLF_VOL ?? item.LF_VOL ?? item.ZLF_VOLUME ?? item.LF_VOLUME ?? ""}
-                            onChange={(e) => patchSearchRow(i, { ZLF_VOL: e.target.value })}
-                            className={GREEN_INPUT + " min-w-[140px] text-center"}
-                          />
-                        ) : (
-                          <span>{item.ZLF_VOL ?? item.LF_VOL ?? item.ZLF_VOLUME ?? item.LF_VOLUME ?? ""}</span>
+                        {/* PART LOAD: hidden. */}
+                        {item.ZTRUC_TYPE !== "PART LOAD" && (
+                          item.isEdit ? (
+                            <input
+                              type="number"
+                              value={item.ZLF_VOL ?? item.LF_VOL ?? item.ZLF_VOLUME ?? item.LF_VOLUME ?? ""}
+                              onChange={(e) => patchSearchRow(i, { ZLF_VOL: e.target.value })}
+                              className={GREEN_INPUT + " min-w-[140px] text-center"}
+                            />
+                          ) : (
+                            <span>{item.ZLF_VOL ?? item.LF_VOL ?? item.ZLF_VOLUME ?? item.LF_VOLUME ?? ""}</span>
+                          )
                         )}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-center">
@@ -2967,25 +3011,33 @@ function LeScreenShell({
 }
 
 function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: SapMode) => void }) {
-  const idx = value === "without" ? 1 : 0;
   return (
     <div className="relative inline-flex items-center p-0 rounded-full bg-accent/10 text-[12px]">
-      {value && (
-        <span
-          className="absolute top-0 bottom-0 left-0 w-1/2 rounded-full bg-surface shadow-sm transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(${idx * 100}%)` }}
-          aria-hidden
-        />
-      )}
       {(["with", "without"] as const).map((m) => (
         <button
           key={m}
           onClick={() => onChange(m)}
           className={cn(
-            "relative z-10 px-3 py-1 rounded-full font-medium transition-colors",
-            value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            "relative z-10 inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-colors",
+            value === m ? "bg-[#2E86C1] text-white shadow-sm" : "text-muted-foreground hover:text-foreground",
           )}
+          role="radio"
+          aria-checked={value === m}
         >
+          <span
+            className={cn(
+              "grid place-items-center size-3.5 rounded-full border-2 transition-colors",
+              value === m ? "border-white" : "border-muted-foreground/40",
+            )}
+            aria-hidden
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full transition-all",
+                value === m ? "bg-white scale-100" : "bg-transparent scale-0",
+              )}
+            />
+          </span>
           {m === "with" ? "With SAP" : "Without SAP"}
         </button>
       ))}
@@ -3038,25 +3090,33 @@ function SearchSapToggle({
   value: SapMode | null;
   onChange: (v: SapMode) => void;
 }) {
-  const idx = value === "with" ? 0 : value === "without" ? 1 : -1;
   return (
     <div className="relative inline-flex items-center p-0 rounded-full bg-accent/10 text-[12px]">
-      {idx >= 0 && (
-        <span
-          className="absolute top-0 bottom-0 left-0 w-1/2 rounded-full bg-surface shadow-sm transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(${idx * 100}%)` }}
-          aria-hidden
-        />
-      )}
       {(["with", "without"] as const).map((m) => (
         <button
           key={m}
           onClick={() => onChange(m)}
           className={cn(
-            "relative z-10 px-3 py-1 rounded-full font-medium transition-colors",
-            value === m ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            "relative z-10 inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-colors",
+            value === m ? "bg-[#2E86C1] text-white shadow-sm" : "text-muted-foreground hover:text-foreground",
           )}
+          role="radio"
+          aria-checked={value === m}
         >
+          <span
+            className={cn(
+              "grid place-items-center size-3.5 rounded-full border-2 transition-colors",
+              value === m ? "border-white" : "border-muted-foreground/40",
+            )}
+            aria-hidden
+          >
+            <span
+              className={cn(
+                "size-1.5 rounded-full transition-all",
+                value === m ? "bg-white scale-100" : "bg-transparent scale-0",
+              )}
+            />
+          </span>
           {m === "with" ? "With SAP" : "Without SAP"}
         </button>
       ))}

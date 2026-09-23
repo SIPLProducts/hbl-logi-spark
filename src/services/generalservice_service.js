@@ -239,6 +239,8 @@ export const sapExternalApi = {
     fetchReferencenumber: (data) => request('api/external/LE/Dispatch/Outward/ReferenceNumber/fetch', 'POST', data),
     fetchReferencenumberWithoutSap: (data) => request('api/external/LE/Dispatch/Outward/ReferenceNumber/WithoutSap/fetch', 'PUT', data),
     fetchReferencenumberEdit: (data) => request('api/external/LE/Dispatch/Outward/ReferenceNumber/edit', 'POST', data),
+    DispatchReferenceNumberDelete: (data) => request('api/external/LE/Dispatch/Outward/ReferenceNumber/delete', 'POST', data),
+    DispatchWithoutSapDelete: (data) => request('api/external/LE/Dispatch/Outward/ReferenceNumber/withoutsap/delete', 'PUT', data),
 
     // Global Fields & Lookups
     GlobalReferenceNoFetch: (data) => request('api/external/LE/orderinfo/GlobalReferenceNoFetch', 'POST', data),
