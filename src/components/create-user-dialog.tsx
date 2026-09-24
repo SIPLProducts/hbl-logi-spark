@@ -101,7 +101,14 @@ export function CreateUserDialog({
     "Transit Damage Info",
     "Insurance Claim Tracking",
     "User Creation",
-    // Reports screens (titles must match REPORTS_NAV so the sidebar can gate them)
+    // One access entry for the whole Reports section — it covers every Report sub-screen
+    // (the sidebar shows all of them when "Reports" is granted).
+    "Reports",
+  ];
+
+  // Per-report entries that older users may already have saved. They're folded into the single
+  // "Reports" entry when a user is opened for editing.
+  const legacyReportScreens = [
     "Transit & E-way bill Report",
     "Pending PODs",
     "Freight Bills",
@@ -318,7 +325,12 @@ export function CreateUserDialog({
       setConfirmPassword(isEdit ? (initialValues?.password ?? "") : "");
 
       // Pre-fill screens/plants/divisions so editing a user shows their existing selections
-      setSelectedScreens(initialValues?.activities ?? []);
+      {
+        const acts = initialValues?.activities ?? [];
+        const hadReportEntries = acts.some((a) => legacyReportScreens.includes(a));
+        const rest = acts.filter((a) => !legacyReportScreens.includes(a));
+        setSelectedScreens(hadReportEntries && !rest.includes("Reports") ? [...rest, "Reports"] : rest);
+      }
       setSelectedPlants(
         initialValues?.plants ? initialValues.plants.split(",").filter(Boolean) : []
       );

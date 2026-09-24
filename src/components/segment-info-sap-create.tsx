@@ -1047,8 +1047,9 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   };
 
   // ── Save ──
-  const requiredFieldsMissing = () =>
-    !form.INV_VBELN || !form.SALE_PERSON || !form.SEGMENT || !form.APPTYP || !form.BRANCH;
+  // Only the Invoice Number is mandatory now (Sales Person, Segment, Application Type,
+  // Customer Profile, Branch, Branch Zone, Destination State and Destination Zone are optional).
+  const requiredFieldsMissing = () => !form.INV_VBELN;
 
   const handleSave = async (action: "stay" | "next" | "previous" = "stay") => {
     if (requiredFieldsMissing()) {

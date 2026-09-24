@@ -143,8 +143,16 @@ export function AppSidebar() {
   // (REPORTS_NAV lo prathi item ki kuda ACT tho match ayye "key" field pettuko galigithe
   //  accuracy inka better untundi, ippudu title base ga filter chestunnam)
   const visibleReports = useMemo(() => {
+    // "Reports" access covers every Report sub-screen; users with older per-report entries
+    // keep working through the title match below. The Service Level report has the same title
+    // as the Service Level screen, so that screen's access must not unlock the report — only
+    // "Reports" does.
+    const hasReportsAccess = allowedKeys.has(normalizeKey("Reports"));
+    const screenKeyClash = normalizeKey("Service Level");
     return (REPORTS_NAV as { title: string; to: string; icon: React.ComponentType<{ className?: string }> }[]).filter(
-      (item) => allowedKeys.has(normalizeKey(item.title))
+      (item) =>
+        hasReportsAccess ||
+        (normalizeKey(item.title) !== screenKeyClash && allowedKeys.has(normalizeKey(item.title)))
     );
   }, [allowedKeys]);
 

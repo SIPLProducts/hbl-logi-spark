@@ -76,6 +76,46 @@ const SUB_DIVISIONS = [
 ];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+// ── Plant / Division dropdown options (Order Info's own logic, built from the same
+// service.fetchVendorCode response the Dispatch screen uses: PLANT rows carrying
+// PLANT_DESC / DIVISION / DIV_TEXT, one row per plant + division) ──
+
+// Each plant once, keyed on the plant code (the part before "_").
+export function dedupePlantOptions(options: string[]): string[] {
+  const seen = new Set<string>();
+  return options.filter((o) => {
+    const code = String(o).split("_")[0].trim();
+    if (seen.has(code)) return false;
+    seen.add(code);
+    return true;
+  });
+}
+
+// Division options for the selected plant: value is the bare DIVISION code, label is its
+// DIV_TEXT (e.g. "1100_NCPP"). With no plant selected (or none of its own) all divisions show.
+export function divisionOptionsForPlant(
+  plantValue: string,
+  entries: { plant: string; division: string; divText?: string }[],
+  allDivisions: string[],
+): { value: string; label: string }[] {
+  const code = String(plantValue || "").split("_")[0].trim();
+  const own = entries.filter((e) => e.plant === code && e.division);
+  if (own.length > 0) {
+    const seen = new Set<string>();
+    return own
+      .filter((e) => {
+        if (seen.has(e.division)) return false;
+        seen.add(e.division);
+        return true;
+      })
+      .map((e) => ({ value: e.division, label: e.divText || e.division }));
+  }
+  return allDivisions.map((d) => {
+    const match = entries.find((e) => e.division === d && e.divText);
+    return { value: d, label: match?.divText || d };
+  });
+}
+
 type PlantData = { PLANT: string; PLANT_DESC: string; WERKS?: string };
 type DivData = { DIVISION: string; DIV_TEXT: string };
 type BillingData = { BILL_TYPE: string; BILL_TYPE_DESC: string };
@@ -457,6 +497,17 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
   // dropdowns
   const [plantList, setPlantList] = useState<PlantData[]>([]);
   const [divisionList, setDivisionList] = useState<DivData[]>([]);
+  // One row per plant + division from the same F4 API Dispatch uses (carries DIV_TEXT).
+  const [plantDivisionEntries, setPlantDivisionEntries] = useState<{ plant: string; division: string; divText: string }[]>([]);
+  // Plant option text, same "<code>_<description>" format Dispatch shows.
+  const plantOptionLabel = (p: { PLANT: string; PLANT_DESC?: string }) => `${p.PLANT}_${String(p.PLANT_DESC || "").split("_")[0].trim()}`;
+  // Plant is kept as PLANT_DESC here; map it back to the plant code to pick its divisions.
+  const divisionOptions = (plantValue: string) =>
+    divisionOptionsForPlant(
+      plantList.find((p) => p.PLANT_DESC === plantValue || p.PLANT === plantValue)?.PLANT || plantValue,
+      plantDivisionEntries,
+      divisionList.map((d) => d.DIVISION),
+    );
   const [billingList, setBillingList] = useState<BillingData[]>([]);
   const [statesList, setStatesList] = useState<StateData[]>([]);
   const [customerList, setCustomerList] = useState<CustomerData[]>([]);
@@ -546,8 +597,21 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
           ? Array.from(new Set(data.VEND_CODE.map((v: any) => String(v.TRANSPORTER || "")).filter(Boolean)))
           : [];
 
-        setPlantList(plants);
+        // Each plant once, like Dispatch.
+        const uniquePlantLabels = new Set(
+          dedupePlantOptions(plants.map((p) => plantOptionLabel(p))),
+        );
+        setPlantList(plants.filter((p) => uniquePlantLabels.delete(plantOptionLabel(p))));
         setDivisionList(divisions);
+        setPlantDivisionEntries(
+          Array.isArray(data.PLANT)
+            ? data.PLANT.map((p: any) => ({
+                plant: String(p.PLANT ?? "").trim(),
+                division: String(p.DIVISION ?? "").trim(),
+                divText: String(p.DIV_TEXT ?? "").trim(),
+              }))
+            : [],
+        );
         setTransporterList(transporters);
       } catch (err) {
         // ignore failures for now — leave defaults in place
@@ -1052,7 +1116,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
           )}
           {plantList.map((p: any) => (
             <option key={p.WERKS || p.PLANT} value={p.PLANT_DESC}>
-              {p.WERKS || p.PLANT} - {p.PLANT_DESC}
+              {plantOptionLabel(p)}
             </option>
           ))}
         </select>
@@ -1111,8 +1175,8 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
           {currentValue && !divisionList.some((d) => d.DIVISION === currentValue || d.DIV_TEXT === currentValue) && (
             <option value={currentValue}>{currentValue}</option>
           )}
-          {divisionList.map((d) => (
-            <option key={d.DIVISION} value={d.DIVISION}>{d.DIV_TEXT}</option>
+          {divisionOptions(item.ZPLANT || "").map((d) => (
+            <option key={d.value} value={d.value}>{d.label}</option>
           ))}
         </select>
       );
@@ -1796,7 +1860,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                     <option value="">Select Plant</option>
                     {plantList.map((p: any) => (
                       <option key={p.WERKS || p.PLANT} value={p.PLANT_DESC}>
-                        {p.WERKS || p.PLANT} - {p.PLANT_DESC}
+                        {plantOptionLabel(p)}
                       </option>
                     ))}
                   </>
@@ -1827,8 +1891,8 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                 {renderSelect("Division",
                   <>
                     <option value="">Select Division</option>
-                    {divisionList.map((d) => (
-                      <option key={d.DIVISION} value={d.DIVISION}>{d.DIV_TEXT}</option>
+                    {divisionOptions(form.Plant).map((d) => (
+                      <option key={d.value} value={d.value}>{d.label}</option>
                     ))}
                   </>
                 )}

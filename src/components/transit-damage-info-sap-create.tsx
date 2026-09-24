@@ -1073,8 +1073,17 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     action: "stay" | "next" | "previous" = "stay"
   ) => {
 
-    // Selected reference
-    const selectedRow = tableData.find((r) => r.selected);
+    // Selected reference — prefer the ticked row that owns the chosen invoice (several rows can be ticked).
+    const selectedRow = (tableData.find(
+      (r) =>
+        r.selected &&
+        fullReferenceData.some(
+          (ref: any) =>
+            String(ref.MAPID) === String(r.MAPID) &&
+            Array.isArray(ref.INV_NO) &&
+            ref.INV_NO.some((i: any) => i.VBELN === String(lookupValue).split(",")[0].trim()),
+        ),
+    ) || tableData.find((r) => r.selected));
 
     if (!selectedRow) {
       Swal.fire({

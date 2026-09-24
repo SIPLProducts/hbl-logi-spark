@@ -799,6 +799,26 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     setInvoiceF4List(f4);
   }, [tableData, fullReferenceData]);
 
+  // Un-ticking a reference row also drops that row's invoices from the Invoice Number
+  // selection (invoices that don't belong to any fetched reference row are left alone).
+  useEffect(() => {
+    if (!invoiceNumber) return;
+    const ticked = new Set(tableData.filter((r) => r.selected && r.MAPID).map((r) => String(r.MAPID)));
+    const known = new Set<string>();
+    const allowed = new Set<string>();
+    fullReferenceData.forEach((ref: any) => {
+      if (!Array.isArray(ref.INV_NO)) return;
+      ref.INV_NO.forEach((inv: any) => {
+        if (!inv.VBELN) return;
+        known.add(inv.VBELN);
+        if (ticked.has(String(ref.MAPID))) allowed.add(inv.VBELN);
+      });
+    });
+    const current = invoiceNumber.split(",").map((s) => s.trim()).filter(Boolean);
+    const kept = current.filter((inv) => !known.has(inv) || allowed.has(inv));
+    if (kept.length !== current.length) setInvoiceNumber(kept.join(","));
+  }, [tableData, fullReferenceData]);
+
   // ── Table helpers (matches OrderInfoSapCreate's reference table) ──
   const toggleRowSelect = (index: number) => {
     const row = tableData[index];

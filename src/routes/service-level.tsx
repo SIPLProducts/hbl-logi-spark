@@ -891,18 +891,25 @@ function ServiceLevelFeedbackCreate({
       }
     });
     setInvoiceList(invoices);
-    setInvoicenumber("");
+    // Keep the chosen invoices that still belong to a ticked row; drop the rest.
+    setInvoicenumber((prev) =>
+      prev
+        .split(",")
+        .map((s) => s.trim())
+        .filter((inv) => inv && invoices.includes(inv))
+        .join(","),
+    );
   };
 
   const onCheckboxChange = (checked: boolean, row: SLRow): void => {
     if (row.notAllowed) return;
-    setSelectedItems((prev) => {
-      const next = checked
-        ? (prev.some((item) => slSameRow(item, row)) ? prev : [...prev, row])
-        : prev.filter((item) => !slSameRow(item, row));
-      recomputeInvoiceList(next);
-      return next;
-    });
+    // Work out the next selection here (not inside a state updater) so recomputeInvoiceList's
+    // own state updates don't run from within an updater function.
+    const next = checked
+      ? (selectedItems.some((item) => slSameRow(item, row)) ? selectedItems : [...selectedItems, row])
+      : selectedItems.filter((item) => !slSameRow(item, row));
+    setSelectedItems(next);
+    recomputeInvoiceList(next);
   };
 
   const removeRow = (index: number): void => {

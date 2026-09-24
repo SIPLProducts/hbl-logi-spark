@@ -32,7 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PLANTS, DIVISIONS, TRANSPORTERS, VEHICLE_TYPES } from "@/lib/dispatch-mock";
 import { counts, type WorklistRow } from "@/lib/le-mock-data";
-import { OrderInfoSapCreate } from "@/components/order-info-sap-create";
+import { OrderInfoSapCreate, dedupePlantOptions, divisionOptionsForPlant } from "@/components/order-info-sap-create";
 import Swal from "sweetalert2";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -63,6 +63,7 @@ function OrderInfoPage() {
   const [completedCount, setCompletedCount] = useState(0);
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
+  const [fetchedPlantDivisions, setFetchedPlantDivisions] = useState<{ plant: string; division: string; divText: string }[]>([]);
   const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
   // Filter results — mirrors Angular's orderInfoData / dispatchData
   const [orderInfoData, setOrderInfoData] = useState<any[]>([]);
@@ -161,8 +162,18 @@ function OrderInfoPage() {
           ? Array.from(new Set(data.VEND_CODE.map((v: any) => String(v.TRANSPORTER)).filter(Boolean)))
           : [];
 
-        setFetchedPlants(plants);
+        // Same as Dispatch: each plant once, Division options labelled with DIV_TEXT.
+        setFetchedPlants(dedupePlantOptions(plants));
         setFetchedDivisions(divisions);
+        setFetchedPlantDivisions(
+          Array.isArray(data.PLANT)
+            ? data.PLANT.map((p: any) => ({
+                plant: String(p.PLANT ?? "").trim(),
+                division: String(p.DIVISION ?? "").trim(),
+                divText: String(p.DIV_TEXT ?? "").trim(),
+              }))
+            : [],
+        );
         setFetchedTransporters(transporters);
       } catch (err) {
         console.error("Transporter/Plant/Division fetch failed:", err);
@@ -562,7 +573,7 @@ function OrderInfoPage() {
                       label="Division"
                       value={fDivision}
                       onChange={setFDivision}
-                      options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}  // ← was: DIVISIONS
+                      options={fetchedDivisions.length > 0 ? divisionOptionsForPlant(fPlant, fetchedPlantDivisions, fetchedDivisions) : DIVISIONS}
                       placeholder="Select Division"
                     />
                     <SelectField
@@ -922,9 +933,13 @@ function SelectField({
   label: string;
   value: string;
   onChange: (v: string) => void;
-  options: string[];
+  // Plain strings (unchanged: label === value) or { value, label } pairs, e.g. Division.
+  options: string[] | { value: string; label: string }[];
   placeholder: string;
 }) {
+  const normalizedOptions: { value: string; label: string }[] = options.map((o) =>
+    typeof o === "string" ? { value: o, label: o } : o,
+  );
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -935,9 +950,9 @@ function SelectField({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {options.map((o) => (
-            <SelectItem key={o} value={o}>
-              {o}
+          {normalizedOptions.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
             </SelectItem>
           ))}
         </SelectContent>

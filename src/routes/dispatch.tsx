@@ -590,6 +590,8 @@ function CreateDispatch() {
       );
 
       setRows(mapped);
+      // Fetched rows reuse ids "1", "2", … — drop any ticks left over from a previous search.
+      setSelectedRowIds(new Set());
       setSearchReference(String(mapped[0]?.referenceNo || ""));
       setIsEditMode(true);
 
@@ -670,6 +672,16 @@ function CreateDispatch() {
 
   const handleDelete = async () => {
     if (selectedRowIds.size === 0) return;
+
+    const confirmResult = await Swal.fire({
+      title: "Are you sure?",
+      text: `Delete ${selectedRowIds.size} selected record${selectedRowIds.size === 1 ? "" : "s"}? This cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      confirmButtonText: "Yes, Delete",
+    });
+    if (!confirmResult.isConfirmed) return;
 
     try {
       const loggedInUser = getLoggedInUser();
@@ -799,6 +811,7 @@ function CreateDispatch() {
 
   function resetForm() {
     setRows([emptyDispatchRow(1)]);
+    setSelectedRowIds(new Set());
     setIsEditMode(false);
     setShowErrors(false);
     setSearchValue("");
