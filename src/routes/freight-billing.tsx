@@ -48,7 +48,7 @@ export const Route = createFileRoute("/freight-billing")({
 type SapMode = "with" | "without"; // "with" => SAP, "without" => Non-SAP
 type Category = "Internal" | "External" | "";
 
-const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
+const STATUS_OPTIONS = ["Pending", "Completed"] as const;
 const PA_CHECK_OPTIONS = ["Provision", "Account", "Both"] as const;
 
 // Plant / Division / Transporter ALL come from a single fetchVendorCode()
@@ -218,12 +218,12 @@ function FreightBillingPage() {
 
         const plantRows: PlantRow[] = Array.isArray(data.PLANT)
           ? data.PLANT.map((p: any) => ({
-              PLANT: String(p.PLANT ?? ""),
-              PLANT_DESC: p.PLANT_DESC || "",
-              DIVISION: p.DIVISION || "",
-              PLANT_TEXT: p.PLANT_TEXT || p.PLANT_DESC || "",
-              DIV_TEXT: p.DIV_TEXT || p.DIVISION || "",
-            }))
+            PLANT: String(p.PLANT ?? ""),
+            PLANT_DESC: p.PLANT_DESC || "",
+            DIVISION: p.DIVISION || "",
+            PLANT_TEXT: p.PLANT_TEXT || p.PLANT_DESC || "",
+            DIV_TEXT: p.DIV_TEXT || p.DIVISION || "",
+          }))
           : [];
 
         // Dedupe plants by PLANT_DESC (a plant can repeat once per division)
@@ -238,9 +238,9 @@ function FreightBillingPage() {
 
         const transporters: TransporterData[] = Array.isArray(data.VEND_CODE)
           ? data.VEND_CODE.map((v: any) => ({
-              code: String(v.VENDOR_CODE ?? ""),
-              name: v.TRANSPORTER || "",
-            }))
+            code: String(v.VENDOR_CODE ?? ""),
+            name: v.TRANSPORTER || "",
+          }))
           : [];
 
         setPlantList(plants);
@@ -417,7 +417,12 @@ function FreightBillingPage() {
         "Created Date": record.ZCREATED_DT ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB") : "",
         "Vehicle Type": record.ZVEH_TYPE || "",
         "Type of Rate Contract": record.ZRATECON || "",
-        Provision: record.ZPRO_CHK === "X" ? "Yes" : "No",
+        "Finance Details": record.ZFINDET === "Y" ? "Yes" : record.ZFINDET === "N" ? "No" : record.ZFINDET || "",
+        "JV Number": record.ZJVNUM || "",
+        "JV Date": record.ZJVDT || "",
+        "UTR Number": record.ZUTRNUM || "",
+        "UTR Date": record.ZUTRDT || "",
+        /* Provision: record.ZPRO_CHK === "X" ? "Yes" : "No",
         "Provision Amount": record.ZPROVAMT || "",
         "Provision Date": record.ZPROVDT || "",
         "Provision Basic Freight": record.ZPR_BASIC || "",
@@ -428,7 +433,7 @@ function FreightBillingPage() {
         "Provision Route Charges": record.ZPR_ROUTE || "",
         "Provision Transhipment Charges": record.ZPR_TSHIP || "",
         "Provision Other Charges": record.ZPR_OTHER || "",
-        "Provision Deduction": record.ZPR_DEDUCT || "",
+        "Provision Deduction": record.ZPR_DEDUCT || "", */
         Account: record.ZACC_CHK === "X" ? "Yes" : "No",
         "Account Basic Freight": record.ZFC_BASIC || "",
         "Account Detention loading": record.ZFC_DELOAD || "",
@@ -513,10 +518,11 @@ function FreightBillingPage() {
         "Freight Bill No", "Freight Bill Date", "Physical Submission Date", "Freight Charges",
         "Work Order Type", "Bill Submission", "Location", "Vehicle Line", "Vehicle Number",
         "Plant", "Division", "Work Order", "LR No", "Transporter", "Created Date", "Vehicle Type", "Type of Rate Contract",
-        "Provision", "Provision Amount", "Provision Date",
+        "Finance Details", "JV Number", "JV Date", "UTR Number", "UTR Date",
+        /* "Provision", "Provision Amount", "Provision Date",
         "Provision Basic Amount", "Provision Detention loading Charges", "Provision Detention Unloading Charges",
         "Provision Loading Charges", "Provision Unloading Charges", "Provision Route Charges",
-        "Provision Transhipment Charges", "Provision Other Charges", "Provision Deduction",
+        "Provision Transhipment Charges", "Provision Other Charges", "Provision Deduction", */
         "Account", "Account Basic Amount", "Account Detention loading Charges", "Account Detention Unloading Charges",
         "Account Loading Charges", "Account Unloading Charges", "Account Route Charges",
         "Account Transhipment Charges", "Account Other Charges", "Account Deduction",
@@ -546,7 +552,12 @@ function FreightBillingPage() {
         record.ZCREATED_DT ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB") : "",
         record.ZVEH_TYPE || "",
         record.ZRATECON || "",
-        record.ZPRO_CHK === "X" ? "Yes" : "No",
+        record.ZFINDET === "Y" ? "Yes" : record.ZFINDET === "N" ? "No" : record.ZFINDET || "",
+        record.ZJVNUM || "",
+        record.ZJVDT || "",
+        record.ZUTRNUM || "",
+        record.ZUTRDT || "",
+        /* record.ZPRO_CHK === "X" ? "Yes" : "No",
         record.ZPROVAMT || "",
         record.ZPROVDT ? new Date(record.ZPROVDT).toLocaleDateString("en-GB") : "",
         record.ZPR_BASIC || "",
@@ -557,7 +568,7 @@ function FreightBillingPage() {
         record.ZPR_ROUTE || "",
         record.ZPR_TSHIP || "",
         record.ZPR_OTHER || "",
-        record.ZPR_DEDUCT || "",
+        record.ZPR_DEDUCT || "", */
         record.ZACC_CHK === "X" ? "Yes" : "No",
         record.ZFC_BASIC || "",
         record.ZFC_DELOAD || "",
@@ -784,7 +795,7 @@ function FreightBillingPage() {
                       placeholder="Select Status"
                     />
                     {/* P/A Check — Internal users only, matches Angular *ngIf="loginData?.CATEGORY=='Internal'" */}
-                    {category === "Internal" && (
+                    {/* {category === "Internal" && (
                       <SelectField
                         label="P/A Check"
                         value={fPACheck}
@@ -792,7 +803,7 @@ function FreightBillingPage() {
                         options={[...PA_CHECK_OPTIONS]}
                         placeholder="Select P/A Check"
                       />
-                    )}
+                    )} */}
                   </div>
 
                   <div className="px-4 py-3 border-t border-hairline bg-muted/30 flex flex-wrap items-center gap-2 justify-end">
@@ -874,7 +885,7 @@ function FreightBillingPage() {
                           <th className="px-3 py-2.5 whitespace-nowrap">SO Number</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Sale Person</th>
 
-                          {showProvisionCols && (
+                          {/* showProvisionCols && (
                             <>
                               <th className="px-3 py-2.5 whitespace-nowrap">Provision</th>
                               <th className="px-3 py-2.5 whitespace-nowrap">Provision Amount</th>
@@ -889,7 +900,7 @@ function FreightBillingPage() {
                               <th className="px-3 py-2.5 whitespace-nowrap">Provision Other Charges</th>
                               <th className="px-3 py-2.5 whitespace-nowrap">Provision Deduction</th>
                             </>
-                          )}
+                          ) */}
 
                           {showAccountCols && (
                             <>
@@ -923,6 +934,11 @@ function FreightBillingPage() {
                           <th className="px-3 py-2.5 whitespace-nowrap">Created Date</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Vehicle Type</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Type of Rate Contract</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap">Finance Details</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap">JV Number</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap">JV Date</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap">UTR Number</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap">UTR Date</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Freight Bill</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Unloading Charges Approval</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Detention Charges</th>
@@ -950,7 +966,7 @@ function FreightBillingPage() {
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZSONO}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZSALE_PERSON}</td>
 
-                              {showProvisionCols && (
+                              {/* showProvisionCols && (
                                 <>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZPRO_CHK === "X" ? "X" : "No"}</td>
                                   <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZPROVAMT}</td>
@@ -967,7 +983,7 @@ function FreightBillingPage() {
                                   <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZPR_OTHER}</td>
                                   <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZPR_DEDUCT}</td>
                                 </>
-                              )}
+                              ) */}
 
                               {showAccountCols && (
                                 <>
@@ -1003,6 +1019,13 @@ function FreightBillingPage() {
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZRATECON}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                {item.ZFINDET === "Y" ? "Yes" : item.ZFINDET === "N" ? "No" : item.ZFINDET || ""}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap">{item.ZJVNUM}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">{item.ZJVDT}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">{item.ZUTRNUM}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">{item.ZUTRDT}</td>
                               {/* Uploaded file name per document type (found on disk for this record) */}
                               <td className="px-3 py-2 whitespace-nowrap">
                                 {item.ZLOCALFILES?.Freight_Bill && item.ZLOCALFILES?.Freight_Bill !== "-" ? (

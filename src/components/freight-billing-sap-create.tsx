@@ -219,9 +219,9 @@ const PRE_PA_EDITABLE_FIELDS: { field: string; type: string }[] = [
   { field: "ZSALE_PERSON", type: "text" },
 ];
 
-const POST_PA_EDITABLE_FIELDS: { field: string; type: string; readonly?: boolean; options?: string[] }[] = [
-  { field: "ZPROVAMT", type: "number" },
-  { field: "ZPROVDT", type: "date" },
+const POST_PA_EDITABLE_FIELDS: { field: string; type: string; readonly?: boolean; options?: any[] }[] = [
+  /* { field: "ZPROVAMT", type: "number" }, */
+  /* { field: "ZPROVDT", type: "date" }, */
   { field: "ZBILLNO", type: "text" },
   { field: "ZBILLDATE", type: "date" },
   { field: "ZPHY_DATE", type: "date" },
@@ -235,6 +235,11 @@ const POST_PA_EDITABLE_FIELDS: { field: string; type: string; readonly?: boolean
   { field: "ZCREATED_DT", type: "date", readonly: true },
   { field: "ZVEH_LINE", type: "text" },
   { field: "ZRATECON", type: "select", options: ["Safexpress Contract", "All Cargo Contract", "Delhivery Contract", "V Xpress Contract", "ARC Contract", "DTDC Contract", "XP India", "Local Agreement", "Monthly Hire Agreement", "Others"] },
+  { field: "ZFINDET", type: "select", options: [{ label: "Yes", value: "Y" }, { label: "No", value: "N" }] },
+  { field: "ZJVNUM", type: "text" },
+  { field: "ZJVDT", type: "date" },
+  { field: "ZUTRNUM", type: "text" },
+  { field: "ZUTRDT", type: "date" },
 ];
 
 
@@ -586,7 +591,7 @@ function PACheckDialog({
 
         <div className="p-6 space-y-5">
           {/* Provision section */}
-          <div className="rounded-lg border border-hairline p-4">
+          {/* <div className="rounded-lg border border-hairline p-4">
             <h4 className="text-[13px] font-bold text-foreground mb-3">Provision Details</h4>
             <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300 mb-1">
               <input
@@ -624,7 +629,7 @@ function PACheckDialog({
                 </div>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Account section */}
           <div className="rounded-lg border border-hairline p-4">
@@ -1469,6 +1474,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           ZPROVAMT: row.ZPROVAMT,
           ZRATECON: row.ZRATECON || "",
 
+
+
           ZFRBILLUP: frb64 || "",
           FRBILLUP: frb64 || "",
           FRBILLUP_NAME: rowFiles.FRBILLUP?.name || "",
@@ -2019,8 +2026,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">SO No</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Sales Person</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">P/A Check</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Provision Amount</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Provision Date</th>
+                  {/* <th className="px-3 py-2.5 whitespace-nowrap text-left">Provision Amount</th> */}
+                  {/* <th className="px-3 py-2.5 whitespace-nowrap text-left">Provision Date</th> */}
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Freight Bill No</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Freight Bill Date</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Physical Submission</th>
@@ -2034,6 +2041,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Created Date</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Vehicle Line</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Type of Rate Contract</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Finance Details</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">JV Number</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">JV Date</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">UTR Number</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">UTR Date</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Freight Bill</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Unloading Charges Approval</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Detention Charges</th>
@@ -2098,9 +2110,15 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                               }}
                             >
                               <option value="">Select Type</option>
-                              {POST_PA_EDITABLE_FIELDS.find((f: any) => f.field === field)?.options?.map((opt: string) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
+                              {POST_PA_EDITABLE_FIELDS.find((f: any) => f.field === field)?.options?.map((opt: any) => {
+                                const val = typeof opt === "object" ? opt.value : opt;
+                                const label = typeof opt === "object" ? opt.label : opt;
+                                return (
+                                  <option key={val} value={val}>
+                                    {label}
+                                  </option>
+                                );
+                              })}
                             </select>
                           ) : (
                             <input
@@ -2116,6 +2134,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                           )
                         ) : type === "date" && item[field] ? (
                           new Date(item[field]).toLocaleDateString("en-GB")
+                        ) : type === "select" && POST_PA_EDITABLE_FIELDS.find((f: any) => f.field === field)?.options?.some((o: any) => typeof o === "object") ? (
+                          POST_PA_EDITABLE_FIELDS.find((f: any) => f.field === field)?.options?.find((o: any) => o.value === item[field])?.label || item[field]
                         ) : (
                           item[field]
                         )}
@@ -2555,7 +2575,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
               </select>
             </div>
             <div className="flex items-end gap-6 pb-1">
-              <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">
+              {/* <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">
                 <input
                   type="checkbox"
                   checked={provision}
@@ -2569,7 +2589,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   className="size-4 accent-emerald-600"
                 />
                 Provision
-              </label>
+              </label> */}
               <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">
                 <input
                   type="checkbox"
@@ -2587,7 +2607,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
               </label>
             </div>
 
-            {provision && (
+            {/* provision && (
               <>
                 <div className="animate-in fade-in slide-in-from-top-2">
                   <label className={LABEL}>Provision Amount</label>
@@ -2608,7 +2628,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   />
                 </div>
               </>
-            )}
+            ) */}
 
             {account && (
               <>
@@ -2801,7 +2821,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         </button>
       </div>
 
-      <ChargesBreakdownDialog
+      {/* <ChargesBreakdownDialog
         open={provisionOpen}
         onOpenChange={setProvisionOpen}
         title="Detailed Provision Amount Input"
@@ -2812,7 +2832,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           setProvisionTotal(total);
           setProvisionGst(gst);
         }}
-      />
+      /> */}
       <ChargesBreakdownDialog
         open={freightOpen}
         onOpenChange={setFreightOpen}
@@ -2848,7 +2868,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           setPaFreightGst(gst);
         }}
       />
-      <ChargesBreakdownDialog
+      {/* <ChargesBreakdownDialog
         open={paProvisionOpen}
         onOpenChange={setPaProvisionOpen}
         title="Detailed Provision Amount Input"
@@ -2859,7 +2879,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           setPaFormData((p) => ({ ...p, provisionAmount: total }));
           setPaProvisionGst(gst);
         }}
-      />
+      /> */}
 
       {/* ── Completed Invoices Modal ── */}
       <Dialog open={compInvoicesModalOpen} onOpenChange={setCompInvoicesModalOpen}>

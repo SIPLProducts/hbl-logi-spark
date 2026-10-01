@@ -40,7 +40,7 @@ import { exportRowsToXls } from "@/lib/export-xls.js";
 
 type SapMode = "with" | "without";
 
-const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
+const STATUS_OPTIONS = ["Pending", "Completed"] as const;
 
 const DEFAULT_COLUMNS = [
   { key: "slNo", header: "Sl.No", render: (r: WorklistRow) => r.slNo },
@@ -168,10 +168,10 @@ function OrderInfoPage() {
         setFetchedPlantDivisions(
           Array.isArray(data.PLANT)
             ? data.PLANT.map((p: any) => ({
-                plant: String(p.PLANT ?? "").trim(),
-                division: String(p.DIVISION ?? "").trim(),
-                divText: String(p.DIV_TEXT ?? "").trim(),
-              }))
+              plant: String(p.PLANT ?? "").trim(),
+              division: String(p.DIVISION ?? "").trim(),
+              divText: String(p.DIV_TEXT ?? "").trim(),
+            }))
             : [],
         );
         setFetchedTransporters(transporters);

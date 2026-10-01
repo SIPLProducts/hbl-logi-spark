@@ -49,7 +49,7 @@ import service from "@/services/generalservice_service.js";
 
 type SapMode = "with" | "without";
 
-const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
+const STATUS_OPTIONS = ["Pending", "Completed"] as const;
 
 const DEFAULT_COLUMNS = [
   { key: "slNo", header: "Sl.No", render: (r: WorklistRow) => r.slNo },
@@ -426,7 +426,7 @@ function GateInOutProcessPage() {
           setDirection(null);
           setSap(null);
           setSelectedId("");
-          
+
           // Reset Filter & Download Tab states
           resetFilters();
           setOrderInfoData([]);
@@ -2330,9 +2330,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
         const plants: string[] = Array.isArray(data.PLANT)
           ? data.PLANT.map((p: any) => {
-              const desc = String(p.PLANT_DESC || "").split("_")[0].trim();
-              return desc ? `${p.PLANT}_${desc}` : String(p.PLANT || "");
-            }).filter(Boolean)
+            const desc = String(p.PLANT_DESC || "").split("_")[0].trim();
+            return desc ? `${p.PLANT}_${desc}` : String(p.PLANT || "");
+          }).filter(Boolean)
           : [];
 
         const transporters: string[] = Array.isArray(data.VEND_CODE)
@@ -2877,14 +2877,14 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       // 4. Find matching template data from the fetched invoice response
       const matchingInvoiceEntry = Array.isArray(resData)
         ? resData.find((entry: any) => {
-            const entryRefNo = String(entry?.HEADER?.REFERENCE_NUMBER || "");
-            const entryLineNo = String(entry?.HEADER?.REFERENCE_LINE_ITEM || "");
-            const entryInvNo = String(entry?.HEADER?.ZINV_NO || "");
-            return (
-              (entryRefNo && entryRefNo === String(referenceRow.REF_NO) && (!entryLineNo || entryLineNo === String(referenceRow.LINE_NO))) ||
-              (entryInvNo && referenceInvoices.includes(entryInvNo))
-            );
-          }) || resData[0]
+          const entryRefNo = String(entry?.HEADER?.REFERENCE_NUMBER || "");
+          const entryLineNo = String(entry?.HEADER?.REFERENCE_LINE_ITEM || "");
+          const entryInvNo = String(entry?.HEADER?.ZINV_NO || "");
+          return (
+            (entryRefNo && entryRefNo === String(referenceRow.REF_NO) && (!entryLineNo || entryLineNo === String(referenceRow.LINE_NO))) ||
+            (entryInvNo && referenceInvoices.includes(entryInvNo))
+          );
+        }) || resData[0]
         : null;
 
       const templateItem: any = matchingInvoiceEntry?.ITEMS?.[0] || baseRows[0] || {};
@@ -4755,7 +4755,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               const activeGateColumns = gateRows.some((r) => r.provisionChecked)
                 ? [...GATE_COLUMNS, "Provision Amount", "Provision Date"]
                 : GATE_COLUMNS;
-              
+
               return (
                 <div className="overflow-x-auto">
                   <Table>
@@ -4781,38 +4781,38 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                  {gateRows.map((row, i) => {
-                    const minPd = getMinPhysicalDispatch(row);
-                    return (
-                      <TableRow key={i}>
-                        <TableCell className="text-center">
-                          <input
-                            type="checkbox"
-                            checked={row.selected}
-                            onChange={(e) => onGateRowCheckboxChange(i, e.target.checked)}
-                            className="size-3.5 accent-sky-600"
-                          />
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">{i + 1}</TableCell>
-                        <TableCell className="p-1">
-                          <GateTableMultiSelect
-                            options={
-                              Array.from(
-                                new Set([
-                                  ...invoiceF4List,
-                                  ...headerRows.map((hr) => hr.invNo).filter(Boolean),
-                                  ...(invoiceNumber ? invoiceNumber.split(",").map((s) => s.trim()).filter(Boolean) : []),
-                                  ...(row.invoiceNumber ? row.invoiceNumber.split(",").map((s) => s.trim()).filter(Boolean) : []),
-                                ])
-                              )
-                            }
-                            value={row.invoiceNumber}
-                            onChange={(val) => updateGateRow(i, "invoiceNumber", val)}
-                            placeholder={isSap ? "Select Invoice" : "Select DC Ref"}
-                            className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                          />
-                        </TableCell>
-                        {/* <TableCell className="p-1">
+                      {gateRows.map((row, i) => {
+                        const minPd = getMinPhysicalDispatch(row);
+                        return (
+                          <TableRow key={i}>
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={row.selected}
+                                onChange={(e) => onGateRowCheckboxChange(i, e.target.checked)}
+                                className="size-3.5 accent-sky-600"
+                              />
+                            </TableCell>
+                            <TableCell className="text-center text-muted-foreground">{i + 1}</TableCell>
+                            <TableCell className="p-1">
+                              <GateTableMultiSelect
+                                options={
+                                  Array.from(
+                                    new Set([
+                                      ...invoiceF4List,
+                                      ...headerRows.map((hr) => hr.invNo).filter(Boolean),
+                                      ...(invoiceNumber ? invoiceNumber.split(",").map((s) => s.trim()).filter(Boolean) : []),
+                                      ...(row.invoiceNumber ? row.invoiceNumber.split(",").map((s) => s.trim()).filter(Boolean) : []),
+                                    ])
+                                  )
+                                }
+                                value={row.invoiceNumber}
+                                onChange={(val) => updateGateRow(i, "invoiceNumber", val)}
+                                placeholder={isSap ? "Select Invoice" : "Select DC Ref"}
+                                className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                              />
+                            </TableCell>
+                            {/* <TableCell className="p-1">
                           <Input
                             type="text"
                             className="h-7 min-w-[110px]"
@@ -4820,210 +4820,210 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                             onChange={(e) => updateGateRow(i, "invoiceLineNo", e.target.value)}
                           />
                         </TableCell> */}
-                        {activeGateColumns.map((c) => {
-                          if (c === "Truck Type") {
-                            return (
-                              <TableCell key={c} className="p-1">
-                                <select
-                                  value={row.truckType}
-                                  onChange={(e) => updateGateRow(i, "truckType", e.target.value)}
-                                  disabled={loadingTruckTypes}
-                                  className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
-                                >
-                                  <option value="">{loadingTruckTypes ? "Loading..." : "Select Truck Type"}</option>
-                                  {truckTypeList.map((v) => (
-                                    <option key={v.code} value={v.code}>
-                                      {v.code}
-                                    </option>
-                                  ))}
-                                </select>
-                              </TableCell>
-                            );
-                          }
-                          if (c === "TAT Type") {
-                            return (
-                              <TableCell key={c} className="p-1">
-                                <select
-                                  value={row.tatType}
-                                  onChange={(e) => onGateTatTypeChange(i, e.target.value)}
-                                  className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                                >
-                                  <option value="">Select TAT Type</option>
-                                  <option value="Direct Truck TAT(Vizag)">Direct Truck TAT(Vizag)</option>
-                                  <option value="Direct Truck TAT(Hyd)">Direct Truck TAT(Hyd)</option>
-                                  <option value="Revised TAT">Revised TAT</option>
-                                  <option value="Safe Express TAT">Safe Express TAT</option>
-                                  <option value="Delivery TAT">Delivery TAT</option>
-                                  <option value="GATI TAT">GATI TAT</option>
-                                  <option value="V Xpress">V Xpress</option>
-                                  <option value="Instant Transport Solution">Instant Transport Solution</option>
-                                </select>
-                              </TableCell>
-                            );
-                          }
-                          if (c === "ETA") {
-                            return (
-                              <TableCell key={c} className="p-1">
-                                <GateDatePicker
-                                  className="h-7 min-w-[140px]"
-                                  value={row.eta}
-                                  onChange={(_, str) => updateGateRow(i, "eta", str)}
-                                />
-                              </TableCell>
-                            );
-                          }
-                          if (c === "Provision") {
-                            return (
-                              <TableCell key={c} className="p-1">
-                                <select
-                                  value={row.provisionChecked ? "Yes" : "No"}
-                                  onChange={(e) => updateGateRow(i, "provisionChecked", e.target.value === "Yes")}
-                                  className="h-7 min-w-[100px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
-                                >
-                                  <option value="No">No</option>
-                                  <option value="Yes">Yes</option>
-                                </select>
-                              </TableCell>
-                            );
-                          }
-                          if (c === "Provision Amount") {
-                            return (
-                              <TableCell key={c} className="p-1">
-                                {row.provisionChecked && (
+                            {activeGateColumns.map((c) => {
+                              if (c === "Truck Type") {
+                                return (
+                                  <TableCell key={c} className="p-1">
+                                    <select
+                                      value={row.truckType}
+                                      onChange={(e) => updateGateRow(i, "truckType", e.target.value)}
+                                      disabled={loadingTruckTypes}
+                                      className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60"
+                                    >
+                                      <option value="">{loadingTruckTypes ? "Loading..." : "Select Truck Type"}</option>
+                                      {truckTypeList.map((v) => (
+                                        <option key={v.code} value={v.code}>
+                                          {v.code}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </TableCell>
+                                );
+                              }
+                              if (c === "TAT Type") {
+                                return (
+                                  <TableCell key={c} className="p-1">
+                                    <select
+                                      value={row.tatType}
+                                      onChange={(e) => onGateTatTypeChange(i, e.target.value)}
+                                      className="h-7 min-w-[140px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                                    >
+                                      <option value="">Select TAT Type</option>
+                                      <option value="Direct Truck TAT(Vizag)">Direct Truck TAT(Vizag)</option>
+                                      <option value="Direct Truck TAT(Hyd)">Direct Truck TAT(Hyd)</option>
+                                      <option value="Revised TAT">Revised TAT</option>
+                                      <option value="Safe Express TAT">Safe Express TAT</option>
+                                      <option value="Delivery TAT">Delivery TAT</option>
+                                      <option value="GATI TAT">GATI TAT</option>
+                                      <option value="V Xpress">V Xpress</option>
+                                      <option value="Instant Transport Solution">Instant Transport Solution</option>
+                                    </select>
+                                  </TableCell>
+                                );
+                              }
+                              if (c === "ETA") {
+                                return (
+                                  <TableCell key={c} className="p-1">
+                                    <GateDatePicker
+                                      className="h-7 min-w-[140px]"
+                                      value={row.eta}
+                                      onChange={(_, str) => updateGateRow(i, "eta", str)}
+                                    />
+                                  </TableCell>
+                                );
+                              }
+                              if (c === "Provision") {
+                                return (
+                                  <TableCell key={c} className="p-1">
+                                    <select
+                                      value={row.provisionChecked ? "Yes" : "No"}
+                                      onChange={(e) => updateGateRow(i, "provisionChecked", e.target.value === "Yes")}
+                                      className="h-7 min-w-[100px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                                    >
+                                      <option value="No">No</option>
+                                      <option value="Yes">Yes</option>
+                                    </select>
+                                  </TableCell>
+                                );
+                              }
+                              if (c === "Provision Amount") {
+                                return (
+                                  <TableCell key={c} className="p-1">
+                                    {row.provisionChecked && (
+                                      <Input
+                                        type="text"
+                                        readOnly
+                                        value={row.provisionAmount === "" ? "" : String(row.provisionAmount)}
+                                        onClick={() => setActiveProvisionRow(i)}
+                                        className="h-7 min-w-[140px] cursor-pointer bg-muted/40"
+                                        placeholder="Click to add breakdown"
+                                      />
+                                    )}
+                                  </TableCell>
+                                );
+                              }
+                              if (c === "Provision Date") {
+                                return (
+                                  <TableCell key={c} className="p-1">
+                                    {row.provisionChecked && (
+                                      <GateDatePicker
+                                        className="h-7 min-w-[140px]"
+                                        value={row.provisionDate}
+                                        onChange={(_, str) => updateGateRow(i, "provisionDate", str)}
+                                      />
+                                    )}
+                                  </TableCell>
+                                );
+                              }
+                              const fieldMap: Record<string, Exclude<keyof GateRow, "selected" | "mapId" | "provisionChecked" | "provisionAmount" | "provisionDate" | "provisionBreakdown" | "provisionGst">> = {
+                                "Required Date and Time": "requiredDateTime",
+                                "Reported Date and Time": "reportedDateTime",
+                                "Physical Dispatch Date and Time": "physicalDispatchDateTime",
+                                "Type of Transporter": "typeOfTransporter",
+                                "Vehicle Number": "vehicleNumber",
+                                "No of Vehicles": "noOfVehicles",
+                                "Driver Number": "driverNumber",
+                                "Driver Name": "driverName",
+                                "Customer Email Id": "customerEmailId",
+                                "Salesperson Email Id": "salespersonEmailId",
+                                "GPS Live Location": "gpsLiveLocation",
+                                "Destination State": "destinationState",
+                                "Destination Zone": "destinationZone",
+                                "TAT Days": "tatDays",
+                              };
+                              const field = fieldMap[c];
+                              if (!field) return <TableCell key={c} className="p-1" />;
+                              const isPd = c === "Physical Dispatch Date and Time";
+                              const isReported = c === "Reported Date and Time";
+                              const isDateTime = c.toLowerCase().includes("date");
+                              const val = row[field] || "";
+                              const minReported = isReported && row.requiredDateTime ? row.requiredDateTime : undefined;
+
+                              if (isDateTime) {
+                                return (
+                                  <TableCell key={c} className="p-1">
+                                    <GateDateTimePicker
+                                      value={val}
+                                      min={isPd ? minPd : isReported ? minReported : undefined}
+                                      className={cn(
+                                        "h-7 min-w-[150px]",
+                                        isPd && minPd && val && val <= minPd
+                                          ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
+                                          : "",
+                                        isReported && row.requiredDateTime && val && !isReportedDateValid(row.requiredDateTime, val)
+                                          ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
+                                          : ""
+                                      )}
+                                      onChange={(v) => {
+                                        if (isReported && row.requiredDateTime && v && !isReportedDateValid(row.requiredDateTime, v)) {
+                                          Swal.fire({
+                                            icon: "warning",
+                                            title: "Invalid Date & Time",
+                                            text: "Reported Date and Time cannot be earlier than Required Date and Time.",
+                                            timer: 2500,
+                                            showConfirmButton: false,
+                                          });
+                                          return;
+                                        }
+                                        if (isPd && minPd && v && v <= minPd) {
+                                          Swal.fire({
+                                            icon: "warning",
+                                            title: "Invalid Date & Time",
+                                            text: "Physical Dispatch Date and Time must be later than Reported Date and Time.",
+                                            timer: 2000,
+                                            showConfirmButton: false,
+                                          });
+                                          return;
+                                        }
+                                        updateGateRow(i, field, v);
+                                      }}
+                                    />
+                                  </TableCell>
+                                );
+                              }
+
+                              return (
+                                <TableCell key={c} className="p-1">
                                   <Input
                                     type="text"
-                                    readOnly
-                                    value={row.provisionAmount === "" ? "" : String(row.provisionAmount)}
-                                    onClick={() => setActiveProvisionRow(i)}
-                                    className="h-7 min-w-[140px] cursor-pointer bg-muted/40"
-                                    placeholder="Click to add breakdown"
-                                  />
-                                )}
-                              </TableCell>
-                            );
-                          }
-                          if (c === "Provision Date") {
-                            return (
-                              <TableCell key={c} className="p-1">
-                                {row.provisionChecked && (
-                                  <GateDatePicker
                                     className="h-7 min-w-[140px]"
-                                    value={row.provisionDate}
-                                    onChange={(_, str) => updateGateRow(i, "provisionDate", str)}
+                                    value={val}
+                                    inputMode={field === "driverNumber" ? "numeric" : undefined}
+                                    onChange={(e) => {
+                                      let v = e.target.value;
+                                      if (field === "driverNumber") v = v.replace(/\D/g, "");
+                                      // Vehicle Number: only letters and digits — no spaces, "/",
+                                      // "_" or other special characters.
+                                      if (field === "vehicleNumber") v = v.replace(/[^a-zA-Z0-9]/g, "");
+                                      updateGateRow(i, field, v);
+                                    }}
                                   />
-                                )}
-                              </TableCell>
-                            );
-                          }
-                          const fieldMap: Record<string, Exclude<keyof GateRow, "selected" | "mapId" | "provisionChecked" | "provisionAmount" | "provisionDate" | "provisionBreakdown" | "provisionGst">> = {
-                            "Required Date and Time": "requiredDateTime",
-                            "Reported Date and Time": "reportedDateTime",
-                            "Physical Dispatch Date and Time": "physicalDispatchDateTime",
-                            "Type of Transporter": "typeOfTransporter",
-                            "Vehicle Number": "vehicleNumber",
-                            "No of Vehicles": "noOfVehicles",
-                            "Driver Number": "driverNumber",
-                            "Driver Name": "driverName",
-                            "Customer Email Id": "customerEmailId",
-                            "Salesperson Email Id": "salespersonEmailId",
-                            "GPS Live Location": "gpsLiveLocation",
-                            "Destination State": "destinationState",
-                            "Destination Zone": "destinationZone",
-                            "TAT Days": "tatDays",
-                          };
-                          const field = fieldMap[c];
-                          if (!field) return <TableCell key={c} className="p-1" />;
-                          const isPd = c === "Physical Dispatch Date and Time";
-                          const isReported = c === "Reported Date and Time";
-                          const isDateTime = c.toLowerCase().includes("date");
-                          const val = row[field] || "";
-                          const minReported = isReported && row.requiredDateTime ? row.requiredDateTime : undefined;
-
-                          if (isDateTime) {
-                            return (
-                              <TableCell key={c} className="p-1">
-                                <GateDateTimePicker
-                                  value={val}
-                                  min={isPd ? minPd : isReported ? minReported : undefined}
-                                  className={cn(
-                                    "h-7 min-w-[150px]",
-                                    isPd && minPd && val && val <= minPd
-                                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
-                                      : "",
-                                    isReported && row.requiredDateTime && val && !isReportedDateValid(row.requiredDateTime, val)
-                                      ? "border-red-400 focus:border-red-400 focus:ring-red-400/30"
-                                      : ""
-                                  )}
-                                  onChange={(v) => {
-                                    if (isReported && row.requiredDateTime && v && !isReportedDateValid(row.requiredDateTime, v)) {
-                                      Swal.fire({
-                                        icon: "warning",
-                                        title: "Invalid Date & Time",
-                                        text: "Reported Date and Time cannot be earlier than Required Date and Time.",
-                                        timer: 2500,
-                                        showConfirmButton: false,
-                                      });
-                                      return;
-                                    }
-                                    if (isPd && minPd && v && v <= minPd) {
-                                      Swal.fire({
-                                        icon: "warning",
-                                        title: "Invalid Date & Time",
-                                        text: "Physical Dispatch Date and Time must be later than Reported Date and Time.",
-                                        timer: 2000,
-                                        showConfirmButton: false,
-                                      });
-                                      return;
-                                    }
-                                    updateGateRow(i, field, v);
-                                  }}
-                                />
-                              </TableCell>
-                            );
-                          }
-
-                          return (
-                            <TableCell key={c} className="p-1">
-                              <Input
-                                type="text"
-                                className="h-7 min-w-[140px]"
-                                value={val}
-                                inputMode={field === "driverNumber" ? "numeric" : undefined}
-                                onChange={(e) => {
-                                  let v = e.target.value;
-                                  if (field === "driverNumber") v = v.replace(/\D/g, "");
-                                  // Vehicle Number: only letters and digits — no spaces, "/",
-                                  // "_" or other special characters.
-                                  if (field === "vehicleNumber") v = v.replace(/[^a-zA-Z0-9]/g, "");
-                                  updateGateRow(i, field, v);
-                                }}
-                              />
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="p-1 text-center">
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  onClick={addGateRow}
+                                  className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-accent hover:bg-accent/10 transition"
+                                  aria-label="Add row"
+                                >
+                                  <Plus className="size-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => removeGateRow(i)}
+                                  disabled={gateRows.length === 1}
+                                  className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+                                  aria-label="Delete row"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </div>
                             </TableCell>
-                          );
-                        })}
-                        <TableCell className="p-1 text-center">
-                          <div className="inline-flex items-center gap-1">
-                            <button
-                              onClick={addGateRow}
-                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-accent hover:bg-accent/10 transition"
-                              aria-label="Add row"
-                            >
-                              <Plus className="size-3.5" />
-                            </button>
-                            <button
-                              onClick={() => removeGateRow(i)}
-                              disabled={gateRows.length === 1}
-                              className="size-7 grid place-items-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
-                              aria-label="Delete row"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
                   </Table>
                 </div>
               );
