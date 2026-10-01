@@ -4165,6 +4165,10 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                       newVal = rawVal ? rawVal.split(",").map((v: string) => ({ SALESPERSON_EMAIL_ID: v.trim() })) : [];
                                     } else if (field === "DRIVER_NUMBER") {
                                       newVal = rawVal.replace(/\D/g, "");
+                                    } else if (field === "VEHICLE_NUMBER") {
+                                      // Only letters and digits — no spaces, "/", "_" or other
+                                      // special characters.
+                                      newVal = rawVal.replace(/[^a-zA-Z0-9]/g, "");
                                     }
                                     next[index] = { ...next[index], [field]: newVal };
                                     setSearchResultItems(next);
@@ -4505,7 +4509,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                   <option value="">Select TAT Type</option>
                                   <option value="Direct Truck TAT(Vizag)">Direct Truck TAT(Vizag)</option>
                                   <option value="Direct Truck TAT(Hyd)">Direct Truck TAT(Hyd)</option>
-                                  {/* <option value="Revised TAT">Revised TAT</option> */}
+                                  <option value="Revised TAT">Revised TAT</option>
                                   <option value="Safe Express TAT">Safe Express TAT</option>
                                   <option value="Delivery TAT">Delivery TAT</option>
                                   <option value="GATI TAT">GATI TAT</option>
@@ -4603,6 +4607,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                 onChange={(e) => {
                                   let v = e.target.value;
                                   if (field === "driverNumber") v = v.replace(/\D/g, "");
+                                  // Vehicle Number: only letters and digits — no spaces, "/",
+                                  // "_" or other special characters.
+                                  if (field === "vehicleNumber") v = v.replace(/[^a-zA-Z0-9]/g, "");
                                   updateGateRow(i, field, v);
                                 }}
                               />

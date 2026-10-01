@@ -58,6 +58,11 @@ const INR = new Intl.NumberFormat("en-IN", {
 
 const COLUMNS: ColDef[] = [
   {
+    key: "invoiceItem",
+    header: "Invoice Item",
+    render: (r) => <span className="font-mono">{r.invoiceItem}</span>,
+  },
+  {
     key: "invoiceNo",
     header: "Invoice No",
     render: (r) => <span className="font-mono">{r.invoiceNo}</span>,
@@ -107,6 +112,7 @@ const COLUMNS: ColDef[] = [
     ),
   },
   { key: "incoterms", header: "Incoterms" },
+  { key: "status", header: "Status" },
 ];
 
 function DispatchOrdersPage() {
@@ -223,6 +229,7 @@ function DispatchOrdersPage() {
       // Map API UPPERCASE keys to camelCase DispatchOrderRow shape
       const data: DispatchOrderRow[] = raw.map((item: any, index: number) => ({
         id: String(index),
+        invoiceItem: item.INVOICE_ITEM,
         invoiceNo: item.INVOICE_NUMBER,
         invoiceDate: item.INVOICE_DATE,
         billingTransactionType: item.BILLING_TRANSACTION_TYPE,
@@ -235,6 +242,7 @@ function DispatchOrdersPage() {
         basicShipmentValue: item.BASIC_SHIPMENT_VALUE,
         invoiceValueWithGst: item.INVOICE_VALUE_WITH_GST,
         incoterms: item.INCOTERMS,
+        status: item.STATUS,
       }));
 
       setRows(data);

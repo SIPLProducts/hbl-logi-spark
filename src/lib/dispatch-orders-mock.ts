@@ -1,5 +1,6 @@
 export type DispatchOrderRow = {
   id: string;
+  invoiceItem: string;
   invoiceNo: string;
   invoiceDate: string;
   billingTransactionType: string;
@@ -12,4 +13,5 @@ export type DispatchOrderRow = {
   basicShipmentValue: number;
   invoiceValueWithGst: number;
   incoterms: string;
+  status: string;
 };

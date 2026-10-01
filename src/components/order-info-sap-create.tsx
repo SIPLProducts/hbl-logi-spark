@@ -511,6 +511,8 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
   const [billingList, setBillingList] = useState<BillingData[]>([]);
   const [statesList, setStatesList] = useState<StateData[]>([]);
   const [customerList, setCustomerList] = useState<CustomerData[]>([]);
+  // Customer Group F4 — same getpdb() response as Customer, its CUSTGRP array.
+  const [custGroupList, setCustGroupList] = useState<{ ZCUST_GRP: string }[]>([]);
   const [incotermsList, setIncotermsList] = useState<any[]>([]);
   const [transporterList, setTransporterList] = useState<string[]>([]);
 
@@ -630,6 +632,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
         setBillingList(Array.isArray(data.BILLING_TYPE) ? data.BILLING_TYPE : []);
         setStatesList(Array.isArray(data.STATES) ? data.STATES : []);
         setCustomerList(Array.isArray(data.CUSTOMER) ? data.CUSTOMER : []);
+        setCustGroupList(Array.isArray(data.CUSTGRP) ? data.CUSTGRP : []);
       } catch (e) { console.error("getpdb failed:", e); }
     })();
   }, []);
@@ -1264,6 +1267,27 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       );
     }
 
+    // 8b. Customer Group (from SAP F4 custGroupList, unchanged) — text input with the F4
+    // values as suggestions, so a custom value can be typed in too.
+    if (field === "ZCUST_GRP") {
+      return (
+        <>
+          <input
+            list={`customer-group-options-row-${rowIndex}`}
+            value={currentValue}
+            onChange={(e) => updateSearchResultField(rowIndex, "ZCUST_GRP", e.target.value)}
+            placeholder="Select or enter Customer Group"
+            className="h-7 min-w-[130px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
+          />
+          <datalist id={`customer-group-options-row-${rowIndex}`}>
+            {custGroupList.map((c, idx) => (
+              <option key={idx} value={c.ZCUST_GRP} />
+            ))}
+          </datalist>
+        </>
+      );
+    }
+
     // 9. Destination State dropdown (from SAP F4 statesList)
     if (field === "ZSTATE") {
       return (
@@ -1453,6 +1477,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       />
     );
   };
+
 
   // ─────────────────────────────────────────────────────────────────────────────
   // JSX
@@ -2029,10 +2054,36 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                 </select>
               </div>
 
-              {/* Customer Group */}
+              {/* Customer Group — F4 list (custGroupList, unchanged) shown as suggestions,
+                  but the field stays a text input so a custom value can be typed too. */}
               <div>
                 <FieldLabel label="Customer Group" fromSap={sapFetched && sapFilledKeys.has("CustomerGroup")} />
-                {renderInput("CustomerGroup")}
+                {(() => {
+                  const filled = sapFetched && sapFilledKeys.has("CustomerGroup");
+                  const unfilled = sapFetched && !sapFilledKeys.has("CustomerGroup");
+
+                  if (filled) {
+                    return <input value={form.CustomerGroup} readOnly className={INPUT_SAP_FILLED} />;
+                  }
+
+                  const cls = unfilled ? INPUT_SAP_EMPTY : INPUT_NORMAL;
+                  return (
+                    <>
+                      <input
+                        list="customer-group-options"
+                        value={form.CustomerGroup}
+                        onChange={(e) => setField("CustomerGroup", e.target.value)}
+                        placeholder="Select or enter Customer Group"
+                        className={cls}
+                      />
+                      <datalist id="customer-group-options">
+                        {custGroupList.map((c, idx) => (
+                          <option key={idx} value={c.ZCUST_GRP} />
+                        ))}
+                      </datalist>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Incoterms */}

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, type FormEvent } from "react";
-import { Eye, EyeOff, LogIn, User, Lock } from "lucide-react";
+import { Eye, EyeOff, LogIn, User, Lock, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import Swal from "sweetalert2";
@@ -245,57 +245,130 @@ function LoginPage() {
   };
 
   return (
-    <main className="h-screen w-full overflow-hidden grid md:grid-cols-[minmax(0,440px)_minmax(0,1fr)] bg-slate-50">
-      {/* Left panel — form */}
-      <section className="h-full min-h-0 relative overflow-hidden bg-white">
-        {/* Decorative accents */}
+    <main className="h-screen w-full overflow-hidden grid md:grid-cols-2 bg-white">
+      {/* Left panel — brand + slideshow */}
+      <section className="relative z-10 hidden md:flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-br from-sky-100 via-sky-50 to-white px-10 lg:px-14 pt-8 lg:pt-10 pb-6">
+        {/* Soft glow */}
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-gradient-to-br from-accent/15 to-primary/10 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-28 -left-16 size-72 rounded-full bg-gradient-to-tr from-primary/10 to-accent/10 blur-3xl"
+          className="pointer-events-none absolute -top-28 -left-20 size-[26rem] rounded-full bg-accent/15 blur-3xl"
         />
 
-        {/* Watermark */}
-        <span
-          aria-hidden
-          className="pointer-events-none select-none absolute -bottom-10 -left-3 font-display font-extrabold text-[140px] leading-none tracking-tight text-slate-900/[0.035]"
-        >
-          HBL
-        </span>
-
-        <div className="relative min-h-full flex flex-col justify-center px-8 sm:px-14 py-6">
-          <div className="max-w-sm w-full mx-auto animate-in fade-in slide-in-from-left-3 duration-700">
+        {/* Brand — HBL | Pravah lockup */}
+        <div className="relative animate-in fade-in slide-in-from-left-3 duration-700">
+          <div className="flex items-center gap-5">
             <img
               src={hblLogo}
               alt="HBL Power Systems"
-              className="h-14 w-auto object-contain mb-3"
+              className="h-14 lg:h-16 w-auto object-contain"
             />
-
-            <span className="font-display text-[32px] sm:text-[36px] font-extrabold leading-none tracking-tight bg-gradient-primary bg-clip-text text-transparent">
+            <span className="h-12 lg:h-14 w-px bg-slate-300" aria-hidden />
+            <span className="font-sans text-[40px] lg:text-[46px] font-bold leading-none tracking-tight text-[#0b2249]">
               Pravah
             </span>
-            <p className="mt-2 text-[13px] text-slate-500">
-              Simplifying Logistics. Empowering Operations.
-            </p>
-            <span className="mt-3 h-[3px] w-10 rounded-full bg-gradient-to-r from-accent to-primary" />
+          </div>
+          <p className="mt-3 text-[13px] lg:text-[14px] text-[#4f6f96]">
+            Simplifying Logistics. Empowering Operations.
+          </p>
+          <span className="mt-3 block h-[3px] w-14 rounded-full bg-accent" />
+        </div>
 
-            <h1 className="mt-5 font-display text-[21px] font-bold leading-tight tracking-tight text-slate-900">
-              Sign in to your account
-            </h1>
+        {/* Slideshow — one image at a time, sliding across */}
+        <div className="relative flex-1 min-h-0 flex flex-col pt-6">
+          <div className="relative flex-1 min-h-0 overflow-hidden rounded-2xl bg-white shadow-[0_18px_40px_-18px_rgba(11,34,73,0.30)]">
+            <div
+              className="flex h-full transition-transform duration-700 ease-in-out"
+              style={{ transform: `translateX(-${slideIndex * 100}%)` }}
+            >
+              {slides.map((s, i) => (
+                <img
+                  key={s.url}
+                  src={s.url}
+                  alt={s.alt}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  className="h-full min-w-full object-contain object-center p-2"
+                />
+              ))}
+            </div>
+          </div>
 
-            <form className="mt-5 space-y-3.5" onSubmit={onSubmit} noValidate>
+          {/* Dot indicators */}
+          <div className="mt-4 flex items-center justify-center gap-2">
+            {slides.map((s, i) => (
+              <button
+                key={s.url}
+                type="button"
+                onClick={() => setSlideIndex(i)}
+                aria-label={`Show slide ${i + 1}`}
+                className={
+                  "h-2 rounded-full transition-all " +
+                  (i === slideIndex
+                    ? "w-7 bg-[#0b2249]"
+                    : "w-2 bg-slate-300 hover:bg-slate-400")
+                }
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Highlights + footer */}
+        <div className="relative pt-4">
+          <div className="flex flex-wrap items-center gap-x-7 gap-y-2 text-[12px] font-medium text-slate-700">
+            {["Faster Approvals", "Better Visibility", "Smarter Logistics"].map((t) => (
+              <span key={t} className="inline-flex items-center gap-2">
+                <CheckCircle2 className="size-[18px] text-accent" />
+                {t}
+              </span>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] text-slate-500">
+            © {new Date().getFullYear()} Sharvi Infotech. All Rights Reserved.
+          </p>
+        </div>
+      </section>
+
+      {/* Right panel — sign-in */}
+      <section className="relative flex h-full min-h-0 flex-col justify-center overflow-hidden bg-gradient-to-br from-white via-slate-50 to-sky-100/70 px-6 sm:px-10 lg:px-16 py-6">
+        {/* Decorative diagonal bars */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-16 right-10 h-[30rem] w-24 rotate-[40deg] rounded-full bg-gradient-to-b from-accent/15 to-transparent"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -right-10 h-[30rem] w-32 rotate-[40deg] rounded-full bg-gradient-to-b from-accent/20 to-transparent"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-32 -right-14 h-[26rem] w-28 rotate-[40deg] rounded-full bg-gradient-to-t from-primary/10 to-transparent"
+        />
+
+        <div className="relative w-full max-w-[400px] mx-auto animate-in fade-in slide-in-from-right-3 duration-700">
+          {/* Compact brand — shown only where the left panel is hidden */}
+          <div className="md:hidden mb-5 flex items-center gap-4">
+            <img src={hblLogo} alt="HBL Power Systems" className="h-14 w-auto object-contain" />
+            <span className="h-10 w-px bg-slate-300" aria-hidden />
+            <span className="font-sans text-[28px] font-bold leading-none tracking-tight text-[#0b2249]">
+              Pravah
+            </span>
+          </div>
+
+          <h1 className="font-display text-[28px] sm:text-[30px] font-bold leading-tight tracking-tight text-[#0b2249]">
+            Sign in to your account
+          </h1>
+          <span className="mt-2.5 block h-[3px] w-12 rounded-full bg-accent" />
+
+          <div className="mt-6 rounded-2xl border border-white bg-white p-6 shadow-[0_24px_50px_-24px_rgba(11,34,73,0.30)]">
+            <form className="space-y-4" onSubmit={onSubmit} noValidate>
               <div className="space-y-1.5">
                 <label
                   htmlFor="username"
-                  className="block text-[12px] font-semibold uppercase tracking-wide text-slate-700"
+                  className="block text-[12px] font-semibold text-slate-700"
                 >
                   User Name <span className="text-destructive">*</span>
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-500 pointer-events-none" />
                   <input
                     id="username"
                     type="text"
@@ -306,10 +379,10 @@ function LoginPage() {
                     maxLength={100}
                     aria-invalid={!!errors.username}
                     className={
-                      "w-full h-10 pl-10 pr-3.5 rounded-xl border bg-slate-50/70 text-[13.5px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all " +
+                      "w-full h-11 pl-10 pr-3.5 rounded-lg border bg-[#e8f0fc] text-[13.5px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-4 focus:ring-accent/15 transition-all " +
                       (errors.username
                         ? "border-destructive focus:border-destructive"
-                        : "border-slate-200 hover:border-slate-300 focus:border-primary")
+                        : "border-transparent hover:border-slate-200 focus:border-accent")
                     }
                   />
                 </div>
@@ -319,14 +392,23 @@ function LoginPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label
-                  htmlFor="password"
-                  className="block text-[12px] font-semibold uppercase tracking-wide text-slate-700"
-                >
-                  Password <span className="text-destructive">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="password"
+                    className="block text-[12px] font-semibold text-slate-700"
+                  >
+                    Password <span className="text-destructive">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => toast.info("Please contact your administrator")}
+                    className="text-[12px] font-medium text-[#0b2249] hover:text-accent hover:underline cursor-pointer"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-500 pointer-events-none" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -337,16 +419,16 @@ function LoginPage() {
                     maxLength={100}
                     aria-invalid={!!errors.password}
                     className={
-                      "w-full h-10 pl-10 pr-11 rounded-xl border bg-slate-50/70 text-[13.5px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all " +
+                      "w-full h-11 pl-10 pr-11 rounded-lg border bg-[#e8f0fc] text-[13.5px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-4 focus:ring-accent/15 transition-all " +
                       (errors.password
                         ? "border-destructive focus:border-destructive"
-                        : "border-slate-200 hover:border-slate-300 focus:border-primary")
+                        : "border-transparent hover:border-slate-200 focus:border-accent")
                     }
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute inset-y-0 right-0 grid place-items-center px-3 text-slate-400 hover:text-slate-700"
+                    className="absolute inset-y-0 right-0 grid place-items-center px-3.5 text-slate-500 hover:text-slate-800"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                     tabIndex={-1}
                   >
@@ -362,29 +444,20 @@ function LoginPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between pt-0.5">
-                <label className="inline-flex items-center gap-2 text-[12.5px] text-slate-600 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="size-3.5 rounded border-slate-300 accent-primary focus:ring-primary/30 cursor-pointer"
-                  />
-                  Remember me
-                </label>
-                <button
-                  type="button"
-                  onClick={() => toast.info("Please contact your administrator")}
-                  className="text-[12.5px] font-medium text-primary hover:underline cursor-pointer"
-                >
-                  Forgot Password?
-                </button>
-              </div>
+              <label className="inline-flex items-center gap-2 text-[12px] text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="size-3.5 rounded border-slate-300 accent-primary focus:ring-primary/30 cursor-pointer"
+                />
+                Remember me
+              </label>
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full h-10 mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-primary text-white text-[13.5px] font-semibold shadow-cta hover:shadow-lg hover:-translate-y-px active:translate-y-0 transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
+                className="w-full h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#4d7fb3] to-[#0b2249] text-white text-[13.5px] font-semibold shadow-[0_12px_24px_-10px_rgba(11,34,73,0.6)] hover:brightness-110 hover:-translate-y-px active:translate-y-0 transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
               >
                 {submitting ? (
                   <>Signing in…</>
@@ -397,52 +470,11 @@ function LoginPage() {
             </form>
           </div>
 
-          <div className="max-w-sm w-full mx-auto pt-5">
-            <p className="text-[11px] text-slate-400 text-center sm:text-left">
-              © {new Date().getFullYear()} Sharvi Infotech. All Rights Reserved.
-            </p>
-          </div>
+          <p className="md:hidden mt-4 text-center text-[11px] text-slate-400">
+            © {new Date().getFullYear()} Sharvi Infotech. All Rights Reserved.
+          </p>
         </div>
       </section>
-
-      {/* Right panel — slideshow */}
-      <aside className="relative hidden md:block overflow-hidden bg-slate-100">
-        <div className="absolute inset-6">
-          {slides.map((s, i) => (
-            <img
-              key={s.url}
-              src={s.url}
-              alt={s.alt}
-              loading={i === 0 ? "eager" : "lazy"}
-              className={
-                "absolute inset-0 size-full object-contain object-center transition-opacity duration-700 ease-in-out " +
-                (i === slideIndex ? "opacity-100" : "opacity-0")
-              }
-            />
-          ))}
-        </div>
-
-        {/* Bottom scrim for dot legibility */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/10 to-transparent" />
-
-        {/* Dot indicators */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-6 z-10 flex items-center gap-2">
-          {slides.map((s, i) => (
-            <button
-              key={s.url}
-              type="button"
-              onClick={() => setSlideIndex(i)}
-              aria-label={`Show slide ${i + 1}`}
-              className={
-                "h-2 rounded-full shadow-sm transition-all " +
-                (i === slideIndex
-                  ? "w-6 bg-primary"
-                  : "w-2 bg-slate-400/80 hover:bg-slate-600")
-              }
-            />
-          ))}
-        </div>
-      </aside>
     </main>
   );
 }

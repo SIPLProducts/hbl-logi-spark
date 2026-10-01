@@ -974,7 +974,10 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
   };
 
   const onPassingWeightChange = (rowId: number, value: string) => {
-    updateRow(rowId, { ZTRUC_WT: value });
+    const row = rows.find((r) => r.id === rowId);
+    const patch: Partial<LoadRow> = { ZTRUC_WT: value };
+    if (row?.ZTRUC_TYPE === "PART LOAD") patch.ZACT_LOAD = value;
+    updateRow(rowId, patch);
   };
 
   /* ── Actual Volume change -> SAP truck lookup (Angular: onTruckTypeChange -> service.sapget) ── */
