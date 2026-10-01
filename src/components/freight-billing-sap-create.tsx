@@ -195,6 +195,7 @@ type TableRow = {
   lrOptions?: string[];
   compInvoices?: string[];
   notAllowed?: boolean;
+  ZVEH_TYPE?: string;
 };
 
 const EMPTY_ROW = (): TableRow => ({
@@ -208,6 +209,7 @@ const EMPTY_ROW = (): TableRow => ({
   lrOptions: [],
   compInvoices: [],
   notAllowed: false,
+  ZVEH_TYPE: "",
 });
 
 // Columns rendered before the "P/A Check" (View) button — kept editable already
@@ -217,8 +219,7 @@ const PRE_PA_EDITABLE_FIELDS: { field: string; type: string }[] = [
   { field: "ZSALE_PERSON", type: "text" },
 ];
 
-// Columns rendered after the "P/A Check" (View) button — now editable like OrderInfoSapCreate
-const POST_PA_EDITABLE_FIELDS: { field: string; type: string; readonly?: boolean }[] = [
+const POST_PA_EDITABLE_FIELDS: { field: string; type: string; readonly?: boolean; options?: string[] }[] = [
   { field: "ZPROVAMT", type: "number" },
   { field: "ZPROVDT", type: "date" },
   { field: "ZBILLNO", type: "text" },
@@ -233,6 +234,7 @@ const POST_PA_EDITABLE_FIELDS: { field: string; type: string; readonly?: boolean
   { field: "ZVEH_NUM", type: "text" },
   { field: "ZCREATED_DT", type: "date", readonly: true },
   { field: "ZVEH_LINE", type: "text" },
+  { field: "ZRATECON", type: "select", options: ["Safexpress Contract", "All Cargo Contract", "Delhivery Contract", "V Xpress Contract", "ARC Contract", "DTDC Contract", "XP India", "Local Agreement", "Monthly Hire Agreement", "Others"] },
 ];
 
 
@@ -847,6 +849,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   };
   const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(true);
+  const [typeOfRateContract, setTypeOfRateContract] = useState("");
 
   // Search table edit files: rowIndex -> { docKey: File }
   const [editSearchFiles, setEditSearchFiles] = useState<{ [index: number]: { [key: string]: File } }>({});
@@ -962,6 +965,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setTransportationType("");
     setSearchOptionsList([]);
     setShowForm(true);
+    setTypeOfRateContract("");
     setFinanceDetails("");
     setJvNumber("");
     setJvDate("");
@@ -1085,6 +1089,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
             lrOptions,
             compInvoices,
             notAllowed: isNotAllowed,
+            ZVEH_TYPE: item.ZVEH_TYPE || "",
           };
         }));
       } else {
@@ -1148,15 +1153,15 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       // Find selected row
       // Prefer the ticked reference row that owns the chosen invoice (several rows can be ticked).
       const selectedRow = (tableData.find(
-      (r) =>
-        r.selected &&
-        fullReferenceData.some(
-          (ref: any) =>
-            String(ref.MAPID) === String(r.MAPID) &&
-            Array.isArray(ref.INV_NO) &&
-            ref.INV_NO.some((i: any) => i.VBELN === String(invoiceNumber).split(",")[0].trim()),
-        ),
-    ) || tableData.find((r) => r.selected));
+        (r) =>
+          r.selected &&
+          fullReferenceData.some(
+            (ref: any) =>
+              String(ref.MAPID) === String(r.MAPID) &&
+              Array.isArray(ref.INV_NO) &&
+              ref.INV_NO.some((i: any) => i.VBELN === String(invoiceNumber).split(",")[0].trim()),
+          ),
+      ) || tableData.find((r) => r.selected));
 
       if (!selectedRow) {
         Swal.fire({
@@ -1232,6 +1237,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         ZUTRNUM: utrNumber,
         ZUTRDT: utrDate,
         ZGSTAMT: (provision ? provisionGst : 0) + (account ? freightGst : 0),
+        ZRATECON: typeOfRateContract,
       };
 
       // Multiple invoices selected → one separate record per invoice in the same SAVE / CREATE
@@ -1245,31 +1251,31 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
 
       const records =
         selectedInvoices.length > 0 &&
-        (selectedInvoices.length > 1 || tableData.filter((row) => row.selected).length > 1)
+          (selectedInvoices.length > 1 || tableData.filter((row) => row.selected).length > 1)
           ? selectedInvoices.map((inv) => {
-              const ownerRow =
-                tableData.find(
-                  (row) =>
-                    row.selected &&
-                    fullReferenceData.some(
-                      (ref: any) =>
-                        String(ref.MAPID) === String(row.MAPID) &&
-                        Array.isArray(ref.INV_NO) &&
-                        ref.INV_NO.some((i: any) => i.VBELN === inv)
-                    )
-                ) || selectedRow;
+            const ownerRow =
+              tableData.find(
+                (row) =>
+                  row.selected &&
+                  fullReferenceData.some(
+                    (ref: any) =>
+                      String(ref.MAPID) === String(row.MAPID) &&
+                      Array.isArray(ref.INV_NO) &&
+                      ref.INV_NO.some((i: any) => i.VBELN === inv)
+                  )
+              ) || selectedRow;
 
-              return {
-                ...record,
-                INV_NO: inv,
-                REFNO: ownerRow.REF_NO,
-                LINE_NO: ownerRow.LINE_NO,
-                ORDER_NO: ownerRow.WORK_ORDER_NO,
-                WORKORDER: ownerRow.WORK_ORDER_NO,
-                LRNO: ownerRow.LR_NO,
-                TRANSPORTER: ownerRow.TRANSPORTER,
-              };
-            })
+            return {
+              ...record,
+              INV_NO: inv,
+              REFNO: ownerRow.REF_NO,
+              LINE_NO: ownerRow.LINE_NO,
+              ORDER_NO: ownerRow.WORK_ORDER_NO,
+              WORKORDER: ownerRow.WORK_ORDER_NO,
+              LRNO: ownerRow.LR_NO,
+              TRANSPORTER: ownerRow.TRANSPORTER,
+            };
+          })
           : [record];
 
       console.log(records);
@@ -1461,6 +1467,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
 
           ZPROVDT: row.ZPROVDT,
           ZPROVAMT: row.ZPROVAMT,
+          ZRATECON: row.ZRATECON || "",
 
           ZFRBILLUP: frb64 || "",
           FRBILLUP: frb64 || "",
@@ -2026,6 +2033,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Vehicle No</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Created Date</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Vehicle Line</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Type of Rate Contract</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Freight Bill</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Unloading Charges Approval</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Detention Charges</th>
@@ -2079,16 +2087,33 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     {POST_PA_EDITABLE_FIELDS.map(({ field, type, readonly }: any) => (
                       <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
                         {item.isEdit && !readonly ? (
-                          <input
-                            type={type}
-                            className={GREEN_INPUT}
-                            value={item[field] || ""}
-                            onChange={(e) => {
-                              const list = [...searchOptionsList];
-                              list[index] = { ...list[index], [field]: e.target.value };
-                              setSearchOptionsList(list);
-                            }}
-                          />
+                          type === "select" ? (
+                            <select
+                              className={GREEN_INPUT}
+                              value={item[field] || ""}
+                              onChange={(e) => {
+                                const list = [...searchOptionsList];
+                                list[index] = { ...list[index], [field]: e.target.value };
+                                setSearchOptionsList(list);
+                              }}
+                            >
+                              <option value="">Select Type</option>
+                              {POST_PA_EDITABLE_FIELDS.find((f: any) => f.field === field)?.options?.map((opt: string) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type={type}
+                              className={GREEN_INPUT}
+                              value={item[field] || ""}
+                              onChange={(e) => {
+                                const list = [...searchOptionsList];
+                                list[index] = { ...list[index], [field]: e.target.value };
+                                setSearchOptionsList(list);
+                              }}
+                            />
+                          )
                         ) : type === "date" && item[field] ? (
                           new Date(item[field]).toLocaleDateString("en-GB")
                         ) : (
@@ -2725,6 +2750,28 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                 className={GREEN_INPUT + " py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"}
               />
             </div>
+            {tableData.some(r => r.selected && r.ZVEH_TYPE === "CARGO") && (
+              <div>
+                <label className={LABEL}>Type of Rate Contract</label>
+                <select
+                  value={typeOfRateContract}
+                  onChange={(e) => setTypeOfRateContract(e.target.value)}
+                  className={GREEN_INPUT + " h-8"}
+                >
+                  <option value="">Select Type</option>
+                  <option value="Safexpress Contract">Safexpress Contract</option>
+                  <option value="All Cargo Contract">All Cargo Contract</option>
+                  <option value="Delhivery Contract">Delhivery Contract</option>
+                  <option value="V Xpress Contract">V Xpress Contract</option>
+                  <option value="ARC Contract">ARC Contract</option>
+                  <option value="DTDC Contract">DTDC Contract</option>
+                  <option value="XP India">XP India</option>
+                  <option value="Local Agreement">Local Agreement</option>
+                  <option value="Monthly Hire Agreement">Monthly Hire Agreement</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
       )}

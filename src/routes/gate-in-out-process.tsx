@@ -267,6 +267,19 @@ function GateInOutProcessPage() {
           { header: "TAT Type", value: (r: any) => r.TAT_TYPE || "" },
           { header: "TAT Days", value: (r: any) => r.TAT_DAYS || "" },
           { header: "ETA", value: (r: any) => r.ETA ? new Date(r.ETA).toLocaleDateString("en-GB") : "" },
+          { header: "Provision", value: (r: any) => (r.ZPRO_CHK === "X" || r.ZPRO_CHK === "Yes") ? "Yes" : "No" },
+          { header: "Provision Date", value: (r: any) => r.ZPROVDT ? new Date(r.ZPROVDT).toLocaleDateString("en-GB") : "" },
+          { header: "Basic Freight", value: (r: any) => r.ZPR_BASIC || "0" },
+          { header: "Detention Loading", value: (r: any) => r.ZPR_DELOAD || "0" },
+          { header: "Detention Unloading", value: (r: any) => r.ZPR_DEUNLOAD || "0" },
+          { header: "Loading Charges", value: (r: any) => r.ZPR_LOAD || "0" },
+          { header: "Unloading Charges", value: (r: any) => r.ZPR_UNLOAD || "0" },
+          { header: "Route Change", value: (r: any) => r.ZPR_ROUTE || "0" },
+          { header: "Transhipment Charges", value: (r: any) => r.ZPR_TSHIP || "0" },
+          { header: "Other Charges", value: (r: any) => r.ZPR_OTHER || "0" },
+          { header: "Deduction", value: (r: any) => r.ZPR_DEDUCT || "0" },
+          { header: "Provision Amount", value: (r: any) => r.ZPROVAMT || "0" },
+          { header: "GST Amount", value: (r: any) => r.ZGSTAMT || "0" },
         ],
         combinedData,
       );
@@ -348,6 +361,7 @@ function GateInOutProcessPage() {
       headers = [[
         "SI.No", "Ref No", "Ref Item", "Invoice No", "Plant", "EWB App", "EWB Date", "EWB No", "EWB Exp", "Ins Scope", "Km", "Work Order", "LR No", "Trans", "Create Dt", "User", "User CH",
         "Line Item", "Sl No", "Req Dt", "Rep Dt", "Disp Dt", "Truck Type", "Trans Type", "Veh No", "No Veh", "Driver No", "Driver", "Cust Email", "Sales Email", "GPS Loc", "TAT Type", "TAT Days", "ETA",
+        "Provision", "Provision Date", "Basic Freight", "Detention Loading", "Detention Unloading", "Loading Charges", "Unloading Charges", "Route Change", "Transhipment Charges", "Other Charges", "Deduction", "Provision Amount", "GST Amount",
       ]];
 
       data = combinedData.map((record, index) => ([
@@ -367,6 +381,9 @@ function GateInOutProcessPage() {
         Array.isArray(record.SALESPERSON_EMAIL_DETAILS) ? record.SALESPERSON_EMAIL_DETAILS.map((e: any) => e.SALESPERSON_EMAIL_ID).join(", ") : "",
         record.GPS_LIVE_LOCATION || "", record.TAT_TYPE || "", record.TAT_DAYS || "",
         record.ETA ? new Date(record.ETA).toLocaleDateString("en-GB") : "",
+        (record.ZPRO_CHK === "X" || record.ZPRO_CHK === "Yes") ? "Yes" : "No", record.ZPROVDT ? new Date(record.ZPROVDT).toLocaleDateString("en-GB") : "",
+        record.ZPR_BASIC || "0", record.ZPR_DELOAD || "0", record.ZPR_DEUNLOAD || "0", record.ZPR_LOAD || "0", record.ZPR_UNLOAD || "0",
+        record.ZPR_ROUTE || "0", record.ZPR_TSHIP || "0", record.ZPR_OTHER || "0", record.ZPR_DEDUCT || "0", record.ZPROVAMT || "0", record.ZGSTAMT || "0"
       ]));
     } else {
       headers = [[
@@ -403,7 +420,18 @@ function GateInOutProcessPage() {
     <div className="flex flex-col min-h-full">
       <Tabs
         value={tab}
-        onValueChange={(v) => setTab(v as "create" | "search")}
+        onValueChange={(v) => {
+          setTab(v as "create" | "search");
+          // Reset Create Tab states
+          setDirection(null);
+          setSap(null);
+          setSelectedId("");
+          
+          // Reset Filter & Download Tab states
+          resetFilters();
+          setOrderInfoData([]);
+          setDispatchData([]);
+        }}
         className="w-full"
       >
         {/* Page Header */}
@@ -687,7 +715,7 @@ function GateInOutProcessPage() {
                                 <thead className="sticky top-0 z-30 bg-gradient-primary text-primary-foreground font-semibold uppercase tracking-[0.12em] text-[10px]">
                                   <tr>
                                     <th className="px-3 py-2.5 whitespace-nowrap">SI.No</th>
-                                    {["Invoice No", "Line Item", "Ref No", "Ref Item", "Sl No", "Req Date", "Reported Date", "Dispatch Date", "Truck Type", "Trans Type", "Vehicle No", "No Veh", "Driver No", "Driver", "Cust Emails", "Sales Emails", "GPS Loc", "TAT Type", "TAT Days", "ETA"].map((h) => (
+                                    {["Invoice No", "Line Item", "Ref No", "Ref Item", "Sl No", "Req Date", "Reported Date", "Dispatch Date", "Truck Type", "Trans Type", "Vehicle No", "No Veh", "Driver No", "Driver", "Cust Emails", "Sales Emails", "GPS Loc", "TAT Type", "TAT Days", "ETA", "Provision", "Provision Date", "Basic Freight", "Detention Loading", "Detention Unloading", "Loading Charges", "Unloading Charges", "Route Change", "Transhipment Charges", "Other Charges", "Deduction", "Provision Amount", "GST Amount"].map((h) => (
                                       <th key={h} className="px-3 py-2.5 whitespace-nowrap">{h}</th>
                                     ))}
                                   </tr>
@@ -695,7 +723,7 @@ function GateInOutProcessPage() {
                                 <tbody className="bg-surface divide-y divide-hairline/70">
                                   {allItems.length === 0 ? (
                                     <tr>
-                                      <td colSpan={21} className="px-3 py-10 text-center text-muted-foreground">
+                                      <td colSpan={34} className="px-3 py-10 text-center text-muted-foreground">
                                         No Line Items Found.
                                       </td>
                                     </tr>
@@ -735,6 +763,19 @@ function GateInOutProcessPage() {
                                         <td className="px-3 py-2 whitespace-nowrap">
                                           {item.ETA ? new Date(item.ETA).toLocaleDateString("en-GB") : "-"}
                                         </td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{(item.ZPRO_CHK === "X" || item.ZPRO_CHK === "Yes") ? "Yes" : "No"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap">{item.ZPROVDT ? new Date(item.ZPROVDT).toLocaleDateString("en-GB") : "-"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZPR_BASIC || "0"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZPR_DELOAD || "0"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZPR_DEUNLOAD || "0"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZPR_LOAD || "0"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZPR_UNLOAD || "0"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZPR_ROUTE || "0"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZPR_TSHIP || "0"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZPR_OTHER || "0"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZPR_DEDUCT || "0"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap font-medium text-primary">{item.ZPROVAMT || "0"}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZGSTAMT || "0"}</td>
                                       </tr>
                                     ))
                                   )}
@@ -1006,6 +1047,7 @@ const GATE_COLUMNS = [
   "TAT Type",
   "TAT Days",
   "ETA",
+  "Provision",
 ];
 
 // ── Reference table + Invoice/Search bar — UI copied from OrderInfoSapCreate ──
@@ -1395,7 +1437,163 @@ type GateRow = {
   tatType: string;
   tatDays: string;
   eta: string;
+  provisionChecked: boolean;
+  provisionAmount: number | "";
+  provisionDate: string;
+  provisionBreakdown?: GateBreakdown;
+  provisionGst: number | "";
 };
+
+const GATE_PROVISION_LABEL = "text-[11px] font-semibold text-muted-foreground uppercase tracking-wider";
+const GATE_PROVISION_INPUT = "h-7 w-full rounded-md border border-input bg-emerald-50 dark:bg-emerald-500/10 px-2 text-[12px] font-medium text-emerald-900 dark:text-emerald-100 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all";
+
+const GATE_BREAKDOWN_FIELDS = [
+  "Basic Freight",
+  "Detention Loading",
+  "Detention Unloading",
+  "Loading Charges",
+  "Unloading Charges",
+  "Route Change",
+  "Transhipment Charges",
+  "Other Charges",
+  "Deduction",
+] as const;
+type GateBreakdownKey = (typeof GATE_BREAKDOWN_FIELDS)[number];
+type GateBreakdown = Record<GateBreakdownKey, number>;
+const EMPTY_GATE_BREAKDOWN: GateBreakdown = GATE_BREAKDOWN_FIELDS.reduce((acc, k) => {
+  acc[k] = 0;
+  return acc;
+}, {} as GateBreakdown);
+
+function computeGateTotal(b: GateBreakdown) {
+  const sum = GATE_BREAKDOWN_FIELDS.filter((k) => k !== "Deduction").reduce(
+    (s, k) => s + (Number(b[k]) || 0),
+    0,
+  );
+  return sum - (Number(b.Deduction) || 0);
+}
+
+function GateProvisionBreakdownDialog({
+  open,
+  onOpenChange,
+  title,
+  totalLabel,
+  value,
+  initialGst = 0,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  title: string;
+  totalLabel: string;
+  value: GateBreakdown;
+  initialGst?: number;
+  onSave: (b: GateBreakdown, total: number, gst: number) => void;
+}) {
+  const [draft, setDraft] = useState<GateBreakdown>(value);
+  const [taxMode, setTaxMode] = useState<"RCM" | "FCM">("RCM");
+  const [gstAmount, setGstAmount] = useState<number>(0);
+
+  useEffect(() => {
+    if (open) {
+      setDraft(value);
+      setGstAmount(initialGst);
+      setTaxMode(initialGst > 0 ? "FCM" : "RCM");
+    }
+  }, [open, value, initialGst]);
+
+  const total = useMemo(() => computeGateTotal(draft), [draft]);
+  const grandTotal = taxMode === "FCM" ? total + (Number(gstAmount) || 0) : total;
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 animate-in fade-in">
+      <div className="w-full max-w-3xl rounded-xl overflow-hidden bg-surface border border-hairline shadow-elegant animate-in zoom-in-95">
+        <div className="bg-gradient-to-r from-violet-500 to-purple-600 px-5 py-3 flex items-center justify-between">
+          <h3 className="text-white text-[14px] font-semibold tracking-wide">{title}</h3>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="text-white/80 hover:text-white"
+            aria-label="Close"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="p-6">
+          <div className="mb-3 flex items-center gap-4">
+            {(["RCM", "FCM"] as const).map((m) => (
+              <label key={m} className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground cursor-pointer">
+                <input
+                  type="radio"
+                  name={`tax-mode-${title}`}
+                  checked={taxMode === m}
+                  onChange={() => setTaxMode(m)}
+                  className="accent-primary"
+                />
+                {m}
+              </label>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
+            {GATE_BREAKDOWN_FIELDS.map((k) => (
+              <div key={k}>
+                <label className={GATE_PROVISION_LABEL}>{k}</label>
+                <input
+                  type="number"
+                  value={draft[k] === 0 ? "" : draft[k]}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, [k]: Number(e.target.value) || 0 }))
+                  }
+                  placeholder="0"
+                  className={GATE_PROVISION_INPUT}
+                />
+              </div>
+            ))}
+            {taxMode === "FCM" && (
+              <div>
+                <label className={GATE_PROVISION_LABEL}>GST Amount</label>
+                <input
+                  type="number"
+                  value={gstAmount === 0 ? "" : gstAmount}
+                  onChange={(e) => setGstAmount(Number(e.target.value) || 0)}
+                  placeholder="0"
+                  className={GATE_PROVISION_INPUT}
+                />
+              </div>
+            )}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-[13px] font-semibold text-foreground">
+            <span>{totalLabel}: {total}</span>
+            {taxMode === "FCM" && (
+              <>
+                <span>GST Total: {Number(gstAmount) || 0}</span>
+                <span>Grand Total: {grandTotal}</span>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="px-6 pb-5 flex items-center justify-end gap-2">
+          <button
+            onClick={() => onOpenChange(false)}
+            className="inline-flex items-center px-5 h-9 rounded-md bg-rose-500 hover:bg-rose-600 text-white text-[12px] font-semibold shadow-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onSave(draft, grandTotal, taxMode === "FCM" ? Number(gstAmount) || 0 : 0);
+              onOpenChange(false);
+            }}
+            className="inline-flex items-center px-5 h-9 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white text-[12px] font-semibold shadow-sm"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const EMPTY_GATE_ROW = (): GateRow => ({
   selected: false,
@@ -1419,6 +1617,11 @@ const EMPTY_GATE_ROW = (): GateRow => ({
   tatType: "",
   tatDays: "",
   eta: "",
+  provisionChecked: false,
+  provisionAmount: "",
+  provisionDate: "",
+  provisionBreakdown: EMPTY_GATE_BREAKDOWN,
+  provisionGst: "",
 });
 
 function getMinPhysicalDispatch(row: GateRow): string {
@@ -2086,6 +2289,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const [truckTypeList, setTruckTypeList] = useState<VehicleTypeOption[]>([]);
   const [loadingTruckTypes, setLoadingTruckTypes] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
+  const [activeProvisionRow, setActiveProvisionRow] = useState<number | null>(null);
+  const [activeSearchProvisionRow, setActiveSearchProvisionRow] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -2720,6 +2925,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           tatType: templateItem.TAT_TYPE || templateItem.tatType || "",
           tatDays: templateItem.TAT_DAYS != null ? String(templateItem.TAT_DAYS) : (templateItem.tatDays || ""),
           eta: templateItem.ETA || templateItem.eta || "",
+          provisionChecked: templateItem.provisionChecked || false,
+          provisionAmount: templateItem.provisionAmount || "",
+          provisionDate: templateItem.provisionDate || "",
+          provisionBreakdown: templateItem.provisionBreakdown || EMPTY_GATE_BREAKDOWN,
+          provisionGst: templateItem.provisionGst || "",
         });
       }
     });
@@ -3119,7 +3329,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     updateGateRow(index, "mapId", mapId);
   };
 
-  const updateGateRow = (index: number, field: keyof GateRow, value: string) => {
+  const updateGateRow = (index: number, field: keyof GateRow, value: any) => {
     setGateRows((prev) =>
       prev.map((r, i) => {
         if (i !== index) return r;
@@ -3380,6 +3590,19 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           TAT_TYPE: row.tatType,
           TAT_DAYS: row.tatDays,
           ETA: row.eta,
+          ZPRO_CHK: row.provisionChecked ? "X" : "",
+          ZPROVDT: row.provisionDate || "",
+          ZPROVAMT: row.provisionAmount || "0",
+          ZGSTAMT: row.provisionGst || "0",
+          ZPR_BASIC: row.provisionBreakdown?.["Basic Freight"] || 0,
+          ZPR_DELOAD: row.provisionBreakdown?.["Detention Loading"] || 0,
+          ZPR_DEUNLOAD: row.provisionBreakdown?.["Detention Unloading"] || 0,
+          ZPR_LOAD: row.provisionBreakdown?.["Loading Charges"] || 0,
+          ZPR_UNLOAD: row.provisionBreakdown?.["Unloading Charges"] || 0,
+          ZPR_ROUTE: row.provisionBreakdown?.["Route Change"] || 0,
+          ZPR_TSHIP: row.provisionBreakdown?.["Transhipment Charges"] || 0,
+          ZPR_OTHER: row.provisionBreakdown?.["Other Charges"] || 0,
+          ZPR_DEDUCT: row.provisionBreakdown?.["Deduction"] || 0,
         })),
       };
     });
@@ -3451,6 +3674,19 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     const { isEdit, _backup, ...cleanItem } = rawItem;
     return {
       ...cleanItem,
+      ZPRO_CHK: cleanItem.ZPRO_CHK || "",
+      ZPROVDT: cleanItem.ZPROVDT || "",
+      ZPR_BASIC: cleanItem.ZPR_BASIC || 0,
+      ZPR_DELOAD: cleanItem.ZPR_DELOAD || 0,
+      ZPR_DEUNLOAD: cleanItem.ZPR_DEUNLOAD || 0,
+      ZPR_LOAD: cleanItem.ZPR_LOAD || 0,
+      ZPR_UNLOAD: cleanItem.ZPR_UNLOAD || 0,
+      ZPR_ROUTE: cleanItem.ZPR_ROUTE || 0,
+      ZPR_TSHIP: cleanItem.ZPR_TSHIP || 0,
+      ZPR_OTHER: cleanItem.ZPR_OTHER || 0,
+      ZPR_DEDUCT: cleanItem.ZPR_DEDUCT || 0,
+      ZPROVAMT: cleanItem.ZPROVAMT || 0,
+      ZGSTAMT: cleanItem.ZGSTAMT || 0,
       CUSTOMER_EMAIL_DETAILS: cleanItem.CUSTOMER_EMAIL_DETAILS
         ? (typeof cleanItem.CUSTOMER_EMAIL_DETAILS === "string"
           ? cleanItem.CUSTOMER_EMAIL_DETAILS.split(",").filter(Boolean).map((e: string) => ({ CUSTOMER_EMAIL_ID: e.trim() }))
@@ -3966,64 +4202,83 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               <table className="w-full text-left border-collapse text-[12px]">
                 <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
-                    {[
-                      // "Inv Line No",
-                      "SL No", "Invoice No", "Reference No", "Required Date Time", "Reported Date Time",
-                      "Physical Dispatch Date Time", "Truck Type", "Transporter Type",
-                      "Vehicle No", "No of Vehicles", "Driver Name", "Driver Number",
-                      "Customer Email", "Salesperson Email",
-                      "Destination State", "Destination Zone",
-                      "TAT Type", "TAT Days", "ETA", "Action"
-                    ].map((h) => (
-                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
-                    ))}
+                    {(() => {
+                      const showProvision = searchResultItems.some((it) => it.ZPRO_CHK === "X" || it.ZPRO_CHK === "Yes");
+                      const headers = [
+                        // "Inv Line No",
+                        "SL No", "Invoice No", "Reference No", "Required Date Time", "Reported Date Time",
+                        "Physical Dispatch Date Time", "Truck Type", "Transporter Type",
+                        "Vehicle No", "No of Vehicles", "Driver Name", "Driver Number",
+                        "Customer Email", "Salesperson Email",
+                        "Destination State", "Destination Zone",
+                        "TAT Type", "TAT Days", "ETA", "Provision"
+                      ];
+                      if (showProvision) {
+                        headers.push("Provision Amount", "Provision Date");
+                      }
+                      headers.push("Action");
+                      return headers.map((h) => (
+                        <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
+                      ));
+                    })()}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-hairline/70">
                   {searchResultItems.map((item, index) => (
                     <tr key={index} className="bg-surface hover:bg-muted/50">
-                      {[
-                        // { field: "INVOICE_LINE_ITEM", type: "text", readonly: true },
-                        { field: "SL_NO", type: "text", readonly: true },
-                        { field: "ZINV_NO", type: "text", readonly: true },
-                        { field: "REFERENCE_NUMBER", type: "text", readonly: true },
-                        { field: "REQUIRED_DATE_AND_TIME", type: "datetime-local" },
-                        { field: "REPORTED_DATE_AND_TIME", type: "datetime-local" },
-                        { field: "PHYSICAL_DISPATCH_DATE_TIME", type: "datetime-local" },
-                        {
-                          field: "TRUCK_TYPE",
-                          type: "select",
-                          options: Array.from(new Set([...truckTypeList.map((t) => t.code), item.TRUCK_TYPE].filter(Boolean))),
-                        },
-                        { field: "TYPE_OF_TRANSPORTER", type: "text", readonly: true },
-                        { field: "VEHICLE_NUMBER", type: "text" },
-                        { field: "NO_OF_VEHICLES", type: "number" },
-                        { field: "DRIVER_NAME", type: "text" },
-                        { field: "DRIVER_NUMBER", type: "text" },
-                        { field: "CUSTOMER_EMAIL_DETAILS", type: "text" },
-                        { field: "SALESPERSON_EMAIL_DETAILS", type: "text" },
-                        {
-                          field: "ZSTATE",
-                          type: "select",
-                          options: Array.from(new Set([...statesList.map((s) => s.STATE || String(s)), item.ZSTATE].filter(Boolean))),
-                        },
-                        { field: "ZZONE", type: "text" },
-                        {
-                          field: "TAT_TYPE",
-                          type: "select",
-                          options: [
-                            "Direct Truck TAT(Vizag)",
-                            "Direct Truck TAT(Hyd)",
-                            "Safe Express TAT",
-                            "Delivery TAT",
-                            "GATI TAT",
-                            "V Xpress",
-                            "Instant Transport Solution",
-                          ],
-                        },
-                        { field: "TAT_DAYS", type: "number" },
-                        { field: "ETA", type: "date" },
-                      ].map(({ field, type, options, readonly }) => {
+                      {(() => {
+                        const showProvision = searchResultItems.some((it) => it.ZPRO_CHK === "X" || it.ZPRO_CHK === "Yes");
+                        const fields = [
+                          // { field: "INVOICE_LINE_ITEM", type: "text", readonly: true },
+                          { field: "SL_NO", type: "text", readonly: true },
+                          { field: "ZINV_NO", type: "text", readonly: true },
+                          { field: "REFERENCE_NUMBER", type: "text", readonly: true },
+                          { field: "REQUIRED_DATE_AND_TIME", type: "datetime-local" },
+                          { field: "REPORTED_DATE_AND_TIME", type: "datetime-local" },
+                          { field: "PHYSICAL_DISPATCH_DATE_TIME", type: "datetime-local" },
+                          {
+                            field: "TRUCK_TYPE",
+                            type: "select",
+                            options: Array.from(new Set([...truckTypeList.map((t) => t.code), item.TRUCK_TYPE].filter(Boolean))),
+                          },
+                          { field: "TYPE_OF_TRANSPORTER", type: "text", readonly: true },
+                          { field: "VEHICLE_NUMBER", type: "text" },
+                          { field: "NO_OF_VEHICLES", type: "number" },
+                          { field: "DRIVER_NAME", type: "text" },
+                          { field: "DRIVER_NUMBER", type: "text" },
+                          { field: "CUSTOMER_EMAIL_DETAILS", type: "text" },
+                          { field: "SALESPERSON_EMAIL_DETAILS", type: "text" },
+                          {
+                            field: "ZSTATE",
+                            type: "select",
+                            options: Array.from(new Set([...statesList.map((s) => s.STATE || String(s)), item.ZSTATE].filter(Boolean))),
+                          },
+                          { field: "ZZONE", type: "text" },
+                          {
+                            field: "TAT_TYPE",
+                            type: "select",
+                            options: [
+                              "Direct Truck TAT(Vizag)",
+                              "Direct Truck TAT(Hyd)",
+                              "Safe Express TAT",
+                              "Delivery TAT",
+                              "GATI TAT",
+                              "V Xpress",
+                              "Instant Transport Solution",
+                            ],
+                          },
+                          { field: "TAT_DAYS", type: "number" },
+                          { field: "ETA", type: "date" },
+                          { field: "ZPRO_CHK", type: "provision_chk" },
+                        ];
+                        if (showProvision) {
+                          fields.push(
+                            { field: "ZPROVAMT", type: "provision_amt" },
+                            { field: "ZPROVDT", type: "provision_dt" }
+                          );
+                        }
+                        return fields;
+                      })().map(({ field, type, options, readonly }) => {
                         const getVal = (val: any) => {
                           if (Array.isArray(val)) {
                             return val.map(v => v?.CUSTOMER_EMAIL_ID || v?.SALESPERSON_EMAIL_ID || v).join(",");
@@ -4149,6 +4404,39 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                   }}
                                   className="h-7 min-w-[130px] text-[11px]"
                                 />
+                              ) : type === "provision_chk" ? (
+                                <select
+                                  className="h-7 w-full min-w-[80px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] outline-none"
+                                  value={displayVal === "X" || displayVal === "Yes" ? "Yes" : "No"}
+                                  onChange={(e) => {
+                                    const next = [...searchResultItems];
+                                    next[index] = { ...next[index], [field]: e.target.value === "Yes" ? "X" : "" };
+                                    setSearchResultItems(next);
+                                  }}
+                                >
+                                  <option value="No">No</option>
+                                  <option value="Yes">Yes</option>
+                                </select>
+                              ) : type === "provision_amt" ? (
+                                <div
+                                  className={cn(
+                                    "h-7 w-[100px] rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] flex items-center shadow-sm cursor-pointer hover:bg-slate-50 transition-colors",
+                                    (!displayVal || displayVal === "0") ? "text-muted-foreground" : "text-foreground font-medium"
+                                  )}
+                                  onClick={() => setActiveSearchProvisionRow(index)}
+                                >
+                                  {displayVal ? Number(displayVal).toFixed(2) : "0.00"}
+                                </div>
+                              ) : type === "provision_dt" ? (
+                                <GateDatePicker
+                                  className="h-7 min-w-[140px]"
+                                  value={displayVal}
+                                  onChange={(_, str) => {
+                                    const next = [...searchResultItems];
+                                    next[index] = { ...next[index], [field]: str };
+                                    setSearchResultItems(next);
+                                  }}
+                                />
                               ) : (
                                 <input
                                   type={type}
@@ -4177,13 +4465,19 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               )
                             ) : (
                               <span>
-                                {type === "date" && displayVal
-                                  ? isNaN(new Date(displayVal).getTime())
-                                    ? displayVal
-                                    : format(new Date(displayVal), "dd-MM-yyyy")
-                                  : type === "datetime-local" && displayVal
-                                    ? displayVal
-                                    : displayVal || "-"}
+                                {type === "provision_chk"
+                                  ? (displayVal === "X" || displayVal === "Yes" ? "Yes" : "No")
+                                  : type === "provision_amt"
+                                    ? (
+                                      <span className={(!displayVal || displayVal === "0") ? "text-muted-foreground" : "font-medium text-primary"}>
+                                        {displayVal ? Number(displayVal).toFixed(2) : "0.00"}
+                                      </span>
+                                    )
+                                    : type === "provision_dt" || type === "date"
+                                      ? (displayVal && !isNaN(new Date(displayVal).getTime()) ? format(new Date(displayVal), "dd-MM-yyyy") : displayVal)
+                                      : type === "datetime-local" && displayVal
+                                        ? displayVal
+                                        : displayVal || "-"}
                               </span>
                             )}
                           </td>
@@ -4279,6 +4573,48 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {activeSearchProvisionRow !== null && (
+            <GateProvisionBreakdownDialog
+              open={true}
+              onOpenChange={(open) => !open && setActiveSearchProvisionRow(null)}
+              title="Provision Details - Gate In/Out"
+              totalLabel="Provision Amount"
+              value={{
+                "Detention Loading": Number(searchResultItems[activeSearchProvisionRow]?.ZPR_DELOAD) || 0,
+                "Detention Unloading": Number(searchResultItems[activeSearchProvisionRow]?.ZPR_DEUNLOAD) || 0,
+                "Loading Charges": Number(searchResultItems[activeSearchProvisionRow]?.ZPR_LOAD) || 0,
+                "Unloading Charges": Number(searchResultItems[activeSearchProvisionRow]?.ZPR_UNLOAD) || 0,
+                "Route Change": Number(searchResultItems[activeSearchProvisionRow]?.ZPR_ROUTE) || 0,
+                "Transhipment Charges": Number(searchResultItems[activeSearchProvisionRow]?.ZPR_TSHIP) || 0,
+                "Other Charges": Number(searchResultItems[activeSearchProvisionRow]?.ZPR_OTHER) || 0,
+                "Basic Freight": Number(searchResultItems[activeSearchProvisionRow]?.ZPR_BASIC) || 0,
+                "Deduction": Number(searchResultItems[activeSearchProvisionRow]?.ZPR_DEDUCT) || 0,
+              }}
+              initialGst={Number(searchResultItems[activeSearchProvisionRow]?.ZGSTAMT) || 0}
+              onSave={(b, total, gst) => {
+                setSearchResultItems((prev) => {
+                  const next = [...prev];
+                  next[activeSearchProvisionRow] = {
+                    ...next[activeSearchProvisionRow],
+                    ZPR_DELOAD: b["Detention Loading"],
+                    ZPR_DEUNLOAD: b["Detention Unloading"],
+                    ZPR_LOAD: b["Loading Charges"],
+                    ZPR_UNLOAD: b["Unloading Charges"],
+                    ZPR_ROUTE: b["Route Change"],
+                    ZPR_TSHIP: b["Transhipment Charges"],
+                    ZPR_OTHER: b["Other Charges"],
+                    ZPR_BASIC: b["Basic Freight"],
+                    ZPR_DEDUCT: b["Deduction"],
+                    ZPROVAMT: total,
+                    ZGSTAMT: gst,
+                  };
+                  return next;
+                });
+                setActiveSearchProvisionRow(null);
+              }}
+            />
           )}
         </div>
       )}
@@ -4415,30 +4751,36 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
           <h3 className="px-1 text-[13px] font-bold text-foreground tracking-tight">Item</h3>
           <div className="bg-surface border border-hairline rounded-lg overflow-hidden shadow-soft">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-8 text-center">
-                      <input
-                        type="checkbox"
-                        checked={isAllGateSelected}
-                        onChange={(e) => toggleAllGateSelection(e.target.checked)}
-                        className="size-3.5 accent-white"
-                      />
-                    </TableHead>
-                    <TableHead className="w-10">Sl.No</TableHead>
-                    <TableHead className="whitespace-nowrap">{isSap ? "Invoice Number" : "DC Reference Number"}</TableHead>
-                    {/* <TableHead className="whitespace-nowrap">Invoice Line No</TableHead> */}
-                    {GATE_COLUMNS.map((c) => (
-                      <TableHead key={c} className="whitespace-nowrap">
-                        {c}
-                      </TableHead>
-                    ))}
-                    <TableHead className="whitespace-nowrap text-center">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            {(() => {
+              const activeGateColumns = gateRows.some((r) => r.provisionChecked)
+                ? [...GATE_COLUMNS, "Provision Amount", "Provision Date"]
+                : GATE_COLUMNS;
+              
+              return (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="w-8 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isAllGateSelected}
+                            onChange={(e) => toggleAllGateSelection(e.target.checked)}
+                            className="size-3.5 accent-white"
+                          />
+                        </TableHead>
+                        <TableHead className="w-10">Sl.No</TableHead>
+                        <TableHead className="whitespace-nowrap">{isSap ? "Invoice Number" : "DC Reference Number"}</TableHead>
+                        {/* <TableHead className="whitespace-nowrap">Invoice Line No</TableHead> */}
+                        {activeGateColumns.map((c) => (
+                          <TableHead key={c} className="whitespace-nowrap">
+                            {c}
+                          </TableHead>
+                        ))}
+                        <TableHead className="whitespace-nowrap text-center">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                   {gateRows.map((row, i) => {
                     const minPd = getMinPhysicalDispatch(row);
                     return (
@@ -4478,7 +4820,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                             onChange={(e) => updateGateRow(i, "invoiceLineNo", e.target.value)}
                           />
                         </TableCell> */}
-                        {GATE_COLUMNS.map((c) => {
+                        {activeGateColumns.map((c) => {
                           if (c === "Truck Type") {
                             return (
                               <TableCell key={c} className="p-1">
@@ -4530,7 +4872,50 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               </TableCell>
                             );
                           }
-                          const fieldMap: Record<string, Exclude<keyof GateRow, "selected" | "mapId">> = {
+                          if (c === "Provision") {
+                            return (
+                              <TableCell key={c} className="p-1">
+                                <select
+                                  value={row.provisionChecked ? "Yes" : "No"}
+                                  onChange={(e) => updateGateRow(i, "provisionChecked", e.target.value === "Yes")}
+                                  className="h-7 min-w-[100px] w-full rounded-md border border-input bg-white dark:bg-surface px-2 text-[12px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                                >
+                                  <option value="No">No</option>
+                                  <option value="Yes">Yes</option>
+                                </select>
+                              </TableCell>
+                            );
+                          }
+                          if (c === "Provision Amount") {
+                            return (
+                              <TableCell key={c} className="p-1">
+                                {row.provisionChecked && (
+                                  <Input
+                                    type="text"
+                                    readOnly
+                                    value={row.provisionAmount === "" ? "" : String(row.provisionAmount)}
+                                    onClick={() => setActiveProvisionRow(i)}
+                                    className="h-7 min-w-[140px] cursor-pointer bg-muted/40"
+                                    placeholder="Click to add breakdown"
+                                  />
+                                )}
+                              </TableCell>
+                            );
+                          }
+                          if (c === "Provision Date") {
+                            return (
+                              <TableCell key={c} className="p-1">
+                                {row.provisionChecked && (
+                                  <GateDatePicker
+                                    className="h-7 min-w-[140px]"
+                                    value={row.provisionDate}
+                                    onChange={(_, str) => updateGateRow(i, "provisionDate", str)}
+                                  />
+                                )}
+                              </TableCell>
+                            );
+                          }
+                          const fieldMap: Record<string, Exclude<keyof GateRow, "selected" | "mapId" | "provisionChecked" | "provisionAmount" | "provisionDate" | "provisionBreakdown" | "provisionGst">> = {
                             "Required Date and Time": "requiredDateTime",
                             "Reported Date and Time": "reportedDateTime",
                             "Physical Dispatch Date and Time": "physicalDispatchDateTime",
@@ -4639,8 +5024,41 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                     );
                   })}
                 </TableBody>
-              </Table>
-            </div>
+                  </Table>
+                </div>
+              );
+            })()}
+            <GateProvisionBreakdownDialog
+              open={activeProvisionRow !== null}
+              onOpenChange={(open) => !open && setActiveProvisionRow(null)}
+              title="Provision Details - Gate In/Out"
+              totalLabel="Provision Amount"
+              value={
+                activeProvisionRow !== null && gateRows[activeProvisionRow]?.provisionBreakdown
+                  ? gateRows[activeProvisionRow].provisionBreakdown!
+                  : EMPTY_GATE_BREAKDOWN
+              }
+              initialGst={
+                activeProvisionRow !== null
+                  ? Number(gateRows[activeProvisionRow]?.provisionGst) || 0
+                  : 0
+              }
+              onSave={(b, total, gst) => {
+                if (activeProvisionRow !== null) {
+                  setGateRows((prev) => {
+                    const next = [...prev];
+                    next[activeProvisionRow] = {
+                      ...next[activeProvisionRow],
+                      provisionBreakdown: b,
+                      provisionAmount: total,
+                      provisionGst: gst,
+                    };
+                    return next;
+                  });
+                }
+                setActiveProvisionRow(null);
+              }}
+            />
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 pt-1">

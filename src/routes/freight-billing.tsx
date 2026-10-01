@@ -416,6 +416,7 @@ function FreightBillingPage() {
         Transporter: record.ZTRANSPORTER || "",
         "Created Date": record.ZCREATED_DT ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB") : "",
         "Vehicle Type": record.ZVEH_TYPE || "",
+        "Type of Rate Contract": record.ZRATECON || "",
         Provision: record.ZPRO_CHK === "X" ? "Yes" : "No",
         "Provision Amount": record.ZPROVAMT || "",
         "Provision Date": record.ZPROVDT || "",
@@ -447,6 +448,7 @@ function FreightBillingPage() {
         Plant: record.ZWERKS || "",
         Division: record.ZDIVISION || "",
         "Vehicle Type": record.ZVEH_TYPE || "",
+        "Type of Rate Contract": record.ZRATECON || "",
         "No. of Trucks": record.ZNO_TRUCKS || "",
         "Work Order": record.ZWORK_ORDER || "",
         "Vendor Code": record.ZVENDOR_CD || "",
@@ -492,7 +494,7 @@ function FreightBillingPage() {
       return;
     }
 
-    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: [420, 297] });
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: [1800, 297] });
 
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
@@ -510,7 +512,7 @@ function FreightBillingPage() {
         "SI.No", "REFNO", "Invoice No", "Odn Number", "SO Number", "Sale Person",
         "Freight Bill No", "Freight Bill Date", "Physical Submission Date", "Freight Charges",
         "Work Order Type", "Bill Submission", "Location", "Vehicle Line", "Vehicle Number",
-        "Plant", "Division", "Work Order", "LR No", "Transporter", "Created Date", "Vehicle Type",
+        "Plant", "Division", "Work Order", "LR No", "Transporter", "Created Date", "Vehicle Type", "Type of Rate Contract",
         "Provision", "Provision Amount", "Provision Date",
         "Provision Basic Amount", "Provision Detention loading Charges", "Provision Detention Unloading Charges",
         "Provision Loading Charges", "Provision Unloading Charges", "Provision Route Charges",
@@ -543,6 +545,7 @@ function FreightBillingPage() {
         record.ZTRANSPORTER || "",
         record.ZCREATED_DT ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB") : "",
         record.ZVEH_TYPE || "",
+        record.ZRATECON || "",
         record.ZPRO_CHK === "X" ? "Yes" : "No",
         record.ZPROVAMT || "",
         record.ZPROVDT ? new Date(record.ZPROVDT).toLocaleDateString("en-GB") : "",
@@ -568,7 +571,7 @@ function FreightBillingPage() {
       ]));
     } else {
       headers = [[
-        "SI.No", "Reference No", "Line No", "Date", "Plant", "Division", "Vehicle Type",
+        "SI.No", "Reference No", "Line No", "Date", "Plant", "Division", "Vehicle Type", "Type of Rate Contract",
         "No. of Trucks", "Work Order", "Vendor Code", "Transporter", "No. of LRs",
         "LR Number", "Loading Point", "Unloading Point", "No Of Invoices",
       ]];
@@ -581,6 +584,7 @@ function FreightBillingPage() {
         record.ZWERKS || "",
         record.ZDIVISION || "",
         record.ZVEH_TYPE || "",
+        record.ZRATECON || "",
         record.ZNO_TRUCKS || "",
         record.ZWORK_ORDER || "",
         record.ZVENDOR_CD || "",
@@ -598,8 +602,8 @@ function FreightBillingPage() {
       body: rows,
       startY: 25,
       theme: "grid",
-      styles: { fontSize: 6, cellPadding: 1.5 },
-      headStyles: { fillColor: [52, 152, 219], textColor: 255, fontStyle: "bold", fontSize: 6 },
+      styles: { fontSize: 6, cellPadding: 1.5, cellWidth: "wrap" },
+      headStyles: { fillColor: [52, 152, 219], textColor: 255, fontStyle: "bold", fontSize: 6, halign: "center" },
       alternateRowStyles: { fillColor: [245, 245, 245] },
     });
 
@@ -918,6 +922,7 @@ function FreightBillingPage() {
                           <th className="px-3 py-2.5 whitespace-nowrap">Transporter</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Created Date</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Vehicle Type</th>
+                          <th className="px-3 py-2.5 whitespace-nowrap">Type of Rate Contract</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Freight Bill</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Unloading Charges Approval</th>
                           <th className="px-3 py-2.5 whitespace-nowrap">Detention Charges</th>
@@ -997,6 +1002,7 @@ function FreightBillingPage() {
                                 {item.ZCREATED_DT ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB") : ""}
                               </td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">{item.ZRATECON}</td>
                               {/* Uploaded file name per document type (found on disk for this record) */}
                               <td className="px-3 py-2 whitespace-nowrap">
                                 {item.ZLOCALFILES?.Freight_Bill && item.ZLOCALFILES?.Freight_Bill !== "-" ? (
@@ -1070,6 +1076,7 @@ function FreightBillingPage() {
                           <th className="px-3 py-2 whitespace-nowrap">Plant</th>
                           <th className="px-3 py-2 whitespace-nowrap">Division</th>
                           <th className="px-3 py-2 whitespace-nowrap">Vehicle Type</th>
+                          <th className="px-3 py-2 whitespace-nowrap">Type of Rate Contract</th>
                           <th className="px-3 py-2 whitespace-nowrap">No. of Trucks</th>
                           <th className="px-3 py-2 whitespace-nowrap">Work Order</th>
                           <th className="px-3 py-2 whitespace-nowrap">Vendor Code</th>
@@ -1104,6 +1111,7 @@ function FreightBillingPage() {
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZWERKS}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">{item.ZRATECON}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZNO_TRUCKS}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZVENDOR_CD}</td>
