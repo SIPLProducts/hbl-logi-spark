@@ -234,7 +234,7 @@ const POST_PA_EDITABLE_FIELDS: { field: string; type: string; readonly?: boolean
   { field: "ZVEH_NUM", type: "text" },
   { field: "ZCREATED_DT", type: "date", readonly: true },
   { field: "ZVEH_LINE", type: "text" },
-  { field: "ZRATECON", type: "select", options: ["Safexpress Contract", "All Cargo Contract", "Delhivery Contract", "V Xpress Contract", "ARC Contract", "DTDC Contract", "XP India", "Local Agreement", "Monthly Hire Agreement", "Others"] },
+  { field: "ZRATECON", type: "select", options: ["Safexpress Contract", "All Cargo Contract", "Delhivery Contract", "V Xpress Contract", "ARC Contract", "DTDC Contract", "XP India", "Local Agreement", "Monthly Hire Agreement","Company vehicle","Customer transport","Courier" , "By Hand","Others"] },
   { field: "ZFINDET", type: "select", options: [{ label: "Yes", value: "Y" }, { label: "No", value: "N" }] },
   { field: "ZJVNUM", type: "text" },
   { field: "ZJVDT", type: "date" },
@@ -2770,7 +2770,31 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                 className={GREEN_INPUT + " py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"}
               />
             </div>
-            {tableData.some(r => r.selected && r.ZVEH_TYPE === "CARGO") && (
+            <div>
+              <label className={LABEL}>Type of Rate Contract</label>
+              <select
+                value={typeOfRateContract}
+                onChange={(e) => setTypeOfRateContract(e.target.value)}
+                className={GREEN_INPUT + " h-8"}
+              >
+                <option value="">Select Type</option>
+                <option value="Safexpress Contract">Safexpress Contract</option>
+                <option value="All Cargo Contract">All Cargo Contract</option>
+                <option value="Delhivery Contract">Delhivery Contract</option>
+                <option value="V Xpress Contract">V Xpress Contract</option>
+                <option value="ARC Contract">ARC Contract</option>
+                <option value="DTDC Contract">DTDC Contract</option>
+                <option value="XP India">XP India</option>
+                <option value="Local Agreement">Local Agreement</option>
+                <option value="Monthly Hire Agreement">Monthly Hire Agreement</option>
+                <option value="Company vehicle">Company vehicle</option>
+                <option value="Customer transport">Customer transport</option>
+                <option value="Courier">Courier</option>
+                <option value="By Hand">By Hand</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+            {/* {tableData.some(r => r.selected && r.ZVEH_TYPE === "CARGO") && (
               <div>
                 <label className={LABEL}>Type of Rate Contract</label>
                 <select
@@ -2791,7 +2815,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   <option value="Others">Others</option>
                 </select>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       )}
