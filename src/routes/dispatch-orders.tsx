@@ -792,6 +792,26 @@ function MultiSelectField({
               />
             </div>
           )}
+          
+          {options.length > 0 && (
+            <label className={`flex items-center gap-2 px-3 py-1.5 text-[12.5px] font-medium text-foreground hover:bg-muted cursor-pointer border-b border-hairline sticky bg-surface z-10 ${searchable ? "top-[41px]" : "top-0"}`}>
+              <input
+                type="checkbox"
+                checked={filtered.length > 0 && filtered.every((o) => value.includes(o.value))}
+                onChange={() => {
+                  if (filtered.every((o) => value.includes(o.value))) {
+                    onChange(value.filter((v) => !filtered.find((o) => o.value === v)));
+                  } else {
+                    const newValues = new Set([...value, ...filtered.map((o) => o.value)]);
+                    onChange(Array.from(newValues));
+                  }
+                }}
+                className="size-3.5"
+              />
+              <span>Select All</span>
+            </label>
+          )}
+
           {filtered.length === 0 ? (
             <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
           ) : (

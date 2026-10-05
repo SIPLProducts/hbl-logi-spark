@@ -59,7 +59,7 @@ const SEARCH_TYPES = [
   "Work Order",
   "LR Number",
 ] as const;
-const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
+const STATUS_OPTIONS = ["Pending", "Completed"] as const;
 const SEARCH_TYPE_TO_KEY: Record<(typeof SEARCH_TYPES)[number], keyof WorklistRow> = {
   Reference: "reference",
   Invoice: "reference",
@@ -290,10 +290,10 @@ function InsuranceClaimTrackingPage() {
         const divisions: DivData[] = Array.isArray(data.PLANT)
           ? Array.from(
             new Map<string, DivData>(
-              data.PLANT.map((p: any) => [
-                p.DIVISION,
-                { DIVISION: p.DIVISION, DIV_TEXT: p.DIV_TEXT || p.DIVISION } as DivData,
-              ])
+              data.PLANT.map((p: any) => {
+                const val = p.DIV_TEXT || p.DIVISION;
+                return [val, { DIVISION: val, DIV_TEXT: val } as DivData];
+              })
             ).values()
           )
           : [];
@@ -1427,21 +1427,21 @@ function InsuranceClaimTrackingPage() {
                         <table className="w-full text-left border-collapse text-[12px]">
                           <thead className="sticky top-0 z-30">
                             <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
-                              <th className="px-3 py-2">SI.No</th>
-                              <th className="px-3 py-2">Reference No</th>
-                              <th className="px-3 py-2">Date</th>
-                              <th className="px-3 py-2">Plant</th>
-                              <th className="px-3 py-2">Division</th>
-                              <th className="px-3 py-2">Vehicle Type</th>
-                              <th className="px-3 py-2">No. of Trucks</th>
-                              <th className="px-3 py-2">Work Order</th>
-                              <th className="px-3 py-2">Vendor Code</th>
-                              <th className="px-3 py-2">Transporter</th>
-                              <th className="px-3 py-2">No. of LRs</th>
-                              <th className="px-3 py-2">LR Number</th>
-                              <th className="px-3 py-2">Loading Point</th>
-                              <th className="px-3 py-2">Unloading Point</th>
-                              <th className="px-3 py-2">No Of Invoices</th>
+                              <th className="px-3 py-2 whitespace-nowrap">SI.No</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Reference No</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Date</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Plant</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Division</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Vehicle Type</th>
+                              <th className="px-3 py-2 whitespace-nowrap">No. of Trucks</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Work Order</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Vendor Code</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Transporter</th>
+                              <th className="px-3 py-2 whitespace-nowrap">No. of LRs</th>
+                              <th className="px-3 py-2 whitespace-nowrap">LR Number</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Loading Point</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Unloading Point</th>
+                              <th className="px-3 py-2 whitespace-nowrap">No Of Invoices</th>
                             </tr>
                           </thead>
 
@@ -1455,25 +1455,25 @@ function InsuranceClaimTrackingPage() {
                                     : "bg-surface-2/40 hover:bg-muted/50"
                                 }
                               >
-                                <td className="px-3 py-2">{index + 1}</td>
-                                <td className="px-3 py-2 font-mono">{item.ZREFNO}</td>
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">{index + 1}</td>
+                                <td className="px-3 py-2 whitespace-nowrap font-mono">{item.ZREFNO}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZCREATED_DT
                                     ? new Date(item.ZCREATED_DT).toLocaleDateString("en-GB")
                                     : ""}
                                 </td>
-                                <td className="px-3 py-2">{item.ZWERKS}</td>
-                                <td className="px-3 py-2">{item.ZDIVISION}</td>
-                                <td className="px-3 py-2">{item.ZVEH_TYPE}</td>
-                                <td className="px-3 py-2">{item.ZNO_TRUCKS}</td>
-                                <td className="px-3 py-2">{item.ZWORK_ORDER}</td>
-                                <td className="px-3 py-2">{item.ZVENDOR_CD}</td>
-                                <td className="px-3 py-2">{item.ZTRANSPORTER}</td>
-                                <td className="px-3 py-2">{item.ZNO_LRS}</td>
-                                <td className="px-3 py-2">{item.ZLR_NO}</td>
-                                <td className="px-3 py-2">{item.ZLOAD_PT}</td>
-                                <td className="px-3 py-2">{item.ZUNLOAD_PT}</td>
-                                <td className="px-3 py-2">{item.ZNO_INVOICES}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZWERKS}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZNO_TRUCKS}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZVENDOR_CD}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZTRANSPORTER}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZNO_LRS}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZLR_NO}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZLOAD_PT}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZUNLOAD_PT}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{item.ZNO_INVOICES}</td>
                               </tr>
                             ))}
                           </tbody>

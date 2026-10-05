@@ -59,7 +59,7 @@ const SEARCH_TYPES = [
   "Work Order",
   "LR Number",
 ] as const;
-const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
+const STATUS_OPTIONS = ["Pending", "Completed"] as const;
 const SEARCH_TYPE_TO_KEY: Record<(typeof SEARCH_TYPES)[number], keyof WorklistRow> = {
   Reference: "reference",
   Invoice: "reference",
@@ -183,7 +183,7 @@ function TransitDamageInfoPage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [casesCount, setCasesCount] = useState(0);
- type PlantData = { PLANT: string; PLANT_DESC: string };
+  type PlantData = { PLANT: string; PLANT_DESC: string };
   type DivData = { DIVISION: string; DIV_TEXT: string };
   type TransporterData = { code: string; name: string };
 
@@ -277,56 +277,56 @@ function TransitDamageInfoPage() {
     setFStatus("");
   };
 
-    useEffect(() => {
-      const loadF4Data = async () => {
-        setTransporterLoading(true);
-        try {
-          const res: any = await service.fetchVendorCode();
-          const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
-  
-          // Plant
-          const plants: PlantData[] = Array.isArray(data.PLANT)
-            ? data.PLANT.map((p: any) => ({
-              PLANT: p.PLANT,
-              PLANT_DESC: p.PLANT_DESC,
-            }))
-            : [];
-  
-          // Division (de-duped from PLANT array)
-          const divisions: DivData[] = Array.isArray(data.PLANT)
-            ? Array.from(
-              new Map<string, DivData>(
-                data.PLANT.map((p: any) => [
-                  p.DIVISION,
-                  { DIVISION: p.DIVISION, DIV_TEXT: p.DIV_TEXT || p.DIVISION } as DivData,
-                ])
-              ).values()
-            )
-            : [];
-  
-          // Transporter — from VEND_CODE array
-          const transporters: TransporterData[] = Array.isArray(data.VEND_CODE)
-            ? data.VEND_CODE.map((v: any) => ({
-              code: String(v.VENDOR_CODE ?? ""),
-              name: v.TRANSPORTER || "",
-            }))
-            : [];
-  
-          setPlantList(plants);
-          setDivisionList(divisions);
-          setTransporterOptions(transporters);
-        } catch (err) {
-          console.error("F4 fetch error:", err);
-          setPlantList([]);
-          setDivisionList([]);
-          setTransporterOptions([]);
-        } finally {
-          setTransporterLoading(false);
-        }
-      };
-  
-      void loadF4Data();
-    }, []);
+  useEffect(() => {
+    const loadF4Data = async () => {
+      setTransporterLoading(true);
+      try {
+        const res: any = await service.fetchVendorCode();
+        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+
+        // Plant
+        const plants: PlantData[] = Array.isArray(data.PLANT)
+          ? data.PLANT.map((p: any) => ({
+            PLANT: p.PLANT,
+            PLANT_DESC: p.PLANT_DESC,
+          }))
+          : [];
+
+        // Division (de-duped from PLANT array)
+        const divisions: DivData[] = Array.isArray(data.PLANT)
+          ? Array.from(
+            new Map<string, DivData>(
+              data.PLANT.map((p: any) => {
+                const val = p.DIV_TEXT || p.DIVISION;
+                return [val, { DIVISION: val, DIV_TEXT: val } as DivData];
+              })
+            ).values()
+          )
+          : [];
+
+        // Transporter — from VEND_CODE array
+        const transporters: TransporterData[] = Array.isArray(data.VEND_CODE)
+          ? data.VEND_CODE.map((v: any) => ({
+            code: String(v.VENDOR_CODE ?? ""),
+            name: v.TRANSPORTER || "",
+          }))
+          : [];
+
+        setPlantList(plants);
+        setDivisionList(divisions);
+        setTransporterOptions(transporters);
+      } catch (err) {
+        console.error("F4 fetch error:", err);
+        setPlantList([]);
+        setDivisionList([]);
+        setTransporterOptions([]);
+      } finally {
+        setTransporterLoading(false);
+      }
+    };
+
+    void loadF4Data();
+  }, []);
 
   const applyFilter = async () => {
     if (!fromDate || !toDate) {
@@ -1048,7 +1048,7 @@ function TransitDamageInfoPage() {
                   <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
                     <DateField label="From Date" value={fromDate} onChange={setFromDate} />
                     <DateField label="To Date" value={toDate} onChange={setToDate} />
-                   <PlantF4Field value={fPlant} onChange={setFPlant} options={plantList} />
+                    <PlantF4Field value={fPlant} onChange={setFPlant} options={plantList} />
                     <DivisionF4Field value={fDivision} onChange={setFDivision} options={divisionList} />
                     <TransporterF4Field
                       value={fTransporter}
@@ -1214,58 +1214,58 @@ function TransitDamageInfoPage() {
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZFSR_RPT_DT}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZBASIC_VALUE}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZINC_DATE}</td>
-                                   <td className="px-3 py-2 whitespace-nowrap">
-                                     {(item.ZLOCALFILES?.Images || item.ZDIMAGES) && (item.ZLOCALFILES?.Images || item.ZDIMAGES) !== "-" ? (
-                                       <button
-                                         type="button"
-                                         onClick={() => viewDoc(item, "Images", item.ZLOCALFILES?.Images || item.ZDIMAGES)}
-                                         className="text-blue-600 hover:underline font-medium cursor-pointer"
-                                       >
-                                         {item.ZLOCALFILES?.Images || item.ZDIMAGES}
-                                       </button>
-                                     ) : (
-                                       "-"
-                                     )}
-                                   </td>
-                                   <td className="px-3 py-2 whitespace-nowrap">
-                                     {(item.ZLOCALFILES?.FSR_Report || item.ZFSRREP) && (item.ZLOCALFILES?.FSR_Report || item.ZFSRREP) !== "-" ? (
-                                       <button
-                                         type="button"
-                                         onClick={() => viewDoc(item, "FSR_Report", item.ZLOCALFILES?.FSR_Report || item.ZFSRREP)}
-                                         className="text-blue-600 hover:underline font-medium cursor-pointer"
-                                       >
-                                         {item.ZLOCALFILES?.FSR_Report || item.ZFSRREP}
-                                       </button>
-                                     ) : (
-                                       "-"
-                                     )}
-                                   </td>
-                                   <td className="px-3 py-2 whitespace-nowrap">
-                                     {(item.ZLOCALFILES?.FIR_Report || item.ZFIRREP) && (item.ZLOCALFILES?.FIR_Report || item.ZFIRREP) !== "-" ? (
-                                       <button
-                                         type="button"
-                                         onClick={() => viewDoc(item, "FIR_Report", item.ZLOCALFILES?.FIR_Report || item.ZFIRREP)}
-                                         className="text-blue-600 hover:underline font-medium cursor-pointer"
-                                       >
-                                         {item.ZLOCALFILES?.FIR_Report || item.ZFIRREP}
-                                       </button>
-                                     ) : (
-                                       "-"
-                                     )}
-                                   </td>
-                                   <td className="px-3 py-2 whitespace-nowrap">
-                                     {(item.ZLOCALFILES?.COF || item.ZCOF) && (item.ZLOCALFILES?.COF || item.ZCOF) !== "-" ? (
-                                       <button
-                                         type="button"
-                                         onClick={() => viewDoc(item, "COF", item.ZLOCALFILES?.COF || item.ZCOF)}
-                                         className="text-blue-600 hover:underline font-medium cursor-pointer"
-                                       >
-                                         {item.ZLOCALFILES?.COF || item.ZCOF}
-                                       </button>
-                                     ) : (
-                                       "-"
-                                     )}
-                                   </td>
+                                  <td className="px-3 py-2 whitespace-nowrap">
+                                    {(item.ZLOCALFILES?.Images || item.ZDIMAGES) && (item.ZLOCALFILES?.Images || item.ZDIMAGES) !== "-" ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => viewDoc(item, "Images", item.ZLOCALFILES?.Images || item.ZDIMAGES)}
+                                        className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                      >
+                                        {item.ZLOCALFILES?.Images || item.ZDIMAGES}
+                                      </button>
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap">
+                                    {(item.ZLOCALFILES?.FSR_Report || item.ZFSRREP) && (item.ZLOCALFILES?.FSR_Report || item.ZFSRREP) !== "-" ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => viewDoc(item, "FSR_Report", item.ZLOCALFILES?.FSR_Report || item.ZFSRREP)}
+                                        className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                      >
+                                        {item.ZLOCALFILES?.FSR_Report || item.ZFSRREP}
+                                      </button>
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap">
+                                    {(item.ZLOCALFILES?.FIR_Report || item.ZFIRREP) && (item.ZLOCALFILES?.FIR_Report || item.ZFIRREP) !== "-" ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => viewDoc(item, "FIR_Report", item.ZLOCALFILES?.FIR_Report || item.ZFIRREP)}
+                                        className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                      >
+                                        {item.ZLOCALFILES?.FIR_Report || item.ZFIRREP}
+                                      </button>
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap">
+                                    {(item.ZLOCALFILES?.COF || item.ZCOF) && (item.ZLOCALFILES?.COF || item.ZCOF) !== "-" ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => viewDoc(item, "COF", item.ZLOCALFILES?.COF || item.ZCOF)}
+                                        className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                      >
+                                        {item.ZLOCALFILES?.COF || item.ZCOF}
+                                      </button>
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZCUSTOMER}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZCONSIGN_NAME}</td>
                                   <td className="px-3 py-2 whitespace-nowrap">{item.ZDAMAGE_RMK}</td>
@@ -1401,21 +1401,21 @@ function TransitDamageInfoPage() {
                           <thead className="sticky top-0 z-30">
                             <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
 
-                              <th className="px-3 py-2">SI.No</th>
-                              <th className="px-3 py-2">Reference No</th>
-                              <th className="px-3 py-2">Date</th>
-                              <th className="px-3 py-2">Plant</th>
-                              <th className="px-3 py-2">Division</th>
-                              <th className="px-3 py-2">Vehicle Type</th>
-                              <th className="px-3 py-2">No. of Trucks</th>
-                              <th className="px-3 py-2">Work Order</th>
-                              <th className="px-3 py-2">Vendor Code</th>
-                              <th className="px-3 py-2">Transporter</th>
-                              <th className="px-3 py-2">No. of LRs</th>
-                              <th className="px-3 py-2">LR Number</th>
-                              <th className="px-3 py-2">Loading Point</th>
-                              <th className="px-3 py-2">Unloading Point</th>
-                              <th className="px-3 py-2">No Of Invoices</th>
+                              <th className="px-3 py-2 whitespace-nowrap">SI.No</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Reference No</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Date</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Plant</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Division</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Vehicle Type</th>
+                              <th className="px-3 py-2 whitespace-nowrap">No. of Trucks</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Work Order</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Vendor Code</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Transporter</th>
+                              <th className="px-3 py-2 whitespace-nowrap">No. of LRs</th>
+                              <th className="px-3 py-2 whitespace-nowrap">LR Number</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Loading Point</th>
+                              <th className="px-3 py-2 whitespace-nowrap">Unloading Point</th>
+                              <th className="px-3 py-2 whitespace-nowrap">No Of Invoices</th>
 
                             </tr>
                           </thead>
@@ -1430,13 +1430,13 @@ function TransitDamageInfoPage() {
                                     : "bg-surface-2/40 hover:bg-muted/50"
                                 }
                               >
-                                <td className="px-3 py-2">{index + 1}</td>
+                                <td className="px-3 py-2 whitespace-nowrap">{index + 1}</td>
 
-                                <td className="px-3 py-2 font-mono">
+                                <td className="px-3 py-2 whitespace-nowrap font-mono">
                                   {item.ZREFNO}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZCREATED_DT
                                     ? new Date(item.ZCREATED_DT).toLocaleDateString(
                                       "en-GB"
@@ -1444,51 +1444,51 @@ function TransitDamageInfoPage() {
                                     : ""}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZWERKS}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZDIVISION}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZVEH_TYPE}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZNO_TRUCKS}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZWORK_ORDER}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZVENDOR_CD}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZTRANSPORTER}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZNO_LRS}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZLR_NO}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZLOAD_PT}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZUNLOAD_PT}
                                 </td>
 
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2 whitespace-nowrap">
                                   {item.ZNO_INVOICES}
                                 </td>
                               </tr>

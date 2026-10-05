@@ -233,7 +233,10 @@ function FreightBillingPage() {
 
         // Dedupe divisions by DIVISION
         const divisions: DivisionRow[] = Array.from(
-          new Map(plantRows.map((p) => [p.DIVISION, { DIVISION: p.DIVISION, DIV_TEXT: p.DIV_TEXT }])).values()
+          new Map(plantRows.map((p) => {
+            const val = p.DIV_TEXT || p.DIVISION;
+            return [val, { DIVISION: val, DIV_TEXT: val }];
+          })).values()
         );
 
         const transporters: TransporterData[] = Array.isArray(data.VEND_CODE)
@@ -453,7 +456,7 @@ function FreightBillingPage() {
         Plant: record.ZWERKS || "",
         Division: record.ZDIVISION || "",
         "Vehicle Type": record.ZVEH_TYPE || "",
-        "Type of Rate Contract": record.ZRATECON || "",
+        // "Type of Rate Contract": record.ZRATECON || "",
         "No. of Trucks": record.ZNO_TRUCKS || "",
         "Work Order": record.ZWORK_ORDER || "",
         "Vendor Code": record.ZVENDOR_CD || "",
@@ -582,7 +585,7 @@ function FreightBillingPage() {
       ]));
     } else {
       headers = [[
-        "SI.No", "Reference No", "Line No", "Date", "Plant", "Division", "Vehicle Type", "Type of Rate Contract",
+        "SI.No", "Reference No", "Line No", "Date", "Plant", "Division", "Vehicle Type", //"Type of Rate Contract",
         "No. of Trucks", "Work Order", "Vendor Code", "Transporter", "No. of LRs",
         "LR Number", "Loading Point", "Unloading Point", "No Of Invoices",
       ]];
@@ -595,7 +598,7 @@ function FreightBillingPage() {
         record.ZWERKS || "",
         record.ZDIVISION || "",
         record.ZVEH_TYPE || "",
-        record.ZRATECON || "",
+        // record.ZRATECON || "",
         record.ZNO_TRUCKS || "",
         record.ZWORK_ORDER || "",
         record.ZVENDOR_CD || "",
@@ -652,7 +655,7 @@ function FreightBillingPage() {
         className="w-full"
       >
         {/* Page header */}
-        <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
+        <div className="sticky top-0 z-50 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="hidden sm:grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white shadow-cta">
@@ -1099,7 +1102,7 @@ function FreightBillingPage() {
                           <th className="px-3 py-2 whitespace-nowrap">Plant</th>
                           <th className="px-3 py-2 whitespace-nowrap">Division</th>
                           <th className="px-3 py-2 whitespace-nowrap">Vehicle Type</th>
-                          <th className="px-3 py-2 whitespace-nowrap">Type of Rate Contract</th>
+                          {/* <th className="px-3 py-2 whitespace-nowrap">Type of Rate Contract</th> */}
                           <th className="px-3 py-2 whitespace-nowrap">No. of Trucks</th>
                           <th className="px-3 py-2 whitespace-nowrap">Work Order</th>
                           <th className="px-3 py-2 whitespace-nowrap">Vendor Code</th>
@@ -1134,7 +1137,7 @@ function FreightBillingPage() {
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZWERKS}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZDIVISION}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZVEH_TYPE}</td>
-                              <td className="px-3 py-2 whitespace-nowrap">{item.ZRATECON}</td>
+                              {/* <td className="px-3 py-2 whitespace-nowrap">{item.ZRATECON}</td> */}
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZNO_TRUCKS}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZWORK_ORDER}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{item.ZVENDOR_CD}</td>

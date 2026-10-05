@@ -46,7 +46,7 @@ export const Route = createFileRoute("/transit-info")({
 
 type SapMode = "with" | "without";
 
-const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
+const STATUS_OPTIONS = ["Pending", "Completed"] as const;
 
 type PlantData = { PLANT: string; PLANT_DESC: string };
 type DivData = { DIVISION: string; DIV_TEXT: string };
@@ -175,10 +175,10 @@ function TransitInfoPage() {
         const divisions: DivData[] = Array.isArray(data.PLANT)
           ? Array.from(
             new Map<string, DivData>(
-              data.PLANT.map((p: any) => [
-                p.DIVISION,
-                { DIVISION: p.DIVISION, DIV_TEXT: p.DIV_TEXT || p.DIVISION } as DivData,
-              ])
+              data.PLANT.map((p: any) => {
+                const val = p.DIV_TEXT || p.DIVISION;
+                return [val, { DIVISION: val, DIV_TEXT: val } as DivData];
+              })
             ).values()
           )
           : [];
@@ -482,7 +482,7 @@ function TransitInfoPage() {
     <div className="flex flex-col min-h-full">
       <Tabs value={tab} onValueChange={(v) => setTab(v as "create" | "search")} className="w-full">
         {/* Page header */}
-        <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
+        <div className="sticky top-0 z-50 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="hidden sm:grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white shadow-cta">

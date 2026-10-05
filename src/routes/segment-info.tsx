@@ -38,7 +38,7 @@ export const Route = createFileRoute("/segment-info")({
 type SapMode = "with" | "without";
 type Direction = "outward" | "inward";
 
-const STATUS_OPTIONS = ["All", "Pending", "Completed"] as const;
+const STATUS_OPTIONS = ["Pending", "Completed"] as const;
 
 function getLoggedInUser(): string {
   try {
@@ -333,14 +333,14 @@ function SegmentInfoPage() {
     if (fStatus === "Completed") {
       headers = [[
         "SI.No", "Line No", "REFNO", "Invoice No", "ODN Number", "SO Number", "Sales Person", "Segment",
-        "Application Type", "Customer Profile", "Branch", "Branch Zone", 
+        "Application Type", "Customer Profile", "Branch", "Branch Zone",
         "Plant", "Division", "Work Order", "LR No", "Transporter", "Created Date", "Vehicle Type",
       ]];
 
       data = exportSource.map((item, index) => ([
         index + 1, item.ZLINE_NO || "", item.ZREFNO || "", item.ZINV_NUM || "", item.ZODN_NO || "",
         item.ZSO_NO || "", item.ZSALE_PERSON || "", item.ZSEGMENT || "", item.ZAPPTYP || "",
-        item.ZCUST_PROFILE || "", item.ZBRANCH || "", item.ZBRANCH_ZONE || "", 
+        item.ZCUST_PROFILE || "", item.ZBRANCH || "", item.ZBRANCH_ZONE || "",
         // item.ZTAT || "", item.ZETA || "", 
         item.ZPLANT || "", item.ZDIVISION || "", item.ZWORK_ORDER || "",
         item.ZLRNO || "", item.ZTRANSPORTER || "",
@@ -389,7 +389,7 @@ function SegmentInfoPage() {
         className="w-full"
       >
         {/* Page header */}
-        <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
+        <div className="sticky top-0 z-50 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="hidden sm:grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white shadow-cta">

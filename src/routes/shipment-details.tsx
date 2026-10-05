@@ -437,7 +437,7 @@ function ShipmentDetailsPage() {
         className="w-full"
       >
         {/* Page header */}
-        <div className="sticky top-0 z-10 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
+        <div className="sticky top-0 z-50 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <div className="hidden sm:grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white shadow-cta">
@@ -628,16 +628,18 @@ function ShipmentDetailsPage() {
 function CompletedTable({ rows }: { rows: any[] }) {
   return (
     <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
-      <div className="px-5 py-3 border-b border-hairline bg-surface-2/60">
-        <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Results (Completed)</h3>
-        <p className="text-[11.5px] text-muted-foreground mt-0.5">
-          {rows.length} row{rows.length === 1 ? "" : "s"}
-        </p>
+      <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+        <div>
+          <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Results (Completed)</h3>
+          <p className="text-[11.5px] text-muted-foreground mt-0.5">
+            {rows.length} row{rows.length === 1 ? "" : "s"}
+          </p>
+        </div>
       </div>
-      <div className="overflow-x-auto scrollbar-elegant">
-        <table className="w-full text-left border-collapse text-[11.5px]">
-          <thead>
-            <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.1em] text-primary-foreground">
+      <div className="overflow-x-auto max-h-[560px]">
+        <table className="w-full text-left border-collapse text-[12px]">
+          <thead className="sticky top-0 z-30">
+            <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
               {[
                 "SI.No",
                 "REFNO",
@@ -663,38 +665,38 @@ function CompletedTable({ rows }: { rows: any[] }) {
                 "Vehicle Type",
                 "Created date",
               ].map((h) => (
-                <th key={h} className="px-2 py-1.5 whitespace-nowrap">
+                <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-hairline/60">
+          <tbody className="divide-y divide-hairline/70">
             {rows.map((r, i) => (
-              <tr key={i} className="hover:bg-accent/[0.04]">
-                <td className="px-2 py-1">{i + 1}</td>
-                <td className="px-2 py-1 font-mono whitespace-nowrap">{r.ZREFNO}</td>
-                <td className="px-2 py-1 font-mono whitespace-nowrap">{r.VBELN}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZMAPID}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZODN_NO}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZSO_NO}</td>
-                {/* <td className="px-2 py-1 whitespace-nowrap">{r.ZINCO}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZINS_SCPOE}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZKM}</td> */}
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZPRODUCT}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.MTART}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.MAKTX}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZSETS}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZAH}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZSHIP_WT}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZBATCOND}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZWERKS}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZDIVISION}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZWORK_ORDER}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZLRNO}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZTRANSPORTER}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZVEH_TYPE}</td>
-                <td className="px-2 py-1 whitespace-nowrap">
+              <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
+                <td className="px-3 py-2 whitespace-nowrap">{i + 1}</td>
+                <td className="px-3 py-2 font-mono whitespace-nowrap">{r.ZREFNO}</td>
+                <td className="px-3 py-2 font-mono whitespace-nowrap">{r.VBELN}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZMAPID}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZODN_NO}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZSO_NO}</td>
+                {/* <td className="px-3 py-2 whitespace-nowrap">{r.ZINCO}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZINS_SCPOE}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZKM}</td> */}
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZPRODUCT}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.MTART}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.MAKTX}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZSETS}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZAH}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZSHIP_WT}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZBATCOND}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZWERKS}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZDIVISION}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZWORK_ORDER}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZLRNO}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZTRANSPORTER}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZVEH_TYPE}</td>
+                <td className="px-3 py-2 whitespace-nowrap">
                   {r.ZCREATED_DT ? new Date(r.ZCREATED_DT).toLocaleDateString("en-GB") : "-"}
                 </td>
               </tr>
@@ -716,16 +718,18 @@ function CompletedTable({ rows }: { rows: any[] }) {
 function PendingTable({ rows }: { rows: any[] }) {
   return (
     <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
-      <div className="px-5 py-3 border-b border-hairline bg-surface-2/60">
-        <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Results (Pending)</h3>
-        <p className="text-[11.5px] text-muted-foreground mt-0.5">
-          {rows.length} row{rows.length === 1 ? "" : "s"}
-        </p>
+      <div className="px-5 py-3 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+        <div>
+          <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">Results (Pending)</h3>
+          <p className="text-[11.5px] text-muted-foreground mt-0.5">
+            {rows.length} row{rows.length === 1 ? "" : "s"}
+          </p>
+        </div>
       </div>
-      <div className="overflow-x-auto scrollbar-elegant">
-        <table className="w-full text-left border-collapse text-[11.5px]">
-          <thead>
-            <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.1em] text-primary-foreground">
+      <div className="overflow-x-auto max-h-[560px]">
+        <table className="w-full text-left border-collapse text-[12px]">
+          <thead className="sticky top-0 z-30">
+            <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
               {[
                 "SI.No",
                 "Reference No",
@@ -743,7 +747,7 @@ function PendingTable({ rows }: { rows: any[] }) {
                 "Loading Point",
                 "Unloading Point",
               ].map((h) => (
-                <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left bg-gradient-primary shadow-soft">
+                <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
                   {h}
                 </th>
               ))}
@@ -751,24 +755,24 @@ function PendingTable({ rows }: { rows: any[] }) {
           </thead>
           <tbody className="divide-y divide-hairline/70">
             {rows.map((r, i) => (
-              <tr key={i} className="px-3 py-10 text-center text-[12px] text-muted-foreground">
-                <td className="px-2 py-1">{i + 1}</td>
-                <td className="px-2 py-1 font-mono whitespace-nowrap">{r.ZREFNO}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZLINE_NO}</td>
-                <td className="px-2 py-1 whitespace-nowrap">
+              <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
+                <td className="px-3 py-2 whitespace-nowrap">{i + 1}</td>
+                <td className="px-3 py-2 font-mono whitespace-nowrap">{r.ZREFNO}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZLINE_NO}</td>
+                <td className="px-3 py-2 whitespace-nowrap">
                   {r.ZCREATED_DT ? new Date(r.ZCREATED_DT).toLocaleDateString("en-GB") : "-"}
                 </td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZWERKS}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZDIVISION}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZVEH_TYPE}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZNO_TRUCKS}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZWORK_ORDER}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZVENDOR_CD}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZTRANSPORTER}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZNO_LRS}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZLR_NO}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZLOAD_PT}</td>
-                <td className="px-2 py-1 whitespace-nowrap">{r.ZUNLOAD_PT}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZWERKS}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZDIVISION}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZVEH_TYPE}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZNO_TRUCKS}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZWORK_ORDER}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZVENDOR_CD}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZTRANSPORTER}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZNO_LRS}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZLR_NO}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZLOAD_PT}</td>
+                <td className="px-3 py-2 whitespace-nowrap">{r.ZUNLOAD_PT}</td>
               </tr>
             ))}
             {rows.length === 0 && (
