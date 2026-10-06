@@ -9,73 +9,174 @@ import service, { getLocalDocumentUrl, downloadDocument } from "../services/gene
 import Swal from "sweetalert2";
 import { GateDatePicker } from "@/components/ui/date-picker";
 
+// Table Multi-Select Dropdown for LR Numbers
 function TableMultiSelect({
   options,
-  selected,
+  value,
   onChange,
-  placeholder = "Select...",
+  placeholder = "Select LR No",
+  className,
+  disabled = false,
   readOnly = false,
+  allowManualEntry = false,
+  onKeyDown,
 }: {
   options: string[];
-  selected: string[];
-  onChange: (selected: string[]) => void;
+  value: string;
+  onChange: (v: string) => void;
   placeholder?: string;
+  className?: string;
+  disabled?: boolean;
   readOnly?: boolean;
+  allowManualEntry?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
-  const toggle = (val: string) => {
-    if (readOnly) return;
-    if (selected.includes(val)) {
-      onChange(selected.filter((x) => x !== val));
-    } else {
-      onChange([...selected, val]);
-    }
+  const selected = value
+    ? value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
+  const filtered = search
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  const toggle = (v: string) => {
+    if (disabled || readOnly) return;
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange(next.join(","));
   };
 
-  const displayText =
-    selected.length === 0
-      ? placeholder
-      : selected.length === 1
-        ? selected[0]
-        : `${selected.length} selected`;
+  const selectAll = () => {
+    if (disabled || readOnly) return;
+    onChange(options.join(","));
+  };
+
+  const clearAll = () => {
+    if (disabled || readOnly) return;
+    onChange("");
+  };
+
+  const displayLabel = () => {
+    if (selected.length === 0) return "";
+    if (selected.length === 1) return selected[0];
+    return `${selected.length} Selected`;
+  };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] font-medium outline-none flex items-center justify-between gap-1 text-left",
-            readOnly ? "cursor-default text-muted-foreground" : "text-foreground hover:bg-muted/50",
-          )}
-          title={selected.join(", ")}
+    <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
+      {allowManualEntry ? (
+        <div
+          className={
+            (className ? className + " " : "") +
+            "relative flex items-center !px-0 overflow-hidden focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "")
+          }
         >
-          <span className="truncate">{displayText}</span>
-          <ChevronDown className="size-3.5 opacity-50 shrink-0" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-52 p-1 max-h-48 overflow-y-auto bg-surface border border-hairline shadow-md" align="start">
-        <div className="space-y-0.5">
-          {options.length === 0 ? (
-            <div className="p-2 text-center text-[11.5px] text-muted-foreground">
-              No options
+          <input
+            type="text"
+            value={value}
+            disabled={disabled}
+            readOnly={readOnly}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            title={value}
+            className="h-full w-full bg-transparent pl-2 pr-6 text-center text-[12px] font-mono font-medium text-foreground outline-none border-none placeholder:text-muted-foreground"
+          />
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              disabled={disabled}
+              tabIndex={-1}
+              title="Select from dropdown"
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer shrink-0"
+            >
+              <ChevronDown className={"size-3.5 transition-transform" + (open ? " rotate-180" : "")} />
+            </button>
+          </PopoverTrigger>
+        </div>
+      ) : (
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            title={selected.join(", ")}
+            className={
+              (className ? className + " " : "") +
+              "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+              (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+              (selected.length === 0 ? " text-muted-foreground" : "")
+            }
+          >
+            <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+            <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+          </button>
+        </PopoverTrigger>
+      )}
+      <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
+        <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
+          <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
+          {options.length > 1 && !readOnly && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={selectAll}
+                className="text-primary hover:underline font-medium cursor-pointer"
+              >
+                All
+              </button>
+              <span className="text-muted-foreground">|</span>
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-muted-foreground hover:underline font-medium cursor-pointer"
+              >
+                Clear
+              </button>
             </div>
+          )}
+        </div>
+        {options.length > 5 && (
+          <div className="p-1.5 border-b border-hairline">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search LR..."
+              className="h-6 w-full rounded border border-input bg-background px-2 text-[11px] text-foreground outline-none focus:border-accent"
+            />
+          </div>
+        )}
+        <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
+          {filtered.length === 0 ? (
+            <div className="p-2 text-center text-[11px] text-muted-foreground">No LR found</div>
           ) : (
-            options.map((o) => (
+            filtered.map((o) => (
               <label
                 key={o}
-                className={cn(
-                  "flex items-center gap-2 px-2 py-1 text-[12px] rounded hover:bg-muted/60 select-none",
-                  readOnly ? "cursor-default" : "cursor-pointer",
-                )}
+                className={
+                  "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] transition-colors " +
+                  (readOnly
+                    ? "cursor-not-allowed opacity-60 text-muted-foreground"
+                    : "cursor-pointer hover:bg-muted/60")
+                }
               >
                 <input
                   type="checkbox"
                   checked={selected.includes(o)}
                   disabled={readOnly}
                   onChange={() => toggle(o)}
-                  className="size-3.5 accent-primary rounded"
+                  className={
+                    "size-3.5 accent-primary rounded " +
+                    (readOnly ? "cursor-not-allowed opacity-70" : "cursor-pointer")
+                  }
                 />
                 <span className="font-mono text-foreground">{o}</span>
               </label>
@@ -530,10 +631,14 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
         let lrOptions: string[] = [];
         if (Array.isArray(d.LR_NO)) {
           lrOptions = d.LR_NO.map((x: any) =>
-            typeof x === "object" && x !== null ? x.LR : String(x)
+            typeof x === "object" && x !== null
+              ? x.LR || x.LR_NO || x.lr_no || ""
+              : String(x)
           ).filter(Boolean);
         } else if (typeof d.LR_NO === "string" && d.LR_NO.trim()) {
-          lrOptions = [d.LR_NO.trim()];
+          lrOptions = d.LR_NO.split(",").map((x: string) => x.trim()).filter(Boolean);
+        } else if (d.LR_NO != null && String(d.LR_NO).trim()) {
+          lrOptions = [String(d.LR_NO).trim()];
         }
         lrOptions = Array.from(new Set(lrOptions));
 
@@ -551,6 +656,19 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
         const isNotAllowed = String(d.ZNOT_ALLOWED || "").trim().toUpperCase() === "X";
 
+        let initialLr = "";
+        if (Array.isArray(d.LR_NO)) {
+          initialLr = lrOptions.join(",");
+        } else if (typeof d.LR_NO === "string") {
+          initialLr = d.LR_NO;
+        } else if (d.LR_NO != null) {
+          initialLr = String(d.LR_NO);
+        }
+
+        if (lrOptions.length === 0 && initialLr && initialLr.trim()) {
+          lrOptions = initialLr.split(",").map((x: string) => x.trim()).filter(Boolean);
+        }
+
         const lineNo =
           d.LINE_NO !== undefined && d.LINE_NO !== null && String(d.LINE_NO).trim() !== ""
             ? String(d.LINE_NO).trim()
@@ -564,7 +682,7 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
           MAPID: d.MAPID || "",
           REF_NO: d.REF_NO ? String(d.REF_NO) : "",
           WORK_ORDER_NO: d.WORK_ORDER_NO ? String(d.WORK_ORDER_NO) : "",
-          LR_NO: lrOptions.length > 0 ? lrOptions.join(", ") : (typeof d.LR_NO === "string" ? d.LR_NO : ""),
+          LR_NO: initialLr || (lrOptions.length > 0 ? lrOptions.join(",") : "") || (typeof d.LR_NO === "string" ? d.LR_NO : ""),
           TRANSPORTER: d.TRANSPORTER ? String(d.TRANSPORTER) : "",
           LINE_NO: lineNo,
           selected: false,
@@ -1445,7 +1563,6 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                         data[index].MAPID = e.target.value;
                         setTableData(data);
                       }}
-                      onBlur={() => fetchGlobalReferences(row, index, "MAPID")}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") fetchGlobalReferences(row, index, "MAPID");
                       }}
@@ -1464,7 +1581,6 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                         data[index].REF_NO = e.target.value;
                         setTableData(data);
                       }}
-                      onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
                       }}
@@ -1483,7 +1599,6 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                         data[index].WORK_ORDER_NO = e.target.value;
                         setTableData(data);
                       }}
-                      onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
                       }}
@@ -1497,25 +1612,29 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                     {row.lrOptions && row.lrOptions.length > 0 ? (
                       <TableMultiSelect
                         options={row.lrOptions}
-                        selected={row.LR_NO ? row.LR_NO.split(", ").filter(Boolean) : []}
+                        value={row.LR_NO}
                         readOnly={isRowDisabled}
-                        onChange={(selected) => {
+                        allowManualEntry={index === 0 && !isRowDisabled}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
+                        }}
+                        onChange={(val) => {
                           const data = [...tableData];
-                          data[index].LR_NO = selected.join(", ");
+                          data[index].LR_NO = val;
                           setTableData(data);
                         }}
                         placeholder="Select LR No"
+                        className={cn(GREEN_INPUT, "text-center", isRowDisabled && "cursor-pointer")}
                       />
                     ) : (
                       <input
                         value={row.LR_NO}
-                        readOnly={isRowDisabled}
+                        readOnly={index !== 0 || isRowDisabled}
                         onChange={(e) => {
                           const data = [...tableData];
                           data[index].LR_NO = e.target.value;
                           setTableData(data);
                         }}
-                        onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
                         }}
@@ -1535,7 +1654,6 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
                         data[index].TRANSPORTER = e.target.value;
                         setTableData(data);
                       }}
-                      onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
                       }}

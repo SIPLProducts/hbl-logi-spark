@@ -417,6 +417,8 @@ function TableMultiSelect({
   className,
   disabled = false,
   readOnly = false,
+  allowManualEntry = false,
+  onKeyDown,
 }: {
   options: string[];
   value: string;
@@ -425,6 +427,8 @@ function TableMultiSelect({
   className?: string;
   disabled?: boolean;
   readOnly?: boolean;
+  allowManualEntry?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -466,22 +470,55 @@ function TableMultiSelect({
 
   return (
     <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          title={selected.join(", ")}
+      {allowManualEntry ? (
+        <div
           className={
             (className ? className + " " : "") +
-            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
-            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
-            (selected.length === 0 ? " text-muted-foreground" : "")
+            "relative flex items-center !px-0 overflow-hidden focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "")
           }
         >
-          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
-          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
-        </button>
-      </PopoverTrigger>
+          <input
+            type="text"
+            value={value}
+            disabled={disabled}
+            readOnly={readOnly}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            title={value}
+            className="h-full w-full bg-transparent pl-2 pr-6 text-center text-[12px] font-mono font-medium text-foreground outline-none border-none placeholder:text-muted-foreground"
+          />
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              disabled={disabled}
+              tabIndex={-1}
+              title="Select from dropdown"
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer shrink-0"
+            >
+              <ChevronDown className={"size-3.5 transition-transform" + (open ? " rotate-180" : "")} />
+            </button>
+          </PopoverTrigger>
+        </div>
+      ) : (
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            title={selected.join(", ")}
+            className={
+              (className ? className + " " : "") +
+              "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+              (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+              (selected.length === 0 ? " text-muted-foreground" : "")
+            }
+          >
+            <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+            <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+          </button>
+        </PopoverTrigger>
+      )}
       <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
         <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
           <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
@@ -524,8 +561,10 @@ function TableMultiSelect({
               <label
                 key={o}
                 className={
-                  "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] hover:bg-muted/60 transition-colors " +
-                  (readOnly ? "cursor-default" : "cursor-pointer")
+                  "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] transition-colors " +
+                  (readOnly
+                    ? "cursor-not-allowed opacity-60 text-muted-foreground"
+                    : "cursor-pointer hover:bg-muted/60")
                 }
               >
                 <input
@@ -533,7 +572,10 @@ function TableMultiSelect({
                   checked={selected.includes(o)}
                   disabled={readOnly}
                   onChange={() => toggle(o)}
-                  className="size-3.5 accent-primary rounded"
+                  className={
+                    "size-3.5 accent-primary rounded " +
+                    (readOnly ? "cursor-not-allowed opacity-70" : "cursor-pointer")
+                  }
                 />
                 <span className="font-mono text-foreground">{o}</span>
               </label>
@@ -947,10 +989,14 @@ function ServiceLevelFeedbackCreate({
           let lrOptions: string[] = [];
           if (Array.isArray(d.LR_NO)) {
             lrOptions = d.LR_NO.map((x: any) =>
-              typeof x === "object" && x !== null ? x.LR : String(x)
+              typeof x === "object" && x !== null
+                ? x.LR || x.LR_NO || x.lr_no || ""
+                : String(x)
             ).filter(Boolean);
           } else if (typeof d.LR_NO === "string" && d.LR_NO.trim()) {
-            lrOptions = [d.LR_NO.trim()];
+            lrOptions = d.LR_NO.split(",").map((x: string) => x.trim()).filter(Boolean);
+          } else if (d.LR_NO != null && String(d.LR_NO).trim()) {
+            lrOptions = [String(d.LR_NO).trim()];
           }
           lrOptions = Array.from(new Set(lrOptions));
 
@@ -968,10 +1014,23 @@ function ServiceLevelFeedbackCreate({
 
           const isNotAllowed = String(d.ZNOT_ALLOWED || "").trim().toUpperCase() === "X";
 
+          let initialLr = "";
+          if (Array.isArray(d.LR_NO)) {
+            initialLr = lrOptions.join(",");
+          } else if (typeof d.LR_NO === "string") {
+            initialLr = d.LR_NO;
+          } else if (d.LR_NO != null) {
+            initialLr = String(d.LR_NO);
+          }
+
+          if (lrOptions.length === 0 && initialLr && initialLr.trim()) {
+            lrOptions = initialLr.split(",").map((x: string) => x.trim()).filter(Boolean);
+          }
+
           return {
             referenceNumber: d.REF_NO ? String(d.REF_NO) : "",
             workOrderNumber: d.WORK_ORDER_NO ? String(d.WORK_ORDER_NO) : "",
-            lrNumber: lrOptions.length > 0 ? lrOptions.join(", ") : (typeof d.LR_NO === "string" ? d.LR_NO : ""),
+            lrNumber: initialLr || (lrOptions.length > 0 ? lrOptions.join(",") : "") || (typeof d.LR_NO === "string" ? d.LR_NO : ""),
             transporter: d.TRANSPORTER ? String(d.TRANSPORTER) : "",
             lineNumber: d.LINE_NO ? String(d.LINE_NO) : "",
             mapId: d.MAPID ? String(d.MAPID) : "",
@@ -1308,9 +1367,8 @@ function ServiceLevelFeedbackCreate({
   };
 
   const blurKeys = (index: number, fieldKey: string) => ({
-    onBlur: () => void onFieldBlur(index, fieldKey),
     onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" || e.key === "Tab") void onFieldBlur(index, fieldKey);
+      if (e.key === "Enter") void onFieldBlur(index, fieldKey);
     },
   });
 
@@ -1396,9 +1454,17 @@ function ServiceLevelFeedbackCreate({
                               options={row.lrOptions}
                               value={row.lrNumber || ""}
                               readOnly={isRowDisabled}
+                              allowManualEntry={i === 0 && !isRowDisabled}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") void onFieldBlur(i, "LR_NO");
+                              }}
                               onChange={(val) => updateRowField(i, "lrNumber", val)}
                               placeholder="Select LR No"
-                              className={SL_INPUT + " text-center"}
+                              className={
+                                (isRowDisabled
+                                  ? "h-8 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer"
+                                  : SL_INPUT) + " text-center"
+                              }
                             />
                           ) : (
                             <input
@@ -1408,7 +1474,11 @@ function ServiceLevelFeedbackCreate({
                               readOnly={i !== 0 || isRowDisabled}
                               onChange={(e) => updateRowField(i, "lrNumber", e.target.value)}
                               {...blurKeys(i, "LR_NO")}
-                              className={SL_INPUT + " text-center"}
+                              className={
+                                (isRowDisabled
+                                  ? "h-8 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-not-allowed"
+                                  : SL_INPUT) + " text-center"
+                              }
                             />
                           )}
                         </td>

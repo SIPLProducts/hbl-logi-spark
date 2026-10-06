@@ -1097,6 +1097,8 @@ function GateTableMultiSelect({
   className,
   disabled = false,
   readOnly = false,
+  allowManualEntry = false,
+  onKeyDown,
   title,
   searchPlaceholder,
   emptyText,
@@ -1108,6 +1110,8 @@ function GateTableMultiSelect({
   className?: string;
   disabled?: boolean;
   readOnly?: boolean;
+  allowManualEntry?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   title?: string;
   searchPlaceholder?: string;
   emptyText?: string;
@@ -1170,22 +1174,55 @@ function GateTableMultiSelect({
 
   return (
     <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          title={selected.join(", ")}
+      {allowManualEntry ? (
+        <div
           className={
             (className ? className + " " : "") +
-            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
-            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
-            (selected.length === 0 ? " text-muted-foreground" : "")
+            "relative flex items-center !px-0 overflow-hidden focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "")
           }
         >
-          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
-          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
-        </button>
-      </PopoverTrigger>
+          <input
+            type="text"
+            value={value}
+            disabled={disabled}
+            readOnly={readOnly}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            title={value}
+            className="h-full w-full bg-transparent pl-2 pr-6 text-center text-[12px] font-mono font-medium text-foreground outline-none border-none placeholder:text-muted-foreground"
+          />
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              disabled={disabled}
+              tabIndex={-1}
+              title="Select from dropdown"
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer shrink-0"
+            >
+              <ChevronDown className={"size-3.5 transition-transform" + (open ? " rotate-180" : "")} />
+            </button>
+          </PopoverTrigger>
+        </div>
+      ) : (
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            title={selected.join(", ")}
+            className={
+              (className ? className + " " : "") +
+              "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+              (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+              (selected.length === 0 ? " text-muted-foreground" : "")
+            }
+          >
+            <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+            <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+          </button>
+        </PopoverTrigger>
+      )}
       <PopoverContent
         className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant"
         align="start"
@@ -1237,8 +1274,10 @@ function GateTableMultiSelect({
                 <label
                   key={o}
                   className={
-                    "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] hover:bg-muted/60 transition-colors " +
-                    (readOnly ? "cursor-default" : "cursor-pointer")
+                    "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] transition-colors " +
+                    (readOnly
+                      ? "cursor-not-allowed opacity-60 text-muted-foreground"
+                      : "cursor-pointer hover:bg-muted/60")
                   }
                 >
                   <input
@@ -1246,7 +1285,10 @@ function GateTableMultiSelect({
                     checked={isChecked}
                     disabled={readOnly}
                     onChange={() => toggle(o)}
-                    className="size-3.5 accent-primary rounded cursor-pointer"
+                    className={
+                      "size-3.5 accent-primary rounded " +
+                      (readOnly ? "cursor-not-allowed opacity-70" : "cursor-pointer")
+                    }
                   />
                   <span className="font-mono text-foreground">{o}</span>
                 </label>
@@ -2555,12 +2597,31 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
             let lrOptions: string[] = [];
             if (Array.isArray(item.LR_NO)) {
               lrOptions = item.LR_NO
-                .map((x: any) => (typeof x === "object" && x !== null ? x.LR : String(x)))
+                .map((x: any) =>
+                  typeof x === "object" && x !== null
+                    ? (x.LR || x.LR_NO || x.lr_no || "")
+                    : String(x)
+                )
                 .filter(Boolean);
             } else if (typeof item.LR_NO === "string" && item.LR_NO.trim()) {
-              lrOptions = [item.LR_NO.trim()];
+              lrOptions = item.LR_NO.split(",").map((x: string) => x.trim()).filter(Boolean);
+            } else if (item.LR_NO != null && String(item.LR_NO).trim()) {
+              lrOptions = [String(item.LR_NO).trim()];
             }
             lrOptions = Array.from(new Set(lrOptions));
+
+            let initialLr = "";
+            if (Array.isArray(item.LR_NO)) {
+              initialLr = lrOptions.join(",");
+            } else if (typeof item.LR_NO === "string") {
+              initialLr = item.LR_NO;
+            } else if (item.LR_NO != null) {
+              initialLr = String(item.LR_NO);
+            }
+
+            if (lrOptions.length === 0 && initialLr && initialLr.trim()) {
+              lrOptions = initialLr.split(",").map((x: string) => x.trim()).filter(Boolean);
+            }
 
             let compInvoices: string[] = [];
             if (Array.isArray(item.COMP_INV_NO)) {
@@ -2587,7 +2648,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
               MAPID: item.MAPID != null ? String(item.MAPID) : "",
               REF_NO: item.REF_NO != null ? String(item.REF_NO) : "",
               WORK_ORDER_NO: item.WORK_ORDER_NO != null ? String(item.WORK_ORDER_NO) : "",
-              LR_NO: lrOptions.length > 0 ? lrOptions.join(",") : (item.LR_NO != null ? String(item.LR_NO) : ""),
+              LR_NO: initialLr || (lrOptions.length > 0 ? lrOptions.join(",") : (item.LR_NO != null ? String(item.LR_NO) : "")),
               lrOptions,
               TRANSPORTER: item.TRANSPORTER != null ? String(item.TRANSPORTER) : "",
               LINE_NO: item.LINE_NO != null ? String(item.LINE_NO) : "",
@@ -3845,17 +3906,21 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                   <td className="px-3 py-0.5 text-center font-medium">{i + 1}</td>
                   {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
                     <td key={field} className="px-3 py-0.5">
-                      {field === "LR_NO" && ((row.lrOptions && row.lrOptions.length > 0) || row.LR_NO) ? (
+                      {field === "LR_NO" && row.lrOptions && row.lrOptions.length > 0 ? (
                         <GateTableMultiSelect
-                          options={row.lrOptions && row.lrOptions.length > 0 ? row.lrOptions : [row.LR_NO]}
+                          options={row.lrOptions}
                           value={row.LR_NO || ""}
                           onChange={(val) => handleRefRowChange(i, "LR_NO", val)}
                           placeholder="Select LR No"
                           readOnly={isRowDisabled}
+                          allowManualEntry={i === 0 && !isRowDisabled}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") fetchGlobalReferences(i, "LR_NO");
+                          }}
                           className={
-                            isRowDisabled
+                            (isRowDisabled
                               ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer"
-                              : GATE_INPUT_NORMAL
+                              : GATE_INPUT_NORMAL) + " text-center"
                           }
                         />
                       ) : (
@@ -3865,7 +3930,6 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           disabled={isRowDisabled}
                           placeholder={GATE_REF_FIELD_PLACEHOLDER[field]}
                           onChange={(e) => handleRefRowChange(i, field, e.target.value)}
-                          onBlur={() => fetchGlobalReferences(i, field)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") fetchGlobalReferences(i, field);
                           }}
@@ -4243,7 +4307,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           },
                           { field: "TYPE_OF_TRANSPORTER", type: "text", readonly: true },
                           { field: "VEHICLE_NUMBER", type: "text" },
-                          { field: "NO_OF_VEHICLES", type: "number" },
+                          { field: "NO_OF_VEHICLES", type: "number", readonly: true },
                           { field: "DRIVER_NAME", type: "text" },
                           { field: "DRIVER_NUMBER", type: "text" },
                           { field: "CUSTOMER_EMAIL_DETAILS", type: "text" },
@@ -4986,8 +5050,13 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                 <TableCell key={c} className="p-1">
                                   <Input
                                     type="text"
-                                    className="h-7 min-w-[140px]"
+                                    className={cn(
+                                      "h-7 min-w-[140px]",
+                                      field === "noOfVehicles" && "bg-muted/60 cursor-not-allowed opacity-70"
+                                    )}
                                     value={val}
+                                    disabled={field === "noOfVehicles"}
+                                    readOnly={field === "noOfVehicles"}
                                     inputMode={field === "driverNumber" ? "numeric" : undefined}
                                     onChange={(e) => {
                                       let v = e.target.value;

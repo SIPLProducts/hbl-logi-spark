@@ -174,7 +174,7 @@ function SearchableCombobox({
   className,
 }: {
   value: string;
-  onSelect: (label: string) => void;
+  onSelect: (label: string, code?: string) => void;
   options: ComboOption[];
   placeholder: string;
   className: string;
@@ -205,9 +205,14 @@ function SearchableCombobox({
       <input
         value={query}
         onChange={(e) => {
-          setQuery(e.target.value);
-          setSearch(e.target.value);
+          const val = e.target.value;
+          setQuery(val);
+          setSearch(val);
           setOpen(true);
+          const matched = options.find(
+            (o) => o.label.toLowerCase() === val.trim().toLowerCase() || o.code.toLowerCase() === val.trim().toLowerCase()
+          );
+          onSelect(val, matched ? matched.code : undefined);
         }}
         onFocus={(e) => {
           setOpen(true);
@@ -227,9 +232,10 @@ function SearchableCombobox({
                 key={o.code}
                 type="button"
                 onClick={() => {
-                  onSelect(o.label);
-                  setQuery(o.label);
-                  setSearch(o.label);
+                  const displayVal = o.code && o.label ? `${o.code} - ${o.label}` : (o.label || o.code);
+                  onSelect(displayVal, o.code);
+                  setQuery(displayVal);
+                  setSearch(displayVal);
                   setOpen(false);
                 }}
                 className="block w-full text-left px-2 py-1 text-[12px] hover:bg-accent/10"
@@ -275,7 +281,7 @@ const EMPTY_ROW = (): TableRow => ({
   notAllowed: false,
 });
 
-/** Multi-select dropdown for LR Number in reference table rows */
+/** Multi-select dropdown for LR Number in reference table rows (supports manual entry on row 0) */
 function TableMultiSelect({
   options,
   value,
@@ -284,6 +290,8 @@ function TableMultiSelect({
   className,
   disabled = false,
   readOnly = false,
+  allowManualEntry = false,
+  onKeyDown,
 }: {
   options: string[];
   value: string;
@@ -292,6 +300,8 @@ function TableMultiSelect({
   className?: string;
   disabled?: boolean;
   readOnly?: boolean;
+  allowManualEntry?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -333,26 +343,59 @@ function TableMultiSelect({
 
   return (
     <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          title={selected.join(", ")}
+      {allowManualEntry ? (
+        <div
           className={
             (className ? className + " " : "") +
-            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
-            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
-            (selected.length === 0 ? " text-muted-foreground" : "")
+            "relative flex items-center !px-0 overflow-hidden focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "")
           }
         >
-          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
-          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
-        </button>
-      </PopoverTrigger>
+          <input
+            type="text"
+            value={value}
+            disabled={disabled}
+            readOnly={readOnly}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            title={value}
+            className="h-full w-full bg-transparent pl-2 pr-6 text-center text-[12px] font-mono font-medium text-foreground outline-none border-none placeholder:text-muted-foreground"
+          />
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              disabled={disabled}
+              tabIndex={-1}
+              title="Select from dropdown"
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer shrink-0"
+            >
+              <ChevronDown className={"size-3.5 transition-transform" + (open ? " rotate-180" : "")} />
+            </button>
+          </PopoverTrigger>
+        </div>
+      ) : (
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            title={selected.join(", ")}
+            className={
+              (className ? className + " " : "") +
+              "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+              (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+              (selected.length === 0 ? " text-muted-foreground" : "")
+            }
+          >
+            <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+            <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+          </button>
+        </PopoverTrigger>
+      )}
       <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
         <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
           <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
-          {options.length > 1 && (
+          {options.length > 1 && !readOnly && (
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
@@ -383,27 +426,33 @@ function TableMultiSelect({
             />
           </div>
         )}
-        <div className="max-h-52 overflow-y-auto p-1 space-y-0.5">
+        <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
           {filtered.length === 0 ? (
-            <div className="px-3 py-2 text-[11px] text-muted-foreground text-center">No LR options</div>
+            <div className="p-2 text-center text-[11px] text-muted-foreground">No LR found</div>
           ) : (
-            filtered.map((o) => {
-              const isChecked = selected.includes(o);
-              return (
-                <label
-                  key={o}
-                  className="flex items-center gap-2 px-2 py-1 text-[11.5px] rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggle(o)}
-                    className="size-3.5 accent-sky-600 rounded cursor-pointer"
-                  />
-                  <span className="truncate font-mono">{o}</span>
-                </label>
-              );
-            })
+            filtered.map((o) => (
+              <label
+                key={o}
+                className={
+                  "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] transition-colors " +
+                  (readOnly
+                    ? "cursor-not-allowed opacity-60 text-muted-foreground"
+                    : "cursor-pointer hover:bg-muted/60")
+                }
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(o)}
+                  disabled={readOnly}
+                  onChange={() => toggle(o)}
+                  className={
+                    "size-3.5 accent-primary rounded " +
+                    (readOnly ? "cursor-not-allowed opacity-70" : "cursor-pointer")
+                  }
+                />
+                <span className="font-mono text-foreground">{o}</span>
+              </label>
+            ))
           )}
         </div>
       </PopoverContent>
@@ -795,12 +844,31 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
             let lrOptions: string[] = [];
             if (Array.isArray(item.LR_NO)) {
               lrOptions = item.LR_NO
-                .map((x: any) => (typeof x === "object" && x !== null ? x.LR : String(x)))
+                .map((x: any) =>
+                  typeof x === "object" && x !== null
+                    ? (x.LR || x.LR_NO || x.lr_no || "")
+                    : String(x)
+                )
                 .filter(Boolean);
             } else if (typeof item.LR_NO === "string" && item.LR_NO.trim()) {
-              lrOptions = [item.LR_NO.trim()];
+              lrOptions = item.LR_NO.split(",").map((x: string) => x.trim()).filter(Boolean);
+            } else if (item.LR_NO != null && String(item.LR_NO).trim()) {
+              lrOptions = [String(item.LR_NO).trim()];
             }
             lrOptions = Array.from(new Set(lrOptions));
+
+            let initialLr = "";
+            if (Array.isArray(item.LR_NO)) {
+              initialLr = lrOptions.join(",");
+            } else if (typeof item.LR_NO === "string") {
+              initialLr = item.LR_NO;
+            } else if (item.LR_NO != null) {
+              initialLr = String(item.LR_NO);
+            }
+
+            if (lrOptions.length === 0 && initialLr && initialLr.trim()) {
+              lrOptions = initialLr.split(",").map((x: string) => x.trim()).filter(Boolean);
+            }
 
             // Extract all Completed Invoice numbers from COMP_INV_NO
             let compInvoices: string[] = [];
@@ -823,7 +891,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
             return {
               REF_NO: item.REF_NO != null ? String(item.REF_NO) : "",
               WORK_ORDER_NO: item.WORK_ORDER_NO != null ? String(item.WORK_ORDER_NO) : "",
-              LR_NO: lrOptions.length > 0 ? lrOptions.join(",") : "",
+              LR_NO: initialLr || (lrOptions.length > 0 ? lrOptions.join(",") : ""),
               lrOptions,
               TRANSPORTER: item.TRANSPORTER != null ? String(item.TRANSPORTER) : "",
               LINE_NO: item.LINE_NO != null ? String(item.LINE_NO) : "",
@@ -894,6 +962,16 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     const invVbeln = isSap ? form.TaxInvoice : form.DCReference;
     const invDate = isSap ? form.InvoiceDate : form.ReferenceDate;
 
+    const resolvedCustCode =
+      form.CUST_CODE ||
+      customerList.find(
+        (c) =>
+          `${c.CUSTOMER} - ${c.CUSTOMER_NAME}`.toLowerCase() === form.Customer.trim().toLowerCase() ||
+          c.CUSTOMER_NAME.toLowerCase() === form.Customer.trim().toLowerCase() ||
+          c.CUSTOMER.toLowerCase() === form.Customer.trim().toLowerCase()
+      )?.CUSTOMER ||
+      "";
+
     const record = selectedRows.map((row) => ({
       REF_NO: row.REF_NO || "",
       WORK_ORDER_NO: row.WORK_ORDER_NO || "",
@@ -918,7 +996,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       SUB_DIVISION: form.SubDivision,
       SO_REF_NO: form.RefNumber,
       CUST_NAME: form.Customer,
-      CUST_CODE: form.CUST_CODE,
+      CUST_CODE: resolvedCustCode,
       CUST_GROUP: form.CustomerGroup,
       CNEE_NAME: form.CNee,
       DEST_LOC: form.DestinationLocation,
@@ -1470,7 +1548,22 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     return (
       <SearchableCombobox
         value={form[key]}
-        onSelect={(label) => setField(key, label)}
+        onSelect={(displayVal, code) => {
+          if (key === "Customer") {
+            const matchedCode =
+              code ||
+              customerList.find(
+                (c) =>
+                  `${c.CUSTOMER} - ${c.CUSTOMER_NAME}`.toLowerCase() === displayVal.trim().toLowerCase() ||
+                  c.CUSTOMER_NAME.toLowerCase() === displayVal.trim().toLowerCase() ||
+                  c.CUSTOMER.toLowerCase() === displayVal.trim().toLowerCase()
+              )?.CUSTOMER ||
+              "";
+            setForm((p) => ({ ...p, Customer: displayVal, CUST_CODE: matchedCode }));
+          } else {
+            setField(key, displayVal);
+          }
+        }}
         options={options}
         placeholder={placeholder}
         className={cls}
@@ -1524,17 +1617,19 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                   <td className="px-3 py-1 text-center font-medium">{i + 1}</td>
                   {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
                     <td key={field} className="px-3 py-1">
-                      {field === "LR_NO" && ((row.lrOptions && row.lrOptions.length > 0) || row.LR_NO) ? (
+                      {field === "LR_NO" && row.lrOptions && row.lrOptions.length > 0 ? (
                         <TableMultiSelect
-                          options={row.lrOptions && row.lrOptions.length > 0 ? row.lrOptions : [row.LR_NO]}
+                          options={row.lrOptions}
                           value={row.LR_NO || ""}
+                          readOnly={isRowDisabled}
+                          allowManualEntry={i === 0 && !isRowDisabled}
+                          onKeyDown={(e) => { if (e.key === "Enter") fetchGlobalReferences(row, i, "LR_NO"); }}
                           onChange={(val) => handleRowChange(i, "LR_NO", val)}
                           placeholder="Select LR No"
-                          readOnly={isRowDisabled}
                           className={
-                            isRowDisabled
+                            (isRowDisabled
                               ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer"
-                              : INPUT_NORMAL
+                              : INPUT_NORMAL) + " text-center"
                           }
                         />
                       ) : (
@@ -1544,8 +1639,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
                           disabled={isRowDisabled}
                           placeholder={REF_FIELD_PLACEHOLDER[field]}
                           onChange={(e) => handleRowChange(i, field, e.target.value)}
-                          onBlur={() => fetchGlobalReferences(row, i, field)}
-                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Tab") fetchGlobalReferences(row, i, field); }}
+                          onKeyDown={(e) => { if (e.key === "Enter") fetchGlobalReferences(row, i, field); }}
                           className={
                             (isRowDisabled
                               ? INPUT_DISABLED_ROW

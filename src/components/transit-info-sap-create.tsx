@@ -40,6 +40,8 @@ function TableMultiSelect({
   className,
   disabled = false,
   readOnly = false,
+  allowManualEntry = false,
+  onKeyDown,
 }: {
   options: string[];
   value: string;
@@ -48,6 +50,8 @@ function TableMultiSelect({
   className?: string;
   disabled?: boolean;
   readOnly?: boolean;
+  allowManualEntry?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -89,22 +93,55 @@ function TableMultiSelect({
 
   return (
     <Popover open={disabled ? false : open} onOpenChange={disabled ? undefined : setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          title={selected.join(", ")}
+      {allowManualEntry ? (
+        <div
           className={
             (className ? className + " " : "") +
-            "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
-            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
-            (selected.length === 0 ? " text-muted-foreground" : "")
+            "relative flex items-center !px-0 overflow-hidden focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30" +
+            (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "")
           }
         >
-          <span className="truncate font-mono">{displayLabel() || placeholder}</span>
-          <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
-        </button>
-      </PopoverTrigger>
+          <input
+            type="text"
+            value={value}
+            disabled={disabled}
+            readOnly={readOnly}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={onKeyDown}
+            title={value}
+            className="h-full w-full bg-transparent pl-2 pr-6 text-center text-[12px] font-mono font-medium text-foreground outline-none border-none placeholder:text-muted-foreground"
+          />
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              disabled={disabled}
+              tabIndex={-1}
+              title="Select from dropdown"
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer shrink-0"
+            >
+              <ChevronDown className={"size-3.5 transition-transform" + (open ? " rotate-180" : "")} />
+            </button>
+          </PopoverTrigger>
+        </div>
+      ) : (
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            title={selected.join(", ")}
+            className={
+              (className ? className + " " : "") +
+              "flex items-center justify-between gap-1 text-left truncate cursor-pointer" +
+              (disabled ? " cursor-not-allowed opacity-60 pointer-events-none" : "") +
+              (selected.length === 0 ? " text-muted-foreground" : "")
+            }
+          >
+            <span className="truncate font-mono">{displayLabel() || placeholder}</span>
+            <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+          </button>
+        </PopoverTrigger>
+      )}
       <PopoverContent className="w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant" align="start">
         <div className="p-1.5 border-b border-hairline flex items-center justify-between text-[10.5px]">
           <span className="font-semibold text-muted-foreground">Select LR ({options.length})</span>
@@ -147,8 +184,10 @@ function TableMultiSelect({
               <label
                 key={o}
                 className={
-                  "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] hover:bg-muted/60 transition-colors " +
-                  (readOnly ? "cursor-default" : "cursor-pointer")
+                  "flex items-center gap-2 px-2 py-1 rounded text-[11.5px] transition-colors " +
+                  (readOnly
+                    ? "cursor-not-allowed opacity-60 text-muted-foreground"
+                    : "cursor-pointer hover:bg-muted/60")
                 }
               >
                 <input
@@ -156,7 +195,10 @@ function TableMultiSelect({
                   checked={selected.includes(o)}
                   disabled={readOnly}
                   onChange={() => toggle(o)}
-                  className="size-3.5 accent-primary rounded"
+                  className={
+                    "size-3.5 accent-primary rounded " +
+                    (readOnly ? "cursor-not-allowed opacity-70" : "cursor-pointer")
+                  }
                 />
                 <span className="font-mono text-foreground">{o}</span>
               </label>
@@ -724,10 +766,14 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           let lrOptions: string[] = [];
           if (Array.isArray(item.LR_NO)) {
             lrOptions = item.LR_NO.map((x: any) =>
-              typeof x === "object" && x !== null ? x.LR : String(x)
+              typeof x === "object" && x !== null
+                ? x.LR || x.LR_NO || x.lr_no || ""
+                : String(x)
             ).filter(Boolean);
           } else if (typeof item.LR_NO === "string" && item.LR_NO.trim()) {
-            lrOptions = [item.LR_NO.trim()];
+            lrOptions = item.LR_NO.split(",").map((x: string) => x.trim()).filter(Boolean);
+          } else if (item.LR_NO != null && String(item.LR_NO).trim()) {
+            lrOptions = [String(item.LR_NO).trim()];
           }
           lrOptions = Array.from(new Set(lrOptions));
 
@@ -750,13 +796,19 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
             initialLr = lrOptions.join(",");
           } else if (typeof item.LR_NO === "string") {
             initialLr = item.LR_NO;
+          } else if (item.LR_NO != null) {
+            initialLr = String(item.LR_NO);
+          }
+
+          if (lrOptions.length === 0 && initialLr && initialLr.trim()) {
+            lrOptions = initialLr.split(",").map((x: string) => x.trim()).filter(Boolean);
           }
 
           return {
             MAPID: item.MAPID || "",
             REF_NO: item.REF_NO || "",
             WORK_ORDER_NO: item.WORK_ORDER_NO || "",
-            LR_NO: initialLr || item.LR_NO || "",
+            LR_NO: initialLr || (lrOptions.length > 0 ? lrOptions.join(",") : "") || item.LR_NO || "",
             TRANSPORTER: item.TRANSPORTER || "",
             LINE_NO: item.LINE_NO || "",
             selected: false,
@@ -1697,7 +1749,6 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                           return copy;
                         })
                       }
-                      onBlur={() => fetchGlobalReferences(row, index, "REF_NO")}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") fetchGlobalReferences(row, index, "REF_NO");
                       }}
@@ -1723,7 +1774,6 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                           return copy;
                         })
                       }
-                      onBlur={() => fetchGlobalReferences(row, index, "WORK_ORDER_NO")}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") fetchGlobalReferences(row, index, "WORK_ORDER_NO");
                       }}
@@ -1743,6 +1793,10 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                         options={row.lrOptions}
                         value={row.LR_NO}
                         readOnly={isRowDisabled}
+                        allowManualEntry={index === 0 && !isRowDisabled}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
+                        }}
                         onChange={(val) =>
                           setTableData((prev) => {
                             const copy = [...prev];
@@ -1771,7 +1825,6 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                             return copy;
                           })
                         }
-                        onBlur={() => fetchGlobalReferences(row, index, "LR_NO")}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") fetchGlobalReferences(row, index, "LR_NO");
                         }}
@@ -1798,7 +1851,6 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                           return copy;
                         })
                       }
-                      onBlur={() => fetchGlobalReferences(row, index, "TRANSPORTER")}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") fetchGlobalReferences(row, index, "TRANSPORTER");
                       }}
