@@ -307,6 +307,131 @@ function TableMultiSelect({
   );
 }
 
+/* Single-select dropdown with a search box (used for Sales Person). Looks like the
+   native select it replaces (same `className` on the trigger) and calls `onChange`
+   with the chosen option's value, exactly like the select's onChange did.
+   Large lists: only the first SEARCHABLE_PAGE_SIZE options are rendered, the search
+   is debounced, and further options load in pages as the list is scrolled. */
+const SEARCHABLE_PAGE_SIZE = 50;
+const SEARCHABLE_DEBOUNCE_MS = 300;
+
+function SearchableSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder: string;
+  className: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  // Debounced copy of `search` — filtering runs only after typing pauses.
+  const [query, setQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(SEARCHABLE_PAGE_SIZE);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setQuery(search), SEARCHABLE_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [search]);
+
+  // New search → start again from the first page.
+  useEffect(() => {
+    setVisibleCount(SEARCHABLE_PAGE_SIZE);
+  }, [query]);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q))
+    : options;
+  const visible = filtered.slice(0, visibleCount);
+  const selectedLabel = options.find((o) => o.value === value)?.label || value;
+
+  // Lazy loading: render the next page when the list is scrolled near its end.
+  const onListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (visibleCount < filtered.length && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
+      setVisibleCount((c) => c + SEARCHABLE_PAGE_SIZE);
+    }
+  };
+
+  const resetSearch = () => {
+    setSearch("");
+    setQuery("");
+    setVisibleCount(SEARCHABLE_PAGE_SIZE);
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) resetSearch();
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title={selectedLabel}
+          className={className + " flex items-center justify-between gap-1 text-left cursor-pointer"}
+        >
+          <span className={"truncate" + (value ? "" : " text-muted-foreground")}>
+            {selectedLabel || placeholder}
+          </span>
+          <ChevronDown className={"size-3.5 shrink-0 opacity-60 transition-transform" + (open ? " rotate-180" : "")} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] min-w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant"
+        align="start"
+      >
+        <div className="p-1.5 border-b border-hairline">
+          <div className="relative">
+            <Search className="size-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search Sales Person..."
+              className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface pl-6 pr-2 text-[12px] outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
+        </div>
+        <div className="max-h-56 overflow-y-auto p-1" onScroll={onListScroll}>
+          {search !== query ? (
+            <div className="px-2 py-1.5 text-[12px] text-muted-foreground">Searching…</div>
+          ) : filtered.length === 0 ? (
+            <div className="px-2 py-1.5 text-[12px] text-muted-foreground">No matches</div>
+          ) : (
+            visible.map((o, idx) => (
+              <button
+                key={`${o.value}-${idx}`}
+                type="button"
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                  resetSearch();
+                }}
+                className={
+                  "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[12px] hover:bg-muted/60 cursor-pointer" +
+                  (o.value === value ? " bg-muted font-semibold" : "")
+                }
+              >
+                <span className="truncate flex-1">{o.label}</span>
+                {o.value === value && <Check className="size-3.5 shrink-0 text-primary" />}
+              </button>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** Label with optional green "From SAP" badge (matches order-info-sap-create.tsx) */
 function FieldLabel({ label, fromSap }: { label: string; fromSap: boolean }) {
   return (
@@ -1618,18 +1743,16 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               <div>
                 <FieldLabel label="Sales Person" fromSap={!isWithout && !showF4.SALE_PERSON} />
                 {isWithout || showF4.SALE_PERSON ? (
-                  <select
+                  <SearchableSelect
                     value={form.SALE_PERSON}
-                    onChange={(e) => setField("SALE_PERSON", e.target.value)}
+                    onChange={(v) => setField("SALE_PERSON", v)}
+                    options={supplierList.map((s: any) => ({
+                      value: s.SUPPLIER_NAME,
+                      label: `${s.SUPPLIER} - ${s.SUPPLIER_NAME}`,
+                    }))}
+                    placeholder="Select Sales Person"
                     className={isWithout ? GREEN_INPUT : INPUT_SAP_EMPTY}
-                  >
-                    <option value="" disabled>Select Sales Person</option>
-                    {supplierList.map((s: any, idx: number) => (
-                      <option key={idx} value={s.SUPPLIER_NAME}>
-                        {s.SUPPLIER} - {s.SUPPLIER_NAME}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 ) : (
                   <input value={form.SALE_PERSON} readOnly className={INPUT_SAP_FILLED} />
                 )}

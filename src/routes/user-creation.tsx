@@ -1,8 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
-import { Plus } from "lucide-react";
+import {
+  Plus,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 import { CreateUserDialog, type UserFormValues } from "@/components/create-user-dialog";
 import Swal from "sweetalert2";
 import {
@@ -14,6 +21,33 @@ import {
 export const Route = createFileRoute("/user-creation")({
   component: UserCreationPage,
 });
+
+// ---------------------------------------------------------------------------
+// Users table layout (same as the IML Users table): search filter, sortable
+// headers and a paginator with rows-per-page + first/prev/next/last.
+// Only changes how the already-loaded `users` list is displayed.
+// ---------------------------------------------------------------------------
+const PAGE_SIZE_OPTIONS = [5, 10, 25];
+
+// Sortable text columns, in table order
+const SORTABLE_COLUMNS: { key: string; label: string }[] = [
+  { key: "USER", label: "User ID" },
+  { key: "FIRST_NAME", label: "First Name" },
+  { key: "LAST_NAME", label: "Last Name" },
+  { key: "EMAIL", label: "Email" },
+  { key: "CONTACT", label: "Contact" },
+  { key: "EMP_CODE", label: "Employee Code" },
+  { key: "INOUT_TYPE", label: "In/Out" },
+  { key: "CATEGORY", label: "Category" },
+  { key: "ROLES", label: "Roles" },
+  { key: "STATUS", label: "Status" },
+];
+
+// Fields the search box looks in
+const SEARCH_FIELDS = SORTABLE_COLUMNS.map((c) => c.key);
+
+const pagerButtonClass =
+  "size-7 grid place-items-center rounded-md border border-hairline bg-surface text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed";
 
 function UserCreationPage() {
   const [dialog, setDialog] = useState<{
@@ -152,6 +186,61 @@ function UserCreationPage() {
     setViewPopup(true);
   };
 
+  // ---- Table view state: search, sort, pagination (display only) ----
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+
+  // 1. Filter by the search text
+  const filteredUsers = useMemo(() => {
+    const text = search.trim().toLowerCase();
+    if (!text) return users;
+    return users.filter((user) =>
+      SEARCH_FIELDS.some((field) =>
+        String(user[field] ?? "").toLowerCase().includes(text)
+      )
+    );
+  }, [users, search]);
+
+  // 2. Sort by the clicked column
+  const sortedUsers = useMemo(() => {
+    if (!sortKey) return filteredUsers;
+    const sorted = [...filteredUsers].sort((a, b) =>
+      String(a[sortKey] ?? "").localeCompare(String(b[sortKey] ?? ""), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      })
+    );
+    return sortDir === "asc" ? sorted : sorted.reverse();
+  }, [filteredUsers, sortKey, sortDir]);
+
+  // 3. Cut out the current page
+  const totalPages = Math.max(1, Math.ceil(sortedUsers.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const pagedUsers = sortedUsers.slice(startIndex, startIndex + pageSize);
+  const rangeStart = sortedUsers.length === 0 ? 0 : startIndex + 1;
+  const rangeEnd = Math.min(startIndex + pageSize, sortedUsers.length);
+
+  // Go back to page 1 whenever the search or page size changes
+  useEffect(() => {
+    setPage(1);
+  }, [search, pageSize]);
+
+  // Click a header: ascending -> descending -> no sort
+  const handleSort = (key: string) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir("asc");
+    } else if (sortDir === "asc") {
+      setSortDir("desc");
+    } else {
+      setSortKey(null);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
@@ -160,12 +249,26 @@ function UserCreationPage() {
           <h1 className="font-display text-[18px] font-bold tracking-tight text-indigo-700 dark:text-indigo-300">
             User Management
           </h1>
-          <button
-            onClick={() => setDialog({ open: true, mode: "create" })}
-            className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform"
-          >
-            <Plus className="size-3.5" /> Create New User
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Search filter */}
+            <div className="relative">
+              <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search users"
+                aria-label="Search users"
+                className="h-9 w-56 pl-8 pr-3 rounded-lg border border-hairline bg-surface text-[12.5px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+              />
+            </div>
+            <button
+              onClick={() => setDialog({ open: true, mode: "create" })}
+              className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform"
+            >
+              <Plus className="size-3.5" /> Create New User
+            </button>
+          </div>
         </div>
 
         {/* Table */}
@@ -173,16 +276,15 @@ function UserCreationPage() {
           <table className="w-full text-[12.5px]">
             <thead>
               <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-                <th className="px-3 py-2.5 text-center">User ID</th>
-                <th className="px-3 py-2.5 text-center">First Name</th>
-                <th className="px-3 py-2.5 text-center">Last Name</th>
-                <th className="px-3 py-2.5 text-center">Email</th>
-                <th className="px-3 py-2.5 text-center">Contact</th>
-                <th className="px-3 py-2.5 text-center">Employee Code</th>
-                <th className="px-3 py-2.5 text-center">In/Out</th>
-                <th className="px-3 py-2.5 text-center">Category</th>
-                <th className="px-3 py-2.5 text-center">Roles</th>
-                <th className="px-3 py-2.5 text-center">Status</th>
+                {/* Column headers — names only (no sort/filter icons) */}
+                {SORTABLE_COLUMNS.map((col) => (
+                  <th
+                    key={col.key}
+                    className="px-3 py-2.5 text-left whitespace-nowrap"
+                  >
+                    {col.label}
+                  </th>
+                ))}
                 <th className="px-3 py-2.5 text-center">Plants</th>
                 <th className="px-3 py-2.5 text-center">Divisions</th>
                 <th className="px-3 py-2.5 text-center">Activities</th>
@@ -190,9 +292,12 @@ function UserCreationPage() {
               </tr>
             </thead>
             <tbody>
-              {users.length > 0 ? (
-                users.map((user: any, index) => (
-                  <tr key={index} className="border-b">
+              {pagedUsers.length > 0 ? (
+                pagedUsers.map((user: any, index) => (
+                  <tr
+                    key={startIndex + index}
+                    className="border-b border-hairline hover:bg-muted/50 transition-colors"
+                  >
                     <td className="px-3 py-2">{user.USER}</td>
                     <td className="px-3 py-2">{user.FIRST_NAME}</td>
                     <td className="px-3 py-2">{user.LAST_NAME}</td>
@@ -291,8 +396,10 @@ function UserCreationPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={14} className="px-3 py-10 text-center">
-                    No users found.
+                  <td colSpan={14} className="px-3 py-10 text-center text-muted-foreground">
+                    {users.length > 0 && search.trim()
+                      ? "No users match your search."
+                      : "No users found."}
                   </td>
                 </tr>
               )}
@@ -300,14 +407,79 @@ function UserCreationPage() {
           </table>
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-3 border-t border-hairline flex justify-between text-[12px] text-muted-foreground">
+        {/* Footer: total + paginator */}
+        <div className="px-5 py-3 border-t border-hairline flex flex-wrap items-center justify-between gap-3 text-[12px] text-muted-foreground">
           <span>
             Total Users:{" "}
             <span className="font-semibold text-foreground">
               {users.length}
             </span>
           </span>
+
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Rows per page */}
+            <label className="flex items-center gap-2">
+              Rows per page:
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="h-7 px-2 rounded-md border border-hairline bg-surface text-foreground text-[12px] focus:outline-none focus:ring-2 focus:ring-ring/40"
+              >
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {/* Range, e.g. "1 – 5 of 23" */}
+            <span>
+              <span className="font-semibold text-foreground">
+                {rangeStart} – {rangeEnd}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold text-foreground">
+                {sortedUsers.length}
+              </span>
+            </span>
+
+            {/* First / Previous / Next / Last */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage(1)}
+                disabled={currentPage <= 1}
+                className={pagerButtonClass}
+                aria-label="First page"
+              >
+                <ChevronsLeft className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage <= 1}
+                className={pagerButtonClass}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage >= totalPages}
+                className={pagerButtonClass}
+                aria-label="Next page"
+              >
+                <ChevronRight className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setPage(totalPages)}
+                disabled={currentPage >= totalPages}
+                className={pagerButtonClass}
+                aria-label="Last page"
+              >
+                <ChevronsRight className="size-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

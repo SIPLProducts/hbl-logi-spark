@@ -131,6 +131,8 @@ function DispatchOrdersPage() {
   // build below); this only adds the ability to tick more than one.
   const [plant, setPlant] = useState<string[]>([]);
   const [division, setDivision] = useState("");
+  // Status filter dropdown (Pending / Completed) — sent in the payload as STATUS.
+  const [statusFilter, setStatusFilter] = useState("");
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
 
@@ -177,6 +179,7 @@ function DispatchOrdersPage() {
       // wants only the plant code, as [{ plant: "1300" }, ...] — one entry per selection.
       plants: plant.map((p) => ({ plant: p.split("_")[0].trim() })),
       spart: division || " ", // division
+      STATUS: statusFilter, // "Pending" | "Completed" | "" (none selected)
     };
 
     try {
@@ -260,6 +263,7 @@ function DispatchOrdersPage() {
     setToDate("");
     setPlant([]);
     setDivision("");
+    setStatusFilter("");
     setSearch("");
     setRows([]);
     setStatus("idle");
@@ -419,6 +423,22 @@ function DispatchOrdersPage() {
                   placeholder="Select plant…"
                   searchable
                 />
+              </div>
+
+              <div className="flex flex-col gap-1 w-[190px]">
+                <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="h-9 bg-surface border border-hairline rounded-md px-2.5 text-[12.5px] outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                >
+                  <option value="">Select status…</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Completed">Completed</option>
+                  <option value="All">All</option>
+                </select>
               </div>
 
               {/* <div className="flex flex-col gap-1 w-[190px]">

@@ -857,7 +857,25 @@ function CreateDispatch() {
       vehicleType,
       vendorCode: vendor?.vendorCode || "",
       transporter: vendor?.transporter || "",
+      // Any vehicle type other than FULL TRUCK LOAD defaults No. of Trucks, Loading Points
+      // and Unloading Points to 1 (still editable by the user afterwards).
+      ...(vehicleType && vehicleType !== "FULL TRUCK LOAD"
+        ? { noOfTrucks: 1, loadingPoints: "1", unloadingPoints: "1" }
+        : {}),
+      // FULL TRUCK LOAD never gets that default: switching a row to FTL from another type
+      // clears the auto-filled 1s (values the user typed themselves are kept).
+      ...(vehicleType === "FULL TRUCK LOAD" ? clearNonFtlDefaults(rowId) : {}),
     });
+  };
+
+  const clearNonFtlDefaults = (rowId: string): Partial<DispatchRow> => {
+    const current = rows.find((r) => r.id === rowId);
+    if (!current || !current.vehicleType || current.vehicleType === "FULL TRUCK LOAD") return {};
+    const patch: Partial<DispatchRow> = {};
+    if (Number(current.noOfTrucks) === 1) patch.noOfTrucks = "";
+    if (String(current.loadingPoints).trim() === "1") patch.loadingPoints = "";
+    if (String(current.unloadingPoints).trim() === "1") patch.unloadingPoints = "";
+    return patch;
   };
 
   const handleSave = async (action?: "next" | "previous") => {
@@ -895,7 +913,7 @@ function CreateDispatch() {
         res = await service.DispatchNonSapSave(payload);
       } else {
         Swal.fire({
-          text: "Invalid SAP Type selected. Please choose With SAP or Without SAP.",
+          text: "Invalid SAP Type selected. Please choose Supply or Other than Supply.",
           icon: "error",
         });
         return;
@@ -994,7 +1012,7 @@ function CreateDispatch() {
         {!direction && <p className="mt-1.5 text-[11px] text-muted-foreground">Select a direction to continue.</p>}
         {direction && !sap && (
           <p className="mt-1.5 text-[11px] text-muted-foreground">
-            Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span>{" "}
+            Select <span className="font-semibold">Supply</span> or <span className="font-semibold">Other than Supply</span>{" "}
             to continue.
           </p>
         )}
@@ -1389,7 +1407,7 @@ function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: S
               )}
             />
           </span>
-          {m === "with" ? "With SAP" : "Without SAP"}
+          {m === "with" ? "Supply" : "Other than Supply"}
         </button>
       ))}
     </div>
@@ -1855,7 +1873,7 @@ function SearchDispatch() {
 
         {!sap && (
           <div className="p-6 text-center text-[12.5px] text-muted-foreground">
-            Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span>{" "}
+            Select <span className="font-semibold">Supply</span> or <span className="font-semibold">Other than Supply</span>{" "}
             to view filters.
           </div>
         )}

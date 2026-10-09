@@ -411,6 +411,10 @@ type ProductRow = {
   ZTRANSPORTER: string;
 };
 
+// Product, Material Type, Shipment Weight and Battery Condition entered on the first line
+// item are copied to the remaining line items (see updateRow / addRow).
+const COPY_FROM_FIRST_ROW_FIELDS = ["ZPRODUCT", "MTART", "ZSHIP_WT", "ZBATCOND"] as const;
+
 const emptyProductRow = (): ProductRow => ({
   selected: false,
   ZMAPID: "",
@@ -791,12 +795,41 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
   };
 
   // ---------- Product rows ----------
-  const addRow = () => setItems((prev) => [...prev, emptyProductRow()]);
+  // New rows start with the first line item's copy fields (still editable per row).
+  const addRow = () =>
+    setItems((prev) => [
+      ...prev,
+      {
+        ...emptyProductRow(),
+        ...(prev[0]
+          ? COPY_FROM_FIRST_ROW_FIELDS.reduce(
+            (acc, k) => ({ ...acc, [k]: prev[0][k] }),
+            {} as Partial<ProductRow>,
+          )
+          : {}),
+      },
+    ]);
   const removeRow = (index: number) => {
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
   };
   const updateRow = (index: number, patch: Partial<ProductRow>) => {
-    setItems((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+    setItems((prev) => {
+      const next = prev.map((r, i) => (i === index ? { ...r, ...patch } : r));
+      if (index !== 0) return next;
+      // Editing a copy field on the first line item copies it to the remaining line items
+      // that are still empty or still hold the first row's previous value — rows the user
+      // has changed themselves are left alone.
+      const copyKeys = COPY_FROM_FIRST_ROW_FIELDS.filter((k) => k in patch);
+      if (copyKeys.length === 0) return next;
+      return next.map((r, i) => {
+        if (i === 0) return r;
+        const copied: Partial<ProductRow> = {};
+        copyKeys.forEach((k) => {
+          if (!r[k] || r[k] === prev[0][k]) copied[k] = patch[k] as string;
+        });
+        return { ...r, ...copied };
+      });
+    });
   };
   const toggleAllSelection = (checked: boolean) => {
     setIsAllSelected(checked);

@@ -739,7 +739,7 @@ function FreightBillingPage() {
               )}
               {direction && !sap && (
                 <p className="mt-1.5 text-[11px] text-muted-foreground">
-                  Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span> to continue.
+                  Select <span className="font-semibold">Supply</span> or <span className="font-semibold">Other than Supply</span> to continue.
                 </p>
               )}
             </div>
@@ -762,8 +762,8 @@ function FreightBillingPage() {
 
               {!searchSap && (
                 <div className="p-6 text-center text-[12px] text-muted-foreground">
-                  Select <span className="font-semibold">With SAP</span> or{" "}
-                  <span className="font-semibold">Without SAP</span> to view filters.
+                  Select <span className="font-semibold">Supply</span> or{" "}
+                  <span className="font-semibold">Other than Supply</span> to view filters.
                 </div>
               )}
 
@@ -1195,7 +1195,7 @@ function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: S
               )}
             />
           </span>
-          {m === "with" ? "With SAP" : "Without SAP"}
+          {m === "with" ? "Supply" : "Other than Supply"}
         </button>
       ))}
     </div>
@@ -1250,7 +1250,7 @@ function SearchSapToggle({ value, onChange }: { value: SapMode | null; onChange:
               )}
             />
           </span>
-          {m === "with" ? "With SAP" : "Without SAP"}
+          {m === "with" ? "Supply" : "Other than Supply"}
         </button>
       ))}
     </div>

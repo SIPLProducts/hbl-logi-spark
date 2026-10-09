@@ -9,17 +9,17 @@ import service from "../services/generalservice_service.js";
 import hblLogo from "@/assets/hbl-logo.png";
 import slide1 from "@/assets/loginbgimage 1.png";
 import slide2 from "@/assets/loginbgimage 2.jpeg";
-import slide3 from "@/assets/loginggimage 3.png";
+// import slide3 from "@/assets/loginggimage 3.png";
 // import slide4 from "@/assets/loginbgimage 4.jpg";
-// import slide5 from "@/assets/loginbgimage 5.jpg";
+import slide5 from "@/assets/loginbgimage 5.jpg";
 import slide6 from "@/assets/Le1 image 6.png";
 
 const slides = [
   { url: slide1, alt: "Slide 1" },
   { url: slide2, alt: "Slide 2" },
-  { url: slide3, alt: "Slide 3" },
+  // { url: slide3, alt: "Slide 3" },
   // { url: slide4, alt: "Slide 4" },
-  // { url: slide5, alt: "Slide 5" },
+  { url: slide5, alt: "Slide 5" },
   { url: slide6, alt: "Slide 6" },
 ];
 
@@ -49,10 +49,14 @@ function LoginPage() {
   const [slideIndex, setSlideIndex] = useState(0);
   const [rememberMe, setRememberMe] = useState(false);
 
+  // Session id sent with the login request (same as the IML project):
+  // generated once when the login page opens = current time + random number (0-999).
+  const [zsession] = useState(() => Date.now() + Math.floor(Math.random() * 1000));
+
   useEffect(() => {
     const id = window.setInterval(() => {
       setSlideIndex((i) => (i + 1) % slides.length);
-    }, 4000);
+    }, 5000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -118,7 +122,7 @@ function LoginPage() {
         LOGIN: {
           USER: username,
           PASSWORD: password,
-          ZSESSION: "",
+          ZSESSION: zsession,
         },
       };
 
@@ -245,36 +249,18 @@ function LoginPage() {
   };
 
   return (
-    <main className="h-screen w-full overflow-hidden grid md:grid-cols-2 bg-white">
+    <main className="h-screen w-full overflow-hidden grid md:grid-cols-[3fr_2fr] bg-white">
       {/* Left panel — brand + slideshow */}
-      <section className="relative z-10 hidden md:flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-br from-sky-100 via-sky-50 to-white px-10 lg:px-14 pt-8 lg:pt-10 pb-6">
+      <section className="relative z-10 hidden md:flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-br from-sky-100 via-sky-50 to-white px-8 lg:px-10 pt-8 lg:pt-10 pb-6">
         {/* Soft glow */}
         <div
           aria-hidden
           className="pointer-events-none absolute -top-28 -left-20 size-[26rem] rounded-full bg-accent/15 blur-3xl"
         />
 
-        {/* Brand — HBL | Pravah lockup */}
-        <div className="relative animate-in fade-in slide-in-from-left-3 duration-700">
-          <div className="flex items-center gap-5">
-            <img
-              src={hblLogo}
-              alt="HBL Power Systems"
-              className="h-14 lg:h-16 w-auto object-contain"
-            />
-            <span className="h-12 lg:h-14 w-px bg-slate-300" aria-hidden />
-            <span className="font-sans text-[40px] lg:text-[46px] font-bold leading-none tracking-tight text-[#0b2249]">
-              Pravah
-            </span>
-          </div>
-          <p className="mt-3 text-[13px] lg:text-[14px] text-[#4f6f96]">
-            Simplifying Logistics. Empowering Operations.
-          </p>
-          <span className="mt-3 block h-[3px] w-14 rounded-full bg-accent" />
-        </div>
-
-        {/* Slideshow — one image at a time, sliding across */}
-        <div className="relative flex-1 min-h-0 flex flex-col pt-6">
+        {/* Slideshow — one image at a time, sliding across (brand lockup now sits on the
+            Sign In side, so the slideshow takes the full height of this panel) */}
+        <div className="relative flex-1 min-h-0 flex flex-col pt-2 animate-in fade-in slide-in-from-left-3 duration-700">
           <div className="relative flex-1 min-h-0 overflow-hidden rounded-2xl bg-white shadow-[0_18px_40px_-18px_rgba(11,34,73,0.30)]">
             <div
               className="flex h-full transition-transform duration-700 ease-in-out"
@@ -286,7 +272,7 @@ function LoginPage() {
                   src={s.url}
                   alt={s.alt}
                   loading={i === 0 ? "eager" : "lazy"}
-                  className="h-full min-w-full object-contain object-center p-2"
+                  className="h-full min-w-full object-contain object-center p-1"
                 />
               ))}
             </div>
@@ -328,7 +314,7 @@ function LoginPage() {
       </section>
 
       {/* Right panel — sign-in */}
-      <section className="relative flex h-full min-h-0 flex-col justify-center overflow-hidden bg-gradient-to-br from-white via-slate-50 to-sky-100/70 px-6 sm:px-10 lg:px-16 py-6">
+      <section className="relative flex h-full min-h-0 flex-col justify-center overflow-hidden bg-gradient-to-br from-white via-slate-50 to-sky-100/70 px-6 sm:px-8 lg:px-10 py-6">
         {/* Decorative diagonal bars */}
         <div
           aria-hidden
@@ -343,14 +329,24 @@ function LoginPage() {
           className="pointer-events-none absolute -bottom-32 -right-14 h-[26rem] w-28 rotate-[40deg] rounded-full bg-gradient-to-t from-primary/10 to-transparent"
         />
 
-        <div className="relative w-full max-w-[400px] mx-auto animate-in fade-in slide-in-from-right-3 duration-700">
-          {/* Compact brand — shown only where the left panel is hidden */}
-          <div className="md:hidden mb-5 flex items-center gap-4">
-            <img src={hblLogo} alt="HBL Power Systems" className="h-14 w-auto object-contain" />
-            <span className="h-10 w-px bg-slate-300" aria-hidden />
-            <span className="font-sans text-[28px] font-bold leading-none tracking-tight text-[#0b2249]">
-              Pravah
-            </span>
+        <div className="relative w-full max-w-[360px] mx-auto animate-in fade-in slide-in-from-right-3 duration-700">
+          {/* Brand — HBL | Pravah lockup (moved here from the images side; same
+              colours/style, sized to fit the Sign In column at every breakpoint) */}
+          <div className="mb-7">
+            <div className="flex items-center gap-4 lg:gap-5">
+              <img
+                src={hblLogo}
+                alt="HBL Power Systems"
+                className="h-12 lg:h-14 xl:h-16 w-auto object-contain shrink-0"
+              />
+              <span className="h-10 lg:h-12 xl:h-14 w-px bg-slate-300 shrink-0" aria-hidden />
+              <span className="font-sans text-[32px] lg:text-[40px] xl:text-[46px] font-bold leading-none tracking-tight text-[#0b2249]">
+                Pravah
+              </span>
+            </div>
+            <p className="mt-2.5 text-[12.5px] lg:text-[13.5px] text-[#4f6f96]">
+              Simplifying Logistics. Empowering Operations.
+            </p>
           </div>
 
           <h1 className="font-display text-[28px] sm:text-[30px] font-bold leading-tight tracking-tight text-[#0b2249]">

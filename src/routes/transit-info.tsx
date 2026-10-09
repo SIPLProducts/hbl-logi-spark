@@ -341,21 +341,61 @@ function TransitInfoPage() {
       return;
     }
 
-    const exportData = exportSource.map((record) => ({
-      "Reference No": record.ZREFNO || "",
-      Plant: record.ZWERKS || record.ZPLANT || "",
-      Division: record.ZDIVISION || "",
-      "Vehicle Type": record.ZVEH_TYPE || "",
-      "Current Location": record.ZCURR_LOC || "",
-      "Last Ping": record.ZLAST_PING || "",
-      "Next Stop": record.ZNEXT_STOP || "",
-      ETA: record.ZETA || "",
-      "Delay (hrs)": record.ZDELAY || "",
-      Transporter: record.ZTRANSPORTER || "",
-      "Created Date": record.ZCREATED_DT
-        ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB")
-        : "",
-    }));
+    let exportData: any[] = [];
+
+    // ================= COMPLETED =================
+    // Same columns as the Header Items + Line Items tables shown on screen
+    // (reference: Transit Damage Info).
+    if (fStatus === "Completed") {
+      exportData = exportSource.map((record) => ({
+        "REF No": record.ZREFNO || "",
+        "Invoice No": record.ZINV_NO || "",
+        "Line No": record.ZLINE_NO || "",
+        "ODN Number": record.ZODN_NO || "",
+        "SO Number": record.ZSONO || "",
+        "Sales Person": record.ZSALE_PERSON || "",
+        "Physical Arrived": formatDateTimeDisplay(record.ZPY_ARRIVED_DEST),
+        "Unloading DT": formatDateTimeDisplay(record.ZUNLOADING_DT),
+        "POD Scan File": record.ZPODNAME || record.ZLOCALFILES?.POD || "",
+        "POD Scan Received Date": formatDateTimeDisplay(record.ZPOD_SCAN),
+        "SIT/SALE": record.ZSIT_SALE || "",
+        Location: record.ZLOCATION || "",
+        Plant: record.ZPLANT || "",
+        Division: record.ZDIVISION || "",
+        "Created Date": record.ZCREATED_DT
+          ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB")
+          : "",
+        "Vehicle Type": record.ZVEH_TYPE || "",
+        "Vehicle Line": record.ZVEH_LINE || "",
+        "Vehicle Number": record.ZVEH_NUM || "",
+        "LR No": record.ZLRNO || "",
+        "Work Order": record.ZWORK_ORDER || "",
+        Transporter: record.ZTRANSPORTER || "",
+      }));
+    }
+
+    // ================= PENDING =================
+    // Same columns as the Pending Dispatch Records table shown on screen.
+    else {
+      exportData = exportSource.map((record) => ({
+        "Reference No": record.ZREFNO || "",
+        Date: record.ZCREATED_DT
+          ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB")
+          : "",
+        Plant: record.ZWERKS || "",
+        Division: record.ZDIVISION || "",
+        "Vehicle Type": record.ZVEH_TYPE || "",
+        "No. of Trucks": record.ZNO_TRUCKS || "",
+        "Work Order": record.ZWORK_ORDER || "",
+        "Vendor Code": record.ZVENDOR_CD || "",
+        Transporter: record.ZTRANSPORTER || "",
+        "No. of LRs": record.ZNO_LRS || "",
+        "LR Number": record.ZLR_NO || "",
+        "Loading Point": record.ZLOAD_PT || "",
+        "Unloading Point": record.ZUNLOAD_PT || "",
+        "No Of Invoices": record.ZNO_INVOICES || "",
+      }));
+    }
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
@@ -411,26 +451,74 @@ function TransitInfoPage() {
     doc.setFont("helvetica", "normal");
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, doc.internal.pageSize.getWidth() / 2, 18, { align: "center" });
 
-    const headers = [[
-      "SI.No", "Reference No", "Plant", "Division", "Vehicle Type",
-      "Current Location", "Last Ping", "Next Stop", "ETA", "Delay (hrs)",
-      "Transporter", "Created Date",
-    ]];
+    let headers: any[] = [];
+    let rows: any[] = [];
 
-    const rows = exportSource.map((record, index) => [
-      index + 1,
-      record.ZREFNO || "",
-      record.ZWERKS || record.ZPLANT || "",
-      record.ZDIVISION || "",
-      record.ZVEH_TYPE || "",
-      record.ZCURR_LOC || "",
-      record.ZLAST_PING || "",
-      record.ZNEXT_STOP || "",
-      record.ZETA || "",
-      record.ZDELAY || "",
-      record.ZTRANSPORTER || "",
-      record.ZCREATED_DT ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB") : "",
-    ]);
+    // ================= COMPLETED =================
+    // Same columns as the Header Items + Line Items tables shown on screen
+    // (reference: Transit Damage Info).
+    if (fStatus === "Completed") {
+      headers = [[
+        "SI.No", "REF No", "Invoice No", "Line No", "ODN Number", "SO Number",
+        "Sales Person", "Physical Arrived", "Unloading DT", "POD Scan File",
+        "POD Scan Received Date", "SIT/SALE", "Location", "Plant", "Division",
+        "Created Date", "Vehicle Type", "Vehicle Line", "Vehicle Number",
+        "LR No", "Work Order", "Transporter",
+      ]];
+
+      rows = exportSource.map((record, index) => [
+        index + 1,
+        record.ZREFNO || "",
+        record.ZINV_NO || "",
+        record.ZLINE_NO || "",
+        record.ZODN_NO || "",
+        record.ZSONO || "",
+        record.ZSALE_PERSON || "",
+        formatDateTimeDisplay(record.ZPY_ARRIVED_DEST),
+        formatDateTimeDisplay(record.ZUNLOADING_DT),
+        record.ZPODNAME || record.ZLOCALFILES?.POD || "",
+        formatDateTimeDisplay(record.ZPOD_SCAN),
+        record.ZSIT_SALE || "",
+        record.ZLOCATION || "",
+        record.ZPLANT || "",
+        record.ZDIVISION || "",
+        record.ZCREATED_DT ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB") : "",
+        record.ZVEH_TYPE || "",
+        record.ZVEH_LINE || "",
+        record.ZVEH_NUM || "",
+        record.ZLRNO || "",
+        record.ZWORK_ORDER || "",
+        record.ZTRANSPORTER || "",
+      ]);
+    }
+
+    // ================= PENDING =================
+    // Same columns as the Pending Dispatch Records table shown on screen.
+    else {
+      headers = [[
+        "SI.No", "Reference No", "Date", "Plant", "Division", "Vehicle Type",
+        "No. of Trucks", "Work Order", "Vendor Code", "Transporter", "No. of LRs",
+        "LR Number", "Loading Point", "Unloading Point", "No Of Invoices",
+      ]];
+
+      rows = exportSource.map((record, index) => [
+        index + 1,
+        record.ZREFNO || "",
+        record.ZCREATED_DT ? new Date(record.ZCREATED_DT).toLocaleDateString("en-GB") : "",
+        record.ZWERKS || "",
+        record.ZDIVISION || "",
+        record.ZVEH_TYPE || "",
+        record.ZNO_TRUCKS || "",
+        record.ZWORK_ORDER || "",
+        record.ZVENDOR_CD || "",
+        record.ZTRANSPORTER || "",
+        record.ZNO_LRS || "",
+        record.ZLR_NO || "",
+        record.ZLOAD_PT || "",
+        record.ZUNLOAD_PT || "",
+        record.ZNO_INVOICES || "",
+      ]);
+    }
 
     autoTable(doc, {
       head: headers,
@@ -558,7 +646,7 @@ function TransitInfoPage() {
               )}
               {direction && !sap && (
                 <p className="mt-1.5 text-[11px] text-muted-foreground">
-                  Select <span className="font-semibold">With SAP</span> or <span className="font-semibold">Without SAP</span> to continue.
+                  Select <span className="font-semibold">Supply</span> or <span className="font-semibold">Other than Supply</span> to continue.
                 </p>
               )}
             </div>
@@ -581,8 +669,8 @@ function TransitInfoPage() {
 
               {!searchSap && (
                 <div className="p-6 text-center text-[12px] text-muted-foreground">
-                  Select <span className="font-semibold">With SAP</span> or{" "}
-                  <span className="font-semibold">Without SAP</span> to view filters.
+                  Select <span className="font-semibold">Supply</span> or{" "}
+                  <span className="font-semibold">Other than Supply</span> to view filters.
                 </div>
               )}
 
@@ -639,6 +727,7 @@ function TransitInfoPage() {
                       variant="outline"
                       size="sm"
                       className="gap-1.5"
+                      onClick={downloadExcel}
                       disabled={
                         !applied ||
                         (fStatus === "Completed" &&
@@ -1055,7 +1144,7 @@ function SapToggle({ value, onChange }: { value: SapMode | null; onChange: (v: S
               )}
             />
           </span>
-          {m === "with" ? "With SAP" : "Without SAP"}
+          {m === "with" ? "Supply" : "Other than Supply"}
         </button>
       ))}
     </div>
@@ -1110,7 +1199,7 @@ function SearchSapToggle({ value, onChange }: { value: SapMode | null; onChange:
               )}
             />
           </span>
-          {m === "with" ? "With SAP" : "Without SAP"}
+          {m === "with" ? "Supply" : "Other than Supply"}
         </button>
       ))}
     </div>
