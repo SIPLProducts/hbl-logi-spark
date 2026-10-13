@@ -31,6 +31,7 @@ import { FreightBillingSapCreate } from "@/components/freight-billing-sap-create
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getHandedOffDirection, getHandedOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
 export const Route = createFileRoute("/freight-billing")({
   component: FreightBillingPage,
@@ -82,8 +83,15 @@ function renderCreateBody({ sap, direction }: { sap: SapMode; direction: "outwar
 
 function FreightBillingPage() {
   const [tab, setTab] = useState<"create" | "search">("create");
-  const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
-  const [sap, setSap] = useState<SapMode | null>(null);
+  const [direction, setDirection] = useState<"outward" | "inward" | null>(() => getHandedOffDirection());
+  const [sap, setSap] = useState<SapMode | null>(() => getHandedOffSapMode());
+  // Save & Next / Previous from the neighbouring screen opens this one in the same mode.
+  useConsumeSapModeHandOff();
+  // Opened via Save & Next / Previous with a mode → load its Pending/Completed counts, as picking the mode does.
+  useEffect(() => {
+    if (direction && sap) void fetchPendingAndCompletedCounts(sap);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Filter & Download filter state
   const [searchSap, setSearchSap] = useState<SapMode | null>(null);

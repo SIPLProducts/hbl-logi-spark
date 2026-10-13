@@ -30,6 +30,7 @@ import autoTable from "jspdf-autotable";
 import { exportRowsToXls } from "@/lib/export-xls.js";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
+import { getHandedOffDirection, getHandedOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
 export const Route = createFileRoute("/segment-info")({
   component: SegmentInfoPage,
@@ -66,8 +67,10 @@ function getLoginPlantsDivisions(): { plants: any[]; divisions: any[] } {
 // ─────────────── Page ───────────────
 function SegmentInfoPage() {
   const [tab, setTab] = useState<"create" | "search">("create");
-  const [direction, setDirection] = useState<Direction | null>(null);
-  const [sap, setSap] = useState<SapMode | null>(null);
+  const [direction, setDirection] = useState<Direction | null>(() => getHandedOffDirection());
+  const [sap, setSap] = useState<SapMode | null>(() => getHandedOffSapMode());
+  // Save & Next / Previous from the neighbouring screen opens this one in the same mode.
+  useConsumeSapModeHandOff();
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
 

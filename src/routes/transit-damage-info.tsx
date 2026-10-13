@@ -39,6 +39,7 @@ import { TransitDamageInfoSapCreate } from "@/components/transit-damage-info-sap
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getHandedOffDirection, getHandedOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
 
 export const Route = createFileRoute("/transit-damage-info")({
@@ -160,8 +161,15 @@ function renderCreateBody({ sap, direction }: { sap: SapMode; direction: "outwar
 function TransitDamageInfoPage() {
   const [tab, setTab] = useState<"create" | "search">("create");
   const [selectedId, setSelectedId] = useState<string>(PAGE_ROWS[0]?.id ?? "");
-  const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
-  const [sap, setSap] = useState<SapMode | null>(null);
+  const [direction, setDirection] = useState<"outward" | "inward" | null>(() => getHandedOffDirection());
+  const [sap, setSap] = useState<SapMode | null>(() => getHandedOffSapMode());
+  // Save & Next / Previous from the neighbouring screen opens this one in the same mode.
+  useConsumeSapModeHandOff();
+  // Opened via Save & Next / Previous with a mode → load its Pending/Completed counts, as picking the mode does.
+  useEffect(() => {
+    if (direction && sap) void fetchPendingAndCompletedCounts(sap);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [searchType, setSearchType] = useState<(typeof SEARCH_TYPES)[number]>("Reference");
   const [searchValue, setSearchValue] = useState("");
 

@@ -19,6 +19,8 @@ import {
   ChevronDown,
   Check,
   X,
+  ExternalLink,
+  Download,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,9 @@ import autoTable from "jspdf-autotable";
 import { exportRowsToXls } from "@/lib/export-xls.js";
 // @ts-ignore
 import service from "@/services/generalservice_service.js";
+// @ts-ignore
+import { getLocalDocumentUrl, downloadDocument } from "@/services/generalservice_service";
+import { getHandedOffDirection, getHandedOffSapMode, handOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
 type SapMode = "with" | "without";
 
@@ -66,8 +71,10 @@ export const Route = createFileRoute("/gate-in-out-process")({
 function GateInOutProcessPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"create" | "search">("create");
-  const [direction, setDirection] = useState<"outward" | null>(null);
-  const [sap, setSap] = useState<SapMode | null>(null);
+  const [direction, setDirection] = useState<"outward" | null>(() => getHandedOffDirection());
+  const [sap, setSap] = useState<SapMode | null>(() => getHandedOffSapMode());
+  // Save & Next / Previous from the neighbouring screen opens this one in the same mode.
+  useConsumeSapModeHandOff();
   const [selectedId, setSelectedId] = useState<string>("");
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
@@ -194,6 +201,20 @@ function GateInOutProcessPage() {
     } finally {
       setIsFilterLoading(false);
     }
+  };
+
+  // Opens an uploaded Dispatch Document found on disk for a filtered record (same as the
+  // other screens' Filter & Download tables).
+  const viewDoc = (item: any, field: string, fileName?: string) => {
+    if (!fileName || fileName === "-" || fileName === "NA") return;
+    const url = getLocalDocumentUrl({
+      mode: searchSap === "without" ? "Without Sap" : "SAP",
+      screen: "Gate_In_Out",
+      field,
+      fileName,
+      row: item,
+    });
+    if (url) window.open(url, "_blank");
   };
 
   const downloadExcel = () => {
@@ -663,7 +684,7 @@ function GateInOutProcessPage() {
                                 <thead className="sticky top-0 z-30 bg-gradient-primary text-primary-foreground font-semibold uppercase tracking-[0.12em] text-[10px]">
                                   <tr>
                                     <th className="px-3 py-2.5 whitespace-nowrap">SI.No</th>
-                                    {["Reference No", "Ref Line Item", "Invoice No", "Plant", "EWB App", "EWB Date", "EWB No", "EWB Exp", "Ins Scope", "Km", "Work Order", "LR No", "Transporter", "Created Date", "User", "User CH"].map((h) => (
+                                    {["Reference No", "Ref Line Item", "Invoice No", "Plant", "EWB App", "EWB Date", "EWB No", "EWB Exp", "Ins Scope", "Km", "Work Order", "LR No", "Transporter", "Created Date", "User", "User CH", "Dispatch Documents Uploading"].map((h) => (
                                       <th key={h} className="px-3 py-2.5 whitespace-nowrap">{h}</th>
                                     ))}
                                   </tr>
@@ -671,7 +692,7 @@ function GateInOutProcessPage() {
                                 <tbody className="bg-surface divide-y divide-hairline/70">
                                   {allHeaders.length === 0 ? (
                                     <tr>
-                                      <td colSpan={17} className="px-3 py-10 text-center text-muted-foreground">
+                                      <td colSpan={18} className="px-3 py-10 text-center text-muted-foreground">
                                         No Header Records Found
                                       </td>
                                     </tr>
@@ -697,6 +718,31 @@ function GateInOutProcessPage() {
                                         </td>
                                         <td className="px-3 py-2 whitespace-nowrap">{header.ZUSER || "-"}</td>
                                         <td className="px-3 py-2 whitespace-nowrap">{header.ZUSER_CH || "-"}</td>
+                                        {/* Uploaded Dispatch Document — stored per Ref + Invoice, so it is the same
+                                            file shown on this header's own line items */}
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {(() => {
+                                            const docRow =
+                                              (header.ZLOCALFILES?.[GATE_DISPATCH_DOC_FIELD] ? header : null) ||
+                                              allItems.find(
+                                                (it: any) =>
+                                                  String(it.ZINV_NO ?? "") === String(header.ZINV_NO ?? "") &&
+                                                  it.ZLOCALFILES?.[GATE_DISPATCH_DOC_FIELD]
+                                              );
+                                            const docName = docRow?.ZLOCALFILES?.[GATE_DISPATCH_DOC_FIELD];
+                                            return docName && docName !== "-" ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => viewDoc(docRow, GATE_DISPATCH_DOC_FIELD, docName)}
+                                                className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                              >
+                                                {docName}
+                                              </button>
+                                            ) : (
+                                              "-"
+                                            );
+                                          })()}
+                                        </td>
                                       </tr>
                                     ))
                                   )}
@@ -715,7 +761,7 @@ function GateInOutProcessPage() {
                                 <thead className="sticky top-0 z-30 bg-gradient-primary text-primary-foreground font-semibold uppercase tracking-[0.12em] text-[10px]">
                                   <tr>
                                     <th className="px-3 py-2.5 whitespace-nowrap">SI.No</th>
-                                    {["Invoice No", "Line Item", "Ref No", "Ref Item", "Sl No", "Req Date", "Reported Date", "Dispatch Date", "Truck Type", "Trans Type", "Vehicle No", "No Veh", "Driver No", "Driver", "Cust Emails", "Sales Emails", "GPS Loc", "TAT Type", "TAT Days", "ETA", "Provision", "Provision Date", "Basic Freight", "Detention Loading", "Detention Unloading", "Loading Charges", "Unloading Charges", "Route Change", "Transhipment Charges", "Other Charges", "Deduction", "Provision Amount", "GST Amount"].map((h) => (
+                                    {["Invoice No", "Line Item", "Ref No", "Ref Item", "Sl No", "Req Date", "Reported Date", "Dispatch Date", "Truck Type", "Trans Type", "Vehicle No", "No Veh", "Driver No", "Driver", "Cust Emails", "Sales Emails", "GPS Loc", "TAT Type", "TAT Days", "ETA", "Provision", "Provision Date", "Basic Freight", "Detention Loading", "Detention Unloading", "Loading Charges", "Unloading Charges", "Route Change", "Transhipment Charges", "Other Charges", "Deduction", "Provision Amount", "GST Amount", "Dispatch Documents Uploading"].map((h) => (
                                       <th key={h} className="px-3 py-2.5 whitespace-nowrap">{h}</th>
                                     ))}
                                   </tr>
@@ -723,7 +769,7 @@ function GateInOutProcessPage() {
                                 <tbody className="bg-surface divide-y divide-hairline/70">
                                   {allItems.length === 0 ? (
                                     <tr>
-                                      <td colSpan={34} className="px-3 py-10 text-center text-muted-foreground">
+                                      <td colSpan={35} className="px-3 py-10 text-center text-muted-foreground">
                                         No Line Items Found.
                                       </td>
                                     </tr>
@@ -776,6 +822,20 @@ function GateInOutProcessPage() {
                                         <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZPR_DEDUCT || "0"}</td>
                                         <td className="px-3 py-2 whitespace-nowrap font-medium text-primary">{item.ZPROVAMT || "0"}</td>
                                         <td className="px-3 py-2 whitespace-nowrap tabular-nums">{item.ZGSTAMT || "0"}</td>
+                                        {/* Uploaded Dispatch Document (found on disk for this record) */}
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                          {item.ZLOCALFILES?.[GATE_DISPATCH_DOC_FIELD] && item.ZLOCALFILES?.[GATE_DISPATCH_DOC_FIELD] !== "-" ? (
+                                            <button
+                                              type="button"
+                                              onClick={() => viewDoc(item, GATE_DISPATCH_DOC_FIELD, item.ZLOCALFILES?.[GATE_DISPATCH_DOC_FIELD])}
+                                              className="text-blue-600 hover:underline font-medium cursor-pointer"
+                                            >
+                                              {item.ZLOCALFILES?.[GATE_DISPATCH_DOC_FIELD]}
+                                            </button>
+                                          ) : (
+                                            "-"
+                                          )}
+                                        </td>
                                       </tr>
                                     ))
                                   )}
@@ -1049,6 +1109,125 @@ const GATE_COLUMNS = [
   "ETA",
   "Provision",
 ];
+
+// ── Items table: "Dispatch Documents Uploading" ──
+// Same flow as the other screens' documents (Transit Info / Freight Billing): the chosen
+// file is sent as base64 with the item (DISPATCH_DOC + DISPATCH_DOC_NAME); the Node API's
+// fileService stores it under
+//   <SAP | Without Sap>\Gate_In_Out\Dispatch_Documents\<RefNo>_<InvNo>_<file>
+// and search returns it as ZLOCALFILES / ZLOCALFILE_URLS.Dispatch_Documents.
+const GATE_DISPATCH_DOC_FIELD = "Dispatch_Documents";
+
+// ── TAT Type: "Instant TAT from Hyd" / "Instant TAT from Vizag" use the same logic as
+// "Direct Truck TAT(Vizag)": the TAT lookup (fetchTAT / fetchNonSapTAT) is asked for the
+// Vizag TAT, and ETA follows the same rule. The selected name itself is what's shown/saved.
+const GATE_TAT_AS_VIZAG = ["Instant TAT from Hyd", "Instant TAT from Vizag"];
+const gateTatLookupType = (tatType: string) =>
+  GATE_TAT_AS_VIZAG.includes(tatType) ? "Direct Truck TAT(Vizag)" : tatType;
+
+function gateFileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Plain base64 of a document (the data URI without its "data:<type>;base64," prefix) —
+// sent to SAP in ZDIS_UPLD (Save + Change, both modes) so SAP can mail the document.
+const gateBase64Only = (dataUri?: string): string =>
+  dataUri ? String(dataUri).replace(/^data:[^,]*,/, "") : "";
+
+// Reads an already-stored Dispatch Document from the server and returns its plain base64
+// (used on Change when the user keeps the existing file). Returns "" if it can't be read.
+async function gateStoredDocumentToBase64(url: string): Promise<string> {
+  if (!url) return "";
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return "";
+    const blob = await response.blob();
+    const dataUri = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+    return gateBase64Only(dataUri);
+  } catch {
+    return "";
+  }
+}
+
+// Object URL for a just-picked (not yet saved) document, from its base64 data URI.
+async function gateDataUriToObjectUrl(dataUri: string): Promise<string> {
+  try {
+    const blob = await (await fetch(dataUri)).blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return "";
+  }
+}
+
+/** File cell: picked/stored file name (click to preview) + Browse / Change button. */
+function GateDispatchDocCell({
+  pickedName,
+  pickedDataUri,
+  storedName,
+  storedUrl,
+  canPick,
+  onPick,
+  onView,
+}: {
+  pickedName?: string;
+  pickedDataUri?: string;
+  storedName?: string;
+  storedUrl?: string;
+  canPick: boolean;
+  onPick?: (file: File) => void;
+  onView: (url: string, title: string) => void;
+}) {
+  const name = pickedName || storedName;
+  return (
+    <div className="flex flex-col items-center gap-1 min-w-[140px]">
+      {name ? (
+        <button
+          type="button"
+          onClick={async () => {
+            if (pickedName && pickedDataUri) {
+              const url = await gateDataUriToObjectUrl(pickedDataUri);
+              if (url) onView(url, pickedName);
+            } else if (storedUrl && storedName) {
+              onView(storedUrl, storedName);
+            }
+          }}
+          className="inline-flex items-center gap-1 text-[12px] text-blue-600 hover:underline font-medium cursor-pointer max-w-[160px]"
+          title={`View ${name}`}
+        >
+          <FileText className="size-3.5 shrink-0 opacity-70" />
+          <span className="truncate">{name}</span>
+        </button>
+      ) : (
+        <span className="text-[12px] text-muted-foreground">-</span>
+      )}
+      {canPick && (
+        <label className="cursor-pointer inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 transition-colors">
+          <span>{name ? "Change" : "Browse"}</span>
+          <input
+            type="file"
+            accept=".jpg,.jpeg,.png,.pdf"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) onPick?.(file);
+            }}
+            className="hidden"
+          />
+        </label>
+      )}
+    </div>
+  );
+}
 
 // ── Reference table + Invoice/Search bar — UI copied from OrderInfoSapCreate ──
 // NOTE: presentational only. No API/service calls are wired up here.
@@ -1484,6 +1663,9 @@ type GateRow = {
   provisionDate: string;
   provisionBreakdown?: GateBreakdown;
   provisionGst: number | "";
+  // Dispatch Documents Uploading — picked file as base64 data URI + its original name
+  dispatchDocB64?: string;
+  dispatchDocName?: string;
 };
 
 const GATE_PROVISION_LABEL = "text-[11px] font-semibold text-muted-foreground uppercase tracking-wider";
@@ -2312,6 +2494,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
   const [searchResultHeaders, setSearchResultHeaders] = useState<any[]>([]);
   const [searchResultItems, setSearchResultItems] = useState<any[]>([]);
+  // Dispatch Documents Uploading — document preview (same viewer as Transit Info)
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; title: string } | null>(null);
   const [isGlobalSearch, setIsGlobalSearch] = useState(false);
   const searchResultHeader = searchResultHeaders[0] || {};
   const setSearchResultHeader = (updater: any) => {
@@ -2439,7 +2623,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     const payload: any = {
       BRANCH: currentItem?.ZSTATE || "",
       BRANCH_ZONE: currentItem?.ZZONE || "",
-      TAT_TYPE: newTatType,
+      TAT_TYPE: gateTatLookupType(newTatType),
     };
     if (isSap) payload.VBELN = invNo;
     else payload.INV_NO = invNo;
@@ -3419,7 +3603,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
     const row = gateRows[index];
     const invNo = row?.invoiceNumber || invoiceNumber || "";
-    const payload: any = { BRANCH: row?.destinationState || "", BRANCH_ZONE: row?.destinationZone || "", TAT_TYPE: tatType };
+    const payload: any = { BRANCH: row?.destinationState || "", BRANCH_ZONE: row?.destinationZone || "", TAT_TYPE: gateTatLookupType(tatType) };
     if (isSap) payload.VBELN = invNo;
     else payload.INV_NO = invNo;
 
@@ -3664,6 +3848,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           ZPR_TSHIP: row.provisionBreakdown?.["Transhipment Charges"] || 0,
           ZPR_OTHER: row.provisionBreakdown?.["Other Charges"] || 0,
           ZPR_DEDUCT: row.provisionBreakdown?.["Deduction"] || 0,
+          // Dispatch Documents Uploading — stored by the Node API, not sent on to SAP
+          DISPATCH_DOC: row.dispatchDocB64 || "",
+          DISPATCH_DOC_NAME: row.dispatchDocName || "",
+          // Same document, plain base64 only — passed on to SAP as is
+          ZDIS_UPLD: gateBase64Only(row.dispatchDocB64),
         })),
       };
     });
@@ -3710,6 +3899,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         setSearchValue("");
         setIsAllGateSelected(false);
 
+        // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+        if (action === "next" || action === "previous") handOffSapMode(mode);
         if (action === "next") {
           navigate({ to: "/invoice-load-details" });
         } else if (action === "previous") {
@@ -3804,6 +3995,21 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         }
         cleanItems = [formatGateItemForPayload(cleanItem)];
 
+        // ZDIS_UPLD: if no new file was picked, send the already-stored document's base64
+        if (!cleanItems[0].ZDIS_UPLD) {
+          const storedFileName = cleanItem.ZLOCALFILES?.[GATE_DISPATCH_DOC_FIELD];
+          if (storedFileName) {
+            const storedFileUrl = getLocalDocumentUrl({
+              mode: isSap ? "SAP" : "Without Sap",
+              screen: "Gate_In_Out",
+              field: GATE_DISPATCH_DOC_FIELD,
+              fileName: storedFileName,
+              row: cleanItem,
+            });
+            cleanItems[0].ZDIS_UPLD = await gateStoredDocumentToBase64(storedFileUrl);
+          }
+        }
+
         targetHeader = searchResultHeaders.find(
           (h: any) =>
             (cleanItem.ZINV_NO && String(h.ZINV_NO) === String(cleanItem.ZINV_NO)) ||
@@ -3867,9 +4073,17 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       ? headerRows.some((r) => r.ewayApplicable === "Yes")
       : ewayApplicable === "Yes";
 
+  // While search-bar results are shown, the Create tables (Reference, DC Reference, Header,
+  // Item) are hidden. Clearing the search box (or GET in Supply mode) brings them back.
+  const showingSearchResults =
+    isGlobalSearch &&
+    (searchResultHeaders.length > 0 || searchResultItems.length > 0) &&
+    searchValue.trim() !== "";
+
   return (
     <div className="space-y-3">
       {/* ── Reference table (same UI/CSS as Shipment Details) ── */}
+      {!showingSearchResults && (
       <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
         <table className="w-full text-[12px]">
           <thead>
@@ -3978,6 +4192,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* ── Invoice lookup + search bar (same UI as Order Info) ── */}
       <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
@@ -4047,7 +4262,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       </div>
 
       {/* ── DC Reference Number (Without SAP) — mirrors InvoiceLoadDetails' DC Reference field ── */}
-      {!isSap && (
+      {!isSap && !showingSearchResults && (
         <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2 gap-y-2">
             <div>
@@ -4280,6 +4495,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                       if (showProvision) {
                         headers.push("Provision Amount", "Provision Date");
                       }
+                      headers.push("Dispatch Documents Uploading");
                       headers.push("Action");
                       return headers.map((h) => (
                         <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">{h}</th>
@@ -4328,8 +4544,18 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               "Delivery TAT",
                               "GATI TAT",
                               "V Xpress",
-                              "Instant Transport Solution",
-                              "Others"
+                              // "Instant Transport Solution",
+                              "Instant TAT from Hyd",
+                              "Instant TAT from Vizag",
+                              "Others",
+                              // Keep showing a saved value that is no longer offered (e.g. "Instant Transport Solution")
+                              ...(item.TAT_TYPE &&
+                              ![
+                                "Direct Truck TAT(Vizag)", "Direct Truck TAT(Hyd)", "Safe Express TAT", "Delivery TAT",
+                                "GATI TAT", "V Xpress", "Instant TAT from Hyd", "Instant TAT from Vizag", "Others",
+                              ].includes(item.TAT_TYPE)
+                                ? [item.TAT_TYPE]
+                                : []),
                             ],
                           },
                           { field: "TAT_DAYS", type: "number" },
@@ -4548,6 +4774,41 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           </td>
                         );
                       })}
+                      {/* Dispatch Documents Uploading — stored file (click to view); Browse / Change while editing */}
+                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                        {(() => {
+                          const storedName = item.ZLOCALFILES?.[GATE_DISPATCH_DOC_FIELD];
+                          const storedUrl = storedName
+                            ? getLocalDocumentUrl({
+                                mode: isSap ? "SAP" : "Without Sap",
+                                screen: "Gate_In_Out",
+                                field: GATE_DISPATCH_DOC_FIELD,
+                                fileName: storedName,
+                                row: item,
+                              })
+                            : "";
+                          return (
+                            <GateDispatchDocCell
+                              pickedName={item.DISPATCH_DOC_NAME}
+                              pickedDataUri={item.DISPATCH_DOC}
+                              storedName={storedName}
+                              storedUrl={storedUrl}
+                              canPick={!!item.isEdit}
+                              onView={(url, title) => setPreviewDoc({ url, title })}
+                              onPick={async (file) => {
+                                const b64 = await gateFileToBase64(file);
+                                setSearchResultItems((prev) =>
+                                  prev.map((it, i) =>
+                                    i === index
+                                      ? { ...it, DISPATCH_DOC: b64, DISPATCH_DOC_NAME: file.name, ZDIS_UPLD: gateBase64Only(b64) }
+                                      : it
+                                  )
+                                );
+                              }}
+                            />
+                          );
+                        })()}
+                      </td>
                       <td className="px-2 py-2 text-center">
                         {!item.isEdit ? (
                           <div className="flex items-center gap-1 justify-center">
@@ -4686,7 +4947,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
       {/* ── E-Way Bill / Insurance / Distance — Header table ── */}
       {/* Visibility gating (hidden until GET is clicked) applies to With SAP only */}
-      {(!isSap || showDetails) && (
+      {(!isSap || showDetails) && !showingSearchResults && (
         <>
           <h3 className="px-1 text-[13px] font-bold text-foreground tracking-tight">Header</h3>
           <div className="rounded-xl overflow-hidden border border-hairline shadow-elegant bg-surface">
@@ -4842,6 +5103,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                             {c}
                           </TableHead>
                         ))}
+                        <TableHead className="whitespace-nowrap text-center">Dispatch Documents Uploading</TableHead>
                         <TableHead className="whitespace-nowrap text-center">Action</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -4921,7 +5183,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                       <option value="Delivery TAT">Delivery TAT</option>
                                       <option value="GATI TAT">GATI TAT</option>
                                       <option value="V Xpress">V Xpress</option>
-                                      <option value="Instant Transport Solution">Instant Transport Solution</option>
+                                      {/* <option value="Instant Transport Solution">Instant Transport Solution</option> */}
+                                      <option value="Instant TAT from Hyd">Instant TAT from Hyd</option>
+                                      <option value="Instant TAT from Vizag">Instant TAT from Vizag</option>
                                       <option value="Others">Others</option>
                                     </select>
                                   </TableCell>
@@ -5072,6 +5336,19 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                 </TableCell>
                               );
                             })}
+                            <TableCell className="p-1 text-center">
+                              <GateDispatchDocCell
+                                pickedName={row.dispatchDocName}
+                                pickedDataUri={row.dispatchDocB64}
+                                canPick
+                                onView={(url, title) => setPreviewDoc({ url, title })}
+                                onPick={async (file) => {
+                                  const b64 = await gateFileToBase64(file);
+                                  updateGateRow(i, "dispatchDocB64", b64);
+                                  updateGateRow(i, "dispatchDocName", file.name);
+                                }}
+                              />
+                            </TableCell>
                             <TableCell className="p-1 text-center">
                               <div className="inline-flex items-center gap-1">
                                 <button
@@ -5225,6 +5502,95 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
             <button
               type="button"
               onClick={() => setCompInvoicesModalOpen(false)}
+              className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Local Document Viewer Modal (Dispatch Documents — same as Transit Info) ── */}
+      <Dialog open={!!previewDoc} onOpenChange={(open) => { if (!open) setPreviewDoc(null); }}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-white dark:bg-surface border border-hairline shadow-2xl rounded-xl">
+          <div className="bg-gradient-primary px-4 py-3 flex items-center justify-between text-white">
+            <div className="flex items-center gap-2 min-w-0 pr-4">
+              <FileText className="size-4 shrink-0 text-white/90" />
+              <DialogTitle className="text-[14px] font-bold tracking-wide text-white truncate">
+                {previewDoc?.title || "Document Preview"}
+              </DialogTitle>
+            </div>
+            {previewDoc?.url && (
+              <a
+                href={previewDoc.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-medium bg-white/15 hover:bg-white/25 text-white px-2.5 py-1 rounded transition-colors flex items-center gap-1 shrink-0 mr-6 cursor-pointer"
+                title="Open in new window"
+              >
+                <ExternalLink className="size-3" />
+                Open in New Tab
+              </a>
+            )}
+          </div>
+          <div className="p-3 bg-muted/20 min-h-[350px] max-h-[78vh] flex items-center justify-center overflow-auto">
+            {previewDoc?.url ? (
+              (() => {
+                const target = (previewDoc.url || "").toLowerCase().split("?")[0];
+                const titleLower = (previewDoc.title || "").toLowerCase();
+                const isPdf = target.endsWith(".pdf") || titleLower.endsWith(".pdf");
+                const isImg = target.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/) || titleLower.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/);
+
+                if (isPdf) {
+                  return (
+                    <iframe
+                      src={previewDoc.url}
+                      title={previewDoc.title || "PDF Document"}
+                      className="w-full h-[72vh] border-0 rounded-lg shadow-inner bg-white"
+                    />
+                  );
+                }
+
+                if (isImg) {
+                  return (
+                    <img
+                      src={previewDoc.url}
+                      alt={previewDoc.title || "Image Document"}
+                      className="max-h-[72vh] max-w-full object-contain rounded-lg shadow-sm"
+                    />
+                  );
+                }
+
+                return (
+                  <iframe
+                    src={previewDoc.url}
+                    title={previewDoc.title || "Document"}
+                    className="w-full h-[72vh] border-0 rounded-lg shadow-inner bg-white"
+                  />
+                );
+              })()
+            ) : (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                No document URL available for preview.
+              </div>
+            )}
+          </div>
+
+          {/* Footer — Download / Close (same as Transit Info) */}
+          <div className="px-4 py-2.5 bg-muted/30 border-t border-hairline flex items-center justify-end gap-2">
+            {previewDoc?.url && (
+              <button
+                type="button"
+                onClick={() => downloadDocument(previewDoc.url, previewDoc.title)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-[12px] font-semibold transition-colors cursor-pointer shadow-sm"
+              >
+                <Download className="size-3.5" />
+                Download
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setPreviewDoc(null)}
               className="px-3.5 py-1.5 rounded-md bg-secondary hover:bg-secondary/80 text-foreground text-[12px] font-semibold transition-colors cursor-pointer"
             >
               Close

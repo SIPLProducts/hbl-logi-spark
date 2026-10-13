@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import service, { getLocalDocumentUrl, downloadDocument } from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
 import { GateDatePicker } from "@/components/ui/date-picker";
+import { handOffSapMode } from "@/lib/sap-mode-handoff";
 
 // ── Style constants (mirrors OrderInfoSapCreate) ────────────────────────────
 const INPUT_NORMAL =
@@ -990,6 +991,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
             confirmButtonText: "OK",
           });
 
+          // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+          if (action === "next" || action === "previous") handOffSapMode(mode);
           if (action === "next") navigate({ to: "/freight-billing" });
           else if (action === "previous") navigate({ to: "/segment-info" });
           else resetAll();
@@ -1062,6 +1065,8 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           confirmButtonText: "OK",
         });
 
+        // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+        if (action === "next" || action === "previous") handOffSapMode(mode);
         if (action === "next") navigate({ to: "/freight-billing" });
         else if (action === "previous") navigate({ to: "/segment-info" });
         else resetAll();

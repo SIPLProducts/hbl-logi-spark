@@ -10,6 +10,10 @@ import {
   ChevronDown,
   FileText,
   Eye,
+  Search,
+  Pencil,
+  Check,
+  X as XIcon,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,6 +22,7 @@ import { ServiceLevelSapCreate } from "@/components/service-level-sap-create";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
+import { getHandedOffDirection, getHandedOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
 export const Route = createFileRoute("/service-level")({
   component: ServiceLevelPage,
@@ -28,6 +33,8 @@ function ServiceLevelPage() {
   return (
     <ServiceLevelScreenShell
       title="Service Level (Shipment Feedback)"
+      // Switching Supply / Other than Supply resets the Load Type selection
+      onSapChange={() => setLoadType(null)}
       renderDirectionExtras={({ direction }) =>
         direction === "outward" ? (
           <>
@@ -101,6 +108,7 @@ function ServiceLevelScreenShell({
   children,
   renderCreateBody,
   renderDirectionExtras,
+  onSapChange,
 }: {
   title: string;
   description?: string;
@@ -111,9 +119,13 @@ function ServiceLevelScreenShell({
   children?: ReactNode;
   renderCreateBody?: (ctx: { sap: SapMode; direction: "outward" | "inward" }) => ReactNode;
   renderDirectionExtras?: (ctx: { sap: SapMode; direction: "outward" | "inward" }) => ReactNode;
+  /** Called when the user switches Supply / Other than Supply (used to reset Load Type). */
+  onSapChange?: (v: SapMode) => void;
 }) {
-  const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
-  const [sap, setSap] = useState<SapMode | null>(null);
+  const [direction, setDirection] = useState<"outward" | "inward" | null>(() => getHandedOffDirection());
+  const [sap, setSap] = useState<SapMode | null>(() => getHandedOffSapMode());
+  // Save & Next / Previous from the neighbouring screen opens this one in the same mode.
+  useConsumeSapModeHandOff();
 
   return (
     <div className="flex flex-col min-h-full">
@@ -162,7 +174,13 @@ function ServiceLevelScreenShell({
                  {direction && (
                    <>
                      <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
-                     <SapToggle value={sap} onChange={setSap} />
+                     <SapToggle
+                       value={sap}
+                       onChange={(v) => {
+                         if (v !== sap) onSapChange?.(v);
+                         setSap(v);
+                       }}
+                     />
                    </>
                  )}
                  <div className="ml-auto flex items-center gap-1.5">
@@ -799,6 +817,90 @@ const SL_QUESTIONS: {
   { key: "freight", label: "On time freight bill submission" },
 ];
 
+// Search bar options (same list and payload keys as the other screens' global search)
+const SL_SEARCH_OPTIONS = [
+  { key: "ref_no", label: "Reference No" },
+  { key: "inv_no", label: "Invoice No" },
+  { key: "workorder_no", label: "Work Order" },
+  { key: "lr_no", label: "LR No" },
+  { key: "transporter", label: "Transporter" },
+];
+
+// Search results table: one column per field of the search response (in response order),
+// header name + value side by side. MANDT / ZLOCALFILES / ZLOCALFILE_URLS are internal.
+// `edit` (optional) makes the column editable when the row's Edit button is used:
+//   score / scoreReverse → YES / NO buttons (reverse questions: YES red, NO green), value kept as chosen
+//   yesno → YES / NO dropdown · rating → Overall Feedback dropdown · text → text box
+type SLSearchEdit = { field: string; type: "score" | "scoreReverse" | "yesno" | "rating" | "text" };
+const SL_SEARCH_COLUMNS: { label: string; value: (item: any) => unknown; edit?: SLSearchEdit }[] = [
+  { label: "Ref No", value: (i) => i.ZREFNO },
+  { label: "Line No", value: (i) => i.ZLINE_NO },
+  { label: "Invoice No", value: (i) => i.VBELN || i.ZINV_NO || i.ZINV_NUM },
+  { label: "LR No", value: (i) => i.ZLRNO },
+  { label: "Map Id", value: (i) => i.ZMAPID },
+  { label: "Transporter", value: (i) => i.ZTRANSPORTER },
+  { label: "Work Order", value: (i) => i.ZWORK_ORDER },
+  { label: "Vehicle Type", value: (i) => i.ZVEH_TYPE },
+  { label: "Vehicle Rejected", value: (i) => i.ZVEH_REJ, edit: { field: "ZVEH_REJ", type: "yesno" } },
+  { label: "Vehicle Reason", value: (i) => i.ZVREJ_REASON, edit: { field: "ZVREJ_REASON", type: "text" } },
+  { label: "On Time Placement", value: (i) => i.ZONTIME, edit: { field: "ZONTIME", type: "score" } },
+  { label: "Transhipment If Any", value: (i) => i.ZTRNSMNT, edit: { field: "ZTRNSMNT", type: "scoreReverse" } },
+  { label: "On Time Delivery", value: (i) => i.ZONDELV, edit: { field: "ZONDELV", type: "score" } },
+  { label: "Damage If Any", value: (i) => i.ZDAMAGE, edit: { field: "ZDAMAGE", type: "scoreReverse" } },
+  { label: "Accident If Any", value: (i) => i.ZACCIDENT, edit: { field: "ZACCIDENT", type: "scoreReverse" } },
+  { label: "Prohibited Materials", value: (i) => i.ZPROBIATED, edit: { field: "ZPROBIATED", type: "scoreReverse" } },
+  { label: "Other Materials in Transit", value: (i) => i.ZLOADTRANSIT, edit: { field: "ZLOADTRANSIT", type: "scoreReverse" } },
+  { label: "On Time POD Submission", value: (i) => i.ZONPOD, edit: { field: "ZONPOD", type: "score" } },
+  { label: "On Time Freight Bill Submission", value: (i) => i.ZONFREIGHT, edit: { field: "ZONFREIGHT", type: "score" } },
+  { label: "Overall Feedback", value: (i) => i.ZFEEDBACK, edit: { field: "ZFEEDBACK", type: "rating" } },
+  { label: "Total Score", value: (i) => i.ZTOT_SCORE },
+  { label: "Plant", value: (i) => i.ZPLANT },
+  { label: "Division", value: (i) => i.ZDIVISION },
+  { label: "Remarks", value: (i) => i.ZREMARKS, edit: { field: "ZREMARKS", type: "text" } },
+  { label: "Created By", value: (i) => i.ZUSER },
+  { label: "Changed By", value: (i) => i.ZUSER_CH },
+  { label: "Submitted Date", value: (i) => i.ZSUBMIT_DT },
+  { label: "Changed Date", value: (i) => i.ZCHANGE_DT },
+];
+
+// ── Search results colours — same colours as the Create form's Yes/No and rating buttons ──
+const SL_GOOD_COLOUR = "bg-emerald-100 text-emerald-700 border-emerald-400"; // green
+const SL_BAD_COLOUR = "bg-rose-100 text-rose-700 border-rose-400"; // red
+const SL_RATING_COLOURS: Record<string, string> = {
+  POOR: "bg-rose-100 text-rose-700 border-rose-400",
+  AVG: "bg-amber-100 text-amber-700 border-amber-400",
+  GOOD: "bg-emerald-100 text-emerald-700 border-emerald-400",
+  EXCELLENT: "bg-blue-100 text-blue-700 border-blue-400",
+};
+const SL_RATINGS = ["POOR", "AVG", "GOOD", "EXCELLENT"];
+
+/**
+ * Colour for a value shown in the search results table (view mode), or "" for no colour.
+ *   score (normal questions)         → YES green / NO red
+ *   scoreReverse (reverse questions) → YES red / NO green
+ *     (when the answer comes as a score: 10 is always the good answer → green, 0 → red)
+ *   yesno (Vehicle Rejected) → YES red, NO green
+ *   rating (Overall Feedback) → POOR red, AVG amber, GOOD green, EXCELLENT blue
+ */
+function slSearchValueColour(type: string, value: string): string {
+  const v = value.trim().toUpperCase();
+  if (type === "score" || type === "scoreReverse") {
+    const reverse = type === "scoreReverse";
+    if (v === "YES") return reverse ? SL_BAD_COLOUR : SL_GOOD_COLOUR;
+    if (v === "NO") return reverse ? SL_GOOD_COLOUR : SL_BAD_COLOUR;
+    if (v === "10") return SL_GOOD_COLOUR;
+    if (v === "0") return SL_BAD_COLOUR;
+  }
+  if (type === "yesno") {
+    if (v === "YES") return SL_BAD_COLOUR;
+    if (v === "NO") return SL_GOOD_COLOUR;
+  }
+  if (type === "rating") {
+    return SL_RATING_COLOURS[v] || "";
+  }
+  return "";
+}
+
 const SL_INPUT =
   "h-8 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 read-only:bg-muted read-only:text-muted-foreground";
 
@@ -889,6 +991,16 @@ function ServiceLevelFeedbackCreate({
     ...SL_EMPTY_FEEDBACK,
   });
   const [disabledFields, setDisabledFields] = useState<SLFeedbackKey[]>([]);
+  // Feedback item 1: Vehicle Rejected ("YES" → Reason is required)
+  const [vehicleRejected, setVehicleRejected] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
+  // Overall Feedback remarks — shown once a rating is picked; required for POOR / AVG
+  const [overallRemarks, setOverallRemarks] = useState("");
+  // Search bar (next to Invoice Number) — same global search as the other screens
+  const [slSearchType, setSlSearchType] = useState("");
+  const [slSearchValue, setSlSearchValue] = useState("");
+  const [slSearchResults, setSlSearchResults] = useState<any[]>([]);
+  const [slSearchLoading, setSlSearchLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [compInvoicesModalOpen, setCompInvoicesModalOpen] = useState(false);
   const [compInvoicesModalData, setCompInvoicesModalData] = useState<{
@@ -1195,6 +1307,13 @@ function ServiceLevelFeedbackCreate({
             freight: data.ZONFREIGHT ?? "",
             overall: data.ZFEEDBACK ?? "",
           }));
+          setVehicleRejected(
+            ["YES", "NO"].includes(String(data.ZVEH_REJ ?? "").toUpperCase())
+              ? String(data.ZVEH_REJ).toUpperCase()
+              : "",
+          );
+          setRejectReason(data.ZVREJ_REASON ?? "");
+          setOverallRemarks(data.ZREMARKS ?? "");
           setShowFeedback(true);
           setDisabledFields(["onTimePlacement", "delivery", "pod", "freight"]);
           Swal.fire({
@@ -1217,12 +1336,239 @@ function ServiceLevelFeedbackCreate({
     }
   };
 
+  // ── Search bar → global search (same payload / handling as the other screens) ──
+  const handleSlSearch = async () => {
+    if (!slSearchValue.trim()) {
+      Swal.fire("Please enter a value", "", "warning");
+      return;
+    }
+    if (!slSearchType) {
+      Swal.fire("Please select a search type", "", "info");
+      return;
+    }
+
+    const payload: any = {
+      global: "SERVICE LEVEL",
+      ZUSER: loggedInUser,
+      data: {
+        ref_no: "",
+        inv_no: "",
+        // so_no: "",
+        transporter: "",
+        lr_no: "",
+        workorder_no: ""
+        // sales_person: "",
+        // location: "",
+        // odn_no: "",
+        // vehicle_no: "",
+        // freight_billno: "",
+        // nature_damage: "",
+        // claim_status: "",
+      },
+    };
+    payload.data[slSearchType] = slSearchValue.trim();
+
+    setSlSearchLoading(true);
+    try {
+      const res: any = isSap
+        ? await service.global_Fields_SearchOption(payload)
+        : await service.global_Fields_SearchOption_WithoutSap(payload);
+
+      if (res?.NUMBER === "100" && res?.STATUS === "FALSE") {
+        setSlSearchResults([]);
+        Swal.fire("", res.MESSAGE, "warning");
+      } else if (!res?.HEADER || res.HEADER.length === 0) {
+        setSlSearchResults([]);
+        Swal.fire("No records found", "", "info");
+      } else {
+        setSlSearchResults(res.HEADER);
+        setShowFeedback(false);
+        Swal.fire("Data fetched successfully!", "", "success");
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire("Error fetching data", "", "error");
+    } finally {
+      setSlSearchLoading(false);
+    }
+  };
+
+  // ── Search results row Edit / Update / Delete (same UI flow as the other screens) ──
+  // The Service Level Change / Delete APIs are not available yet — the confirm dialogs are
+  // in place and the API calls get wired into slUpdateSearchRow / slDeleteSearchRow later.
+  const slEditSearchRow = (index: number) => {
+    setSlSearchResults((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, _backup: { ...r }, isEdit: true } : r)),
+    );
+  };
+  const slCancelSearchEdit = (index: number) => {
+    setSlSearchResults((prev) =>
+      prev.map((r, i) => (i === index ? { ...r._backup, isEdit: false } : r)),
+    );
+  };
+  const slPatchSearchRow = (index: number, field: string, value: string) => {
+    setSlSearchResults((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+  };
+  const slUpdateSearchRow = async (row: any, index: number) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to update this record?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Update",
+      cancelButtonText: "Cancel",
+    });
+    if (!result.isConfirmed) return;
+
+    // Vehicle Rejected = YES needs a Reason (same rule as the feedback form)
+    const vehicleRejectedValue = String(row.ZVEH_REJ ?? "").trim().toUpperCase();
+    if (vehicleRejectedValue === "YES" && !String(row.ZVREJ_REASON ?? "").trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Reason Missing",
+        text: "Please enter the reason for Vehicle Rejected",
+      });
+      return;
+    }
+
+    // Change payload — the edited row, in the format the Change API expects
+    const changeRecord = {
+      ZREFNO: row.ZREFNO,
+      ZLINE_NO: row.ZLINE_NO,
+      VBELN: row.VBELN,
+      ZLRNO: row.ZLRNO,
+      ZMAPID: row.ZMAPID,
+      ZTRANSPORTER: row.ZTRANSPORTER,
+      ZWORK_ORDER: row.ZWORK_ORDER,
+      ZVEH_TYPE: row.ZVEH_TYPE,
+      ZVEH_REJ: vehicleRejectedValue,
+      // Feedback answers — sent exactly as they are in the row (no conversion)
+      ZONTIME: row.ZONTIME,
+      ZTRNSMNT: row.ZTRNSMNT,
+      ZONDELV: row.ZONDELV,
+      ZDAMAGE: row.ZDAMAGE,
+      ZACCIDENT: row.ZACCIDENT,
+      ZPROBIATED: row.ZPROBIATED,
+      ZLOADTRANSIT: row.ZLOADTRANSIT,
+      ZONPOD: row.ZONPOD,
+      ZONFREIGHT: row.ZONFREIGHT,
+      ZFEEDBACK: row.ZFEEDBACK,
+      ZTOT_SCORE: row.ZTOT_SCORE,
+      ZPLANT: row.ZPLANT,
+      ZDIVISION: row.ZDIVISION,
+      ZUSER: row.ZUSER,
+      ZUSER_CH: loggedInUser, // user making the change
+      ZSUBMIT_DT: row.ZSUBMIT_DT,
+      ZCHANGE_DT: row.ZCHANGE_DT,
+      ZVREJ_REASON: vehicleRejectedValue === "YES" ? String(row.ZVREJ_REASON ?? "").trim() : "",
+      ZREMARKS: String(row.ZREMARKS ?? "").trim(),
+    };
+    const payload = { CHANGE: [changeRecord] };
+
+    try {
+      const res: any = isSap
+        ? await service.FeedBackChangewithsap(payload)
+        : await service.FeedBackChangewithoutsap(payload);
+
+      const isSuccess = String(res?.STATUS ?? "").toUpperCase() === "TRUE" || res?.NUMBER === "200";
+
+      if (isSuccess) {
+        // Leave edit mode, keeping the edited values in the row
+        setSlSearchResults((prev) =>
+          prev.map((r, i) => {
+            if (i !== index) return r;
+            const { _backup, ...rest } = r;
+            return { ...rest, isEdit: false };
+          }),
+        );
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: res?.MESSAGE || "Feedback updated successfully",
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: res?.MESSAGE || "Failed to update feedback",
+        });
+      }
+    } catch (err) {
+      console.error("Feedback change failed:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Internal Server Error. Please try again later.",
+      });
+    }
+  };
+  const slDeleteSearchRow = async (row: any, index: number) => {
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "Do you want to delete this record? This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Delete",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#d33",
+    });
+    if (!result.isConfirmed) return;
+
+    // Delete payload — the keys that identify the feedback record
+    const deleteRecord = {
+      ZREFNO: String(row.ZREFNO ?? ""),
+      ZLINE_NO: String(row.ZLINE_NO ?? ""),
+      VBELN: String(row.VBELN ?? ""),
+      ZLRNO: String(row.ZLRNO ?? ""),
+    };
+    const payload = { DELETE: [deleteRecord] };
+
+    try {
+      const res: any = isSap
+        ? await service.FeedBackDeletewithsap(payload)
+        : await service.FeedBackDeletewithoutsap(payload);
+
+      const isSuccess = String(res?.STATUS ?? "").toUpperCase() === "TRUE" || res?.NUMBER === "200";
+      // The API can return a blank MESSAGE, so fall back to a default text
+      const message = String(res?.MESSAGE ?? "").trim();
+
+      if (isSuccess) {
+        // Remove the deleted record from the search results table
+        setSlSearchResults((prev) => prev.filter((_, i) => i !== index));
+        Swal.fire({
+          icon: "success",
+          title: "Deleted",
+          text: message || "Feedback deleted successfully",
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: message || "Failed to delete feedback",
+        });
+      }
+    } catch (err) {
+      console.error("Feedback delete failed:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Something went wrong while deleting.",
+      });
+    }
+  };
+
   const refreshScreen = (): void => {
     setInvoicenumber("");
     setInvoiceList([]);
     setShowFeedback(false);
     setSelectedItems([]);
     setFeedback({ ...SL_EMPTY_FEEDBACK });
+    setVehicleRejected("");
+    setRejectReason("");
+    setOverallRemarks("");
+    setSlSearchType("");
+    setSlSearchValue("");
+    setSlSearchResults([]);
     setDisabledFields([]);
     setRows([slEmptyRow()]);
     setFullReferenceData([]);
@@ -1267,6 +1613,37 @@ function ServiceLevelFeedbackCreate({
       return;
     }
 
+    // Vehicle Rejected is required; "YES" also needs a Reason
+    if (!vehicleRejected) {
+      Swal.fire({
+        icon: "warning",
+        title: "Feedback Missing",
+        text: "Please select Vehicle Rejected (Yes / No)",
+        timer: 2000,
+      });
+      return;
+    }
+    if (vehicleRejected === "YES" && !rejectReason.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Reason Missing",
+        text: "Please enter the reason for Vehicle Rejected",
+        timer: 2000,
+      });
+      return;
+    }
+
+    // Overall Feedback POOR / AVG needs Remarks (optional for the other ratings)
+    if (["POOR", "AVG"].includes(feedback.overall) && !overallRemarks.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Remarks Missing",
+        text: "Please enter Remarks for Poor / Average feedback",
+        timer: 2000,
+      });
+      return;
+    }
+
     // 4️⃣ Payload (getRawValue equivalent — includes disabled field values)
     const payload = selectedItems.map((item) => ({
       ZREFNO: item.referenceNumber,
@@ -1288,6 +1665,11 @@ function ServiceLevelFeedbackCreate({
       ZONPOD: feedback.pod,
       ZONFREIGHT: feedback.freight,
       ZFEEDBACK: feedback.overall,
+      // Vehicle Rejected (+ Reason only when YES)
+      ZVEH_REJ: vehicleRejected,
+      ZVREJ_REASON: vehicleRejected === "YES" ? rejectReason.trim() : "",
+      // Overall Feedback remarks
+      ZREMARKS: overallRemarks.trim(),
 
       ZTOT_SCORE: "",
       ZPALNT: "",
@@ -1531,8 +1913,8 @@ function ServiceLevelFeedbackCreate({
             </div>
           </div>
 
-          {/* Invoice Number + GET */}
-          <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant max-w-md">
+          {/* Invoice Number + GET + Search bar */}
+          <div className="bg-surface border border-hairline rounded-xl p-2 shadow-elegant">
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex-1 min-w-[160px]">
                 <label className="block text-[11px] font-semibold text-muted-foreground mb-0.5">
@@ -1554,8 +1936,189 @@ function ServiceLevelFeedbackCreate({
               >
                 GET
               </button>
+
+              {/* Search bar — same UI as the other screens */}
+              <div className="min-w-[160px]">
+                <label className="block text-[11px] font-semibold text-muted-foreground mb-0.5">
+                  Search By
+                </label>
+                <select
+                  value={slSearchType}
+                  onChange={(e) => setSlSearchType(e.target.value)}
+                  className="h-8 w-full rounded-md border border-hairline bg-surface px-2 text-[12px] outline-none focus:border-accent"
+                >
+                  <option value="">Select</option>
+                  {SL_SEARCH_OPTIONS.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-[2] min-w-[260px] flex items-stretch gap-0">
+                <input
+                  value={slSearchValue}
+                  onChange={(e) => setSlSearchValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleSlSearch();
+                  }}
+                  placeholder="Enter Reference / Invoice / Work Order / LR / Transporter"
+                  className="h-8 flex-1 rounded-l-md border border-hairline border-r-0 bg-surface px-3 text-[12px] outline-none focus:border-accent"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSlSearch()}
+                  disabled={slSearchLoading}
+                  className="h-8 px-3 rounded-r-md bg-gradient-primary text-primary-foreground grid place-items-center shadow-cta disabled:opacity-50"
+                >
+                  <Search className="size-4" />
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Search results (view only — Service Level has no change / delete API) */}
+          {slSearchResults.length > 0 && !showFeedback && (
+            <div className="bg-surface border border-hairline rounded-xl shadow-elegant overflow-hidden">
+              <div className="px-5 py-3 border-b border-hairline bg-surface-2/60">
+                <h3 className="text-[13px] font-semibold text-sky-600 tracking-tight">Search Results</h3>
+              </div>
+              <div className="max-h-[560px] overflow-auto">
+                <table className="w-full text-left border-collapse text-[12.5px]">
+                  <thead className="sticky top-0 z-30">
+                    <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
+                      {SL_SEARCH_COLUMNS.map((col) => (
+                        <th key={col.label} className="px-3 py-2.5 whitespace-nowrap text-left">{col.label}</th>
+                      ))}
+                      <th className="px-3 py-2.5 whitespace-nowrap text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-hairline/70">
+                    {slSearchResults.map((item: any, i: number) => (
+                      <tr
+                        key={i}
+                        className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}
+                      >
+                        {SL_SEARCH_COLUMNS.map((col) => {
+                          const raw = col.value(item);
+                          const v = typeof raw === "string" ? raw.trim() : raw;
+                          if (item.isEdit && col.edit) {
+                            const { field, type } = col.edit;
+                            const current = String(item[field] ?? "").trim();
+                            const cellCls =
+                              "h-7 min-w-[110px] rounded border border-input bg-white dark:bg-surface px-1 text-[11px] text-foreground outline-none focus:border-accent";
+                            // Yes / No questions — same YES / NO buttons and colours as the Create form
+                            if (type === "score" || type === "scoreReverse") {
+                              return (
+                                <td key={col.label} className="px-2 py-1 whitespace-nowrap">
+                                  <SLYesNo
+                                    value={current.toUpperCase()}
+                                    reverse={type === "scoreReverse"}
+                                    onChange={(answer) => slPatchSearchRow(i, field, answer)}
+                                  />
+                                </td>
+                              );
+                            }
+
+                            // Vehicle Rejected — YES red / NO green, same as the Create form
+                            if (type === "yesno") {
+                              return (
+                                <td key={col.label} className="px-2 py-1 whitespace-nowrap">
+                                  <SLYesNo
+                                    value={current.toUpperCase()}
+                                    reverse
+                                    onChange={(answer) => {
+                                      slPatchSearchRow(i, field, answer);
+                                      if (answer === "NO") slPatchSearchRow(i, "ZVREJ_REASON", "");
+                                    }}
+                                  />
+                                </td>
+                              );
+                            }
+
+                            // Overall Feedback — same coloured rating buttons as the Create form
+                            if (type === "rating") {
+                              return (
+                                <td key={col.label} className="px-2 py-1 whitespace-nowrap">
+                                  <div className="flex items-center gap-1.5">
+                                    {SL_RATINGS.map((rating) => (
+                                      <button
+                                        key={rating}
+                                        type="button"
+                                        onClick={() => slPatchSearchRow(i, field, rating)}
+                                        className={cn(
+                                          "px-3 h-7 rounded-full text-[11px] font-semibold border transition-colors",
+                                          current.toUpperCase() === rating
+                                            ? SL_RATING_COLOURS[rating]
+                                            : "bg-muted text-muted-foreground border-hairline hover:bg-accent/10",
+                                        )}
+                                      >
+                                        {rating}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </td>
+                              );
+                            }
+                            return (
+                              <td key={col.label} className="px-2 py-1 whitespace-nowrap">
+                                <input
+                                  value={String(item[field] ?? "")}
+                                  onChange={(e) => slPatchSearchRow(i, field, e.target.value)}
+                                  disabled={field === "ZVREJ_REASON" && String(item.ZVEH_REJ ?? "").trim().toUpperCase() !== "YES"}
+                                  className={cellCls + " min-w-[160px] disabled:opacity-60 disabled:cursor-not-allowed"}
+                                />
+                              </td>
+                            );
+                          }
+                          // View mode — Yes/No answers and ratings shown in a coloured pill (value unchanged)
+                          const displayValue = v === undefined || v === null || v === "" ? "-" : String(v);
+                          const colour = col.edit ? slSearchValueColour(col.edit.type, displayValue) : "";
+                          return (
+                            <td key={col.label} className="px-3 py-2 whitespace-nowrap">
+                              {colour ? (
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center justify-center min-w-[2.5rem] px-2.5 h-6 rounded-full text-[11px] font-semibold border",
+                                    colour,
+                                  )}
+                                >
+                                  {displayValue}
+                                </span>
+                              ) : (
+                                displayValue
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="px-2 py-1 text-center">
+                          {!item.isEdit ? (
+                            <div className="flex items-center gap-1 justify-center">
+                              <button onClick={() => slEditSearchRow(i)} className="size-6 grid place-items-center rounded bg-blue-50 text-blue-600 hover:bg-blue-100">
+                                <Pencil className="size-3.5" />
+                              </button>
+                              <button onClick={() => void slDeleteSearchRow(item, i)} className="size-6 grid place-items-center rounded bg-red-50 text-red-600 hover:bg-red-100">
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1">
+                              <button onClick={() => void slUpdateSearchRow(item, i)} className="size-6 grid place-items-center rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100">
+                                <Check className="size-3.5" />
+                              </button>
+                              <button onClick={() => slCancelSearchEdit(i)} className="size-6 grid place-items-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200">
+                                <XIcon className="size-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Shipment Feedback */}
           {showFeedback && (
@@ -1566,6 +2129,42 @@ function ServiceLevelFeedbackCreate({
                 </h3>
               </div>
               <div className="divide-y divide-hairline/60">
+                {/* 1. Vehicle Rejected — YES (red) shows a Reason field right below; NO (green) hides it */}
+                <div className="px-5 py-3 hover:bg-accent/[0.03]">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="inline-grid place-items-center size-6 shrink-0 rounded-full bg-sky-100 text-sky-700 text-[11px] font-bold">
+                        1
+                      </span>
+                      <span className="text-[13px] font-medium text-foreground">
+                        Vehicle Rejected
+                        <span className="text-destructive ml-0.5">*</span>
+                      </span>
+                    </div>
+                    <SLYesNo
+                      value={vehicleRejected}
+                      reverse
+                      onChange={(v) => {
+                        setVehicleRejected(v);
+                        if (v === "NO") setRejectReason("");
+                      }}
+                    />
+                  </div>
+                  {vehicleRejected === "YES" && (
+                    <div className="mt-2.5 pl-9 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <label className="block text-[11px] font-semibold text-muted-foreground mb-0.5">
+                        Reason <span className="text-destructive">*</span>
+                      </label>
+                      <input
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        placeholder="Enter reason for vehicle rejection"
+                        maxLength={255}
+                        className={SL_INPUT}
+                      />
+                    </div>
+                  )}
+                </div>
                 {SL_QUESTIONS.filter(
                   (q) => !q.ftlOnly || truckType === "FULL TRUCK LOAD",
                 ).map((q, idx) => (
@@ -1575,7 +2174,7 @@ function ServiceLevelFeedbackCreate({
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="inline-grid place-items-center size-6 shrink-0 rounded-full bg-sky-100 text-sky-700 text-[11px] font-bold">
-                        {idx + 1}
+                        {idx + 2}
                       </span>
                       <span className="text-[13px] font-medium text-foreground">
                         {q.label}
@@ -1594,7 +2193,7 @@ function ServiceLevelFeedbackCreate({
                 ))}
 
                 {/* Overall */}
-                <div className="flex items-center justify-between gap-3 px-5 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="inline-grid place-items-center size-6 shrink-0 rounded-full bg-violet-100 text-violet-700 text-[12px] font-bold">
                       ★
@@ -1630,6 +2229,29 @@ function ServiceLevelFeedbackCreate({
                       </button>
                     ))}
                   </div>
+                  {/* Remarks — shown once a rating is chosen; required for POOR / AVG */}
+                  {feedback.overall && (
+                    <div className="basis-full pl-9 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <label className="block text-[11px] font-semibold text-muted-foreground mb-0.5">
+                        Remarks
+                        {["POOR", "AVG"].includes(feedback.overall) && (
+                          <span className="text-destructive ml-0.5">*</span>
+                        )}
+                      </label>
+                      <input
+                        value={overallRemarks}
+                        onChange={(e) => setOverallRemarks(e.target.value)}
+                        placeholder={
+                          ["POOR", "AVG"].includes(feedback.overall)
+                            ? "Enter remarks (required for Poor / Average)"
+                            : "Enter remarks (optional)"
+                        }
+                        maxLength={255}
+                        disabled={disabledFields.includes("overall")}
+                        className={SL_INPUT + " disabled:opacity-60 disabled:cursor-not-allowed"}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

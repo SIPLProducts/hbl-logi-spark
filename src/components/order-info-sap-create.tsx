@@ -7,6 +7,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 // @ts-ignore
 import service from "../services/generalservice_service.js";
 import { VEHICLE_TYPES } from "@/lib/dispatch-mock";
+import { handOffSapMode } from "@/lib/sap-mode-handoff";
 
 // ── Style constants ───────────────────────────────────────────────────────────
 // Normal editable field
@@ -1024,6 +1025,8 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
           setSapFetched(false);
           setSapFilledKeys(new Set());
         }
+        // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+        if (action === "next" || action === "previous") handOffSapMode(mode);
         if (action === "next") {
           navigate({ to: "/gate-in-out-process" });
         } else if (action === "previous") {

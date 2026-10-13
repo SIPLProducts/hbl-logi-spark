@@ -262,7 +262,11 @@ export const sapExternalApi = {
     FeedbackCreationwithsap: (data) => request('api/external/LE/ServiceLevel/Outword/withsap/FeedbackCreation', 'POST', data),
     FeedbackCreationwithoutsap: (data) => request('api/external/LE/ServiceLevel/Outword/WithoutSap/FeedbackCreation', 'PUT', data),
     FeedBackInvoiceDetailsfetchwithsap: (data) => request('api/external/LE/ServiceLevel/Outward/WithSap/InvoiceDetailsfetch', 'POST', data),
-    FeedBackInvoiceDetailsfetchwithoutsap: (data) => request('api/external/LE/ServiceLevel/Outward/WithoutSap/InvoiceDetailsfetch', 'PUT', data)
+    FeedBackInvoiceDetailsfetchwithoutsap: (data) => request('api/external/LE/ServiceLevel/Outward/WithoutSap/InvoiceDetailsfetch', 'PUT', data),
+    FeedBackChangewithsap: (data) => request('api/external/LE/ServiceLevel/Outward/WithSap/FeedbackChange', 'POST', data),
+    FeedBackChangewithoutsap: (data) => request('api/external/LE/ServiceLevel/Outward/WithoutSap/FeedbackChange', 'PUT', data),
+    FeedBackDeletewithsap: (data) => request('api/external/LE/ServiceLevel/Outward/WithSap/FeedBackDelete', 'POST', data),
+    FeedBackDeletewithoutsap: (data) => request('api/external/LE/ServiceLevel/Outward/WithoutSap/FeedBackDelete', 'PUT', data)
 };
 
 // 3. Analytic Reports APIs

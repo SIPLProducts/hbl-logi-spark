@@ -54,6 +54,7 @@ import {
   type DispatchResultRow,
   type DispatchRow,
 } from "@/lib/dispatch-mock";
+import { getHandedOffDirection, getHandedOffSapMode, handOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
 
 export const Route = createFileRoute("/dispatch")({
@@ -289,14 +290,16 @@ function divisionAfterPlantChange(
 
 function CreateDispatch() {
   const navigate = useNavigate();
-  const [sap, setSap] = useState<SapMode | null>(null);
+  const [sap, setSap] = useState<SapMode | null>(() => getHandedOffSapMode());
   const [workOrderMode, setWorkOrderMode] = useState<"same" | "different" | null>(null);
   const [fetchedVendors, setFetchedVendors] = useState<{ vendorCode: string; transporter: string }[]>([]);
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
   const [fetchedPlantDivisions, setFetchedPlantDivisions] = useState<{ plant: string; division: string; divText: string }[]>([]);
   const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
-  const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
+  const [direction, setDirection] = useState<"outward" | "inward" | null>(() => getHandedOffDirection());
+  // Save & Next / Previous from the neighbouring screen opens this one in the same mode.
+  useConsumeSapModeHandOff();
   const [searchType, setSearchType] = useState<string>(SEARCH_TYPES[1]);
   const [searchValue, setSearchValue] = useState("");
   const [rows, setRows] = useState<DispatchRow[]>([emptyDispatchRow(1)]);
@@ -928,6 +931,8 @@ function CreateDispatch() {
           confirmButtonText: "OK",
         }).then(() => {
           resetForm();
+          // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+          if (action === "next") handOffSapMode(sap);
           if (action === "next") {
             navigate({ to: "/order-info" });
           } else if (action === "previous") {

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import service, { getLocalDocumentUrl, downloadDocument } from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
 import { GateDatePicker } from "@/components/ui/date-picker";
+import { handOffSapMode } from "@/lib/sap-mode-handoff";
 
 // Table Multi-Select Dropdown for LR Numbers
 function TableMultiSelect({
@@ -1033,6 +1034,8 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
       if (res?.STATUS === "TRUE") {
         Swal.fire({ icon: "success", text: res.MESSAGE || "Saved Successfully" });
 
+        // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+        if (action === "next" || action === "previous") handOffSapMode(mode);
         if (action === "previous") {
           navigate({ to: "/transit-damage-info" });
         } else {
@@ -1248,6 +1251,8 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
       if (res?.STATUS === true || res?.STATUS === "TRUE") {
         Swal.fire({ icon: "success", title: "Success", text: "Data Saved Successfully" });
+        // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+        if (action === "next" || action === "previous") handOffSapMode(mode);
         if (action === "previous") {
           navigate({ to: "/transit-damage-info" });
         } else {

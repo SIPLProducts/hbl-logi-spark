@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import Swal from "sweetalert2";
 // @ts-ignore
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { ShipmentDetailsSapCreate } from "@/components/shipment-details-sap-create";
+import { getHandedOffDirection, getHandedOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
 export const Route = createFileRoute("/shipment-details")({
   component: ShipmentDetailsPage,
@@ -69,8 +70,15 @@ function getCurrentUser(): { USER: string; PLANTS: any[]; DIV: any[] } {
 
 function ShipmentDetailsPage() {
   const [tab, setTab] = useState<"create" | "search">("create");
-  const [direction, setDirection] = useState<"outward" | null>(null);
-  const [sap, setSap] = useState<SapMode | null>(null);
+  const [direction, setDirection] = useState<"outward" | null>(() => getHandedOffDirection());
+  const [sap, setSap] = useState<SapMode | null>(() => getHandedOffSapMode());
+  // Save & Next / Previous from the neighbouring screen opens this one in the same mode.
+  useConsumeSapModeHandOff();
+  // Opened via Save & Next / Previous with a mode → load its Pending/Completed counts, as picking the mode does.
+  useEffect(() => {
+    if (direction && sap) void fetchCounts(sap);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
 

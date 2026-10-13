@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import service, { getLocalDocumentUrl, downloadDocument } from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
 import { GateDatePicker } from "@/components/ui/date-picker";
+import { handOffSapMode } from "@/lib/sap-mode-handoff";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -894,6 +895,22 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     const b64 = await fileToBase64(file);
     setFbDocs((prev) => ({ ...prev, [key]: { b64, name: file.name } }));
   };
+  // Attachment fields follow the Detailed Freight Charges input: Detention Charges upload is
+  // enabled only when Detention Loading or Detention Unloading has a value, Unloading Charges
+  // Approval only when Unloading Charges has a value.
+  const detentionDocEnabled =
+    (Number(freightBreakdown["Detention Loading"]) || 0) !== 0 ||
+    (Number(freightBreakdown["Detention Unloading"]) || 0) !== 0;
+  const unloadingDocEnabled = (Number(freightBreakdown["Unloading Charges"]) || 0) !== 0;
+
+  // A field that becomes disabled drops any file already picked for it, so it isn't uploaded.
+  useEffect(() => {
+    if (!detentionDocEnabled) setFbDocs((prev) => (prev.DETENTUP?.b64 ? { ...prev, DETENTUP: { b64: "", name: "" } } : prev));
+  }, [detentionDocEnabled]);
+  useEffect(() => {
+    if (!unloadingDocEnabled) setFbDocs((prev) => (prev.UNLOADAPP?.b64 ? { ...prev, UNLOADAPP: { b64: "", name: "" } } : prev));
+  }, [unloadingDocEnabled]);
+
   const [searchOptionsList, setSearchOptionsList] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(true);
   const [typeOfRateContract, setTypeOfRateContract] = useState("");
@@ -1349,6 +1366,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
 
         resetFormState();
 
+        // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+        if (action === "next" || action === "previous") handOffSapMode(mode);
         if (action === "next") {
           navigate({ to: "/service-level" });
         } else if (action === "previous") {
@@ -2797,19 +2816,27 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
             <div>
               <label className={LABEL}>Unloading Charges Approval</label>
               <input
+                // remount when it gets disabled so the previously picked file name is cleared too
+                key={`unloadapp-${unloadingDocEnabled}`}
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
+                disabled={!unloadingDocEnabled}
+                title={unloadingDocEnabled ? undefined : "Enter Unloading Charges in Detailed Freight Charges to enable"}
                 onChange={(e) => handlePickDoc("UNLOADAPP", e.target.files?.[0] ?? null)}
-                className={GREEN_INPUT + " py-1.5"}
+                className={GREEN_INPUT + " py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"}
               />
             </div>
             <div>
               <label className={LABEL}>Detention Charges Uploading</label>
               <input
+                // remount when it gets disabled so the previously picked file name is cleared too
+                key={`detentup-${detentionDocEnabled}`}
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
+                disabled={!detentionDocEnabled}
+                title={detentionDocEnabled ? undefined : "Enter Detention Loading or Detention Unloading in Detailed Freight Charges to enable"}
                 onChange={(e) => handlePickDoc("DETENTUP", e.target.files?.[0] ?? null)}
-                className={GREEN_INPUT + " py-1.5"}
+                className={GREEN_INPUT + " py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"}
               />
             </div>
             <div>

@@ -37,6 +37,7 @@ import Swal from "sweetalert2";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { exportRowsToXls } from "@/lib/export-xls.js";
+import { getHandedOffDirection, getHandedOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
 type SapMode = "with" | "without";
 
@@ -56,8 +57,10 @@ export const Route = createFileRoute("/order-info")({
 
 function OrderInfoPage() {
   const [tab, setTab] = useState<"create" | "search">("create");
-  const [direction, setDirection] = useState<"outward" | null>(null);
-  const [sap, setSap] = useState<SapMode | null>(null);
+  const [direction, setDirection] = useState<"outward" | null>(() => getHandedOffDirection());
+  const [sap, setSap] = useState<SapMode | null>(() => getHandedOffSapMode());
+  // Save & Next / Previous from the neighbouring screen opens this one in the same mode.
+  useConsumeSapModeHandOff();
   const [selectedId, setSelectedId] = useState<string>("");
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);

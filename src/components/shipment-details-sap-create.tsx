@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
+import { handOffSapMode } from "@/lib/sap-mode-handoff";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60 disabled:cursor-not-allowed";
@@ -323,6 +324,8 @@ const PRODUCTS = [
   "Raw Materials",
   "Job Work Material",
   "Machinery",
+  "Battery and Spares",
+  "Machinery Parts",
   "Others",
 ];
 const MATERIAL_TYPES = [
@@ -337,6 +340,9 @@ const MATERIAL_TYPES = [
   "PC Wire",
   "Raw material",
   "Contrate Product",
+  "Battery and Spares",
+  "Machinery Parts",
+  "Others",
 ];
 const BATTERY_CONDITIONS = [
   "Dry and discharge with solid electrolyte",
@@ -445,6 +451,8 @@ const emptyProductRow = (): ProductRow => ({
 
 export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "without" } = {}) {
   const isSap = mode === "with";
+  // Battery Condition dropdown (create + edit), both modes: adds "State of Charge 50%" and "Others".
+  const batteryConditionOptions = [...BATTERY_CONDITIONS, "State of Charge 50%", "Others"];
   const navigate = useNavigate();
 
   const currentUser = (() => {
@@ -1146,6 +1154,8 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
           timer: 1500,
           showConfirmButton: false,
         }).then(() => {
+          // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+          if (action === "next" || action === "previous") handOffSapMode(mode);
           if (action === "next") navigate({ to: "/segment-info" });
           else if (action === "previous") navigate({ to: "/invoice-load-details" });
           else resetForm();
@@ -1621,7 +1631,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                           className={GREEN_INPUT}
                         >
                           <option value="">Select Condition</option>
-                          {BATTERY_CONDITIONS.map((o) => (
+                          {batteryConditionOptions.map((o) => (
                             <option key={o} value={o}>
                               {o}
                             </option>
@@ -1809,10 +1819,10 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         className="h-6 min-w-[100px] rounded border border-hairline px-1 text-[11px] bg-white dark:bg-surface"
                       >
                         <option value="">Select</option>
-                        {item.ZBATCOND && !BATTERY_CONDITIONS.includes(item.ZBATCOND) && (
+                        {item.ZBATCOND && !batteryConditionOptions.includes(item.ZBATCOND) && (
                           <option value={item.ZBATCOND}>{item.ZBATCOND}</option>
                         )}
-                        {BATTERY_CONDITIONS.map((o) => (
+                        {batteryConditionOptions.map((o) => (
                           <option key={o} value={o}>{o}</option>
                         ))}
                       </select>

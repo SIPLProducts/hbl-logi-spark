@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import Swal from "sweetalert2";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
+import { handOffSapMode } from "@/lib/sap-mode-handoff";
 
 const GREEN_INPUT =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -1298,6 +1299,8 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
       if (res?.STATUS === "true" || res?.NUMBER === "200") {
         await Swal.fire({ title: "Success", text: res.MESSAGE, icon: "success", confirmButtonText: "Ok" });
+        // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+        if (action === "next" || action === "previous") handOffSapMode(mode);
         if (action === "next") {
           navigate({ to: "/transit-info" });
         } else if (action === "previous") {

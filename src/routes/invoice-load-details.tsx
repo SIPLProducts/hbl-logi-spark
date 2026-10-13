@@ -48,6 +48,7 @@ import {
 import { TRANSPORTERS, VEHICLE_TYPES } from "@/lib/dispatch-mock";
 import { counts, type WorklistRow } from "@/lib/le-mock-data";
 import { cn } from "@/lib/utils";
+import { getHandedOffDirection, getHandedOffSapMode, handOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
 /* ------------------------------------------------------------------ */
 /* Shared helpers                                                      */
@@ -1428,6 +1429,8 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
           text: res.MSG || res.MESSAGE || "Saved Successfully",
           confirmButtonText: "Ok",
         });
+        // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
+        if (action === "next" || action === "previous") handOffSapMode(mode);
         if (action === "stay") {
           resetAll();
         } else if (action === "next") {
@@ -2939,8 +2942,10 @@ function LeScreenShell({
   renderDirectionExtras?: (ctx: { sap: SapMode; direction: "outward" | "inward" }) => ReactNode;
 }) {
   const [tab, setTab] = useState<"create" | "search">("create");
-  const [direction, setDirection] = useState<"outward" | "inward" | null>(null);
-  const [sap, setSap] = useState<SapMode | null>(null);
+  const [direction, setDirection] = useState<"outward" | "inward" | null>(() => getHandedOffDirection());
+  const [sap, setSap] = useState<SapMode | null>(() => getHandedOffSapMode());
+  // Save & Next / Previous from the neighbouring screen opens this one in the same mode.
+  useConsumeSapModeHandOff();
   const [pendingCount, setPendingCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
   const [searchSap, setSearchSap] = useState<SapMode | null>(null);
