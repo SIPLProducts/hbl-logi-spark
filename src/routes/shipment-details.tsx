@@ -475,7 +475,8 @@ function ShipmentDetailsPage() {
               </TabsList>
               <div className="h-5 w-px bg-hairline" />
               <button
-                onClick={refreshScreen}
+                // Same as the other screens: Refresh reloads the screen
+                onClick={() => window.location.reload()}
                 className="inline-flex items-center gap-1.5 px-3 h-8 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted"
               >
                 <RefreshCw className="size-3.5" /> Refresh

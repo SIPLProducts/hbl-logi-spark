@@ -697,6 +697,30 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     })();
   }, []);
 
+  // ── Without SAP: Billing Type ZGST / ZGSI → Incoterms defaults to "FOR" ──
+  // The Billing Type dropdown stores the description, so look up its billing type code.
+  const isForIncotermsBillingType = (billingValue: string): boolean => {
+    if (!billingValue) return false;
+    const selectedBilling = billingList.find(
+      (b) => b.BILL_TYPE_DESC === billingValue || b.BILL_TYPE === billingValue,
+    );
+    const billingCode = String(selectedBilling?.BILL_TYPE ?? "").trim().toUpperCase();
+    return billingCode === "ZGST" || billingCode === "ZGSI";
+  };
+
+  // Create form: runs only when the Billing Type changes; the user can still change Incoterms after.
+  //   ZGST / ZGSI      → Incoterms = "FOR"
+  //   any other option → the defaulted "FOR" is cleared (a different Incoterm the user chose stays)
+  useEffect(() => {
+    if (!isWithout) return;
+    if (isForIncotermsBillingType(form.BillingTransactionType)) {
+      setField("Incoterms", "FOR");
+    } else {
+      setForm((prev) => (prev.Incoterms === "FOR" ? { ...prev, Incoterms: "" } : prev));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.BillingTransactionType]);
+
   // ── patchForm: fill form from SAP response, track which keys are non-empty ──
   const patchForm = useCallback((data: any) => {
     const physDispatch = convertPhysDispatchFormat(data.PHYS_DISPATCH || "");
@@ -1231,7 +1255,21 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       return (
         <select
           value={currentValue}
-          onChange={(e) => updateSearchResultField(rowIndex, "ZBILL_TRX_TEXT", e.target.value)}
+          onChange={(e) => {
+            updateSearchResultField(rowIndex, "ZBILL_TRX_TEXT", e.target.value);
+            // Edit (Without SAP):
+            //   ZGST / ZGSI      → Incoterms = "FOR"
+            //   any other option → Incoterms goes back to the value the API returned for this row
+            //                      (kept in _backup when Edit was clicked) — never cleared or defaulted
+            if (isWithout) {
+              if (isForIncotermsBillingType(e.target.value)) {
+                updateSearchResultField(rowIndex, "ZINCO", "FOR");
+              } else {
+                const incotermsFromApi = item._backup ? item._backup.ZINCO : item.ZINCO;
+                updateSearchResultField(rowIndex, "ZINCO", incotermsFromApi ?? "");
+              }
+            }
+          }}
           className="h-7 min-w-[140px] rounded border border-input bg-white dark:bg-surface px-2 text-[11px] text-foreground outline-none focus:border-accent"
         >
           <option value="">Select Billing Type</option>

@@ -565,6 +565,17 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   const podInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhysicalArrivedDateChange = (val: string) => {
+    // Physical Arrived at Destination can't be in the future
+    if (val && isFutureDateTime(val)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Date & Time",
+        text: "Physical Arrived at Destination Date and Time cannot be later than the current date and time.",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+      return;
+    }
     if (val && unloadingDate && !isDateTimeNotEarlier(val, unloadingDate)) {
       Swal.fire({
         icon: "warning",
@@ -579,6 +590,17 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
   };
 
   const handleUnloadingDateChange = (val: string) => {
+    // Unloading Date and Time can't be in the future
+    if (val && isFutureDateTime(val)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Date & Time",
+        text: "Unloading Date and Time cannot be later than the current date and time.",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+      return;
+    }
     if (val && physicalArrivedDate && !isDateTimeNotEarlier(physicalArrivedDate, val)) {
       Swal.fire({
         icon: "warning",
@@ -1960,6 +1982,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
             <SapField
               field={FIELDS[1]}
               value={physicalArrivedDate}
+              max="now"
               onChange={handlePhysicalArrivedDateChange}
             />
 
@@ -1967,6 +1990,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
               field={FIELDS[2]}
               value={unloadingDate}
               min={physicalArrivedDate}
+              max="now"
               onChange={handleUnloadingDateChange}
             />
 
@@ -2078,7 +2102,26 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                                   ? (headerData.ZUNLOADING_DT || headerData.ZPY_ARRIVED_DEST)
                                   : undefined
                               }
+                              // Physical Arrived and Unloading can't go beyond the current date & time
+                              max={
+                                field === "ZPY_ARRIVED_DEST" || field === "ZUNLOADING_DT"
+                                  ? "now"
+                                  : undefined
+                              }
                               onChange={(val) => {
+                                if ((field === "ZPY_ARRIVED_DEST" || field === "ZUNLOADING_DT") && val && isFutureDateTime(val)) {
+                                  Swal.fire({
+                                    icon: "warning",
+                                    title: "Invalid Date & Time",
+                                    text:
+                                      field === "ZPY_ARRIVED_DEST"
+                                        ? "Physical Arrived at Destination Date and Time cannot be later than the current date and time."
+                                        : "Unloading Date and Time cannot be later than the current date and time.",
+                                    timer: 2500,
+                                    showConfirmButton: false,
+                                  });
+                                  return;
+                                }
                                 if (field === "ZUNLOADING_DT") {
                                   if (headerData.ZPY_ARRIVED_DEST && val && !isDateTimeNotEarlier(headerData.ZPY_ARRIVED_DEST, val)) {
                                     Swal.fire({
@@ -2706,6 +2749,21 @@ function parseIsoDateTime(val?: string) {
   };
 }
 
+// Current date & time as "YYYY-MM-DDTHH:mm" — the latest allowed value for
+// Physical Arrived at Destination and Unloading Date and Time.
+function currentDateTimeValue(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${padZero(now.getMonth() + 1)}-${padZero(now.getDate())}T${padZero(now.getHours())}:${padZero(now.getMinutes())}`;
+}
+
+// True when a date-time value is later than the current moment.
+function isFutureDateTime(val?: string): boolean {
+  const parsed = parseIsoDateTime(val);
+  if (!parsed) return false;
+  const valueStr = `${parsed.year}-${padZero(parsed.month + 1)}-${padZero(parsed.day)}T${parsed.timeStr}`;
+  return valueStr > currentDateTimeValue();
+}
+
 function parseTypedDateTime(val: string): string | null {
   if (!val) return null;
   const parsed = parseDateTimeParts(val);
@@ -2723,6 +2781,7 @@ function TransitDateTimePicker({
   value,
   onChange,
   min,
+  max,
   placeholder = "Select Date & Time",
   disabled = false,
   className,
@@ -2730,6 +2789,8 @@ function TransitDateTimePicker({
   value?: string;
   onChange?: (value: string) => void;
   min?: string;
+  /** Latest selectable date & time (e.g. "now") — optional */
+  max?: string;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -2737,6 +2798,14 @@ function TransitDateTimePicker({
   const [open, setOpen] = useState(false);
   const parsed = useMemo(() => parseIsoDateTime(value), [value]);
   const minParsed = useMemo(() => parseIsoDateTime(min), [min]);
+  // max="now" means "the current date & time", worked out live on every render (the picker
+  // re-renders whenever it's opened or used), so it never goes stale while the screen is open.
+  const effectiveMax = max === "now" ? currentDateTimeValue() : max;
+  const maxParsed = useMemo(() => parseIsoDateTime(effectiveMax), [effectiveMax]);
+  // Max limit as "YYYY-MM-DDTHH:mm" (comparable with the picker's values), or "" when not set
+  const maxValueStr = maxParsed
+    ? `${maxParsed.year}-${padZero(maxParsed.month + 1)}-${padZero(maxParsed.day)}T${maxParsed.timeStr}`
+    : "";
 
   const displayFormatted = useMemo(() => {
     if (!parsed) return "";
@@ -2800,6 +2869,12 @@ function TransitDateTimePicker({
   }, [open, selectedTime]);
 
   const isDateDisabled = (y: number, m: number, d: number) => {
+    // Max limit: days after the max date can't be picked
+    if (maxParsed) {
+      const cellStr = `${y}-${padZero(m + 1)}-${padZero(d)}`;
+      const maxDateStr = `${maxParsed.year}-${padZero(maxParsed.month + 1)}-${padZero(maxParsed.day)}`;
+      if (cellStr > maxDateStr) return true;
+    }
     if (!minParsed) return false;
     const cellDateStr = `${y}-${padZero(m + 1)}-${padZero(d)}`;
     const minDateStr = `${minParsed.year}-${padZero(minParsed.month + 1)}-${padZero(minParsed.day)}`;
@@ -2807,6 +2882,13 @@ function TransitDateTimePicker({
   };
 
   const isTimeDisabled = (timeStr: string) => {
+    // Max limit: on the max date, times after the max time can't be picked
+    if (maxParsed && selectedYear !== null && selectedMonth !== null && selectedDay !== null) {
+      const selectedDateStr = `${selectedYear}-${padZero(selectedMonth + 1)}-${padZero(selectedDay)}`;
+      const maxDateStr = `${maxParsed.year}-${padZero(maxParsed.month + 1)}-${padZero(maxParsed.day)}`;
+      if (selectedDateStr > maxDateStr) return true;
+      if (selectedDateStr === maxDateStr && maxParsed.hasTime && timeStr > maxParsed.timeStr) return true;
+    }
     if (!minParsed || selectedYear === null || selectedMonth === null || selectedDay === null) return false;
     const curDateStr = `${selectedYear}-${padZero(selectedMonth + 1)}-${padZero(selectedDay)}`;
     const minDateStr = `${minParsed.year}-${padZero(minParsed.month + 1)}-${padZero(minParsed.day)}`;
@@ -2880,7 +2962,7 @@ function TransitDateTimePicker({
     }
 
     return cells;
-  }, [viewYear, viewMonth, selectedYear, selectedMonth, selectedDay, minParsed]);
+  }, [viewYear, viewMonth, selectedYear, selectedMonth, selectedDay, minParsed, maxParsed]);
 
   const handlePrevMonth = () => {
     if (viewMonth === 0) {
@@ -2960,6 +3042,10 @@ function TransitDateTimePicker({
               const typed = e.target.value;
               setRawInput(typed);
               const parsedIso = parseTypedDateTime(typed);
+              // A typed value later than the max limit is not accepted
+              if (parsedIso && maxValueStr && parsedIso > maxValueStr) {
+                return;
+              }
               if (parsedIso) {
                 onChange?.(parsedIso);
               }
@@ -3202,6 +3288,7 @@ function SapField({
   inputRef,
   disabledOptions = [],
   min,
+  max,
 }: {
   field: FieldSpec;
   value?: string;
@@ -3210,6 +3297,8 @@ function SapField({
   inputRef?: Ref<HTMLInputElement>;
   disabledOptions?: string[];
   min?: string;
+  /** Latest selectable date & time (date-time fields only) — optional */
+  max?: string;
 }) {
   const {
     label,
@@ -3226,6 +3315,7 @@ function SapField({
         <TransitDateTimePicker
           value={value}
           min={min}
+          max={max}
           onChange={onChange}
           placeholder={placeholder ?? `Select ${label}`}
         />

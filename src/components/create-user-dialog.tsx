@@ -455,10 +455,18 @@ export function CreateUserDialog({
     try {
       const res = await service.GlobalUserAuth(payload);
 
+      // STATUS "FALSE" → not updated: show the MESSAGE and keep the dialog open (no refresh)
+      if (String(res?.STATUS ?? "").toUpperCase() === "FALSE") {
+        Swal.fire("Warning", res?.MESSAGE ?? "", "warning");
+        return;
+      }
+
+      // Show the API's MESSAGE exactly as returned (success icon only for a success response)
+      const isSuccess = String(res?.STATUS ?? "").toUpperCase() === "TRUE" || res?.NUMBER === "200";
       Swal.fire(
-        "Success",
-        "User updated successfully",
-        "success"
+        isSuccess ? "Success" : "Info",
+        res?.MESSAGE ?? "",
+        isSuccess ? "success" : "info"
       );
 
       onSuccess?.();
@@ -475,6 +483,12 @@ export function CreateUserDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        // Clicking a SweetAlert popup (e.g. its OK button) must not count as clicking outside
+        // the dialog — otherwise the dialog closes when the user just dismisses a message.
+        onInteractOutside={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.closest(".swal2-container")) e.preventDefault();
+        }}
         className="p-0 overflow-visible max-w-[760px] w-[95vw] border-0 [&>button]:hidden"
       >
         {/* Gradient header */}

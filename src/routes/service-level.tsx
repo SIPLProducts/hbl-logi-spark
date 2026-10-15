@@ -831,8 +831,24 @@ const SL_SEARCH_OPTIONS = [
 // `edit` (optional) makes the column editable when the row's Edit button is used:
 //   score / scoreReverse → YES / NO buttons (reverse questions: YES red, NO green), value kept as chosen
 //   yesno → YES / NO dropdown · rating → Overall Feedback dropdown · text → text box
-type SLSearchEdit = { field: string; type: "score" | "scoreReverse" | "yesno" | "rating" | "text" };
-const SL_SEARCH_COLUMNS: { label: string; value: (item: any) => unknown; edit?: SLSearchEdit }[] = [
+// "Vehicle Rejected Due To" options — saved in ZVREJ_REASON (Create and Change/Edit)
+const SL_VEHICLE_REJECTED_REASONS = [
+  "Vehicle Quality Issue",
+  "Driver Documents Issue",
+  "Vehicle Document Expired or Validity",
+  "Driver Refused to Load the Material",
+  "Order Cancelled",
+  "Others",
+];
+
+type SLSearchEdit = { field: string; type: "score" | "scoreReverse" | "yesno" | "rating" | "text" | "rejectReason" };
+// True when a search result row is a CARGO load (ZVEH_TYPE = "CARGO").
+const slIsCargoRow = (row: any): boolean =>
+  String(row?.ZVEH_TYPE ?? "").trim().toUpperCase() === "CARGO";
+
+// notForCargo: On Time Placement, Transhipment, Prohibited Materials and Other Materials
+// don't apply to CARGO loads (same as the Create form, where they are Full Truck Load only).
+const SL_SEARCH_COLUMNS: { label: string; value: (item: any) => unknown; edit?: SLSearchEdit; notForCargo?: boolean }[] = [
   { label: "Ref No", value: (i) => i.ZREFNO },
   { label: "Line No", value: (i) => i.ZLINE_NO },
   { label: "Invoice No", value: (i) => i.VBELN || i.ZINV_NO || i.ZINV_NUM },
@@ -842,14 +858,14 @@ const SL_SEARCH_COLUMNS: { label: string; value: (item: any) => unknown; edit?: 
   { label: "Work Order", value: (i) => i.ZWORK_ORDER },
   { label: "Vehicle Type", value: (i) => i.ZVEH_TYPE },
   { label: "Vehicle Rejected", value: (i) => i.ZVEH_REJ, edit: { field: "ZVEH_REJ", type: "yesno" } },
-  { label: "Vehicle Reason", value: (i) => i.ZVREJ_REASON, edit: { field: "ZVREJ_REASON", type: "text" } },
-  { label: "On Time Placement", value: (i) => i.ZONTIME, edit: { field: "ZONTIME", type: "score" } },
-  { label: "Transhipment If Any", value: (i) => i.ZTRNSMNT, edit: { field: "ZTRNSMNT", type: "scoreReverse" } },
+  { label: "Vehicle Reason", value: (i) => i.ZVREJ_REASON, edit: { field: "ZVREJ_REASON", type: "rejectReason" } },
+  { label: "On Time Placement", value: (i) => i.ZONTIME, edit: { field: "ZONTIME", type: "score" }, notForCargo: true },
+  { label: "Transhipment If Any", value: (i) => i.ZTRNSMNT, edit: { field: "ZTRNSMNT", type: "scoreReverse" }, notForCargo: true },
   { label: "On Time Delivery", value: (i) => i.ZONDELV, edit: { field: "ZONDELV", type: "score" } },
   { label: "Damage If Any", value: (i) => i.ZDAMAGE, edit: { field: "ZDAMAGE", type: "scoreReverse" } },
   { label: "Accident If Any", value: (i) => i.ZACCIDENT, edit: { field: "ZACCIDENT", type: "scoreReverse" } },
-  { label: "Prohibited Materials", value: (i) => i.ZPROBIATED, edit: { field: "ZPROBIATED", type: "scoreReverse" } },
-  { label: "Other Materials in Transit", value: (i) => i.ZLOADTRANSIT, edit: { field: "ZLOADTRANSIT", type: "scoreReverse" } },
+  { label: "Prohibited Materials", value: (i) => i.ZPROBIATED, edit: { field: "ZPROBIATED", type: "scoreReverse" }, notForCargo: true },
+  { label: "Other Materials in Transit", value: (i) => i.ZLOADTRANSIT, edit: { field: "ZLOADTRANSIT", type: "scoreReverse" }, notForCargo: true },
   { label: "On Time POD Submission", value: (i) => i.ZONPOD, edit: { field: "ZONPOD", type: "score" } },
   { label: "On Time Freight Bill Submission", value: (i) => i.ZONFREIGHT, edit: { field: "ZONFREIGHT", type: "score" } },
   { label: "Overall Feedback", value: (i) => i.ZFEEDBACK, edit: { field: "ZFEEDBACK", type: "rating" } },
@@ -1335,6 +1351,13 @@ function ServiceLevelFeedbackCreate({
       alert("Select row + Invoice + Truck Type");
     }
   };
+
+  // Search results columns: when every result row is CARGO, the not-for-cargo columns
+  // (ZONTIME, ZTRNSMNT, ZPROBIATED, ZLOADTRANSIT) are hidden from the table.
+  const allSearchResultsAreCargo = slSearchResults.length > 0 && slSearchResults.every(slIsCargoRow);
+  const slVisibleSearchColumns = allSearchResultsAreCargo
+    ? SL_SEARCH_COLUMNS.filter((col) => !col.notForCargo)
+    : SL_SEARCH_COLUMNS;
 
   // ── Search bar → global search (same payload / handling as the other screens) ──
   const handleSlSearch = async () => {
@@ -1987,7 +2010,7 @@ function ServiceLevelFeedbackCreate({
                 <table className="w-full text-left border-collapse text-[12.5px]">
                   <thead className="sticky top-0 z-30">
                     <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground border-b border-hairline">
-                      {SL_SEARCH_COLUMNS.map((col) => (
+                      {slVisibleSearchColumns.map((col) => (
                         <th key={col.label} className="px-3 py-2.5 whitespace-nowrap text-left">{col.label}</th>
                       ))}
                       <th className="px-3 py-2.5 whitespace-nowrap text-center">Action</th>
@@ -1999,7 +2022,15 @@ function ServiceLevelFeedbackCreate({
                         key={i}
                         className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}
                       >
-                        {SL_SEARCH_COLUMNS.map((col) => {
+                        {slVisibleSearchColumns.map((col) => {
+                          // CARGO row in a mixed result: these questions don't apply → "-" (not editable)
+                          if (col.notForCargo && slIsCargoRow(item)) {
+                            return (
+                              <td key={col.label} className="px-3 py-2 whitespace-nowrap text-muted-foreground">
+                                -
+                              </td>
+                            );
+                          }
                           const raw = col.value(item);
                           const v = typeof raw === "string" ? raw.trim() : raw;
                           if (item.isEdit && col.edit) {
@@ -2032,6 +2063,32 @@ function ServiceLevelFeedbackCreate({
                                       if (answer === "NO") slPatchSearchRow(i, "ZVREJ_REASON", "");
                                     }}
                                   />
+                                </td>
+                              );
+                            }
+
+                            // Vehicle Rejected Due To — same options as the Create form (enabled only when Vehicle Rejected = YES)
+                            if (type === "rejectReason") {
+                              const isVehicleRejected = String(item.ZVEH_REJ ?? "").trim().toUpperCase() === "YES";
+                              return (
+                                <td key={col.label} className="px-2 py-1 whitespace-nowrap">
+                                  <select
+                                    value={current}
+                                    onChange={(e) => slPatchSearchRow(i, field, e.target.value)}
+                                    disabled={!isVehicleRejected}
+                                    className={cellCls + " min-w-[220px] disabled:opacity-60 disabled:cursor-not-allowed"}
+                                  >
+                                    <option value="">Select Reason</option>
+                                    {/* Keep a previously saved reason visible even if it's not in the list */}
+                                    {current && !SL_VEHICLE_REJECTED_REASONS.includes(current) && (
+                                      <option value={current}>{current}</option>
+                                    )}
+                                    {SL_VEHICLE_REJECTED_REASONS.map((reason) => (
+                                      <option key={reason} value={reason}>
+                                        {reason}
+                                      </option>
+                                    ))}
+                                  </select>
                                 </td>
                               );
                             }
@@ -2153,15 +2210,24 @@ function ServiceLevelFeedbackCreate({
                   {vehicleRejected === "YES" && (
                     <div className="mt-2.5 pl-9 animate-in fade-in slide-in-from-top-1 duration-200">
                       <label className="block text-[11px] font-semibold text-muted-foreground mb-0.5">
-                        Reason <span className="text-destructive">*</span>
+                        Vehicle Rejected Due To <span className="text-destructive">*</span>
                       </label>
-                      <input
+                      <select
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
-                        placeholder="Enter reason for vehicle rejection"
-                        maxLength={255}
                         className={SL_INPUT}
-                      />
+                      >
+                        <option value="">Select Reason</option>
+                        {/* Keep a previously saved reason visible even if it's not in the list */}
+                        {rejectReason && !SL_VEHICLE_REJECTED_REASONS.includes(rejectReason) && (
+                          <option value={rejectReason}>{rejectReason}</option>
+                        )}
+                        {SL_VEHICLE_REJECTED_REASONS.map((reason) => (
+                          <option key={reason} value={reason}>
+                            {reason}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   )}
                 </div>

@@ -256,6 +256,12 @@ html { scrollbar-width: thin; scrollbar-color: color-mix(in oklab, var(--foregro
 }
 
 /* Global API loader: five pulsing bars (same look as the Angular app's ngx-spinner line-scale-pulse-out-rapid) */
+/* SweetAlert popups must stay clickable while a dialog (Radix) is open — the dialog sets
+   pointer-events: none on the page, which otherwise blocks the popup's OK / Cancel buttons. */
+.swal2-container {
+  pointer-events: auto;
+}
+
 @keyframes api-line-scale-pulse-out-rapid {
   0% { transform: scaleY(1); }
   80% { transform: scaleY(0.3); }

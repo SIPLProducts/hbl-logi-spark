@@ -504,6 +504,25 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
   // ---- Product table ----
   const [items, setItems] = useState<ProductRow[]>([emptyProductRow()]);
+
+  // ── Shipment Weight — first row only ──
+  // 1. With SAP: the Invoice GET response has ZTCAS = "X"
+  // 2. Both modes: the first row's Product is "Electronics" OR its Type of Material is "Electronic Goods"
+  // When either applies, Shipment Weight can be entered only in the first row (other rows disabled).
+  const [tcasFromInvoice, setTcasFromInvoice] = useState(false);
+  const firstRowIsElectronics =
+    items[0]?.ZPRODUCT === "Electronics" || items[0]?.MTART === "Electronic Goods";
+  const shipmentWeightFirstRowOnly = tcasFromInvoice || firstRowIsElectronics;
+
+  // While the first-row-only rule applies, the other rows never keep a Shipment Weight
+  // (their field is disabled, so the weight is entered once, in the first row). Runs whenever
+  // the rows change — e.g. a new Invoice GET — and only updates when a row actually has a weight.
+  useEffect(() => {
+    if (!shipmentWeightFirstRowOnly) return;
+    const otherRowHasWeight = items.some((row, i) => i > 0 && row.ZSHIP_WT);
+    if (!otherRowHasWeight) return;
+    setItems((prev) => prev.map((row, i) => (i > 0 ? { ...row, ZSHIP_WT: "" } : row)));
+  }, [shipmentWeightFirstRowOnly, items]);
   const [isAllSelected, setIsAllSelected] = useState(false);
 
   // ---- Global search ----
@@ -751,6 +770,10 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
         return;
       }
       const firstItem = result[0];
+      // With SAP: ZTCAS = "X" on the invoice → Shipment Weight only in the first row
+      setTcasFromInvoice(
+        isSap && result.some((item: any) => String(item?.ZTCAS ?? "").trim().toUpperCase() === "X"),
+      );
       setZinco(firstItem.ZINCO || "");
       setZinsScope(firstItem.ZINS_SCPOE || "");
       setZkm(firstItem.ZKM ?? "");
@@ -815,6 +838,8 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
             {} as Partial<ProductRow>,
           )
           : {}),
+        // While Shipment Weight is first-row-only, a new row starts with no weight
+        ...(shipmentWeightFirstRowOnly ? { ZSHIP_WT: "" } : {}),
       },
     ]);
   const removeRow = (index: number) => {
@@ -827,7 +852,10 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
       // Editing a copy field on the first line item copies it to the remaining line items
       // that are still empty or still hold the first row's previous value — rows the user
       // has changed themselves are left alone.
-      const copyKeys = COPY_FROM_FIRST_ROW_FIELDS.filter((k) => k in patch);
+      // While Shipment Weight is first-row-only, the weight is not copied to the other rows
+      const copyKeys = COPY_FROM_FIRST_ROW_FIELDS.filter(
+        (k) => k in patch && !(k === "ZSHIP_WT" && shipmentWeightFirstRowOnly),
+      );
       if (copyKeys.length === 0) return next;
       return next.map((r, i) => {
         if (i === 0) return r;
@@ -927,8 +955,15 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
   };
 
   const editSearchRow = (index: number) => {
+    // A row whose Shipment Weight is first-row-only (ZTCAS = "X" / Electronic Goods) doesn't keep
+    // a weight — it's cleared when editing starts (✕ Cancel restores the original row).
+    const weightLocked = isSearchRowWeightLocked(index);
     setSearchOptionsList((prev) =>
-      prev.map((r, i) => (i === index ? { ...r, _backup: { ...r }, isEdit: true } : r)),
+      prev.map((r, i) =>
+        i === index
+          ? { ...r, _backup: { ...r }, isEdit: true, ...(weightLocked ? { ZSHIP_WT: "" } : {}) }
+          : r,
+      ),
     );
   };
 
@@ -940,6 +975,24 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
         return { ...restored, isEdit: false };
       }),
     );
+  };
+
+  // Edit (search results): same Shipment Weight rule as Create, worked out per invoice (VBELN).
+  // Only the invoice's first row may edit Shipment Weight when that invoice has ZTCAS = "X"
+  // (With SAP) or its first row's Product is "Electronics" or Type of Material is "Electronic Goods".
+  const isSearchRowWeightLocked = (index: number): boolean => {
+    const invoiceNumber = String(searchOptionsList[index]?.VBELN ?? "");
+    const invoiceRows = searchOptionsList.filter((r) => String(r?.VBELN ?? "") === invoiceNumber);
+    const firstRowIndexOfInvoice = searchOptionsList.findIndex((r) => String(r?.VBELN ?? "") === invoiceNumber);
+    if (index === firstRowIndexOfInvoice) return false; // the first row always stays editable
+
+    const invoiceHasTcas =
+      isSap && invoiceRows.some((r) => String(r?.ZTCAS ?? "").trim().toUpperCase() === "X");
+    const invoiceFirstRow = searchOptionsList[firstRowIndexOfInvoice];
+    const firstRowIsElectronicGoods =
+      String(invoiceFirstRow?.ZPRODUCT ?? "") === "Electronics" ||
+      String(invoiceFirstRow?.MTART ?? "") === "Electronic Goods";
+    return invoiceHasTcas || firstRowIsElectronicGoods;
   };
 
   const patchSearchRow = (index: number, patch: Record<string, any>) => {
@@ -1188,6 +1241,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
     setZkm("");
     setVbeln("");
     setItems([emptyProductRow()]);
+    setTcasFromInvoice(false);
     setIsAllSelected(false);
     setSearchOptionsList([]);
     setSelectedType("");
@@ -1620,7 +1674,10 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         min={0}
                         value={row.ZSHIP_WT}
                         onChange={(e) => updateRow(idx, { ZSHIP_WT: e.target.value })}
-                        className={GREEN_INPUT + " text-center"}
+                        // ZTCAS = "X" or Electronics → Shipment Weight only in the first row
+                        disabled={shipmentWeightFirstRowOnly && idx > 0}
+                        title={shipmentWeightFirstRowOnly && idx > 0 ? "Shipment Weight is entered in the first row only" : undefined}
+                        className={GREEN_INPUT + " text-center disabled:opacity-50 disabled:cursor-not-allowed"}
                       />
                     </td>
                     <td className="px-2 py-1">
@@ -1805,7 +1862,10 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
                         type="number"
                         value={item.ZSHIP_WT ?? ""}
                         onChange={(e) => patchSearchRow(i, { ZSHIP_WT: e.target.value })}
-                        className="h-6 w-16 rounded border border-hairline px-1 text-[11px]"
+                        // ZTCAS = "X" or Electronic Goods → only the invoice's first row can edit the weight
+                        disabled={isSearchRowWeightLocked(i)}
+                        title={isSearchRowWeightLocked(i) ? "Shipment Weight is entered in the first row only" : undefined}
+                        className="h-6 w-16 rounded border border-hairline px-1 text-[11px] disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     ) : (
                       Number(item.ZSHIP_WT ?? 0).toFixed(2)
