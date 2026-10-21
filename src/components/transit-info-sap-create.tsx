@@ -22,6 +22,35 @@ import Swal from "sweetalert2";
 import { GateDatePicker } from "@/components/ui/date-picker";
 import { handOffSapMode } from "@/lib/sap-mode-handoff";
 
+// ── Divisions (login response DIV) that belong to the given plant(s) ──
+// A plant value can be "1100", "HBL NCPP-SHPT" (PLANT_DESC) or "1100_HBL NCPP-SHPT" (PLANT_TEXT).
+// With no plant chosen (or an unrecognised one) every division is returned, as before.
+function loginDivisionsForPlants(divisions: any[], plantValues: unknown): any[] {
+  const values = (Array.isArray(plantValues) ? plantValues : [plantValues])
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean);
+  if (values.length === 0) return divisions;
+
+  let loginPlants: any[] = [];
+  try {
+    const loginUser = JSON.parse(localStorage.getItem("currentUser") || localStorage.getItem("userData") || "null");
+    loginPlants = Array.isArray(loginUser?.PLANTS) ? loginUser.PLANTS : [];
+  } catch {
+    loginPlants = [];
+  }
+  const plantCodes = values
+    .map((value) => {
+      const match = loginPlants.find((p) => p?.WERKS === value || p?.PLANT_DESC === value || p?.PLANT_TEXT === value);
+      if (match?.WERKS) return String(match.WERKS);
+      const codePrefix = value.match(/^(\d+)(?:_|$)/);
+      return codePrefix ? codePrefix[1] : "";
+    })
+    .filter(Boolean);
+  if (plantCodes.length === 0) return divisions;
+  return divisions.filter((d) => plantCodes.includes(String(d?.PLANT ?? "").trim()));
+}
+
+
 // ── Style constants (mirrors OrderInfoSapCreate) ────────────────────────────
 const INPUT_NORMAL =
   "h-7 w-full rounded-md bg-white dark:bg-surface border border-input px-2 text-[12px] text-foreground font-medium outline-none focus:border-ring focus:ring-2 focus:ring-ring/30";
@@ -2077,7 +2106,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                               className="h-6 min-w-[90px] rounded border border-hairline px-1 text-[11px] bg-white dark:bg-surface"
                             >
                               <option value="">Select Plant</option>
-                              {Array.from(new Set([...(currentUser.PLANTS || []).map((p: any) => typeof p === "string" ? p : p?.PLANT || p?.PLANT_NAME || String(p)), headerData[field]].filter(Boolean))).map((p) => (
+                              {Array.from(new Set([...(currentUser.PLANTS || []).map((p: any) => typeof p === "string" ? p : p?.WERKS || p?.PLANT || p?.PLANT_NAME || String(p)), headerData[field]].filter(Boolean))).map((p) => (
                                 <option key={p} value={p}>{p}</option>
                               ))}
                             </select>
@@ -2088,7 +2117,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
                               className="h-6 min-w-[90px] rounded border border-hairline px-1 text-[11px] bg-white dark:bg-surface"
                             >
                               <option value="">Select Division</option>
-                              {Array.from(new Set([...(currentUser.DIV || []).map((d: any) => typeof d === "string" ? d : d?.DIVISION || d?.DIV || String(d)), headerData[field]].filter(Boolean))).map((d) => (
+                              {Array.from(new Set([...loginDivisionsForPlants(currentUser.DIV || [], headerData.ZPLANT).map((d: any) => typeof d === "string" ? d : d?.DIVISION || d?.DIV || String(d)), headerData[field]].filter(Boolean))).map((d) => (
                                 <option key={d} value={d}>{d}</option>
                               ))}
                             </select>

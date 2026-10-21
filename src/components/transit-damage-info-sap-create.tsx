@@ -10,6 +10,35 @@ import Swal from "sweetalert2";
 import { GateDatePicker } from "@/components/ui/date-picker";
 import { handOffSapMode } from "@/lib/sap-mode-handoff";
 
+// ── Divisions (login response DIV) that belong to the given plant(s) ──
+// A plant value can be "1100", "HBL NCPP-SHPT" (PLANT_DESC) or "1100_HBL NCPP-SHPT" (PLANT_TEXT).
+// With no plant chosen (or an unrecognised one) every division is returned, as before.
+function loginDivisionsForPlants(divisions: any[], plantValues: unknown): any[] {
+  const values = (Array.isArray(plantValues) ? plantValues : [plantValues])
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean);
+  if (values.length === 0) return divisions;
+
+  let loginPlants: any[] = [];
+  try {
+    const loginUser = JSON.parse(localStorage.getItem("currentUser") || localStorage.getItem("userData") || "null");
+    loginPlants = Array.isArray(loginUser?.PLANTS) ? loginUser.PLANTS : [];
+  } catch {
+    loginPlants = [];
+  }
+  const plantCodes = values
+    .map((value) => {
+      const match = loginPlants.find((p) => p?.WERKS === value || p?.PLANT_DESC === value || p?.PLANT_TEXT === value);
+      if (match?.WERKS) return String(match.WERKS);
+      const codePrefix = value.match(/^(\d+)(?:_|$)/);
+      return codePrefix ? codePrefix[1] : "";
+    })
+    .filter(Boolean);
+  if (plantCodes.length === 0) return divisions;
+  return divisions.filter((d) => plantCodes.includes(String(d?.PLANT ?? "").trim()));
+}
+
+
 // Table Multi-Select Dropdown for LR Numbers
 function TableMultiSelect({
   options,
@@ -2269,12 +2298,12 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                       {
                         field: "ZPLANT",
                         type: "select",
-                        options: Array.from(new Set([...(currentUser.PLANTS || []).map((p: any) => typeof p === "string" ? p : p?.PLANT || p?.PLANT_NAME || String(p)), headerData.ZPLANT].filter(Boolean))),
+                        options: Array.from(new Set([...(currentUser.PLANTS || []).map((p: any) => typeof p === "string" ? p : p?.WERKS || p?.PLANT || p?.PLANT_NAME || String(p)), headerData.ZPLANT].filter(Boolean))),
                       },
                       {
                         field: "ZDIVISION",
                         type: "select",
-                        options: Array.from(new Set([...(currentUser.DIV || []).map((d: any) => typeof d === "string" ? d : d?.DIVISION || d?.DIV || String(d)), headerData.ZDIVISION].filter(Boolean))),
+                        options: Array.from(new Set([...loginDivisionsForPlants(currentUser.DIV || [], headerData.ZPLANT).map((d: any) => typeof d === "string" ? d : d?.DIVISION || d?.DIV || String(d)), headerData.ZDIVISION].filter(Boolean))),
                       },
                       { field: "ZCREATED_DT", type: "date", readonly: true },
                       { field: "ZVEH_TYPE", type: "text", readonly: true },

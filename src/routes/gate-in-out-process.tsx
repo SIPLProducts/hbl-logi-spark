@@ -52,6 +52,47 @@ import service from "@/services/generalservice_service.js";
 import { getLocalDocumentUrl, downloadDocument } from "@/services/generalservice_service";
 import { getHandedOffDirection, getHandedOffSapMode, handOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
+// ── Plants / divisions of the logged-in user (login response PLANTS + DIV) ──
+// Built in the same row shape the F4 vendor-code API returns for PLANT — one row per
+// plant + division: { PLANT: WERKS, PLANT_DESC, DIVISION, PLANT_TEXT, DIV_TEXT }.
+// A plant with no division gets one row with DIVISION "". Returns null when the login data
+// has no plants, so the F4 list is used as before.
+function buildLoginPlantRows(): any[] | null {
+  let loginUser: any = null;
+  try {
+    loginUser = JSON.parse(localStorage.getItem("currentUser") || localStorage.getItem("userData") || "null");
+  } catch {
+    loginUser = null;
+  }
+  const loginPlants: any[] = Array.isArray(loginUser?.PLANTS) ? loginUser.PLANTS : [];
+  const loginDivisions: any[] = Array.isArray(loginUser?.DIV) ? loginUser.DIV : [];
+  if (loginPlants.length === 0) return null;
+
+  const rows: any[] = [];
+  for (const plant of loginPlants) {
+    const plantCode = String(plant?.WERKS ?? "").trim();
+    if (!plantCode) continue;
+    const plantDesc = String(plant?.PLANT_DESC ?? "").trim();
+    const plantDivisions = loginDivisions.filter((d) => String(d?.PLANT ?? "").trim() === plantCode);
+    if (plantDivisions.length === 0) {
+      rows.push({ PLANT: plantCode, PLANT_DESC: plantDesc, DIVISION: "", PLANT_TEXT: `${plantCode}_${plantDesc}_`, DIV_TEXT: `${plantCode}_` });
+      continue;
+    }
+    for (const division of plantDivisions) {
+      const divisionName = String(division?.DIVISION ?? "").trim();
+      rows.push({
+        PLANT: plantCode,
+        PLANT_DESC: plantDesc,
+        DIVISION: divisionName,
+        PLANT_TEXT: `${plantCode}_${plantDesc}_${divisionName}`,
+        DIV_TEXT: division?.DIV_TEXT || `${plantCode}_${divisionName}`,
+      });
+    }
+  }
+  return rows;
+}
+
+
 type SapMode = "with" | "without";
 
 const STATUS_OPTIONS = ["Pending", "Completed"] as const;
@@ -133,6 +174,9 @@ function GateInOutProcessPage() {
       try {
         const res: any = await service.fetchVendorCode();
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+        // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
+        const loginPlantRows = buildLoginPlantRows();
+        if (loginPlantRows) data.PLANT = loginPlantRows;
 
         const plants: string[] = Array.isArray(data.PLANT)
           ? data.PLANT.map((p: any) => {
@@ -2553,6 +2597,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       try {
         const res: any = await service.fetchVendorCode();
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+        // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
+        const loginPlantRows = buildLoginPlantRows();
+        if (loginPlantRows) data.PLANT = loginPlantRows;
 
         const plants: string[] = Array.isArray(data.PLANT)
           ? data.PLANT.map((p: any) => {
@@ -4301,8 +4348,10 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                 </thead>
                 <tbody className="divide-y divide-hairline/70">
                   {searchResultHeaders.map((headerRow, hIndex) => {
+                    // Plants from the login response (via the F4 list) + the row's saved plant —
+                    // the hardcoded sample PLANTS list is no longer added here.
                     const availablePlants = Array.from(
-                      new Set([...plantList, ...PLANTS, headerRow.ZPLANT].filter(Boolean))
+                      new Set([...plantList, headerRow.ZPLANT].filter(Boolean))
                     );
                     return (
                       <tr key={hIndex} className="bg-surface hover:bg-muted/50">

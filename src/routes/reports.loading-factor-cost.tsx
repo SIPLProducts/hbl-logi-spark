@@ -18,6 +18,35 @@ import autoTable from "jspdf-autotable";
 import { cn } from "@/lib/utils";
 import { GateDatePicker } from "@/components/ui/date-picker";
 
+// ── Divisions (login response DIV) that belong to the given plant(s) ──
+// A plant value can be "1100", "HBL NCPP-SHPT" (PLANT_DESC) or "1100_HBL NCPP-SHPT" (PLANT_TEXT).
+// With no plant chosen (or an unrecognised one) every division is returned, as before.
+function loginDivisionsForPlants(divisions: any[], plantValues: unknown): any[] {
+  const values = (Array.isArray(plantValues) ? plantValues : [plantValues])
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean);
+  if (values.length === 0) return divisions;
+
+  let loginPlants: any[] = [];
+  try {
+    const loginUser = JSON.parse(localStorage.getItem("currentUser") || localStorage.getItem("userData") || "null");
+    loginPlants = Array.isArray(loginUser?.PLANTS) ? loginUser.PLANTS : [];
+  } catch {
+    loginPlants = [];
+  }
+  const plantCodes = values
+    .map((value) => {
+      const match = loginPlants.find((p) => p?.WERKS === value || p?.PLANT_DESC === value || p?.PLANT_TEXT === value);
+      if (match?.WERKS) return String(match.WERKS);
+      const codePrefix = value.match(/^(\d+)(?:_|$)/);
+      return codePrefix ? codePrefix[1] : "";
+    })
+    .filter(Boolean);
+  if (plantCodes.length === 0) return divisions;
+  return divisions.filter((d) => plantCodes.includes(String(d?.PLANT ?? "").trim()));
+}
+
+
 type Option = { label: string; value: string; meta?: string };
 
 const INPUT =
@@ -243,8 +272,8 @@ function LoadingFactorCostReport() {
     [plantList],
   );
   const divisionOptions: Option[] = useMemo(
-    () => divisionList.map((d: any) => ({ label: d.DIV_TEXT, value: d.DIVISION })),
-    [divisionList],
+    () => loginDivisionsForPlants(divisionList, werks).map((d: any) => ({ label: d.DIV_TEXT, value: d.DIVISION })),
+    [divisionList, werks],
   );
   const transporterOptions: Option[] = useMemo(
     () => transporterList.map((t: any) => ({ label: t.TRANSPORTER, value: t.TRANSPORTER })),

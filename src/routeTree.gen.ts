@@ -27,11 +27,20 @@ import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
 import { Route as ReportsTransitEwayBillRouteImport } from './routes/reports.transit-eway-bill'
+import { Route as ReportsTransitDamageInfoReportRouteImport } from './routes/reports.transit-damage-info-report'
+import { Route as ReportsSitReportRouteImport } from './routes/reports.sit-report'
 import { Route as ReportsServiceLevelReportRouteImport } from './routes/reports.service-level-report'
+import { Route as ReportsSaleReportRouteImport } from './routes/reports.sale-report'
+import { Route as ReportsProvisionStatementRouteImport } from './routes/reports.provision-statement'
+import { Route as ReportsProductVolumeWiseRouteImport } from './routes/reports.product-volume-wise'
+import { Route as ReportsPodStatusRouteImport } from './routes/reports.pod-status'
 import { Route as ReportsPendingPodsRouteImport } from './routes/reports.pending-pods'
+import { Route as ReportsMasterReportRouteImport } from './routes/reports.master-report'
 import { Route as ReportsLoadingFactorCostRouteImport } from './routes/reports.loading-factor-cost'
+import { Route as ReportsInsuranceClaimReportRouteImport } from './routes/reports.insurance-claim-report'
 import { Route as ReportsInsuranceRouteImport } from './routes/reports.insurance'
 import { Route as ReportsFreightBillsRouteImport } from './routes/reports.freight-bills'
+import { Route as ReportsEWayBillReportRouteImport } from './routes/reports.e-way-bill-report'
 import { Route as ReportsDamageListRouteImport } from './routes/reports.damage-list'
 import { Route as ReportsBusinessShareMatrixRouteImport } from './routes/reports.business-share-matrix'
 
@@ -125,21 +134,65 @@ const ReportsTransitEwayBillRoute = ReportsTransitEwayBillRouteImport.update({
   path: '/reports/transit-eway-bill',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReportsTransitDamageInfoReportRoute =
+  ReportsTransitDamageInfoReportRouteImport.update({
+    id: '/reports/transit-damage-info-report',
+    path: '/reports/transit-damage-info-report',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ReportsSitReportRoute = ReportsSitReportRouteImport.update({
+  id: '/reports/sit-report',
+  path: '/reports/sit-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsServiceLevelReportRoute =
   ReportsServiceLevelReportRouteImport.update({
     id: '/reports/service-level-report',
     path: '/reports/service-level-report',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ReportsSaleReportRoute = ReportsSaleReportRouteImport.update({
+  id: '/reports/sale-report',
+  path: '/reports/sale-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsProvisionStatementRoute =
+  ReportsProvisionStatementRouteImport.update({
+    id: '/reports/provision-statement',
+    path: '/reports/provision-statement',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ReportsProductVolumeWiseRoute =
+  ReportsProductVolumeWiseRouteImport.update({
+    id: '/reports/product-volume-wise',
+    path: '/reports/product-volume-wise',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ReportsPodStatusRoute = ReportsPodStatusRouteImport.update({
+  id: '/reports/pod-status',
+  path: '/reports/pod-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsPendingPodsRoute = ReportsPendingPodsRouteImport.update({
   id: '/reports/pending-pods',
   path: '/reports/pending-pods',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsMasterReportRoute = ReportsMasterReportRouteImport.update({
+  id: '/reports/master-report',
+  path: '/reports/master-report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsLoadingFactorCostRoute =
   ReportsLoadingFactorCostRouteImport.update({
     id: '/reports/loading-factor-cost',
     path: '/reports/loading-factor-cost',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ReportsInsuranceClaimReportRoute =
+  ReportsInsuranceClaimReportRouteImport.update({
+    id: '/reports/insurance-claim-report',
+    path: '/reports/insurance-claim-report',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ReportsInsuranceRoute = ReportsInsuranceRouteImport.update({
@@ -150,6 +203,11 @@ const ReportsInsuranceRoute = ReportsInsuranceRouteImport.update({
 const ReportsFreightBillsRoute = ReportsFreightBillsRouteImport.update({
   id: '/reports/freight-bills',
   path: '/reports/freight-bills',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsEWayBillReportRoute = ReportsEWayBillReportRouteImport.update({
+  id: '/reports/e-way-bill-report',
+  path: '/reports/e-way-bill-report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsDamageListRoute = ReportsDamageListRouteImport.update({
@@ -183,11 +241,20 @@ export interface FileRoutesByFullPath {
   '/vehicle-info': typeof VehicleInfoRoute
   '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
   '/reports/damage-list': typeof ReportsDamageListRoute
+  '/reports/e-way-bill-report': typeof ReportsEWayBillReportRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
   '/reports/insurance': typeof ReportsInsuranceRoute
+  '/reports/insurance-claim-report': typeof ReportsInsuranceClaimReportRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
+  '/reports/master-report': typeof ReportsMasterReportRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/pod-status': typeof ReportsPodStatusRoute
+  '/reports/product-volume-wise': typeof ReportsProductVolumeWiseRoute
+  '/reports/provision-statement': typeof ReportsProvisionStatementRoute
+  '/reports/sale-report': typeof ReportsSaleReportRoute
   '/reports/service-level-report': typeof ReportsServiceLevelReportRoute
+  '/reports/sit-report': typeof ReportsSitReportRoute
+  '/reports/transit-damage-info-report': typeof ReportsTransitDamageInfoReportRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports/': typeof ReportsIndexRoute
 }
@@ -210,11 +277,20 @@ export interface FileRoutesByTo {
   '/vehicle-info': typeof VehicleInfoRoute
   '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
   '/reports/damage-list': typeof ReportsDamageListRoute
+  '/reports/e-way-bill-report': typeof ReportsEWayBillReportRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
   '/reports/insurance': typeof ReportsInsuranceRoute
+  '/reports/insurance-claim-report': typeof ReportsInsuranceClaimReportRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
+  '/reports/master-report': typeof ReportsMasterReportRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/pod-status': typeof ReportsPodStatusRoute
+  '/reports/product-volume-wise': typeof ReportsProductVolumeWiseRoute
+  '/reports/provision-statement': typeof ReportsProvisionStatementRoute
+  '/reports/sale-report': typeof ReportsSaleReportRoute
   '/reports/service-level-report': typeof ReportsServiceLevelReportRoute
+  '/reports/sit-report': typeof ReportsSitReportRoute
+  '/reports/transit-damage-info-report': typeof ReportsTransitDamageInfoReportRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports': typeof ReportsIndexRoute
 }
@@ -238,11 +314,20 @@ export interface FileRoutesById {
   '/vehicle-info': typeof VehicleInfoRoute
   '/reports/business-share-matrix': typeof ReportsBusinessShareMatrixRoute
   '/reports/damage-list': typeof ReportsDamageListRoute
+  '/reports/e-way-bill-report': typeof ReportsEWayBillReportRoute
   '/reports/freight-bills': typeof ReportsFreightBillsRoute
   '/reports/insurance': typeof ReportsInsuranceRoute
+  '/reports/insurance-claim-report': typeof ReportsInsuranceClaimReportRoute
   '/reports/loading-factor-cost': typeof ReportsLoadingFactorCostRoute
+  '/reports/master-report': typeof ReportsMasterReportRoute
   '/reports/pending-pods': typeof ReportsPendingPodsRoute
+  '/reports/pod-status': typeof ReportsPodStatusRoute
+  '/reports/product-volume-wise': typeof ReportsProductVolumeWiseRoute
+  '/reports/provision-statement': typeof ReportsProvisionStatementRoute
+  '/reports/sale-report': typeof ReportsSaleReportRoute
   '/reports/service-level-report': typeof ReportsServiceLevelReportRoute
+  '/reports/sit-report': typeof ReportsSitReportRoute
+  '/reports/transit-damage-info-report': typeof ReportsTransitDamageInfoReportRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
   '/reports/': typeof ReportsIndexRoute
 }
@@ -267,11 +352,20 @@ export interface FileRouteTypes {
     | '/vehicle-info'
     | '/reports/business-share-matrix'
     | '/reports/damage-list'
+    | '/reports/e-way-bill-report'
     | '/reports/freight-bills'
     | '/reports/insurance'
+    | '/reports/insurance-claim-report'
     | '/reports/loading-factor-cost'
+    | '/reports/master-report'
     | '/reports/pending-pods'
+    | '/reports/pod-status'
+    | '/reports/product-volume-wise'
+    | '/reports/provision-statement'
+    | '/reports/sale-report'
     | '/reports/service-level-report'
+    | '/reports/sit-report'
+    | '/reports/transit-damage-info-report'
     | '/reports/transit-eway-bill'
     | '/reports/'
   fileRoutesByTo: FileRoutesByTo
@@ -294,11 +388,20 @@ export interface FileRouteTypes {
     | '/vehicle-info'
     | '/reports/business-share-matrix'
     | '/reports/damage-list'
+    | '/reports/e-way-bill-report'
     | '/reports/freight-bills'
     | '/reports/insurance'
+    | '/reports/insurance-claim-report'
     | '/reports/loading-factor-cost'
+    | '/reports/master-report'
     | '/reports/pending-pods'
+    | '/reports/pod-status'
+    | '/reports/product-volume-wise'
+    | '/reports/provision-statement'
+    | '/reports/sale-report'
     | '/reports/service-level-report'
+    | '/reports/sit-report'
+    | '/reports/transit-damage-info-report'
     | '/reports/transit-eway-bill'
     | '/reports'
   id:
@@ -321,11 +424,20 @@ export interface FileRouteTypes {
     | '/vehicle-info'
     | '/reports/business-share-matrix'
     | '/reports/damage-list'
+    | '/reports/e-way-bill-report'
     | '/reports/freight-bills'
     | '/reports/insurance'
+    | '/reports/insurance-claim-report'
     | '/reports/loading-factor-cost'
+    | '/reports/master-report'
     | '/reports/pending-pods'
+    | '/reports/pod-status'
+    | '/reports/product-volume-wise'
+    | '/reports/provision-statement'
+    | '/reports/sale-report'
     | '/reports/service-level-report'
+    | '/reports/sit-report'
+    | '/reports/transit-damage-info-report'
     | '/reports/transit-eway-bill'
     | '/reports/'
   fileRoutesById: FileRoutesById
@@ -349,11 +461,20 @@ export interface RootRouteChildren {
   VehicleInfoRoute: typeof VehicleInfoRoute
   ReportsBusinessShareMatrixRoute: typeof ReportsBusinessShareMatrixRoute
   ReportsDamageListRoute: typeof ReportsDamageListRoute
+  ReportsEWayBillReportRoute: typeof ReportsEWayBillReportRoute
   ReportsFreightBillsRoute: typeof ReportsFreightBillsRoute
   ReportsInsuranceRoute: typeof ReportsInsuranceRoute
+  ReportsInsuranceClaimReportRoute: typeof ReportsInsuranceClaimReportRoute
   ReportsLoadingFactorCostRoute: typeof ReportsLoadingFactorCostRoute
+  ReportsMasterReportRoute: typeof ReportsMasterReportRoute
   ReportsPendingPodsRoute: typeof ReportsPendingPodsRoute
+  ReportsPodStatusRoute: typeof ReportsPodStatusRoute
+  ReportsProductVolumeWiseRoute: typeof ReportsProductVolumeWiseRoute
+  ReportsProvisionStatementRoute: typeof ReportsProvisionStatementRoute
+  ReportsSaleReportRoute: typeof ReportsSaleReportRoute
   ReportsServiceLevelReportRoute: typeof ReportsServiceLevelReportRoute
+  ReportsSitReportRoute: typeof ReportsSitReportRoute
+  ReportsTransitDamageInfoReportRoute: typeof ReportsTransitDamageInfoReportRoute
   ReportsTransitEwayBillRoute: typeof ReportsTransitEwayBillRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
 }
@@ -486,11 +607,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsTransitEwayBillRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/transit-damage-info-report': {
+      id: '/reports/transit-damage-info-report'
+      path: '/reports/transit-damage-info-report'
+      fullPath: '/reports/transit-damage-info-report'
+      preLoaderRoute: typeof ReportsTransitDamageInfoReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/sit-report': {
+      id: '/reports/sit-report'
+      path: '/reports/sit-report'
+      fullPath: '/reports/sit-report'
+      preLoaderRoute: typeof ReportsSitReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports/service-level-report': {
       id: '/reports/service-level-report'
       path: '/reports/service-level-report'
       fullPath: '/reports/service-level-report'
       preLoaderRoute: typeof ReportsServiceLevelReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/sale-report': {
+      id: '/reports/sale-report'
+      path: '/reports/sale-report'
+      fullPath: '/reports/sale-report'
+      preLoaderRoute: typeof ReportsSaleReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/provision-statement': {
+      id: '/reports/provision-statement'
+      path: '/reports/provision-statement'
+      fullPath: '/reports/provision-statement'
+      preLoaderRoute: typeof ReportsProvisionStatementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/product-volume-wise': {
+      id: '/reports/product-volume-wise'
+      path: '/reports/product-volume-wise'
+      fullPath: '/reports/product-volume-wise'
+      preLoaderRoute: typeof ReportsProductVolumeWiseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/pod-status': {
+      id: '/reports/pod-status'
+      path: '/reports/pod-status'
+      fullPath: '/reports/pod-status'
+      preLoaderRoute: typeof ReportsPodStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports/pending-pods': {
@@ -500,11 +663,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsPendingPodsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reports/master-report': {
+      id: '/reports/master-report'
+      path: '/reports/master-report'
+      fullPath: '/reports/master-report'
+      preLoaderRoute: typeof ReportsMasterReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports/loading-factor-cost': {
       id: '/reports/loading-factor-cost'
       path: '/reports/loading-factor-cost'
       fullPath: '/reports/loading-factor-cost'
       preLoaderRoute: typeof ReportsLoadingFactorCostRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/insurance-claim-report': {
+      id: '/reports/insurance-claim-report'
+      path: '/reports/insurance-claim-report'
+      fullPath: '/reports/insurance-claim-report'
+      preLoaderRoute: typeof ReportsInsuranceClaimReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports/insurance': {
@@ -519,6 +696,13 @@ declare module '@tanstack/react-router' {
       path: '/reports/freight-bills'
       fullPath: '/reports/freight-bills'
       preLoaderRoute: typeof ReportsFreightBillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports/e-way-bill-report': {
+      id: '/reports/e-way-bill-report'
+      path: '/reports/e-way-bill-report'
+      fullPath: '/reports/e-way-bill-report'
+      preLoaderRoute: typeof ReportsEWayBillReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports/damage-list': {
@@ -557,11 +741,20 @@ const rootRouteChildren: RootRouteChildren = {
   VehicleInfoRoute: VehicleInfoRoute,
   ReportsBusinessShareMatrixRoute: ReportsBusinessShareMatrixRoute,
   ReportsDamageListRoute: ReportsDamageListRoute,
+  ReportsEWayBillReportRoute: ReportsEWayBillReportRoute,
   ReportsFreightBillsRoute: ReportsFreightBillsRoute,
   ReportsInsuranceRoute: ReportsInsuranceRoute,
+  ReportsInsuranceClaimReportRoute: ReportsInsuranceClaimReportRoute,
   ReportsLoadingFactorCostRoute: ReportsLoadingFactorCostRoute,
+  ReportsMasterReportRoute: ReportsMasterReportRoute,
   ReportsPendingPodsRoute: ReportsPendingPodsRoute,
+  ReportsPodStatusRoute: ReportsPodStatusRoute,
+  ReportsProductVolumeWiseRoute: ReportsProductVolumeWiseRoute,
+  ReportsProvisionStatementRoute: ReportsProvisionStatementRoute,
+  ReportsSaleReportRoute: ReportsSaleReportRoute,
   ReportsServiceLevelReportRoute: ReportsServiceLevelReportRoute,
+  ReportsSitReportRoute: ReportsSitReportRoute,
+  ReportsTransitDamageInfoReportRoute: ReportsTransitDamageInfoReportRoute,
   ReportsTransitEwayBillRoute: ReportsTransitEwayBillRoute,
   ReportsIndexRoute: ReportsIndexRoute,
 }

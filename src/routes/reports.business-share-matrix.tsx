@@ -18,6 +18,35 @@ import autoTable from "jspdf-autotable";
 import { cn } from "@/lib/utils";
 import { GateDatePicker } from "@/components/ui/date-picker";
 
+// ── Divisions (login response DIV) that belong to the given plant(s) ──
+// A plant value can be "1100", "HBL NCPP-SHPT" (PLANT_DESC) or "1100_HBL NCPP-SHPT" (PLANT_TEXT).
+// With no plant chosen (or an unrecognised one) every division is returned, as before.
+function loginDivisionsForPlants(divisions: any[], plantValues: unknown): any[] {
+  const values = (Array.isArray(plantValues) ? plantValues : [plantValues])
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean);
+  if (values.length === 0) return divisions;
+
+  let loginPlants: any[] = [];
+  try {
+    const loginUser = JSON.parse(localStorage.getItem("currentUser") || localStorage.getItem("userData") || "null");
+    loginPlants = Array.isArray(loginUser?.PLANTS) ? loginUser.PLANTS : [];
+  } catch {
+    loginPlants = [];
+  }
+  const plantCodes = values
+    .map((value) => {
+      const match = loginPlants.find((p) => p?.WERKS === value || p?.PLANT_DESC === value || p?.PLANT_TEXT === value);
+      if (match?.WERKS) return String(match.WERKS);
+      const codePrefix = value.match(/^(\d+)(?:_|$)/);
+      return codePrefix ? codePrefix[1] : "";
+    })
+    .filter(Boolean);
+  if (plantCodes.length === 0) return divisions;
+  return divisions.filter((d) => plantCodes.includes(String(d?.PLANT ?? "").trim()));
+}
+
+
 type Option = { label: string; value: string; meta?: string };
 
 const INPUT =
@@ -28,6 +57,22 @@ const LABEL = "block text-[11px] font-semibold text-foreground mb-1.5";
 const INOUT_OPTIONS: Option[] = [
   { value: "INWARD", label: "Inward" },
   { value: "OUTWARD", label: "Outward" },
+];
+
+// Month Wise / Quarter Wise filter options
+const MONTH_OPTIONS: Option[] = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+].map((month) => ({ value: month, label: month }));
+
+const QUARTER_OPTIONS: Option[] = ["Q1", "Q2", "Q3", "Q4"].map((quarter) => ({ value: quarter, label: quarter }));
+
+const YEAR_OPTIONS: Option[] = ["FY 26-27"].map((year) => ({ value: year, label: year }));
+
+// SAP / Non-SAP filter — same options as the other report screens
+const SAP_TYPE_OPTIONS: Option[] = [
+  { value: "SAP", label: "SAP" },
+  { value: "NONSAP", label: "Non-SAP" },
 ];
 
 const TRANS_GROUP_OPTIONS: Option[] = [
@@ -57,6 +102,15 @@ const REPORT_TYPE_OPTIONS = [
   { value: "Header", label: "Header" },
   { value: "HeaderWithPlant", label: "Header with Plant" },
   { value: "HeaderWithInOut", label: "Header with Inward/Outward" },
+];
+
+// Report level radios shown on the screen. They reuse the existing report types, so the
+// API mode, results table and Excel / PDF downloads work unchanged:
+//   Item Level   → "All"    (mode "A", item-level records)
+//   Header Level → "Header" (mode "H")
+const REPORT_LEVEL_OPTIONS = [
+  { value: "All", label: "Item Level" },
+  { value: "Header", label: "Header Level" },
 ];
 
 function getLoggedInUser(): any {
@@ -105,10 +159,18 @@ export const Route = createFileRoute("/reports/business-share-matrix")({
 function BusinessShareMatrixReport() {
   // Filter form state (mirrors Angular filterForm controls)
   const [inout, setInout] = useState<string[]>([]);
+  // SAP / Non-SAP selection (sent as sap_nonsap)
+  const [sapType, setSapType] = useState<string[]>([]);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [transGroup, setTransGroup] = useState<string[]>([]);
   const [transporter, setTransporter] = useState<string[]>([]);
+  // Transporter Code (F4 from the vendor-code API's VEND_CODE list — same as Dispatch's Vendor Code)
+  const [transporterCode, setTransporterCode] = useState<string[]>([]);
+  // Month Wise / Quarter Wise / Year Wise filters
+  const [monthWise, setMonthWise] = useState<string[]>([]);
+  const [quarterWise, setQuarterWise] = useState<string[]>([]);
+  const [yearWise, setYearWise] = useState<string[]>([]);
   const [werks, setWerks] = useState<string[]>([]);
   const [matnr, setMatnr] = useState<string[]>([]);
   const [division, setDivision] = useState<string[]>([]);
@@ -200,9 +262,17 @@ function BusinessShareMatrixReport() {
     [plantList],
   );
   const divisionOptions: Option[] = useMemo(
-    () => divisionList.map((d: any) => ({ label: d.DIV_TEXT, value: d.DIVISION })),
-    [divisionList],
+    () => loginDivisionsForPlants(divisionList, werks).map((d: any) => ({ label: d.DIV_TEXT, value: d.DIVISION })),
+    [divisionList, werks],
   );
+  // Transporter Code F4 options — the VENDOR_CODE of each entry in the same VEND_CODE list
+  // (shown as codes, like Dispatch's Vendor Code F4); duplicates removed
+  const transporterCodeOptions: Option[] = useMemo(() => {
+    const codes = Array.from(
+      new Set(transporterList.map((t: any) => String(t?.VENDOR_CODE ?? "").trim()).filter(Boolean)),
+    );
+    return codes.map((code) => ({ label: code, value: code }));
+  }, [transporterList]);
   const transporterOptions: Option[] = useMemo(
     () => transporterList.map((t: any) => ({ label: t.TRANSPORTER, value: t.TRANSPORTER })),
     [transporterList],
@@ -244,8 +314,8 @@ function BusinessShareMatrixReport() {
       inward_outward: createArray(inout, "inout"),
       from_date: formatDate(fromDate),
       to_date: formatDate(toDate),
-      // SAPTYPE has no rendered control in the Angular template, so this is always empty
-      sap_nonsap: [] as { type: string }[],
+      // SAP / Non-SAP field — same key and shape as the other report screens ([{ type: "SAP" }, …])
+      sap_nonsap: createArray(sapType, "type"),
       transporter_group: createArray(transGroup, "TRANSPORTER_GROUP"),
       transporter: createArray(transporter, "TRANSPORTER"),
       plant: createArray(werks, "plant"),
@@ -329,10 +399,15 @@ function BusinessShareMatrixReport() {
   // are component state outside the form and are left untouched, matching Angular.
   const resetForm = () => {
     setInout([]);
+    setSapType([]);
     setFromDate("");
     setToDate("");
     setTransGroup([]);
     setTransporter([]);
+    setTransporterCode([]);
+    setMonthWise([]);
+    setQuarterWise([]);
+    setYearWise([]);
     setWerks([]);
     setMatnr([]);
     setDivision([]);
@@ -360,7 +435,7 @@ function BusinessShareMatrixReport() {
         "In/Out": row.INWARD_OUTWARD || "",
         "SAP Type": row.SAP_NONSAP || "",
         Plant: row.PLANT || "",
-        "Transporter Group": row.TRANSPORTER_GROUP || "",
+        "Vehicle Type": row.TRANSPORTER_GROUP || "",
         Transporter: row.TRANSPORTER || "",
         "No. of Vehicles": row.NO_OF_VEHICLES_PLACED || 0,
         "Basic Charge": row.BASIC_CHARGE || 0,
@@ -380,7 +455,7 @@ function BusinessShareMatrixReport() {
         "In/Out": "",
         "SAP Type": "",
         Plant: "",
-        "Transporter Group": "",
+        "Vehicle Type": "",
         Transporter: "",
         "No. of Vehicles": totals.TOTAL_VEHICLES || 0,
         "Basic Charge": totals.TOTAL_BASIC_CHARGE || 0,
@@ -521,7 +596,7 @@ function BusinessShareMatrixReport() {
         "In/Out",
         "SAP Type",
         "Plant",
-        "Transporter Group",
+        "Vehicle Type",
         "Transporter",
         "No. of Vehicles",
         "Basic Charge",
@@ -741,23 +816,32 @@ function BusinessShareMatrixReport() {
   };
 
   return (
-    <div className="flex flex-col h-full"><div className="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-3 shrink-0">
-      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5 flex items-start gap-4">
-        <div className="size-12 rounded-xl bg-gradient-to-br from-sky-500 to-teal-500 grid place-items-center text-white shadow-cta shrink-0">
-          <Grid3x3 className="size-6" />
-        </div>
-        <div className="min-w-0">
-          <h1 className="font-display text-[18px] font-bold tracking-tight text-indigo-700 dark:text-indigo-300">
-            Business Share Matrix Reports
-          </h1>
-          <p className="text-[12.5px] text-muted-foreground mt-1">
-            Share of business by transporter, lane, and division.
-          </p>
+    <div className="flex flex-col h-full">
+      {/* Page header — same style as the Shipment Details screen header */}
+      <div className="sticky top-0 z-50 bg-surface/80 backdrop-blur border-b border-hairline px-3 sm:px-4 lg:px-6 pt-2 pb-2 shadow-soft shrink-0">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="hidden sm:grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-white shadow-cta">
+            <Grid3x3 className="size-4" />
+          </div>
+          <div className="min-w-0">
+            {/* Header title: Inter (Segoe UI / Roboto fallback), Semi-Bold 600, 22px, dark slate #1E293B */}
+            <h1
+              className="text-[22px] leading-tight font-semibold tracking-tight text-[#1E293B] dark:text-slate-100 truncate"
+              style={{ fontFamily: 'Inter, "Segoe UI", Roboto, sans-serif' }}
+            >
+              Business Share Matrix Reports
+            </h1>
+            <p className="text-[11.5px] text-muted-foreground mt-1">
+              Share of business by transporter, lane, and division.
+            </p>
+          </div>
         </div>
       </div>
+      {/* Gap between the header and the filter card */}
+      <div className="h-3 sm:h-4 shrink-0" />
 
       {/* FILTER CARD */}
-      </div><div className="flex-1 overflow-y-auto scrollbar-elegant px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 space-y-5">
+      <div className="flex-1 overflow-y-auto scrollbar-elegant px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 space-y-5">
             <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-5">
           <MultiSelectField
@@ -766,6 +850,13 @@ function BusinessShareMatrixReport() {
             value={inout}
             onChange={setInout}
             error={inoutInvalid ? "Inward/Outward is required" : undefined}
+          />
+
+          <MultiSelectField
+            label="SAP/Non-SAP"
+            options={SAP_TYPE_OPTIONS}
+            value={sapType}
+            onChange={setSapType}
           />
 
           <DateField
@@ -783,7 +874,7 @@ function BusinessShareMatrixReport() {
           />
 
           <MultiSelectField
-            label="Transporter Group"
+            label="Vehicle Type"
             options={TRANS_GROUP_OPTIONS}
             value={transGroup}
             onChange={setTransGroup}
@@ -798,6 +889,48 @@ function BusinessShareMatrixReport() {
           />
 
           <MultiSelectField
+            label="Transporter Code"
+            options={transporterCodeOptions}
+            value={transporterCode}
+            onChange={setTransporterCode}
+            searchable
+          />
+
+          <MultiSelectField
+            label="Month Wise"
+            options={MONTH_OPTIONS}
+            value={monthWise}
+            onChange={setMonthWise}
+          />
+
+          <MultiSelectField
+            label="Quarter Wise"
+            options={QUARTER_OPTIONS}
+            value={quarterWise}
+            onChange={setQuarterWise}
+          />
+          <MultiSelectField
+            label="Year Wise"
+            options={YEAR_OPTIONS}
+            value={yearWise}
+            onChange={setYearWise}
+          />
+
+          {/* <div>
+            <label className={LABEL}>Year Wise</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={4}
+              value={yearWise}
+              // Year: digits only, e.g. 2026
+              onChange={(e) => setYearWise(e.target.value.replace(/\D/g, ""))}
+              placeholder="Enter Year (e.g. 2026)"
+              className={INPUT}
+            />
+          </div> */}
+
+          <MultiSelectField
             label="Plant"
             options={plantOptions}
             value={werks}
@@ -805,12 +938,14 @@ function BusinessShareMatrixReport() {
             searchable
           />
 
+          {/* Product — commented out for now
           <MultiSelectField
             label="Product"
             options={PRODUCT_OPTIONS}
             value={matnr}
             onChange={setMatnr}
           />
+          */}
 
           <MultiSelectField
             label="Division"
@@ -820,6 +955,7 @@ function BusinessShareMatrixReport() {
             searchable
           />
 
+          {/* Customer Name, Destination Location, Segment, Incoterms — commented out for now
           <MultiSelectField
             label="Customer Name"
             options={customerOptions}
@@ -852,10 +988,31 @@ function BusinessShareMatrixReport() {
             onChange={setIncoterms}
             searchable
           />
+          */}
         </div>
 
         {/* REPORT TYPE (radio) */}
         <div className="mt-4 pt-4 border-t border-hairline space-y-2">
+          {/* Item Level / Header Level — only one can be selected */}
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            {REPORT_LEVEL_OPTIONS.map((opt) => (
+              <label key={opt.value} className="inline-flex items-center gap-2 text-[12.5px] text-foreground cursor-pointer">
+                <input
+                  type="radio"
+                  name="report-type"
+                  checked={reportType === opt.value}
+                  onChange={() => setReportType(opt.value)}
+                  className="size-3.5 accent-primary"
+                />
+                {opt.label}
+              </label>
+            ))}
+            {reportTypeInvalid && (
+              <span className="text-[11px] text-destructive">Please select report type</span>
+            )}
+          </div>
+
+          {/* Previous four report type radios — commented out for now
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             {REPORT_TYPE_OPTIONS.slice(0, 2).map((opt) => (
               <label key={opt.value} className="inline-flex items-center gap-2 text-[12.5px] text-foreground cursor-pointer">
@@ -890,13 +1047,14 @@ function BusinessShareMatrixReport() {
               <span className="text-[11px] text-destructive">Please select report type</span>
             )}
           </div>
+          */}
         </div>
 
         <div className="mt-5 flex justify-end gap-2.5">
           <button
             type="button"
             onClick={resetForm}
-            className="h-9 px-4 rounded-md border border-input bg-background text-foreground text-[12.5px] font-semibold hover:bg-muted inline-flex items-center justify-center gap-2"
+            className="h-9 px-4 rounded-md border border-input bg-background text-foreground text-[12.5px] font-semibold hover:bg-muted inline-flex items-center justify-center gap-2 cursor-pointer"
           >
             <RotateCcw className="size-3.5" />
             Clear Filters
@@ -905,7 +1063,7 @@ function BusinessShareMatrixReport() {
             type="button"
             onClick={onSearch}
             disabled={isSearching}
-            className="h-9 px-5 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:pointer-events-none"
+            className="h-9 px-5 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:pointer-events-none disabled:cursor-not-allowed"
           >
             <Filter className="size-3.5" />
             {isSearching ? "Executing..." : "Execute Report"}
@@ -928,14 +1086,16 @@ function BusinessShareMatrixReport() {
             />
             <button
               onClick={exportToExcel}
-              className="h-8 px-3 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[12px] font-semibold shadow-cta inline-flex items-center gap-1.5"
+              // Excel — green
+              className="h-8 px-3 rounded-md bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-[12px] font-semibold shadow-cta inline-flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <FileSpreadsheet className="size-3.5" />
               Export Excel
             </button>
             <button
               onClick={downloadPDF}
-              className="h-8 px-3 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[12px] font-semibold shadow-cta inline-flex items-center gap-1.5"
+              // PDF — red
+              className="h-8 px-3 rounded-md bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white text-[12px] font-semibold shadow-cta inline-flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <FileText className="size-3.5" />
               Export PDF
@@ -962,7 +1122,7 @@ function BusinessShareMatrixReport() {
                     "In/Out",
                     "SAP Type",
                     "Plant",
-                    "Transporter Group",
+                    "Vehicle Type",
                     "Transporter",
                     "No. of Vehicles",
                     "Basic Charge",
