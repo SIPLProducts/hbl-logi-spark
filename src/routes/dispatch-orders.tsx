@@ -230,6 +230,19 @@ function DispatchOrdersPage() {
 
       const response = await service.FetchDispatchOrderFlowData(payload);
 
+       if (response && String(response.ERROR_CODE ?? "").trim() === "100") {
+      setCounts({ pending: 0, completed: 0 });
+      if (response.MESSAGE) {
+        Swal.fire({
+          icon: "info",
+          title: "No Data",
+          text: response.MESSAGE,
+        });
+      }
+      setStatus("empty");
+      return;
+    }
+
       if (response && response.MESSAGE) {
         Swal.fire({
           icon: "info",

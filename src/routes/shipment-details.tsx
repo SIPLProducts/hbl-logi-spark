@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import Swal from "sweetalert2";
 // @ts-ignore
@@ -15,6 +15,7 @@ import {
   FileText,
   FileDown,
   CalendarIcon,
+  ChevronDown,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,31 @@ import {
 import { cn } from "@/lib/utils";
 import { ShipmentDetailsSapCreate } from "@/components/shipment-details-sap-create";
 import { getHandedOffDirection, getHandedOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
+
+// ── Filter & Download payload: plant as "<WERKS>_<PLANT_DESC>" (e.g. "1100_HBL NCPP-SHPT") ──
+// The Plant filter may hold the code ("1100"), the description ("HBL NCPP-SHPT") or the full
+// text; the matching login plant (login response PLANTS) gives its PLANT_TEXT.
+function toFilterPlantText(plantValue: string): string {
+  const value = String(plantValue ?? "").trim();
+  if (!value) return "";
+  let loginPlants: any[] = [];
+  try {
+    const loginUser = JSON.parse(localStorage.getItem("currentUser") || localStorage.getItem("userData") || "null");
+    loginPlants = Array.isArray(loginUser?.PLANTS) ? loginUser.PLANTS : [];
+  } catch {
+    loginPlants = [];
+  }
+  const match = loginPlants.find(
+    (p) =>
+      p?.WERKS === value ||
+      p?.PLANT_DESC === value ||
+      p?.PLANT_TEXT === value ||
+      `${p?.WERKS}_${p?.PLANT_DESC}` === value,
+  );
+  if (!match) return value;
+  return match.PLANT_TEXT || `${match.WERKS}_${match.PLANT_DESC}`;
+}
+
 
 // ── Divisions (login response DIV) that belong to the given plant(s) ──
 // A plant value can be "1100", "HBL NCPP-SHPT" (PLANT_DESC) or "1100_HBL NCPP-SHPT" (PLANT_TEXT).
@@ -114,10 +140,10 @@ function ShipmentDetailsPage() {
   const [searchSap, setSearchSap] = useState<SapMode | null>(null);
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
-  const [fPlant, setFPlant] = useState("");
-  const [fDivision, setFDivision] = useState("");
-  const [fTransporter, setFTransporter] = useState("");
-  const [fVehicleType, setFVehicleType] = useState("");
+  const [fPlant, setFPlant] = useState<string[]>([]);
+  const [fDivision, setFDivision] = useState<string[]>([]);
+  const [fTransporter, setFTransporter] = useState<string[]>([]);
+  const [fVehicleType, setFVehicleType] = useState<string[]>([]);
   const [fStatus, setFStatus] = useState("");
   const [applied, setApplied] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -175,10 +201,10 @@ function ShipmentDetailsPage() {
   const resetFilters = (keepSap?: SapMode) => {
     setFromDate(undefined);
     setToDate(undefined);
-    setFPlant("");
-    setFDivision("");
-    setFTransporter("");
-    setFVehicleType("");
+    setFPlant([]);
+    setFDivision([]);
+    setFTransporter([]);
+    setFVehicleType([]);
     setFStatus("");
     setApplied(false);
     setShipmentData([]);
@@ -196,15 +222,41 @@ function ShipmentDetailsPage() {
       return;
     }
 
+    // Filter & Download: every selected value is sent as its own row, e.g.
+    //   PLANT: [{ PLANT: "1100_HBL NCPP-SHPT" }], DIVISION: [{ DIVISION: "NCPP" }],
+    //   TRANSPORTER: [{ TRANSPORTER: "DELHIVERY LIMITED" }], VEHICLE_TYPE: [{ VEHTYP: "FULL TRUCK LOAD" }]
+    // Nothing selected → empty list [].
+
+    // Plant: send the login plant text "<code>_<description>"
+    const plantList: { PLANT: string }[] = [];
+    for (const selectedPlant of fPlant) {
+      plantList.push({ PLANT: toFilterPlantText(selectedPlant) });
+    }
+
+    const divisionList: { DIVISION: string }[] = [];
+    for (const selectedDivision of fDivision) {
+      divisionList.push({ DIVISION: selectedDivision });
+    }
+
+    const transporterList: { TRANSPORTER: string }[] = [];
+    for (const selectedTransporter of fTransporter) {
+      transporterList.push({ TRANSPORTER: selectedTransporter });
+    }
+
+    const vehicleTypeList: { VEHTYP: string }[] = [];
+    for (const selectedVehicleType of fVehicleType) {
+      vehicleTypeList.push({ VEHTYP: selectedVehicleType });
+    }
+
     const payload = {
       GLOBAL: "SHIPMENT DETAILS",
       ZUSER: loggedInUser,
       DATE_FROM: format(fromDate, "yyyy-MM-dd"),
       DATE_TO: format(toDate, "yyyy-MM-dd"),
-      PLANT: fPlant || "",
-      DIVISION: fDivision || "",
-      TRANSPORTER: fTransporter || "",
-      VEHICLE_TYPE: fVehicleType || "",
+      PLANT: plantList,
+      DIVISION: divisionList,
+      TRANSPORTER: transporterList,
+      VEHICLE_TYPE: vehicleTypeList,
       STATUS: fStatus || "",
     };
 
@@ -586,33 +638,37 @@ function ShipmentDetailsPage() {
                   <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
                     <DateField label="From Date" value={fromDate} onChange={setFromDate} />
                     <DateField label="To Date" value={toDate} onChange={setToDate} />
-                    <SelectField
+                    <FilterMultiSelect
                       label="Plant"
                       value={fPlant}
                       onChange={setFPlant}
                       options={plantList.map((p) => ({ value: p.PLANT_DESC, label: p.PLANT_TEXT }))}
                       placeholder="Select Plant"
+                      searchable
                     />
-                    <SelectField
+                    <FilterMultiSelect
                       label="Division"
                       value={fDivision}
                       onChange={setFDivision}
                       options={loginDivisionsForPlants(divisionList, fPlant).map((d: any) => ({ value: d.DIVISION, label: d.DIV_TEXT }))}
                       placeholder="Select Division"
+                      searchable
                     />
-                    <SelectField
+                    <FilterMultiSelect
                       label="Transporter"
                       value={fTransporter}
                       onChange={setFTransporter}
                       options={transporterList.map((t) => ({ value: t.TRANSPORTER, label: t.TRANSPORTER }))}
                       placeholder="Select Transporter"
+                      searchable
                     />
-                    <SelectField
+                    <FilterMultiSelect
                       label="Vehicle Type"
                       value={fVehicleType}
                       onChange={setFVehicleType}
                       options={VEHICLE_TYPES.map((v) => ({ value: v, label: v }))}
                       placeholder="Select Vehicle Type"
+                      searchable
                     />
                     <SelectField
                       label="Status"
@@ -933,6 +989,147 @@ function SelectField({
           ))}
         </SelectContent>
       </Select>
+    </div>
+  );
+}
+
+function FilterMultiSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  searchable = true,
+}: {
+  label: string;
+  value: string[];
+  onChange: (v: string[]) => void;
+  options: string[] | { value: string; label: string }[];
+  placeholder: string;
+  searchable?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const normalizedOptions: { value: string; label: string }[] = useMemo(() => {
+    return options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+  }, [options]);
+
+  const filtered = useMemo(() => {
+    if (!searchable || !search) return normalizedOptions;
+    const s = search.toLowerCase();
+    return normalizedOptions.filter((o) => (o.label ?? "").toLowerCase().includes(s));
+  }, [normalizedOptions, searchable, search]);
+
+  const toggle = (v: string) => {
+    if (value.includes(v)) {
+      onChange(value.filter((x) => x !== v));
+    } else {
+      onChange([...value, v]);
+    }
+  };
+
+  const isAllSelected =
+    filtered.length > 0 && filtered.every((o) => value.includes(o.value));
+
+  const toggleAll = () => {
+    if (isAllSelected) {
+      const filteredValues = new Set(filtered.map((o) => o.value));
+      onChange(value.filter((v) => !filteredValues.has(v)));
+    } else {
+      const newValues = new Set([...value, ...filtered.map((o) => o.value)]);
+      onChange(Array.from(newValues));
+    }
+  };
+
+  const displayLabel = () => {
+    if (value.length === 0) return "";
+    if (value.length === 1) {
+      const opt = normalizedOptions.find((o) => o.value === value[0]);
+      return opt?.label ?? value[0];
+    }
+    return `${value.length} Selected`;
+  };
+
+  return (
+    <div className="relative flex flex-col gap-1.5" ref={ref}>
+      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </label>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "h-8 w-full rounded-md border border-input bg-background px-3 text-[12.5px] text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 flex items-center justify-between gap-2 text-left",
+          value.length === 0 && "text-muted-foreground",
+        )}
+      >
+        <span className="truncate">{displayLabel() || placeholder}</span>
+        <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 z-50 mt-1 w-full min-w-[200px] rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+          {searchable && (
+            <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline z-10">
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
+              />
+            </div>
+          )}
+
+          {normalizedOptions.length > 0 && (
+            <label
+              className={`flex items-center gap-2 px-3 py-1.5 text-[12.5px] font-medium text-foreground hover:bg-muted cursor-pointer border-b border-hairline sticky bg-surface z-10 ${
+                searchable ? "top-[41px]" : "top-0"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={toggleAll}
+                className="size-3.5"
+              />
+              <span>Select All</span>
+            </label>
+          )}
+
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o.value}
+                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={value.includes(o.value)}
+                  onChange={() => toggle(o.value)}
+                  className="size-3.5"
+                />
+                <span className="truncate">{o.label}</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

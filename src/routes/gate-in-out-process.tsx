@@ -52,6 +52,31 @@ import service from "@/services/generalservice_service.js";
 import { getLocalDocumentUrl, downloadDocument } from "@/services/generalservice_service";
 import { getHandedOffDirection, getHandedOffSapMode, handOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
+// ── Filter & Download payload: plant as "<WERKS>_<PLANT_DESC>" (e.g. "1100_HBL NCPP-SHPT") ──
+// The Plant filter may hold the code ("1100"), the description ("HBL NCPP-SHPT") or the full
+// text; the matching login plant (login response PLANTS) gives its PLANT_TEXT.
+function toFilterPlantText(plantValue: string): string {
+  const value = String(plantValue ?? "").trim();
+  if (!value) return "";
+  let loginPlants: any[] = [];
+  try {
+    const loginUser = JSON.parse(localStorage.getItem("currentUser") || localStorage.getItem("userData") || "null");
+    loginPlants = Array.isArray(loginUser?.PLANTS) ? loginUser.PLANTS : [];
+  } catch {
+    loginPlants = [];
+  }
+  const match = loginPlants.find(
+    (p) =>
+      p?.WERKS === value ||
+      p?.PLANT_DESC === value ||
+      p?.PLANT_TEXT === value ||
+      `${p?.WERKS}_${p?.PLANT_DESC}` === value,
+  );
+  if (!match) return value;
+  return match.PLANT_TEXT || `${match.WERKS}_${match.PLANT_DESC}`;
+}
+
+
 // ── Plants / divisions of the logged-in user (login response PLANTS + DIV) ──
 // Built in the same row shape the F4 vendor-code API returns for PLANT — one row per
 // plant + division: { PLANT: WERKS, PLANT_DESC, DIVISION, PLANT_TEXT, DIV_TEXT }.
@@ -130,10 +155,10 @@ function GateInOutProcessPage() {
   const [searchSap, setSearchSap] = useState<SapMode | null>(null);
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
-  const [fPlant, setFPlant] = useState("");
-  const [fDivision, setFDivision] = useState("");
-  const [fTransporter, setFTransporter] = useState("");
-  const [fVehicleType, setFVehicleType] = useState("");
+  const [fPlant, setFPlant] = useState<string[]>([]);
+  const [fDivision, setFDivision] = useState<string[]>([]);
+  const [fTransporter, setFTransporter] = useState<string[]>([]);
+  const [fVehicleType, setFVehicleType] = useState<string[]>([]);
   const [fStatus, setFStatus] = useState("");
   const [applied, setApplied] = useState(false);
 
@@ -159,10 +184,10 @@ function GateInOutProcessPage() {
   const resetFilters = () => {
     setFromDate(undefined);
     setToDate(undefined);
-    setFPlant("");
-    setFDivision("");
-    setFTransporter("");
-    setFVehicleType("");
+    setFPlant([]);
+    setFDivision([]);
+    setFTransporter([]);
+    setFVehicleType([]);
     setFStatus("");
     setApplied(false);
     setSearchSap(null);
@@ -210,15 +235,41 @@ function GateInOutProcessPage() {
 
     try {
       setIsFilterLoading(true);
+      // Filter & Download: every selected value is sent as its own row, e.g.
+      //   PLANT: [{ PLANT: "1100_HBL NCPP-SHPT" }], DIVISION: [{ DIVISION: "NCPP" }],
+      //   TRANSPORTER: [{ TRANSPORTER: "DELHIVERY LIMITED" }], VEHICLE_TYPE: [{ VEHTYP: "FULL TRUCK LOAD" }]
+      // Nothing selected → empty list [].
+
+      // Plant: send the login plant text "<code>_<description>"
+      const plantList: { PLANT: string }[] = [];
+      for (const selectedPlant of fPlant) {
+        plantList.push({ PLANT: toFilterPlantText(selectedPlant) });
+      }
+
+      const divisionList: { DIVISION: string }[] = [];
+      for (const selectedDivision of fDivision) {
+        divisionList.push({ DIVISION: selectedDivision });
+      }
+
+      const transporterList: { TRANSPORTER: string }[] = [];
+      for (const selectedTransporter of fTransporter) {
+        transporterList.push({ TRANSPORTER: selectedTransporter });
+      }
+
+      const vehicleTypeList: { VEHTYP: string }[] = [];
+      for (const selectedVehicleType of fVehicleType) {
+        vehicleTypeList.push({ VEHTYP: selectedVehicleType });
+      }
+
       const payload = {
         GLOBAL: "GATE IN OUT",
         ZUSER: getLoggedInUser(),
         DATE_FROM: format(fromDate, "yyyyMMdd"),
         DATE_TO: format(toDate, "yyyyMMdd"),
-        PLANT: fPlant || "",
-        DIVISION: fDivision || "",
-        TRANSPORTER: fTransporter || "",
-        VEHICLE_TYPE: fVehicleType || "",
+        PLANT: plantList,
+        DIVISION: divisionList,
+        TRANSPORTER: transporterList,
+        VEHICLE_TYPE: vehicleTypeList,
         STATUS: fStatus || "",
       };
 
@@ -604,10 +655,10 @@ function GateInOutProcessPage() {
                     setSearchSap(v);
                     setFromDate(undefined);
                     setToDate(undefined);
-                    setFPlant("");
-                    setFDivision("");
-                    setFTransporter("");
-                    setFVehicleType("");
+                    setFPlant([]);
+                    setFDivision([]);
+                    setFTransporter([]);
+                    setFVehicleType([]);
                     setFStatus("");
                     setApplied(false);
                   }}
@@ -626,33 +677,37 @@ function GateInOutProcessPage() {
                   <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
                     <DateField label="From Date" value={fromDate} onChange={setFromDate} />
                     <DateField label="To Date" value={toDate} onChange={setToDate} />
-                    <SelectField
+                    <FilterMultiSelect
                       label="Plant"
                       value={fPlant}
                       onChange={setFPlant}
                       options={fetchedPlants.length > 0 ? fetchedPlants : PLANTS}
                       placeholder="Select Plant"
+                      searchable
                     />
-                    <SelectField
+                    <FilterMultiSelect
                       label="Division"
                       value={fDivision}
                       onChange={setFDivision}
                       options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}
                       placeholder="Select Division"
+                      searchable
                     />
-                    <SelectField
+                    <FilterMultiSelect
                       label="Transporter"
                       value={fTransporter}
                       onChange={setFTransporter}
                       options={fetchedTransporters.length > 0 ? fetchedTransporters : TRANSPORTERS}
                       placeholder="Select Transporter"
+                      searchable
                     />
-                    <SelectField
+                    <FilterMultiSelect
                       label="Vehicle Type"
                       value={fVehicleType}
                       onChange={setFVehicleType}
                       options={VEHICLE_TYPES}
                       placeholder="Select Vehicle Type"
+                      searchable
                     />
                     <SelectField
                       label="Status"
@@ -1129,6 +1184,146 @@ function SelectField({
           ))}
         </SelectContent>
       </Select>
+    </div>
+  );
+}
+
+function FilterMultiSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  searchable = true,
+}: {
+  label: string;
+  value: string[];
+  onChange: (v: string[]) => void;
+  options: string[] | { value: string; label: string }[];
+  placeholder: string;
+  searchable?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const normalizedOptions: { value: string; label: string }[] = useMemo(() => {
+    return options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+  }, [options]);
+
+  const filtered = useMemo(() => {
+    if (!searchable || !search) return normalizedOptions;
+    const s = search.toLowerCase();
+    return normalizedOptions.filter((o) => (o.label ?? "").toLowerCase().includes(s));
+  }, [normalizedOptions, searchable, search]);
+
+  const toggle = (v: string) => {
+    if (value.includes(v)) {
+      onChange(value.filter((x) => x !== v));
+    } else {
+      onChange([...value, v]);
+    }
+  };
+
+  const isAllSelected =
+    filtered.length > 0 && filtered.every((o) => value.includes(o.value));
+
+  const toggleAll = () => {
+    if (isAllSelected) {
+      const filteredValues = new Set(filtered.map((o) => o.value));
+      onChange(value.filter((v) => !filteredValues.has(v)));
+    } else {
+      const newValues = new Set([...value, ...filtered.map((o) => o.value)]);
+      onChange(Array.from(newValues));
+    }
+  };
+
+  const displayLabel = () => {
+    if (value.length === 0) return "";
+    if (value.length === 1) {
+      const opt = normalizedOptions.find((o) => o.value === value[0]);
+      return opt?.label ?? value[0];
+    }
+    return `${value.length} Selected`;
+  };
+
+  return (
+    <div className="relative flex flex-col gap-1.5" ref={ref}>
+      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </label>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "h-8 w-full rounded-md border border-input bg-background px-3 text-[12.5px] text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 flex items-center justify-between gap-2 text-left",
+          value.length === 0 && "text-muted-foreground",
+        )}
+      >
+        <span className="truncate">{displayLabel() || placeholder}</span>
+        <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 z-50 mt-1 w-full min-w-[200px] rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+          {searchable && (
+            <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline z-10">
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
+              />
+            </div>
+          )}
+
+          {normalizedOptions.length > 0 && (
+            <label
+              className={`flex items-center gap-2 px-3 py-1.5 text-[12.5px] font-medium text-foreground hover:bg-muted cursor-pointer border-b border-hairline sticky bg-surface z-10 ${searchable ? "top-[41px]" : "top-0"
+                }`}
+            >
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={toggleAll}
+                className="size-3.5"
+              />
+              <span>Select All</span>
+            </label>
+          )}
+
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o.value}
+                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={value.includes(o.value)}
+                  onChange={() => toggle(o.value)}
+                  className="size-3.5"
+                />
+                <span className="truncate">{o.label}</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -4131,114 +4326,114 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     <div className="space-y-3">
       {/* ── Reference table (same UI/CSS as Shipment Details) ── */}
       {!showingSearchResults && (
-      <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
-        <table className="w-full text-[12px]">
-          <thead>
-            <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
-              <th className="px-3 py-0.5 text-center w-16">Select</th>
-              <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
-              <th className="px-3 py-0.5 text-center">Reference Number</th>
-              <th className="px-3 py-0.5 text-center">Work Order Number</th>
-              <th className="px-3 py-0.5 text-center">LR Number</th>
-              <th className="px-3 py-0.5 text-center">Transporter</th>
-              <th className="px-3 py-0.5 text-center whitespace-nowrap">Completed Invoices</th>
-              <th className="px-3 py-0.5 text-center w-20">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {refTableData.map((row, i) => {
-              const isRowDisabled = Boolean(row.notAllowed);
+        <div className="rounded-xl overflow-x-auto border border-hairline shadow-elegant bg-surface">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="bg-gradient-primary text-primary-foreground text-[11px] font-semibold">
+                <th className="px-3 py-0.5 text-center w-16">Select</th>
+                <th className="px-3 py-0.5 text-center w-16">Sl.No</th>
+                <th className="px-3 py-0.5 text-center">Reference Number</th>
+                <th className="px-3 py-0.5 text-center">Work Order Number</th>
+                <th className="px-3 py-0.5 text-center">LR Number</th>
+                <th className="px-3 py-0.5 text-center">Transporter</th>
+                <th className="px-3 py-0.5 text-center whitespace-nowrap">Completed Invoices</th>
+                <th className="px-3 py-0.5 text-center w-20">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {refTableData.map((row, i) => {
+                const isRowDisabled = Boolean(row.notAllowed);
 
-              return (
-                <tr key={i} className={isRowDisabled ? GATE_ROW_DISABLED : ""}>
-                  <td className="px-3 py-0.5 text-center">
-                    <input
-                      type="checkbox"
-                      checked={row.selected}
-                      disabled={isRowDisabled}
-                      onChange={() => toggleRefRowSelect(i)}
-                      className={
-                        "size-4 accent-sky-600 " +
-                        (isRowDisabled ? "cursor-not-allowed opacity-30" : "cursor-pointer")
-                      }
-                      title={isRowDisabled ? "This reference is not allowed" : undefined}
-                    />
-                  </td>
-                  <td className="px-3 py-0.5 text-center font-medium">{i + 1}</td>
-                  {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
-                    <td key={field} className="px-3 py-0.5">
-                      {field === "LR_NO" && row.lrOptions && row.lrOptions.length > 0 ? (
-                        <GateTableMultiSelect
-                          options={row.lrOptions}
-                          value={row.LR_NO || ""}
-                          onChange={(val) => handleRefRowChange(i, "LR_NO", val)}
-                          placeholder="Select LR No"
-                          readOnly={isRowDisabled}
-                          allowManualEntry={i === 0 && !isRowDisabled}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") fetchGlobalReferences(i, "LR_NO");
-                          }}
-                          className={
-                            (isRowDisabled
-                              ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer"
-                              : GATE_INPUT_NORMAL) + " text-center"
-                          }
-                        />
-                      ) : (
-                        <input
-                          value={(row as any)[field] || ""}
-                          readOnly={i !== 0 || isRowDisabled}
-                          disabled={isRowDisabled}
-                          placeholder={GATE_REF_FIELD_PLACEHOLDER[field]}
-                          onChange={(e) => handleRefRowChange(i, field, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") fetchGlobalReferences(i, field);
-                          }}
-                          className={
-                            (isRowDisabled
-                              ? GATE_INPUT_DISABLED_ROW
-                              : i !== 0
-                                ? GATE_INPUT_READONLY
-                                : GATE_INPUT_NORMAL) + " text-center"
-                          }
-                        />
-                      )}
+                return (
+                  <tr key={i} className={isRowDisabled ? GATE_ROW_DISABLED : ""}>
+                    <td className="px-3 py-0.5 text-center">
+                      <input
+                        type="checkbox"
+                        checked={row.selected}
+                        disabled={isRowDisabled}
+                        onChange={() => toggleRefRowSelect(i)}
+                        className={
+                          "size-4 accent-sky-600 " +
+                          (isRowDisabled ? "cursor-not-allowed opacity-30" : "cursor-pointer")
+                        }
+                        title={isRowDisabled ? "This reference is not allowed" : undefined}
+                      />
                     </td>
-                  ))}
-                  {/* ── Completed Invoices column next to Transporter ── */}
-                  <td className="px-3 py-0.5 text-center whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={() => openCompletedInvoicesModal(row)}
-                      className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 transition-colors shadow-xs cursor-pointer"
-                    >
-                      <Eye className="size-3.5 text-sky-600 dark:text-sky-400" />
-                      <span>View</span>
-                      {row.compInvoices && row.compInvoices.length > 0 && (
-                        <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold rounded-full bg-sky-600 text-white">
-                          {row.compInvoices.length}
-                        </span>
-                      )}
-                    </button>
-                  </td>
-                  <td className="px-3 py-0.5 text-center">
-                    {refTableData.length > 1 && (
+                    <td className="px-3 py-0.5 text-center font-medium">{i + 1}</td>
+                    {(["REF_NO", "WORK_ORDER_NO", "LR_NO", "TRANSPORTER"] as const).map((field) => (
+                      <td key={field} className="px-3 py-0.5">
+                        {field === "LR_NO" && row.lrOptions && row.lrOptions.length > 0 ? (
+                          <GateTableMultiSelect
+                            options={row.lrOptions}
+                            value={row.LR_NO || ""}
+                            onChange={(val) => handleRefRowChange(i, "LR_NO", val)}
+                            placeholder="Select LR No"
+                            readOnly={isRowDisabled}
+                            allowManualEntry={i === 0 && !isRowDisabled}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") fetchGlobalReferences(i, "LR_NO");
+                            }}
+                            className={
+                              (isRowDisabled
+                                ? "h-7 w-full rounded-md bg-slate-200/50 dark:bg-zinc-900/60 border border-slate-300 dark:border-zinc-700 px-2 text-[12px] text-muted-foreground font-medium outline-none cursor-pointer"
+                                : GATE_INPUT_NORMAL) + " text-center"
+                            }
+                          />
+                        ) : (
+                          <input
+                            value={(row as any)[field] || ""}
+                            readOnly={i !== 0 || isRowDisabled}
+                            disabled={isRowDisabled}
+                            placeholder={GATE_REF_FIELD_PLACEHOLDER[field]}
+                            onChange={(e) => handleRefRowChange(i, field, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") fetchGlobalReferences(i, field);
+                            }}
+                            className={
+                              (isRowDisabled
+                                ? GATE_INPUT_DISABLED_ROW
+                                : i !== 0
+                                  ? GATE_INPUT_READONLY
+                                  : GATE_INPUT_NORMAL) + " text-center"
+                            }
+                          />
+                        )}
+                      </td>
+                    ))}
+                    {/* ── Completed Invoices column next to Transporter ── */}
+                    <td className="px-3 py-0.5 text-center whitespace-nowrap">
                       <button
                         type="button"
-                        onClick={() => removeRefRow(i)}
-                        aria-label="Remove row"
-                        className="inline-grid place-items-center size-7 rounded-md text-destructive hover:bg-destructive/10 cursor-pointer"
+                        onClick={() => openCompletedInvoicesModal(row)}
+                        className="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 transition-colors shadow-xs cursor-pointer"
                       >
-                        <Trash2 className="size-3.5" />
+                        <Eye className="size-3.5 text-sky-600 dark:text-sky-400" />
+                        <span>View</span>
+                        {row.compInvoices && row.compInvoices.length > 0 && (
+                          <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-[10px] font-bold rounded-full bg-sky-600 text-white">
+                            {row.compInvoices.length}
+                          </span>
+                        )}
                       </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    </td>
+                    <td className="px-3 py-0.5 text-center">
+                      {refTableData.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeRefRow(i)}
+                          aria-label="Remove row"
+                          className="inline-grid place-items-center size-7 rounded-md text-destructive hover:bg-destructive/10 cursor-pointer"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* ── Invoice lookup + search bar (same UI as Order Info) ── */}
@@ -4599,10 +4794,10 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                               "Others",
                               // Keep showing a saved value that is no longer offered (e.g. "Instant Transport Solution")
                               ...(item.TAT_TYPE &&
-                              ![
-                                "Direct Truck TAT(Vizag)", "Direct Truck TAT(Hyd)", "Safe Express TAT", "Delivery TAT",
-                                "GATI TAT", "V Xpress", "Instant TAT from Hyd", "Instant TAT from Vizag", "Others",
-                              ].includes(item.TAT_TYPE)
+                                ![
+                                  "Direct Truck TAT(Vizag)", "Direct Truck TAT(Hyd)", "Safe Express TAT", "Delivery TAT",
+                                  "GATI TAT", "V Xpress", "Instant TAT from Hyd", "Instant TAT from Vizag", "Others",
+                                ].includes(item.TAT_TYPE)
                                 ? [item.TAT_TYPE]
                                 : []),
                             ],
@@ -4829,12 +5024,12 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                           const storedName = item.ZLOCALFILES?.[GATE_DISPATCH_DOC_FIELD];
                           const storedUrl = storedName
                             ? getLocalDocumentUrl({
-                                mode: isSap ? "SAP" : "Without Sap",
-                                screen: "Gate_In_Out",
-                                field: GATE_DISPATCH_DOC_FIELD,
-                                fileName: storedName,
-                                row: item,
-                              })
+                              mode: isSap ? "SAP" : "Without Sap",
+                              screen: "Gate_In_Out",
+                              field: GATE_DISPATCH_DOC_FIELD,
+                              fileName: storedName,
+                              row: item,
+                            })
                             : "";
                           return (
                             <GateDispatchDocCell

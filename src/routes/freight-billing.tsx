@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import Swal from "sweetalert2";
 // @ts-ignore
@@ -12,6 +12,7 @@ import {
   FileDown,
   CalendarIcon,
   ClipboardList,
+  ChevronDown,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,31 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getHandedOffDirection, getHandedOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
+
+// ── Filter & Download payload: plant as "<WERKS>_<PLANT_DESC>" (e.g. "1100_HBL NCPP-SHPT") ──
+// The Plant filter may hold the code ("1100"), the description ("HBL NCPP-SHPT") or the full
+// text; the matching login plant (login response PLANTS) gives its PLANT_TEXT.
+function toFilterPlantText(plantValue: string): string {
+  const value = String(plantValue ?? "").trim();
+  if (!value) return "";
+  let loginPlants: any[] = [];
+  try {
+    const loginUser = JSON.parse(localStorage.getItem("currentUser") || localStorage.getItem("userData") || "null");
+    loginPlants = Array.isArray(loginUser?.PLANTS) ? loginUser.PLANTS : [];
+  } catch {
+    loginPlants = [];
+  }
+  const match = loginPlants.find(
+    (p) =>
+      p?.WERKS === value ||
+      p?.PLANT_DESC === value ||
+      p?.PLANT_TEXT === value ||
+      `${p?.WERKS}_${p?.PLANT_DESC}` === value,
+  );
+  if (!match) return value;
+  return match.PLANT_TEXT || `${match.WERKS}_${match.PLANT_DESC}`;
+}
+
 
 // ── Plants / divisions of the logged-in user (login response PLANTS + DIV) ──
 // Built in the same row shape the F4 vendor-code API returns for PLANT — one row per
@@ -138,10 +164,10 @@ function FreightBillingPage() {
   const [searchSap, setSearchSap] = useState<SapMode | null>(null);
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
-  const [fPlant, setFPlant] = useState("");
-  const [fDivision, setFDivision] = useState("");
-  const [fTransporter, setFTransporter] = useState("");
-  const [fVehicleType, setFVehicleType] = useState("");
+  const [fPlant, setFPlant] = useState<string[]>([]);
+  const [fDivision, setFDivision] = useState<string[]>([]);
+  const [fTransporter, setFTransporter] = useState<string[]>([]);
+  const [fVehicleType, setFVehicleType] = useState<string[]>([]);
   const [fStatus, setFStatus] = useState("");
   const [fPACheck, setFPACheck] = useState(""); // ZPACHECK — was missing entirely
   const [applied, setApplied] = useState(false);
@@ -189,10 +215,10 @@ function FreightBillingPage() {
     setSearchSap(null);
     setFromDate(undefined);
     setToDate(undefined);
-    setFPlant("");
-    setFDivision("");
-    setFTransporter("");
-    setFVehicleType("");
+    setFPlant([]);
+    setFDivision([]);
+    setFTransporter([]);
+    setFVehicleType([]);
     setFStatus("");
     setFPACheck("");
 
@@ -206,10 +232,10 @@ function FreightBillingPage() {
   const resetFilters = () => {
     setFromDate(undefined);
     setToDate(undefined);
-    setFPlant("");
-    setFDivision("");
-    setFTransporter("");
-    setFVehicleType("");
+    setFPlant([]);
+    setFDivision([]);
+    setFTransporter([]);
+    setFVehicleType([]);
     setFStatus("");
     setFPACheck("");
 
@@ -241,10 +267,10 @@ function FreightBillingPage() {
 
     setFromDate(undefined);
     setToDate(undefined);
-    setFPlant("");
-    setFDivision("");
-    setFTransporter("");
-    setFVehicleType("");
+    setFPlant([]);
+    setFDivision([]);
+    setFTransporter([]);
+    setFVehicleType([]);
     setFStatus("");
     setFPACheck("");
   };
@@ -352,15 +378,41 @@ function FreightBillingPage() {
     setPendingData([]);
     setFreightBillingData([]);
 
+    // Filter & Download: every selected value is sent as its own row, e.g.
+    //   PLANT: [{ PLANT: "1100_HBL NCPP-SHPT" }], DIVISION: [{ DIVISION: "NCPP" }],
+    //   TRANSPORTER: [{ TRANSPORTER: "DELHIVERY LIMITED" }], VEHICLE_TYPE: [{ VEHTYP: "FULL TRUCK LOAD" }]
+    // Nothing selected → empty list [].
+
+    // Plant: send the login plant text "<code>_<description>"
+    const plantList: { PLANT: string }[] = [];
+    for (const selectedPlant of fPlant) {
+      plantList.push({ PLANT: toFilterPlantText(selectedPlant) });
+    }
+
+    const divisionList: { DIVISION: string }[] = [];
+    for (const selectedDivision of fDivision) {
+      divisionList.push({ DIVISION: selectedDivision });
+    }
+
+    const transporterList: { TRANSPORTER: string }[] = [];
+    for (const selectedTransporter of fTransporter) {
+      transporterList.push({ TRANSPORTER: selectedTransporter });
+    }
+
+    const vehicleTypeList: { VEHTYP: string }[] = [];
+    for (const selectedVehicleType of fVehicleType) {
+      vehicleTypeList.push({ VEHTYP: selectedVehicleType });
+    }
+
     const payload = {
       GLOBAL: "FREIGHT BILLING",
       ZUSER: getLoggedInUser(),
       DATE_FROM: format(fromDate, "yyyy-MM-dd"),
       DATE_TO: format(toDate, "yyyy-MM-dd"),
-      PLANT: fPlant || "",
-      DIVISION: fDivision || "",
-      TRANSPORTER: fTransporter || "",
-      VEHICLE_TYPE: fVehicleType || "",
+      PLANT: plantList,
+      DIVISION: divisionList,
+      TRANSPORTER: transporterList,
+      VEHICLE_TYPE: vehicleTypeList,
       STATUS: fStatus || "",
       ZPACHECK: fPACheck || "",
     };
@@ -825,22 +877,46 @@ function FreightBillingPage() {
                     <DateField label="From Date" value={fromDate} onChange={setFromDate} />
                     <DateField label="To Date" value={toDate} onChange={setToDate} />
 
-                    {/* Plant / Division / Transporter: all sourced from fetchVendorCode() */}
-                    <PlantF4Field value={fPlant} onChange={setFPlant} options={plantList} loading={f4Loading} />
-                    <DivisionF4Field value={fDivision} onChange={setFDivision} options={divisionList} loading={f4Loading} />
-
-                    <TransporterF4Field
+                    <FilterMultiSelect
+                      label="Plant"
+                      value={fPlant}
+                      onChange={setFPlant}
+                      options={plantList.map((p) => ({
+                        value: p.PLANT_DESC,
+                        label: p.PLANT_TEXT || p.PLANT_DESC,
+                      }))}
+                      placeholder="Select Plant"
+                      searchable
+                    />
+                    <FilterMultiSelect
+                      label="Division"
+                      value={fDivision}
+                      onChange={setFDivision}
+                      options={divisionList.map((d) => ({
+                        value: d.DIVISION,
+                        label: d.DIV_TEXT || d.DIVISION,
+                      }))}
+                      placeholder="Select Division"
+                      searchable
+                    />
+                    <FilterMultiSelect
+                      label="Transporter"
                       value={fTransporter}
                       onChange={setFTransporter}
-                      options={transporterOptions}
-                      loading={f4Loading}
+                      options={transporterOptions.map((t) => ({
+                        value: t.name,
+                        label: t.name,
+                      }))}
+                      placeholder="Select Transporter"
+                      searchable
                     />
-                    <SelectField
+                    <FilterMultiSelect
                       label="Vehicle Type"
                       value={fVehicleType}
                       onChange={setFVehicleType}
-                      options={VEHICLE_TYPES}
+                      options={VEHICLE_TYPES.map((v) => ({ value: v, label: v }))}
                       placeholder="Select Vehicle Type"
+                      searchable
                     />
                     <SelectField
                       label="Status"
@@ -1341,150 +1417,143 @@ function SelectField({
   );
 }
 
-// Plant dropdown — sourced from fetchVendorCode() res[0].PLANT.
-// value = PLANT_DESC (what the filter payload's PLANT field expects),
-// label = PLANT_TEXT (pre-built "CODE_DESC_DIVISION" string from the API).
-function PlantF4Field({
-  value, onChange, options, loading,
+function FilterMultiSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+  searchable = true,
 }: {
-  value: string; onChange: (v: string) => void; options: PlantRow[]; loading?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const selected = options.find((o) => o.PLANT_DESC === value);
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Plant</label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className={cn("h-8 justify-between font-normal", !value && "text-muted-foreground")}>
-            <span className="truncate">{selected ? (selected.PLANT_TEXT || selected.PLANT_DESC) : "Select Plant"}</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-72 p-0" align="start">
-          <div className="max-h-56 overflow-y-auto">
-            {loading ? (
-              <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">Loading…</div>
-            ) : options.length === 0 ? (
-              <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">No plants available</div>
-            ) : (
-              options.map((o, i) => (
-                <button
-                  key={`${o.PLANT}-${i}`}
-                  type="button"
-                  onClick={() => { onChange(o.PLANT_DESC); setOpen(false); }}
-                  className={cn("w-full text-left px-3 py-2 text-[12px] hover:bg-muted", value === o.PLANT_DESC && "bg-accent/10 font-semibold")}
-                >
-                  {o.PLANT_TEXT || o.PLANT_DESC}
-                </button>
-              ))
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
-
-// Division dropdown — sourced from the same fetchVendorCode() res[0].PLANT
-// array, deduped by DIVISION. value = DIVISION, label = DIV_TEXT.
-function DivisionF4Field({
-  value, onChange, options, loading,
-}: {
-  value: string; onChange: (v: string) => void; options: DivisionRow[]; loading?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const selected = options.find((o) => o.DIVISION === value);
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Division</label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className={cn("h-8 justify-between font-normal", !value && "text-muted-foreground")}>
-            <span className="truncate">{selected ? selected.DIV_TEXT : "Select Division"}</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-72 p-0" align="start">
-          <div className="max-h-56 overflow-y-auto">
-            {loading ? (
-              <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">Loading…</div>
-            ) : options.length === 0 ? (
-              <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">No divisions available</div>
-            ) : (
-              options.map((o) => (
-                <button
-                  key={o.DIVISION}
-                  type="button"
-                  onClick={() => { onChange(o.DIVISION); setOpen(false); }}
-                  className={cn("w-full text-left px-3 py-2 text-[12px] hover:bg-muted", value === o.DIVISION && "bg-accent/10 font-semibold")}
-                >
-                  {o.DIV_TEXT}
-                </button>
-              ))
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
-
-// Transporter dropdown: value = TRANSPORTER name (Angular's filter select
-// uses transporter.TRANSPORTER for BOTH value and label — it does not use
-// a separate vendor code as the value), sourced from fetchVendorCode() -> VEND_CODE.
-function TransporterF4Field({
-  value, onChange, options, loading,
-}: {
-  value: string; onChange: (v: string) => void; options: TransporterData[]; loading: boolean;
+  label: string;
+  value: string[];
+  onChange: (v: string[]) => void;
+  options: string[] | { value: string; label: string }[];
+  placeholder: string;
+  searchable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const selected = options.find((o) => o.name === value);
+  const ref = useRef<HTMLDivElement>(null);
 
-  const filtered = search.trim()
-    ? options.filter((o) => o.name.toLowerCase().includes(search.toLowerCase()))
-    : options;
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const normalizedOptions: { value: string; label: string }[] = useMemo(() => {
+    return options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
+  }, [options]);
+
+  const filtered = useMemo(() => {
+    if (!searchable || !search) return normalizedOptions;
+    const s = search.toLowerCase();
+    return normalizedOptions.filter((o) => (o.label ?? "").toLowerCase().includes(s));
+  }, [normalizedOptions, searchable, search]);
+
+  const toggle = (v: string) => {
+    if (value.includes(v)) {
+      onChange(value.filter((x) => x !== v));
+    } else {
+      onChange([...value, v]);
+    }
+  };
+
+  const isAllSelected =
+    filtered.length > 0 && filtered.every((o) => value.includes(o.value));
+
+  const toggleAll = () => {
+    if (isAllSelected) {
+      const filteredValues = new Set(filtered.map((o) => o.value));
+      onChange(value.filter((v) => !filteredValues.has(v)));
+    } else {
+      const newValues = new Set([...value, ...filtered.map((o) => o.value)]);
+      onChange(Array.from(newValues));
+    }
+  };
+
+  const displayLabel = () => {
+    if (value.length === 0) return "";
+    if (value.length === 1) {
+      const opt = normalizedOptions.find((o) => o.value === value[0]);
+      return opt?.label ?? value[0];
+    }
+    return `${value.length} Selected`;
+  };
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Transporter</label>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className={cn("h-8 justify-between font-normal w-full", !value && "text-muted-foreground")}>
-            <span className="truncate">{selected ? selected.name : "Select Transporter"}</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80 p-0" align="start">
-          <div className="border-b border-hairline p-2">
-            <input
-              type="text"
-              value={search}
-              placeholder="Search transporter..."
-              className="w-full rounded border border-input px-2 py-1 text-[12px] outline-none focus:border-focus-ring focus:ring-2 focus:ring-focus-ring/30"
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="max-h-60 overflow-y-auto">
-            {loading ? (
-              <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">Loading…</div>
-            ) : filtered.length === 0 ? (
-              <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">No transporters found</div>
-            ) : (
-              filtered.map((o) => (
-                <button
-                  key={o.code}
-                  type="button"
-                  onClick={() => { onChange(o.name); setOpen(false); }}
-                  className={cn("w-full text-left px-3 py-2 text-[12px] hover:bg-muted", value === o.name && "bg-accent/10 font-semibold")}
-                >
-                  {o.name}
-                </button>
-              ))
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
+    <div className="relative flex flex-col gap-1.5" ref={ref}>
+      <label className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </label>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "h-8 w-full rounded-md border border-input bg-background px-3 text-[12.5px] text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 flex items-center justify-between gap-2 text-left",
+          value.length === 0 && "text-muted-foreground",
+        )}
+      >
+        <span className="truncate">{displayLabel() || placeholder}</span>
+        <ChevronDown className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 z-50 mt-1 w-full min-w-[200px] rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+          {searchable && (
+            <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline z-10">
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
+              />
+            </div>
+          )}
+
+          {normalizedOptions.length > 0 && (
+            <label
+              className={`flex items-center gap-2 px-3 py-1.5 text-[12.5px] font-medium text-foreground hover:bg-muted cursor-pointer border-b border-hairline sticky bg-surface z-10 ${
+                searchable ? "top-[41px]" : "top-0"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={toggleAll}
+                className="size-3.5"
+              />
+              <span>Select All</span>
+            </label>
+          )}
+
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o.value}
+                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={value.includes(o.value)}
+                  onChange={() => toggle(o.value)}
+                  className="size-3.5"
+                />
+                <span className="truncate">{o.label}</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

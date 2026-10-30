@@ -327,7 +327,16 @@ export function AppSidebar() {
                             (active ? "text-accent" : "group-hover:text-white")
                           }
                         />
-                        <span className="truncate">{item.title}</span>
+                        <span
+                          className={
+                            // "Transit Damage Info Report" shows on two lines; other reports stay on one line
+                            item.to === "/reports/transit-damage-info-report"
+                              ? "min-w-0 whitespace-normal break-words leading-snug text-left"
+                              : "truncate"
+                          }
+                        >
+                          {item.title}
+                        </span>
                       </Link>
                     </li>
                   );

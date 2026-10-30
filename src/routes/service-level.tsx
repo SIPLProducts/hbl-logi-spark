@@ -160,150 +160,150 @@ function ServiceLevelScreenShell({
 
       {/* Create content */}
       <div className="flex-1 px-3 sm:px-4 lg:px-6 py-2 space-y-2">
-             {/* Direction + SAP */}
-             <div className="bg-surface border border-hairline rounded-lg px-2.5 py-1.5 shadow-soft">
-               <div className="flex flex-wrap items-center gap-2">
-                 <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                   Direction
-                 </span>
-                 <PremiumRadio
-                   label="Outward"
-                   checked={direction === "outward"}
-                   onSelect={() => setDirection("outward")}
-                 />
-                 {direction && (
-                   <>
-                     <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
-                     <SapToggle
-                       value={sap}
-                       onChange={(v) => {
-                         if (v !== sap) onSapChange?.(v);
-                         setSap(v);
-                       }}
-                     />
-                   </>
-                 )}
-                 <div className="ml-auto flex items-center gap-1.5">
-                  {direction && sap && renderDirectionExtras?.({ sap, direction })}
-                 </div>
-               </div>
-               {!direction && (
-                 <p className="mt-1.5 text-[11px] text-muted-foreground">Select a direction to continue.</p>
-               )}
-               {direction && !sap && (
-                 <p className="mt-1.5 text-[11px] text-muted-foreground">
-                   Select <span className="font-semibold">Supply</span> or <span className="font-semibold">Other than Supply</span> to continue.
-                 </p>
-               )}
-             </div>
-
-            {direction && sap && (() => {
-              const override = renderCreateBody?.({ sap, direction });
-              if (override) return override;
-              return (
-                <>
-            {kpis && kpis.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {kpis.map((k) => (
-                  <KpiCard key={k.label} {...k} />
-                ))}
-              </div>
+        {/* Direction + SAP */}
+        <div className="bg-surface border border-hairline rounded-lg px-2.5 py-1.5 shadow-soft">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Direction
+            </span>
+            <PremiumRadio
+              label="Outward"
+              checked={direction === "outward"}
+              onSelect={() => setDirection("outward")}
+            />
+            {direction && (
+              <>
+                <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
+                <SapToggle
+                  value={sap}
+                  onChange={(v) => {
+                    if (v !== sap) onSapChange?.(v);
+                    setSap(v);
+                  }}
+                />
+              </>
             )}
+            <div className="ml-auto flex items-center gap-1.5">
+              {direction && sap && renderDirectionExtras?.({ sap, direction })}
+            </div>
+          </div>
+          {!direction && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">Select a direction to continue.</p>
+          )}
+          {direction && !sap && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Select <span className="font-semibold">Supply</span> or <span className="font-semibold">Other than Supply</span> to continue.
+            </p>
+          )}
+        </div>
 
-            {topFields && topFields.length > 0 && (
-              <div className="bg-surface border border-hairline rounded-xl p-2.5 grid grid-cols-2 md:grid-cols-4 gap-2 shadow-elegant">
-                {topFields.map((f) => (
-                  <FieldInput key={f.label} field={f} />
-                ))}
-              </div>
-            )}
-
-            {groups?.map((g) => (
-              <div
-                key={g.title}
-                className="bg-surface border border-hairline rounded-xl shadow-elegant overflow-hidden"
-              >
-                <div className="px-3 py-2 border-b border-hairline bg-surface-2/60">
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
-                    {g.title}
-                  </h3>
-                </div>
-                <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                  {g.fields.map((f) => (
-                    <div key={f.label} className={spanClass(f.span)}>
-                      <FieldInput field={f} />
-                    </div>
+        {direction && sap && (() => {
+          const override = renderCreateBody?.({ sap, direction });
+          if (override) return override;
+          return (
+            <>
+              {kpis && kpis.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {kpis.map((k) => (
+                    <KpiCard key={k.label} {...k} />
                   ))}
                 </div>
-              </div>
-            ))}
+              )}
 
-            {lineItems && (
-              <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
-                <div className="px-3 py-2 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
-                    Line Items
-                  </h3>
-                  <button className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent/10 rounded-md">
-                    <Plus className="size-3" /> Add Row
-                  </button>
+              {topFields && topFields.length > 0 && (
+                <div className="bg-surface border border-hairline rounded-xl p-2.5 grid grid-cols-2 md:grid-cols-4 gap-2 shadow-elegant">
+                  {topFields.map((f) => (
+                    <FieldInput key={f.label} field={f} />
+                  ))}
                 </div>
-                <div className="overflow-x-auto scrollbar-elegant">
-                  <table className="w-full text-[11.5px]">
-                    <thead>
-                      <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
-                        {lineItems.columns.map((c) => (
-                          <th key={c} className="px-2 py-1 text-left">
-                            {c}
-                          </th>
-                        ))}
-                        <th className="px-2 py-1 w-12 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-hairline/60">
-                      {lineItems.rows.map((row, i) => (
-                        <tr key={i} className="hover:bg-accent/[0.04]">
-                          {row.map((cell, j) => (
-                            <td key={j} className="px-2 py-0.5">
-                              {typeof cell === "number" ? (
-                                <span className="font-mono">{cell}</span>
-                              ) : (
-                                cell
-                              )}
-                            </td>
+              )}
+
+              {groups?.map((g) => (
+                <div
+                  key={g.title}
+                  className="bg-surface border border-hairline rounded-xl shadow-elegant overflow-hidden"
+                >
+                  <div className="px-3 py-2 border-b border-hairline bg-surface-2/60">
+                    <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
+                      {g.title}
+                    </h3>
+                  </div>
+                  <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                    {g.fields.map((f) => (
+                      <div key={f.label} className={spanClass(f.span)}>
+                        <FieldInput field={f} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {lineItems && (
+                <div className="bg-surface border border-hairline rounded shadow-elegant overflow-hidden">
+                  <div className="px-3 py-2 border-b border-hairline bg-surface-2/60 flex items-center justify-between">
+                    <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
+                      Line Items
+                    </h3>
+                    <button className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-accent hover:bg-accent/10 rounded-md">
+                      <Plus className="size-3" /> Add Row
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto scrollbar-elegant">
+                    <table className="w-full text-[11.5px]">
+                      <thead>
+                        <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                          {lineItems.columns.map((c) => (
+                            <th key={c} className="px-2 py-1 text-left">
+                              {c}
+                            </th>
                           ))}
-                          <td className="px-2 py-0.5 text-right">
-                            <button className="text-muted-foreground hover:text-destructive">
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          </td>
+                          <th className="px-2 py-1 w-12 text-right">Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-hairline/60">
+                        {lineItems.rows.map((row, i) => (
+                          <tr key={i} className="hover:bg-accent/[0.04]">
+                            {row.map((cell, j) => (
+                              <td key={j} className="px-2 py-0.5">
+                                {typeof cell === "number" ? (
+                                  <span className="font-mono">{cell}</span>
+                                ) : (
+                                  cell
+                                )}
+                              </td>
+                            ))}
+                            <td className="px-2 py-0.5 text-right">
+                              <button className="text-muted-foreground hover:text-destructive">
+                                <Trash2 className="size-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
-                </>
-              );
-            })()}
+              )}
+            </>
+          );
+        })()}
 
-            {children}
+        {children}
 
-            {/* Action bar */}
-            {direction && sap && !(renderCreateBody && renderCreateBody({ sap, direction })) && (
-            <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/95 backdrop-blur border-t border-hairline px-6 py-3 flex items-center justify-end gap-2 z-10">
-              <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
-                <ChevronLeft className="size-3.5" /> Save and Previous
-              </button>
-              <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
-                <Save className="size-3.5" /> Save
-              </button>
-              <button className="inline-flex items-center gap-1.5 px-4 h-9 text-[12px] font-semibold text-primary-foreground bg-gradient-primary rounded-lg shadow-cta hover:-translate-y-0.5 transition-transform">
-                Save and Next <ChevronRight className="size-3.5" />
-              </button>
-            </div>
-            )}
+        {/* Action bar */}
+        {direction && sap && !(renderCreateBody && renderCreateBody({ sap, direction })) && (
+          <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 bg-surface/95 backdrop-blur border-t border-hairline px-6 py-3 flex items-center justify-end gap-2 z-10">
+            <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
+              <ChevronLeft className="size-3.5" /> Save and Previous
+            </button>
+            <button className="inline-flex items-center gap-1.5 px-3 h-9 text-[12px] font-semibold text-foreground border border-hairline rounded-lg bg-surface hover:bg-muted">
+              <Save className="size-3.5" /> Save
+            </button>
+            <button className="inline-flex items-center gap-1.5 px-4 h-9 text-[12px] font-semibold text-primary-foreground bg-gradient-primary rounded-lg shadow-cta hover:-translate-y-0.5 transition-transform">
+              Save and Next <ChevronRight className="size-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -453,9 +453,9 @@ function TableMultiSelect({
 
   const selected = value
     ? value
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
     : [];
 
   const filtered = search
@@ -626,9 +626,9 @@ function SLInvoiceMultiSelect({
 
   const selected = value
     ? value
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
     : [];
 
   const filtered = search
@@ -796,26 +796,26 @@ const SL_QUESTIONS: {
   ftlOnly?: boolean;
   reverse?: boolean;
 }[] = [
-  { key: "onTimePlacement", label: "On time placement", ftlOnly: true },
-  { key: "transhipment", label: "Transhipment if any", ftlOnly: true, reverse: true },
-  { key: "delivery", label: "On time delivery" },
-  { key: "damage", label: "Damage if any", reverse: true },
-  { key: "accident", label: "Accident if any", reverse: true },
-  {
-    key: "probiated",
-    label: "Prohibited materials loaded along with battery",
-    ftlOnly: true,
-    reverse: true,
-  },
-  {
-    key: "othermaterials",
-    label: "Other materials loaded during transit",
-    ftlOnly: true,
-    reverse: true,
-  },
-  { key: "pod", label: "On time POD submission" },
-  { key: "freight", label: "On time freight bill submission" },
-];
+    { key: "onTimePlacement", label: "On time placement", ftlOnly: true },
+    { key: "transhipment", label: "Transhipment if any", ftlOnly: true, reverse: true },
+    { key: "delivery", label: "On time delivery" },
+    { key: "damage", label: "Damage if any", reverse: true },
+    { key: "accident", label: "Accident if any", reverse: true },
+    {
+      key: "probiated",
+      label: "Prohibited materials loaded along with battery",
+      ftlOnly: true,
+      reverse: true,
+    },
+    {
+      key: "othermaterials",
+      label: "Other materials loaded during transit",
+      ftlOnly: true,
+      reverse: true,
+    },
+    { key: "pod", label: "On time POD submission" },
+    { key: "freight", label: "On time freight bill submission" },
+  ];
 
 // Search bar options (same list and payload keys as the other screens' global search)
 const SL_SEARCH_OPTIONS = [
@@ -1008,7 +1008,7 @@ function ServiceLevelFeedbackCreate({
   });
   const [disabledFields, setDisabledFields] = useState<SLFeedbackKey[]>([]);
   // Feedback item 1: Vehicle Rejected ("YES" → Reason is required)
-  const [vehicleRejected, setVehicleRejected] = useState("");
+  const [vehicleRejected, setVehicleRejected] = useState("NO");
   const [rejectReason, setRejectReason] = useState("");
   // Overall Feedback remarks — shown once a rating is picked; required for POOR / AVG
   const [overallRemarks, setOverallRemarks] = useState("");
@@ -1211,9 +1211,9 @@ function ServiceLevelFeedbackCreate({
     // string value captured before the fetch, defeating the guard below.
     const fieldValue = String(
       fieldKey === "REF_NO" ? values.referenceNumber :
-      fieldKey === "WORK_ORDER_NO" ? values.workOrderNumber :
-      fieldKey === "LR_NO" ? values.lrNumber :
-      fieldKey === "TRANSPORTER" ? values.transporter : ""
+        fieldKey === "WORK_ORDER_NO" ? values.workOrderNumber :
+          fieldKey === "LR_NO" ? values.lrNumber :
+            fieldKey === "TRANSPORTER" ? values.transporter : ""
     );
 
     // Field merely lost focus (e.g. checkbox click, Invoice Number select) —
@@ -1323,10 +1323,13 @@ function ServiceLevelFeedbackCreate({
             freight: data.ZONFREIGHT ?? "",
             overall: data.ZFEEDBACK ?? "",
           }));
+          // setVehicleRejected(
+          //   ["YES", "NO"].includes(String(data.ZVEH_REJ ?? "").toUpperCase())
+          //     ? String(data.ZVEH_REJ).toUpperCase()
+          //     : "",
+          // );
           setVehicleRejected(
-            ["YES", "NO"].includes(String(data.ZVEH_REJ ?? "").toUpperCase())
-              ? String(data.ZVEH_REJ).toUpperCase()
-              : "",
+            String(data.ZVEH_REJ ?? "NO").trim().toUpperCase() || "NO"
           );
           setRejectReason(data.ZVREJ_REASON ?? "");
           setOverallRemarks(data.ZREMARKS ?? "");
@@ -1586,7 +1589,7 @@ function ServiceLevelFeedbackCreate({
     setShowFeedback(false);
     setSelectedItems([]);
     setFeedback({ ...SL_EMPTY_FEEDBACK });
-    setVehicleRejected("");
+    setVehicleRejected("NO");
     setRejectReason("");
     setOverallRemarks("");
     setSlSearchType("");
@@ -1719,14 +1722,14 @@ function ServiceLevelFeedbackCreate({
     };
     const finalPayload =
       invoicesSelected.length > 0 &&
-      (invoicesSelected.length > 1 || selectedItems.length > 1)
+        (invoicesSelected.length > 1 || selectedItems.length > 1)
         ? invoicesSelected.flatMap((inv) => {
-            const owned = selectedItems
-              .map((item, i) => (invoicesOfItem(item).includes(inv) ? i : -1))
-              .filter((i) => i >= 0);
-            const idxs = owned.length > 0 ? owned : selectedItems.map((_, i) => i);
-            return idxs.map((i) => ({ ...payload[i], VBELN: inv }));
-          })
+          const owned = selectedItems
+            .map((item, i) => (invoicesOfItem(item).includes(inv) ? i : -1))
+            .filter((i) => i >= 0);
+          const idxs = owned.length > 0 ? owned : selectedItems.map((_, i) => i);
+          return idxs.map((i) => ({ ...payload[i], VBELN: inv }));
+        })
         : payload;
 
     console.log("📦 Payload:", finalPayload);
