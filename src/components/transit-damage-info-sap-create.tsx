@@ -801,7 +801,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
       type: "select",
       value: headerData.SETTLEMENT || "",
       options: [
-        "Claim Settlement",
+        // "Claim Settlement",
         "Direct Deduction",
         "Insurance claim",
         "Repair Locally with cost",
@@ -2280,7 +2280,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
                         field: "ZSETTLEMENT",
                         type: "select",
                         options: [
-                          "Claim Settlement",
+                          // "Claim Settlement",
                           "Direct Deduction",
                           "Insurance claim",
                           "Repair Locally with cost",
