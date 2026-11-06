@@ -15,6 +15,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "../components/app-shell";
 import { ApiLoader } from "../components/api-loader";
+import "../lib/dev-logger";
 import faviconAsset from "../assets/hbl-favicon.png.asset.json";
 import favicon from "../favicon.ico";
 
@@ -78,6 +79,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+// Screens that open without a login, and without the sidebar and top bar
+const isPublicAuthPath = (pathname: string) =>
+  pathname === "/login" ||
+  pathname === "/forgot-password" ||
+  pathname === "/reset-password" ||
+  pathname.startsWith("/reset-password/");
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: ({ location }) => {
     if (typeof window === "undefined") return;
@@ -86,7 +94,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       localStorage.getItem("isLoggedIn") === "true" &&
       sessionStorage.getItem("sessionActive") === "true";
 
-    if (!hasActiveSession && location.pathname !== "/login") {
+    if (!hasActiveSession && !isPublicAuthPath(location.pathname)) {
       localStorage.removeItem("userData");
       localStorage.removeItem("currentUser");
       localStorage.removeItem("isLoggedIn");
@@ -150,7 +158,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isAuthRoute = pathname === "/login";
+  const isAuthRoute = isPublicAuthPath(pathname);
 
   const [authChecked, setAuthChecked] = useState(false);
 

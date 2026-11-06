@@ -227,6 +227,7 @@ const [customerList, setCustomerList] = useState<{ value: string; label: string 
   async function fetchTransportersPlantsDivisions() {
     try {
       const res: any = await service.fetchVendorCode();
+      console.log("Damage List - fetchVendorCode Response:", res);
       const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
       // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
       const loginPlantRows = buildLoginPlantRows();
@@ -281,6 +282,7 @@ const [customerList, setCustomerList] = useState<{ value: string; label: string 
   async function fetchCustomers() {
     try {
       const res: any = await service.getpdb();
+      console.log("Damage List - getpdb Response:", res);
       const list = res?.[0]?.CUSTOMER || [];
       setCustomerList(
         list.map((c: any) => ({
@@ -296,6 +298,7 @@ const [customerList, setCustomerList] = useState<{ value: string; label: string 
   async function fetchBranchesAndLocations() {
     try {
       const res: any = await service.getssc();
+      console.log("Damage List - getssc Response:", res);
       if (res && res.length > 0) {
         const data = res[0];
         const destLoc = data.DEST_LOC || [];
@@ -311,7 +314,9 @@ const [customerList, setCustomerList] = useState<{ value: string; label: string 
 
   async function fetchIncoterms() {
     try {
+      console.log("Damage List - Incoterms Payload:", { INCO1: "", BEZEI: "" });
       const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+      console.log("Damage List - Incoterms Response:", res);
       const list = Array.isArray(res) ? res : res?.data || [];
       setIncotermsList(
         list.map((i: any) => ({ value: i.INCO1, label: `${i.INCO1} - ${i.BEZEI}` }))
@@ -388,7 +393,9 @@ const [customerList, setCustomerList] = useState<{ value: string; label: string 
 
     setLoading(true);
     try {
+      console.log("Damage List - FetchDamageList Payload:", payload);
       const res: any = await service.FetchDamageList(payload);
+      console.log("Damage List - FetchDamageList Response:", res);
 
       if (res && res.ERROR_TYPE === "E") {
         setFilteredData([]);

@@ -240,6 +240,7 @@ function ServiceLevelReport() {
     setLoading(true);
     try {
       const res: any = await service.fetchVendorCode();
+      console.log("Service Level Report - fetchVendorCode Response:", res);
       const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
       // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
       const loginPlantRows = buildLoginPlantRows();
@@ -296,6 +297,7 @@ function ServiceLevelReport() {
   async function fetchBranches() {
     try {
       const res: any = await service.getssc();
+      console.log("Service Level Report - getssc Response:", res);
       if (res && res.length > 0) {
         const data = res[0];
 
@@ -330,6 +332,7 @@ function ServiceLevelReport() {
   async function fetchCustomers() {
     try {
       const res: any = await service.getpdb();
+      console.log("Service Level Report - getpdb Response:", res);
       const list = res?.[0]?.CUSTOMER || [];
       setCustomerList(
         list.map((c: any) => ({
@@ -344,7 +347,9 @@ function ServiceLevelReport() {
 
   async function fetchIncoterms() {
     try {
+      console.log("Service Level Report - Incoterms Payload:", { INCO1: "", BEZEI: "" });
       const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+      console.log("Service Level Report - Incoterms Response:", res);
       const list = Array.isArray(res) ? res : res?.data || [];
       setIncotermsList(
         list.map((i: any) => ({ value: i.INCO1, label: `${i.INCO1} - ${i.BEZEI}` }))
@@ -433,7 +438,9 @@ function ServiceLevelReport() {
 
     setLoading(true);
     try {
+      console.log("Service Level Report - FetchServiceLevelReports Payload:", payload);
       const res: any = await service.FetchServiceLevelReports(payload);
+      console.log("Service Level Report - FetchServiceLevelReports Response:", res);
 
       if (res?.ERROR_TYPE === "E") {
         setFilteredData([]);

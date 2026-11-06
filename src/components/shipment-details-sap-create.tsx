@@ -676,9 +676,11 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
     setLoading(true);
     try {
+      console.log("Shipment Details - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Payload:", obj);
       const res = isSap
         ? await service.GlobalReferenceNoFetch(obj)
         : await service.GlobalReferenceNoFetchwithoutsap(obj);
+      console.log("Shipment Details - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Response:", res);
       populateReferenceRows(res);
     } catch (err) {
       console.error("Reference fetch error:", err);
@@ -787,9 +789,13 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
     setLoading(true);
     try {
+      console.log("Shipment Details - shipmentdetailsfetch Payload:", {
+        INV_GET: invGetPayload,
+      });
       const res = await service.shipmentdetailsfetch({
         INV_GET: invGetPayload,
       });
+      console.log("Shipment Details - shipmentdetailsfetch Response:", res);
       const result = Array.isArray(res) ? res : [];
       if (result.length === 0) {
         Swal.fire({
@@ -960,9 +966,11 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
     setLoading(true);
     try {
+      console.log("Shipment Details - global_Fields_SearchOption / global_Fields_SearchOption_WithoutSap Payload:", payload1);
       const res = isSap
         ? await service.global_Fields_SearchOption(payload1)
         : await service.global_Fields_SearchOption_WithoutSap(payload1);
+      console.log("Shipment Details - global_Fields_SearchOption / global_Fields_SearchOption_WithoutSap Response:", res);
 
       if (res?.NUMBER === "100" && res?.STATUS === "FALSE") {
         setSearchOptionsList([]);
@@ -1084,9 +1092,11 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
     setLoading(true);
     try {
       const payload = buildChangePayload(row);
+      console.log("Shipment Details - Shipmentchangewithsap / Shipmentchangewithoutsap Payload:", payload);
       const res = isSap
         ? await service.Shipmentchangewithsap(payload)
         : await service.Shipmentchangewithoutsap(payload);
+      console.log("Shipment Details - Shipmentchangewithsap / Shipmentchangewithoutsap Response:", res);
 
       if (res?.STATUS === "true" || res?.NUMBER === "200") {
         Swal.fire({
@@ -1127,9 +1137,11 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
 
     setLoading(true);
     try {
+      console.log("Shipment Details - ShipmentDeleteWithSap / ShipmentDeleteWithoutSap Payload:", payload);
       const res = isSap
         ? await service.ShipmentDeleteWithSap(payload)
         : await service.ShipmentDeleteWithoutSap(payload);
+      console.log("Shipment Details - ShipmentDeleteWithSap / ShipmentDeleteWithoutSap Response:", res);
 
       if (res?.NUMBER === "200") {
         setSearchOptionsList((prev) => prev.filter((_, i) => i !== index));
@@ -1154,7 +1166,9 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
   // ---------- Incoterms (fetched once, used for Non-SAP select) ----------
   const fetchIncoterms = async () => {
     try {
+      console.log("Shipment Details - Incoterms Payload:", { INCO1: "", BEZEI: "" });
       const res = await service.Incoterms({ INCO1: "", BEZEI: "" });
+      console.log("Shipment Details - Incoterms Response:", res);
       setIncotermsList(Array.isArray(res) ? res : res?.data || []);
     } catch (err) {
       console.error("Error fetching Incoterms:", err);
@@ -1224,9 +1238,11 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
       // the row array directly as the request body (see the Angular original), NOT wrapped
       // in an object like { CHANGE: "", SAVE: [...] }. Wrapping it was the reason saves
       // were silently failing.
+      console.log("Shipment Details - ShipmentOutwardSave / shipmentdetailsNonSapSave Payload:", finalPayload);
       const res = isSap
         ? await service.ShipmentOutwardSave(finalPayload)
         : await service.shipmentdetailsNonSapSave(finalPayload);
+      console.log("Shipment Details - ShipmentOutwardSave / shipmentdetailsNonSapSave Response:", res);
 
       if (res?.STATUS === "true" || res?.NUMBER === "200") {
         Swal.fire({

@@ -1097,9 +1097,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     };
 
     try {
+      console.log("Freight Billing - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Payload:", payload);
       const res: any = isSap
         ? await service.GlobalReferenceNoFetch(payload)
         : await service.GlobalReferenceNoFetchwithoutsap(payload);
+      console.log("Freight Billing - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Response:", res);
 
       if (res?.STATUS === "FALSE") {
         Swal.fire({ icon: "error", title: "Error", text: res?.MESSAGE || "No matching reference details found." });
@@ -1354,9 +1356,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
 
       console.log(records);
 
+      console.log("Freight Billing - FreightBillingSave / FreightBillingNonSap Payload:", isSap ? { SAVE: records } : { CREATE: records });
       const response = isSap
         ? await service.FreightBillingSave({ SAVE: records })
         : await service.FreightBillingNonSap({ CREATE: records });
+      console.log("Freight Billing - FreightBillingSave / FreightBillingNonSap Response:", response);
 
       if (response.STATUS === "true" || response.NUMBER === "200") {
         await Swal.fire({
@@ -1435,6 +1439,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     console.log("Payload", payload);
 
     try {
+      console.log("Freight Billing - global_Fields_SearchOption / global_Fields_SearchOption_WithoutSap Payload:", payload);
       const res = isSap
         ? await service.global_Fields_SearchOption(payload)
         : await service.global_Fields_SearchOption_WithoutSap(payload);
@@ -1608,9 +1613,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     console.log("UPDATE PAYLOAD", payload);
 
     try {
+      console.log("Freight Billing - FreightBillingChangeWithSap / FreightBillingChangeWithoutSap Payload:", payload);
       const res = isSap
         ? await service.FreightBillingChangeWithSap(payload)
         : await service.FreightBillingChangeWithoutSap(payload);
+      console.log("Freight Billing - FreightBillingChangeWithSap / FreightBillingChangeWithoutSap Response:", res);
 
       if (res?.NUMBER === "200" || res?.STATUS === "TRUE") {
         await Swal.fire({
@@ -1673,9 +1680,11 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     console.log("DELETE PAYLOAD", payload);
 
     try {
+      console.log("Freight Billing - FreightBillingDeleteWithSap / FreightBillingDeleteWithOutSap Payload:", payload);
       const res = isSap
         ? await service.FreightBillingDeleteWithSap(payload)
         : await service.FreightBillingDeleteWithOutSap(payload);
+      console.log("Freight Billing - FreightBillingDeleteWithSap / FreightBillingDeleteWithOutSap Response:", res);
 
       if (
         res?.STATUS === "TRUE" ||

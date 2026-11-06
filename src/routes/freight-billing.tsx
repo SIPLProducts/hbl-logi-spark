@@ -289,6 +289,7 @@ function FreightBillingPage() {
       setF4Loading(true);
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Freight Billing - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();
@@ -349,7 +350,9 @@ function FreightBillingPage() {
         SCREEN: "FREIGHT BILLING",
       };
 
+      console.log("Freight Billing - OutwardCountGlobalWithSap Payload:", payload);
       const response = await service.OutwardCountGlobalWithSap(payload);
+      console.log("Freight Billing - OutwardCountGlobalWithSap Response:", response);
 
       setPendingCount(response?.ZPEND_CNT || 0);
       setCompletedCount(response?.ZCONF_CNT || 0);
@@ -422,9 +425,13 @@ function FreightBillingPage() {
 
       let res;
       if (searchSap === "with") {
+        console.log("Freight Billing - fetchOrderInfoFiltered Payload:", payload);
         res = await service.fetchOrderInfoFiltered(payload);
+        console.log("Freight Billing - fetchOrderInfoFiltered Response:", res);
       } else if (searchSap === "without") {
+        console.log("Freight Billing - fetchGlobalFilteredNonSap Payload:", payload);
         res = await service.fetchGlobalFilteredNonSap(payload);
+        console.log("Freight Billing - fetchGlobalFilteredNonSap Response:", res);
       } else {
         setLoading(false);
         Swal.fire({ icon: "error", title: "Error", text: "Invalid SAP Type selected" });

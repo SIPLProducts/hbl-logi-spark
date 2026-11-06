@@ -24,6 +24,8 @@ import {
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { REPORTS_NAV } from "@/lib/reports-nav";
+import { showLogoutPrompt } from "@/lib/logout-prompt";
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import hblLogo from "@/assets/hbl-logo.png";
 
 type NavItem = {
@@ -163,6 +165,15 @@ export function AppSidebar() {
     sessionStorage.removeItem("sessionActive");
     navigate({ to: "/login", search: { session: "closed" } as any });
   };
+
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+
+  // Logout button click: ask first, same popups as IML
+  const handleLogoutClick = () =>
+    showLogoutPrompt({
+      onChangePassword: () => setChangePasswordOpen(true),
+      onLogout: handleLogout,
+    });
 
   return (
     <aside
@@ -370,7 +381,7 @@ export function AppSidebar() {
           )}
           {!collapsed && (
             <button
-              onClick={handleLogout}
+              onClick={handleLogoutClick}
               title="Logout"
               className="p-1.5 rounded-lg text-sidebar-foreground/50 hover:text-white hover:bg-sidebar-accent/70 transition-colors shrink-0"
             >
@@ -379,6 +390,7 @@ export function AppSidebar() {
           )}
         </div>
       </div>
+      <ChangePasswordDialog open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
     </aside>
   );
 }

@@ -124,6 +124,7 @@ export function CreateUserDialog({
   const fetchPlantCodeList = async () => {
     try {
       const res = await service.fetchVendorCode();
+      console.log("Create User Dialog - fetchVendorCode Response:", res);
 
       // fetchVendorCode may return either an array ([{ PLANT: [...] }]) or a
       // plain object ({ PLANT: [...] }) — normalize both, same as other screens.
@@ -453,7 +454,9 @@ export function CreateUserDialog({
     };
 
     try {
+      console.log("Create User Dialog - GlobalUserAuth (Edit) Payload:", payload);
       const res = await service.GlobalUserAuth(payload);
+      console.log("Create User Dialog - GlobalUserAuth (Edit) Response:", res);
 
       // STATUS "FALSE" → not updated: show the MESSAGE and keep the dialog open (no refresh)
       if (String(res?.STATUS ?? "").toUpperCase() === "FALSE") {

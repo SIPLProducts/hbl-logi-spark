@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { LogOut, User, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
+import { showLogoutPrompt } from "@/lib/logout-prompt";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +31,7 @@ function getInitials(firstName: string, lastName: string) {
 export function TopBar() {
   const navigate = useNavigate();
   const user = getUserData();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const firstName = user?.FIRST_NAME ?? "User";
   const lastName = user?.LAST_NAME ?? "";
@@ -45,6 +49,13 @@ export function TopBar() {
     sessionStorage.removeItem("sessionActive");
     navigate({ to: "/login", search: { session: "closed" } as any });
   };
+
+  // Logout button click: ask first, same popups as IML
+  const handleLogoutClick = () =>
+    showLogoutPrompt({
+      onChangePassword: () => setChangePasswordOpen(true),
+      onLogout: handleLogout,
+    });
 
   return (
     <header className="h-12 bg-surface/90 backdrop-blur border-b border-hairline flex items-center justify-end px-4 sticky top-0 z-20 gap-2">
@@ -75,7 +86,7 @@ export function TopBar() {
           {/* </DropdownMenuItem> */}
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={handleLogout}
+            onClick={handleLogoutClick}
             className="cursor-pointer text-destructive focus:text-destructive"
           >
             <LogOut className="size-4" />
@@ -86,13 +97,14 @@ export function TopBar() {
 
       <button
         type="button"
-        onClick={handleLogout}
+        onClick={handleLogoutClick}
         className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-hairline bg-surface text-[12px] font-semibold text-foreground hover:bg-muted transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
         aria-label="Logout"
       >
         <LogOut className="size-3.5" />
         <span className="hidden sm:inline">Logout</span>
       </button>
+      <ChangePasswordDialog open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
     </header>
   );
 }

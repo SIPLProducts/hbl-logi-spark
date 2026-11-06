@@ -1028,9 +1028,11 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     };
 
     try {
+      console.log("Transit Damage Info - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Payload:", payload);
       const res: any = isSap
         ? await service.GlobalReferenceNoFetch(payload)
         : await service.GlobalReferenceNoFetchwithoutsap(payload);
+      console.log("Transit Damage Info - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Response:", res);
 
       if (res?.STATUS === "FALSE") {
         Swal.fire({ icon: "error", title: "Error", text: res?.MESSAGE || "No matching reference details found." });
@@ -1164,6 +1166,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     console.log("Invoice Payload", payload);
 
     try {
+      console.log("Transit Damage Info - TransitDamageInfofetch Payload:", payload);
       const res: any = await service.TransitDamageInfofetch(payload);
 
       console.log("Invoice Response", res);
@@ -1323,7 +1326,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
 
     try {
 
+      console.log("Transit Damage Info - TransitDamageInfoSave Payload:", payload);
       const res: any = await service.TransitDamageInfoSave(payload);
+      console.log("Transit Damage Info - TransitDamageInfoSave Response:", res);
 
       if (res?.STATUS === "TRUE") {
 
@@ -1456,6 +1461,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     console.log("Search Payload", payload);
 
     try {
+      console.log("Transit Damage Info - global_Fields_SearchOption / global_Fields_SearchOption_WithoutSap Payload:", payload);
       const res: any = isSap
         ? await service.global_Fields_SearchOption(payload)
         : await service.global_Fields_SearchOption_WithoutSap(payload);
@@ -1597,6 +1603,7 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
   console.log("Non-SAP Payload:", payload);
 
   try {
+    console.log("Transit Damage Info - TransitDamageinfofetchNonsap Payload:", payload);
     const res: any = await service.TransitDamageinfofetchNonsap(payload);
 
     console.log("Non-SAP Response:", res);
@@ -1753,7 +1760,9 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     console.log("Non-SAP SAVE Payload:", payload);
 
     try {
+      console.log("Transit Damage Info - withoutsapSave Payload:", payload);
       const res: any = await service.withoutsapSave(payload);
+      console.log("Transit Damage Info - withoutsapSave Response:", res);
 
       if (res?.STATUS === true || res?.STATUS === "TRUE") {
         Swal.fire({
@@ -1837,9 +1846,11 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     if (!result.isConfirmed) return;
 
     try {
+      console.log("Transit Damage Info - TransitDamageInfoChangeWithSap / TransitDamageInfoChangeWithoutSap Payload:", payload);
       const res = isSap
         ? await service.TransitDamageInfoChangeWithSap(payload)
         : await service.TransitDamageInfoChangeWithoutSap(payload);
+      console.log("Transit Damage Info - TransitDamageInfoChangeWithSap / TransitDamageInfoChangeWithoutSap Response:", res);
 
       const isSuccess =
         res?.STATUS === true ||
@@ -1903,9 +1914,11 @@ export function TransitDamageInfoSapCreate({ mode = "with" }: { mode?: "with" | 
     };
 
     try {
+      console.log("Transit Damage Info - TransitDamageInfoDeleteWithSap / TransitDamageInfoDeleteWithoutSap Payload:", payload);
       const res = isSap
         ? await service.TransitDamageInfoDeleteWithSap(payload)
         : await service.TransitDamageInfoDeleteWithoutSap(payload);
+      console.log("Transit Damage Info - TransitDamageInfoDeleteWithSap / TransitDamageInfoDeleteWithoutSap Response:", res);
 
       if (res.STATUS === "TRUE" || res.NUMBER === "200") {
         Swal.fire("Deleted", "Record deleted successfully", "success");

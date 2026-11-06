@@ -172,6 +172,7 @@ function FreightBillsReport() {
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Freight Bills - fetchVendorCode Response:", res);
         setTransporterList(res?.[0]?.VEND_CODE || []);
       } catch (err) {
         console.error("Error fetching transporters", err);
@@ -183,6 +184,7 @@ function FreightBillsReport() {
     (async () => {
       try {
         const res: any = await service.getssc();
+        console.log("Freight Bills - getssc Response:", res);
         if (res && res.length > 0) {
           const data = res[0];
           setBranchList(data.BRANCH || []);
@@ -198,6 +200,7 @@ function FreightBillsReport() {
     (async () => {
       try {
         const res: any = await service.getpdb();
+        console.log("Freight Bills - getpdb Response:", res);
         const list = (res?.[0]?.CUSTOMER || []).map((item: any) => ({
           ...item,
           searchText: `${item.CUSTOMER} - ${item.CUSTOMER_NAME}`,
@@ -211,7 +214,9 @@ function FreightBillsReport() {
     // fetchIncoterms()
     (async () => {
       try {
+        console.log("Freight Bills - Incoterms Payload:", { INCO1: "", BEZEI: "" });
         const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+        console.log("Freight Bills - Incoterms Response:", res);
         setIncotermsList(Array.isArray(res) ? res : res?.data || []);
       } catch (err) {
         console.error("Error fetching Incoterms:", err);
@@ -283,7 +288,9 @@ function FreightBillsReport() {
     setIsSearching(true);
 
     try {
+      console.log("Freight Bills - FetchFreightBills Payload:", payload);
       const res: any = await service.FetchFreightBills(payload);
+      console.log("Freight Bills - FetchFreightBills Response:", res);
 
       // ERROR RESPONSE HANDLING
       if (res?.ERROR_TYPE === "E") {

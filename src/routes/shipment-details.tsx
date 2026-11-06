@@ -159,11 +159,17 @@ function ShipmentDetailsPage() {
 
   const fetchCounts = async (sapMode: SapMode) => {
     try {
+      console.log("Shipment Details - OutwardCountGlobalWithSap Payload:", {
+        INOUT: "OUTWARD",
+        TRANS_TYPE: sapMode === "with" ? "WITHSAP" : "WITHOUTSAP",
+        SCREEN: "SHIPMENT DETAILS",
+      });
       const res = await service.OutwardCountGlobalWithSap({
         INOUT: "OUTWARD",
         TRANS_TYPE: sapMode === "with" ? "WITHSAP" : "WITHOUTSAP",
         SCREEN: "SHIPMENT DETAILS",
       });
+      console.log("Shipment Details - OutwardCountGlobalWithSap Response:", res);
       setPendingCount(res?.ZPEND_CNT || 0);
       setCompletedCount(res?.ZCONF_CNT || 0);
     } catch (err) {
@@ -182,6 +188,7 @@ function ShipmentDetailsPage() {
   const fetchTransporters = async () => {
     try {
       const res = await service.fetchVendorCode();
+      console.log("Shipment Details - fetchVendorCode Response:", res);
       if (res && res.length > 0 && res[0].VEND_CODE) {
         setTransporterList(res[0].VEND_CODE);
       } else {
@@ -263,10 +270,12 @@ function ShipmentDetailsPage() {
     setLoading(true);
     setApplied(false);
     try {
+      console.log("Shipment Details - fetchOrderInfoFiltered / fetchGlobalFilteredNonSap Payload:", payload);
       const res =
         searchSap === "with"
           ? await service.fetchOrderInfoFiltered(payload)
           : await service.fetchGlobalFilteredNonSap(payload);
+      console.log("Shipment Details - fetchOrderInfoFiltered / fetchGlobalFilteredNonSap Response:", res);
 
       if (res?.STATUS === "FALSE") {
         setShipmentData([]);

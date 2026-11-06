@@ -133,6 +133,7 @@ function SitReport() {
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Sit Report - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         setTransporterList(Array.isArray(data?.VEND_CODE) ? data.VEND_CODE : []);
       } catch (err) {

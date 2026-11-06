@@ -191,6 +191,7 @@ function TransitEwayBillReport() {
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Transit Eway Bill - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();
@@ -230,6 +231,7 @@ function TransitEwayBillReport() {
     (async () => {
       try {
         const res: any = await service.getssc();
+        console.log("Transit Eway Bill - getssc Response:", res);
         if (res && res.length > 0) {
           const data = res[0];
           setBranchList(data.BRANCH || []);
@@ -246,6 +248,7 @@ function TransitEwayBillReport() {
     (async () => {
       try {
         const res: any = await service.getpdb();
+        console.log("Transit Eway Bill - getpdb Response:", res);
         const list = (res?.[0]?.CUSTOMER || []).map((item: any) => ({
           ...item,
           searchText: `${item.CUSTOMER} - ${item.CUSTOMER_NAME}`,
@@ -259,7 +262,9 @@ function TransitEwayBillReport() {
     // fetchIncoterms()
     (async () => {
       try {
+        console.log("Transit Eway Bill - Incoterms Payload:", { INCO1: "", BEZEI: "" });
         const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+        console.log("Transit Eway Bill - Incoterms Response:", res);
         setIncotermsList(Array.isArray(res) ? res : res?.data || []);
       } catch (err) {
         console.error("Error fetching Incoterms:", err);
@@ -351,7 +356,9 @@ function TransitEwayBillReport() {
     setIsSearching(true);
 
     try {
+      console.log("Transit Eway Bill - FetchTransitReport Payload:", payload);
       const res: any = await service.FetchTransitReport(payload);
+      console.log("Transit Eway Bill - FetchTransitReport Response:", res);
 
       // ERROR RESPONSE HANDLING
       if (res?.ERROR_TYPE === "E") {

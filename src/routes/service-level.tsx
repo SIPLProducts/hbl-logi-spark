@@ -1239,9 +1239,11 @@ function ServiceLevelFeedbackCreate({
 
     setLoading(true);
     try {
+      console.log("Service Level - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Payload:", obj);
       const res = isSap
         ? await service.GlobalReferenceNoFetch(obj) // POST
         : await service.GlobalReferenceNoFetchwithoutsap(obj); // PUT
+      console.log("Service Level - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Response:", res);
       populateRows(res);
       lastFetchedRef.current = { fieldKey, value: fieldValue };
     } catch (err) {
@@ -1288,9 +1290,11 @@ function ServiceLevelFeedbackCreate({
 
       setLoading(true);
       try {
+        console.log("Service Level - FeedBackInvoiceDetailsfetchwithsap / FeedBackInvoiceDetailsfetchwithoutsap Payload:", obj);
         const res: any = isSap
           ? await service.FeedBackInvoiceDetailsfetchwithsap(obj)
           : await service.FeedBackInvoiceDetailsfetchwithoutsap(obj);
+        console.log("Service Level - FeedBackInvoiceDetailsfetchwithsap / FeedBackInvoiceDetailsfetchwithoutsap Response:", res);
 
         setLoading(false);
 
@@ -1396,9 +1400,11 @@ function ServiceLevelFeedbackCreate({
 
     setSlSearchLoading(true);
     try {
+      console.log("Service Level - global_Fields_SearchOption / global_Fields_SearchOption_WithoutSap Payload:", payload);
       const res: any = isSap
         ? await service.global_Fields_SearchOption(payload)
         : await service.global_Fields_SearchOption_WithoutSap(payload);
+      console.log("Service Level - global_Fields_SearchOption / global_Fields_SearchOption_WithoutSap Response:", res);
 
       if (res?.NUMBER === "100" && res?.STATUS === "FALSE") {
         setSlSearchResults([]);
@@ -1492,9 +1498,11 @@ function ServiceLevelFeedbackCreate({
     const payload = { CHANGE: [changeRecord] };
 
     try {
+      console.log("Service Level - FeedBackChangewithsap / FeedBackChangewithoutsap Payload:", payload);
       const res: any = isSap
         ? await service.FeedBackChangewithsap(payload)
         : await service.FeedBackChangewithoutsap(payload);
+      console.log("Service Level - FeedBackChangewithsap / FeedBackChangewithoutsap Response:", res);
 
       const isSuccess = String(res?.STATUS ?? "").toUpperCase() === "TRUE" || res?.NUMBER === "200";
 
@@ -1550,9 +1558,11 @@ function ServiceLevelFeedbackCreate({
     const payload = { DELETE: [deleteRecord] };
 
     try {
+      console.log("Service Level - FeedBackDeletewithsap / FeedBackDeletewithoutsap Payload:", payload);
       const res: any = isSap
         ? await service.FeedBackDeletewithsap(payload)
         : await service.FeedBackDeletewithoutsap(payload);
+      console.log("Service Level - FeedBackDeletewithsap / FeedBackDeletewithoutsap Response:", res);
 
       const isSuccess = String(res?.STATUS ?? "").toUpperCase() === "TRUE" || res?.NUMBER === "200";
       // The API can return a blank MESSAGE, so fall back to a default text
@@ -1736,9 +1746,11 @@ function ServiceLevelFeedbackCreate({
 
     setLoading(true);
     try {
+      console.log("Service Level - FeedbackCreationwithsap / FeedbackCreationwithoutsap Payload:", finalPayload);
       const res: any = isSap
         ? await service.FeedbackCreationwithsap(finalPayload)
         : await service.FeedbackCreationwithoutsap(finalPayload);
+      console.log("Service Level - FeedbackCreationwithsap / FeedbackCreationwithoutsap Response:", res);
 
       setLoading(false);
 

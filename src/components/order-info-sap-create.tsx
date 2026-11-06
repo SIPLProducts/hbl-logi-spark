@@ -665,6 +665,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     const loadF4 = async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Order Info Vendor Code (F4) Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();
@@ -722,6 +723,7 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     (async () => {
       try {
         const res: any = await service.getpdb();
+        console.log("Order Info getpdb Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         setBillingList(Array.isArray(data.BILLING_TYPE) ? data.BILLING_TYPE : []);
         setStatesList(Array.isArray(data.STATES) ? data.STATES : []);
@@ -735,7 +737,9 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
   useEffect(() => {
     (async () => {
       try {
+        console.log("Order Info Incoterms Payload:", { INCO1: "", BEZEI: "" });
         const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+        console.log("Order Info Incoterms Response:", res);
         setIncotermsList(Array.isArray(res) ? res : res?.data || []);
       } catch (err) { console.error("Error fetching Incoterms:", err); }
     })();
@@ -824,7 +828,9 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
 
       setLoadingGet(true);
       try {
+        console.log("Order Info Get Invoice Payload:", { VBELN: invoiceNumber.trim(), ZDATA });
         const res: any = await service.OrderinfoOutward({ VBELN: invoiceNumber.trim(), ZDATA });
+        console.log("Order Info Get Invoice Response:", res);
 
         if (Array.isArray(res) && res[0]?.STATUS === "FALSE") {
           Swal.fire({ icon: "error", title: "Invoice Error", text: res[0].MESSAGE });
@@ -857,7 +863,9 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       return;
     }
     try {
+      console.log("Order Info Physical Dispatch Payload:", { phys_dispatch: value });
       const res: any = await service.OrderInfoPhysicaldispatch({ phys_dispatch: value });
+      console.log("Order Info Physical Dispatch Response:", res);
       if (res) {
         setForm((p) => ({
           ...p,
@@ -875,7 +883,9 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     setField("DestinationState", value);
     if (!value) return;
     try {
+      console.log("Order Info Zone Payload:", { STATE: value });
       const res: any = await service.fetchzone({ STATE: value });
+      console.log("Order Info Zone Response:", res);
       setField("DestinationZone", res?.ZONE || "");
     } catch (e) { console.error("Zone fetch error:", e); }
   };
@@ -897,9 +907,11 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     };
 
     try {
+      console.log("Order Info Reference Fetch Payload:", payload);
       const res: any = isSap
         ? await service.GlobalReferenceNoFetch(payload)
         : await service.GlobalReferenceNoFetchwithoutsap(payload);
+      console.log("Order Info Reference Fetch Response:", res);
 
       if (res?.STATUS === "FALSE") {
         Swal.fire({ icon: "info", title: "No Records Found", text: "No matching reference details found.", timer: 1500, showConfirmButton: false });
@@ -998,9 +1010,11 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
 
     setLoadingSearch(true);
     try {
+      console.log("Order Info Search Payload:", payload);
       const res: any = isSap
         ? await service.global_Fields_SearchOption(payload)
         : await service.global_Fields_SearchOption_WithoutSap(payload);
+      console.log("Order Info Search Response:", res);
 
       if (res?.NUMBER === "100" && res?.STATUS === "FALSE") {
         setSearchResults([]);
@@ -1078,9 +1092,11 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
 
     setLoadingSave(true);
     try {
+      console.log("Order Info Save Payload:", isSap ? { CHANGE: "", SAVE: record } : { CHANGE: "", CREATE: record });
       const res: any = isSap
         ? await service.OrderInfoOutwardSave({ CHANGE: "", SAVE: record })
         : await service.OrderInfoNonSap({ CHANGE: "", CREATE: record });
+      console.log("Order Info Save Response:", res);
 
       if (res?.STATUS === "true" || res?.NUMBER === "200") {
         await Swal.fire({ icon: "success", title: "Success", text: res.MESSAGE || "Data saved successfully", confirmButtonText: "Ok" });
@@ -1141,9 +1157,11 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     };
 
     try {
+      console.log("Order Info Update Payload:", isSap ? { CHANGE: "X", SAVE: [payload] } : { CHANGE: "X", CREATE: [payload] });
       const res: any = isSap
         ? await service.OrderInfoOutwardSave({ CHANGE: "X", SAVE: [payload] })
         : await service.OrderInfoNonSap({ CHANGE: "X", CREATE: [payload] });
+      console.log("Order Info Update Response:", res);
 
       if (res?.STATUS === "true" || res?.NUMBER === "200") {
         setSearchResults((prev) => prev.map((r, i) => i === index ? { ...r, isEdit: false } : r));
@@ -1170,9 +1188,11 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
     const payload = { DELETE: [{ ZREFNO: row.ZREFNO, ZINV_NO: row.ZINV_NO, ZLINE_NO: row.ZLINE_NO }] };
 
     try {
+      console.log("Order Info Delete Payload:", payload);
       const res: any = isSap
         ? await service.OrderInfoDeleteWithSap(payload)
         : await service.OrderInfoDeleteWithoutSap(payload);
+      console.log("Order Info Delete Response:", res);
 
       if (res?.STATUS === "TRUE" || res?.STATUS === true) {
         setSearchResults((prev) => prev.filter((_, i) => i !== index));
@@ -1207,7 +1227,9 @@ export function OrderInfoSapCreate({ mode = "with" }: { mode?: "with" | "without
       return;
     }
     try {
+      console.log("Order Info Edit Zone Payload:", { STATE: stateValue });
       const res: any = await service.fetchzone({ STATE: stateValue });
+      console.log("Order Info Edit Zone Response:", res);
       if (res?.ZONE) {
         updateSearchResultField(rowIndex, "ZZONE", res.ZONE);
       }

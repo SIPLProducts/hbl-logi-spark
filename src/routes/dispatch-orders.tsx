@@ -186,6 +186,7 @@ function DispatchOrdersPage() {
   const fetchCounts = async () => {
     try {
       const response = await service.FetchDispatchOrderPendingCounts();
+      console.log("Payload for counts:", response);
       setCounts({
         pending: response?.PENDING ?? 0,
         completed: response?.COMPLETED ?? 0,
@@ -229,6 +230,8 @@ function DispatchOrdersPage() {
       setPage(1);
 
       const response = await service.FetchDispatchOrderFlowData(payload);
+      console.log("Payload for flow data:", payload);
+      console.log("Response for flow data:", response);
 
        if (response && String(response.ERROR_CODE ?? "").trim() === "100") {
       setCounts({ pending: 0, completed: 0 });
@@ -330,6 +333,7 @@ function DispatchOrdersPage() {
     const loadF4 = async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Response for F4:", res);
         const data = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();

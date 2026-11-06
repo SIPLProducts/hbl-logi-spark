@@ -197,11 +197,13 @@ function OrderInfoPage() {
     if (!sap) return;
     (async () => {
       try {
+        console.log("Order Info Count Payload:", { INOUT: "OUTWARD", TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP", SCREEN: "ORDER INFO" });
         const res: any = await service.OutwardCountGlobalWithSap({
           INOUT: "OUTWARD",
           TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
           SCREEN: "ORDER INFO",
         });
+        console.log("Order Info Count Response:", res);
         setPendingCount(res?.ZPEND_CNT ?? 0);
         setCompletedCount(res?.ZCONF_CNT ?? 0);
       } catch (err) {
@@ -215,6 +217,7 @@ function OrderInfoPage() {
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Order Info Filter Vendor Code (F4) Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();
@@ -328,10 +331,12 @@ function OrderInfoPage() {
     };
 
     try {
+      console.log("Order Info Filter Payload:", payload);
       const res: any =
         searchSap === "with"
           ? await service.fetchOrderInfoFiltered(payload)
           : await service.fetchGlobalFilteredNonSap(payload);
+      console.log("Order Info Filter Response:", res);
 
       let records: any[] = [];
       if (Array.isArray(res)) records = res;

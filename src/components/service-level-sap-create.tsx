@@ -366,9 +366,11 @@ export function ServiceLevelSapCreate({
     };
 
     try {
+      console.log("Service Level - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Payload:", payload);
       const res: any = isSap
         ? await service.GlobalReferenceNoFetch(payload)
         : await service.GlobalReferenceNoFetchwithoutsap(payload);
+      console.log("Service Level - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Response:", res);
 
       if (res?.STATUS === "FALSE") {
         Swal.fire({ icon: "error", title: "Error", text: res?.MESSAGE || "No matching reference details found." });
@@ -509,9 +511,11 @@ export function ServiceLevelSapCreate({
     console.log(payload);
 
     try {
+      console.log("Service Level - FeedbackCreationwithsap / FeedbackCreationwithoutsap Payload:", payload);
       const res = isSap
         ? await service.FeedbackCreationwithsap(payload)
         : await service.FeedbackCreationwithoutsap(payload);
+      console.log("Service Level - FeedbackCreationwithsap / FeedbackCreationwithoutsap Response:", res);
 
       if (res?.STATUS === "FALSE") {
         Swal.fire({
@@ -591,9 +595,11 @@ const getInvoiceDetails = async () => {
   console.log("Invoice Payload:", payload);
 
   try {
+    console.log("Service Level - FeedBackInvoiceDetailsfetchwithsap / FeedBackInvoiceDetailsfetchwithoutsap Payload:", payload);
     const res = isSap
       ? await service.FeedBackInvoiceDetailsfetchwithsap(payload)
       : await service.FeedBackInvoiceDetailsfetchwithoutsap(payload);
+    console.log("Service Level - FeedBackInvoiceDetailsfetchwithsap / FeedBackInvoiceDetailsfetchwithoutsap Response:", res);
 
     // No data
     if (res?.STATUS === "FALSE") {

@@ -588,7 +588,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
   const onReportedDateChange = async (value: string) => {
     if (!value) return;
     try {
+      console.log("Insurance Claim Tracking - OrderInfoPhysicaldispatch Payload:", { phys_dispatch: value });
       const res: any = await service.OrderInfoPhysicaldispatch({ phys_dispatch: value });
+      console.log("Insurance Claim Tracking - OrderInfoPhysicaldispatch Response:", res);
       if (res) {
         setHeaderData((prev: any) => ({ ...prev, FI: res.FISCAL_YEAR || "" }));
       }
@@ -753,9 +755,11 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     };
 
     try {
+      console.log("Insurance Claim Tracking - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Payload:", payload);
       const res: any = isSap
         ? await service.GlobalReferenceNoFetch(payload)
         : await service.GlobalReferenceNoFetchwithoutsap(payload);
+      console.log("Insurance Claim Tracking - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Response:", res);
 
       if (res?.STATUS === "FALSE") {
         Swal.fire({ icon: "error", title: "Error", text: res?.MESSAGE || "No matching reference details found." });
@@ -891,7 +895,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     try {
       setLoading(true);
 
+      console.log("Insurance Claim Tracking - InsuranceClaimTrackingfetch Payload:", payload);
       const res: any = await service.InsuranceClaimTrackingfetch(payload);
+      console.log("Insurance Claim Tracking - InsuranceClaimTrackingfetch Response:", res);
 
       setLoading(false);
 
@@ -1057,7 +1063,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
     try {
       setLoading(true);
+      console.log("Insurance Claim Tracking - InsuranceClaimTrackingSave Payload:", payload);
       const res: any = await service.InsuranceClaimTrackingSave(payload);
+      console.log("Insurance Claim Tracking - InsuranceClaimTrackingSave Response:", res);
       setLoading(false);
 
       if (res?.STATUS === "TRUE") {
@@ -1151,7 +1159,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
     try {
       setLoading(true);
+      console.log("Insurance Claim Tracking - fetchinvoicelistnonsap Payload:", payload);
       const res: any = await service.fetchinvoicelistnonsap(payload);
+      console.log("Insurance Claim Tracking - fetchinvoicelistnonsap Response:", res);
       setLoading(false);
 
       if (!res || res.STATUS === "False") {
@@ -1275,7 +1285,9 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
 
     try {
       setLoading(true);
+      console.log("Insurance Claim Tracking - Nonsapsave Payload:", payload);
       const res: any = await service.Nonsapsave(payload);
+      console.log("Insurance Claim Tracking - Nonsapsave Response:", res);
       setLoading(false);
 
       if (res?.STATUS === true || res?.STATUS === "TRUE") {
@@ -1358,9 +1370,11 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     try {
       setLoading(true);
 
+      console.log("Insurance Claim Tracking - global_Fields_SearchOption / global_Fields_SearchOption_WithoutSap Payload:", payload);
       const res: any = isSap
         ? await service.global_Fields_SearchOption(payload)
         : await service.global_Fields_SearchOption_WithoutSap(payload);
+      console.log("Insurance Claim Tracking - global_Fields_SearchOption / global_Fields_SearchOption_WithoutSap Response:", res);
 
       setLoading(false);
 
@@ -1484,9 +1498,11 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     };
 
     try {
+      console.log("Insurance Claim Tracking - InsuranceClaimTrackingChangeWithSap / InsuranceClaimTrackingChangeWithoutSap Payload:", payload);
       const res: any = isSap
         ? await service.InsuranceClaimTrackingChangeWithSap(payload)
         : await service.InsuranceClaimTrackingChangeWithoutSap(payload);
+      console.log("Insurance Claim Tracking - InsuranceClaimTrackingChangeWithSap / InsuranceClaimTrackingChangeWithoutSap Response:", res);
 
       if (res.STATUS === "TRUE" || res.NUMBER === "200") {
         Swal.fire("Success", res.MESSAGE || "Updated Successfully", "success");
@@ -1521,9 +1537,11 @@ export function InsuranceClaimTrackingSapCreate({ mode = "with" }: { mode?: "wit
     };
 
     try {
+      console.log("Insurance Claim Tracking - InsuranceClaimTrackingDeleteWithSap / InsuranceClaimTrackingDeleteWithoutSap Payload:", payload);
       const res: any = isSap
         ? await service.InsuranceClaimTrackingDeleteWithSap(payload)
         : await service.InsuranceClaimTrackingDeleteWithoutSap(payload);
+      console.log("Insurance Claim Tracking - InsuranceClaimTrackingDeleteWithSap / InsuranceClaimTrackingDeleteWithoutSap Response:", res);
 
       if (res.STATUS === "TRUE" || res.NUMBER === "200") {
         Swal.fire("Deleted", "Record deleted successfully", "success");

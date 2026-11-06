@@ -50,6 +50,7 @@ import { exportRowsToXls } from "@/lib/export-xls.js";
 import service from "@/services/generalservice_service.js";
 // @ts-ignore
 import { getLocalDocumentUrl, downloadDocument } from "@/services/generalservice_service";
+import { fetchWithLog } from "@/lib/dev-logger";
 import { getHandedOffDirection, getHandedOffSapMode, handOffSapMode, useConsumeSapModeHandOff } from "@/lib/sap-mode-handoff";
 
 // ── Filter & Download payload: plant as "<WERKS>_<PLANT_DESC>" (e.g. "1100_HBL NCPP-SHPT") ──
@@ -146,6 +147,7 @@ function GateInOutProcessPage() {
   const [completedCount, setCompletedCount] = useState(0);
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
+  const [fetchedPlantDivisions, setFetchedPlantDivisions] = useState<{ plant: string; division: string; divText: string }[]>([]);
   const [fetchedTransporters, setFetchedTransporters] = useState<string[]>([]);
   const [orderInfoData, setOrderInfoData] = useState<any[]>([]);
   const [dispatchData, setDispatchData] = useState<any[]>([]);
@@ -168,11 +170,17 @@ function GateInOutProcessPage() {
     if (!sap) return;
     (async () => {
       try {
+        console.log("Gate In Out Process - OutwardCountGlobalWithSap Payload:", {
+          INOUT: "OUTWARD",
+          TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
+          SCREEN: "GATE IN OUT",
+        });
         const res: any = await service.OutwardCountGlobalWithSap({
           INOUT: "OUTWARD",
           TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
           SCREEN: "GATE IN OUT",
         });
+        console.log("Gate In Out Process - OutwardCountGlobalWithSap Response:", res);
         setPendingCount(res?.ZPEND_CNT ?? 0);
         setCompletedCount(res?.ZCONF_CNT ?? 0);
       } catch (err) {
@@ -198,6 +206,7 @@ function GateInOutProcessPage() {
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Gate In Out Process - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();
@@ -220,12 +229,43 @@ function GateInOutProcessPage() {
 
         setFetchedPlants(plants);
         setFetchedDivisions(divisions);
+        setFetchedPlantDivisions(
+          Array.isArray(data.PLANT)
+            ? data.PLANT.map((p: any) => ({
+                plant: String(p.PLANT ?? "").trim(),
+                division: String(p.DIVISION ?? "").trim(),
+                divText: String(p.DIV_TEXT ?? "").trim(),
+              }))
+            : [],
+        );
         setFetchedTransporters(transporters);
       } catch (err) {
         console.error("Transporter/Plant/Division fetch failed:", err);
       }
     })();
   }, [searchSap]);
+
+  // Division options for the selected plant(s) — same logic as Dispatch's Filter & Download
+  const filterDivisionOptions = useMemo(() => {
+    if (fetchedDivisions.length === 0) return DIVISIONS;
+    const allDivisions = () =>
+      fetchedDivisions.map((d) => {
+        const match = fetchedPlantDivisions.find((e) => e.division === d && e.divText);
+        return { value: d, label: match?.divText || d };
+      });
+    if (fPlant.length === 0) return allDivisions();
+    const plantCodes = fPlant.map((p) => String(p || "").split("_")[0].trim()).filter(Boolean);
+    const own = fetchedPlantDivisions.filter((e) => plantCodes.includes(e.plant) && e.division);
+    if (own.length === 0) return allDivisions();
+    const seen = new Set<string>();
+    return own
+      .filter((e) => {
+        if (seen.has(e.division)) return false;
+        seen.add(e.division);
+        return true;
+      })
+      .map((e) => ({ value: e.division, label: e.divText || e.division }));
+  }, [fPlant, fetchedDivisions, fetchedPlantDivisions]);
 
   const onApply = async () => {
     if (!fromDate || !toDate) {
@@ -273,9 +313,11 @@ function GateInOutProcessPage() {
         STATUS: fStatus || "",
       };
 
+      console.log("Gate In Out Process - FilterRecordsGateInOutWithSap / FilterRecordsGateInOutWithoutSap Payload:", payload);
       const res: any = searchSap === "with"
         ? await service.FilterRecordsGateInOutWithSap(payload)
         : await service.FilterRecordsGateInOutWithoutSap(payload);
+      console.log("Gate In Out Process - FilterRecordsGateInOutWithSap / FilterRecordsGateInOutWithoutSap Response:", res);
 
       setApplied(true);
       setOrderInfoData([]);
@@ -689,7 +731,7 @@ function GateInOutProcessPage() {
                       label="Division"
                       value={fDivision}
                       onChange={setFDivision}
-                      options={fetchedDivisions.length > 0 ? fetchedDivisions : DIVISIONS}
+                      options={filterDivisionOptions}
                       placeholder="Select Division"
                       searchable
                     />
@@ -1383,7 +1425,7 @@ const gateBase64Only = (dataUri?: string): string =>
 async function gateStoredDocumentToBase64(url: string): Promise<string> {
   if (!url) return "";
   try {
-    const response = await fetch(url);
+    const response = await fetchWithLog(url);
     if (!response.ok) return "";
     const blob = await response.blob();
     const dataUri = await new Promise<string>((resolve, reject) => {
@@ -2762,6 +2804,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       setLoadingTruckTypes(true);
       try {
         const res: any = await service.gettypeofvehicle();
+        console.log("Gate In Out Process - gettypeofvehicle Response:", res);
 
         // Actual response shape: a flat array of { ZTRUC_TYPE: "..." }
         const raw: any[] = Array.isArray(res) ? res : [];
@@ -2791,6 +2834,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Gate In Out Process - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();
@@ -2819,6 +2863,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     (async () => {
       try {
         const res: any = await service.getpdb();
+        console.log("Gate In Out Process - getpdb Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         if (Array.isArray(data.STATES)) {
           setStatesList(data.STATES);
@@ -2837,7 +2882,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
     if (!newState) return;
     try {
+      console.log("Gate In Out Process - fetchzone Payload:", { STATE: newState });
       const res: any = await service.fetchzone({ STATE: newState });
+      console.log("Gate In Out Process - fetchzone Response:", res);
       if (res?.ZONE) {
         setSearchResultItems((prev) => {
           const updated = [...prev];
@@ -2871,7 +2918,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     else payload.INV_NO = invNo;
 
     try {
+      console.log("Gate In Out Process - fetchTAT / fetchNonSapTAT Payload:", payload);
       const res: any = isSap ? await service.fetchTAT(payload) : await service.fetchNonSapTAT(payload);
+      console.log("Gate In Out Process - fetchTAT / fetchNonSapTAT Response:", res);
       if (res?.TAT || res?.ETA) {
         const tatDays = res.TAT != null ? String(res.TAT) : "";
 
@@ -2998,9 +3047,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     };
 
     try {
+      console.log("Gate In Out Process - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Payload:", payload);
       const res: any = isSap
         ? await service.GlobalReferenceNoFetch(payload)
         : await service.GlobalReferenceNoFetchwithoutsap(payload);
+      console.log("Gate In Out Process - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Response:", res);
 
       setInvoiceF4List([]);
       setFullReferenceData([]);
@@ -3487,7 +3538,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     };
 
     try {
+      console.log("Gate In Out Process - FetchGateInOutInvoiceData Payload:", payload);
       const res: any = await service.FetchGateInOutInvoiceData(payload);
+      console.log("Gate In Out Process - FetchGateInOutInvoiceData Response:", res);
 
       if (!Array.isArray(res) || res.length === 0 || !res[0]?.HEADER) {
         Swal.fire({
@@ -3617,7 +3670,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     };
 
     try {
+      console.log("Gate In Out Process - FetchGateInOutInvoiceDataWithoutSap Payload:", payload);
       const res: any = await service.FetchGateInOutInvoiceDataWithoutSap(payload);
+      console.log("Gate In Out Process - FetchGateInOutInvoiceDataWithoutSap Response:", res);
 
       if (!Array.isArray(res) || res.length === 0 || !res[0]?.HEADER) {
         Swal.fire({
@@ -3728,9 +3783,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     };
 
     try {
+      console.log("Gate In Out Process - SearchGateInOutWithSap / SearchGateInOutWithoutSap Payload:", payload);
       const res: any = isSap
         ? await service.SearchGateInOutWithSap(payload)
         : await service.SearchGateInOutWithoutSap(payload);
+      console.log("Gate In Out Process - SearchGateInOutWithSap / SearchGateInOutWithoutSap Response:", res);
       const records = Array.isArray(res)
         ? res
         : Array.isArray(res?.DATA)
@@ -3850,7 +3907,9 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     else payload.INV_NO = invNo;
 
     try {
+      console.log("Gate In Out Process - fetchTAT / fetchNonSapTAT Payload:", payload);
       const res: any = isSap ? await service.fetchTAT(payload) : await service.fetchNonSapTAT(payload);
+      console.log("Gate In Out Process - fetchTAT / fetchNonSapTAT Response:", res);
       if (res?.TAT || res?.ETA) {
         const tatDays = res.TAT || "";
         updateGateRow(index, "tatDays", tatDays);
@@ -4108,9 +4167,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
     setLoadingSave(true);
     try {
+      console.log("Gate In Out Process - SaveGateInOutWithSap / SaveGateInOutWithoutSap Payload:", payload);
       const res: any = isSap
         ? await service.SaveGateInOutWithSap(payload)
         : await service.SaveGateInOutWithoutSap(payload);
+      console.log("Gate In Out Process - SaveGateInOutWithSap / SaveGateInOutWithoutSap Response:", res);
 
       if (res?.NUMBER === "200") {
         Swal.fire({
@@ -4273,9 +4334,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         ],
       };
 
+      console.log("Gate In Out Process - ChangeGateInOutWithSap / ChangeGateInOutWithoutSap Payload:", payload);
       const res: any = isSap
         ? await service.ChangeGateInOutWithSap(payload)
         : await service.ChangeGateInOutWithoutSap(payload);
+      console.log("Gate In Out Process - ChangeGateInOutWithSap / ChangeGateInOutWithoutSap Response:", res);
 
       if (res?.NUMBER === "200") {
         Swal.fire({
@@ -4660,9 +4723,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                           ],
                                         };
 
+                                        console.log("Gate In Out Process - DeleteGateInOutWithSap / DeleteGateInOutWithoutSap Payload:", payload);
                                         const res: any = isSap
                                           ? await service.DeleteGateInOutWithSap(payload)
                                           : await service.DeleteGateInOutWithoutSap(payload);
+                                        console.log("Gate In Out Process - DeleteGateInOutWithSap / DeleteGateInOutWithoutSap Response:", res);
                                         if (res?.MSG || res?.MESSAGE || res?.NUMBER === "200" || res?.STATUS === "TRUE" || res?.STATUS === true) {
                                           Swal.fire("Success", res?.MSG || res?.MESSAGE || "Record deleted successfully", "success");
                                           setSearchResultHeaders((prev) => prev.filter((_, idx) => idx !== hIndex));
@@ -5096,9 +5161,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                         ],
                                       };
 
+                                      console.log("Gate In Out Process - DeleteGateInOutWithSap / DeleteGateInOutWithoutSap Payload:", payload);
                                       const res: any = isSap
                                         ? await service.DeleteGateInOutWithSap(payload)
                                         : await service.DeleteGateInOutWithoutSap(payload);
+                                      console.log("Gate In Out Process - DeleteGateInOutWithSap / DeleteGateInOutWithoutSap Response:", res);
                                       if (res?.MSG || res?.MESSAGE || res?.NUMBER === "200" || res?.STATUS === "TRUE" || res?.STATUS === true) {
                                         Swal.fire("Success", res?.MSG || res?.MESSAGE || "Record deleted successfully", "success");
                                         setSearchResultItems(prev => prev.filter((_, i) => i !== index));

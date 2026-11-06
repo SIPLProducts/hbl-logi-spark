@@ -213,6 +213,7 @@ function LoadingFactorCostReport() {
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Loading Factor Cost - fetchVendorCode Response:", res);
         setTransporterList(res?.[0]?.VEND_CODE || []);
       } catch (err) {
         console.error("Error fetching transporters", err);
@@ -224,6 +225,7 @@ function LoadingFactorCostReport() {
     (async () => {
       try {
         const res: any = await service.getpdb();
+        console.log("Loading Factor Cost - getpdb Response:", res);
         const list = (res?.[0]?.CUSTOMER || []).map((item: any) => ({
           ...item,
           searchText: `${item.CUSTOMER} - ${item.CUSTOMER_NAME}`,
@@ -238,6 +240,7 @@ function LoadingFactorCostReport() {
     (async () => {
       try {
         const res: any = await service.getssc();
+        console.log("Loading Factor Cost - getssc Response:", res);
         if (res && res.length > 0) {
           const data = res[0];
           setBranchList(data.BRANCH || []);
@@ -255,7 +258,9 @@ function LoadingFactorCostReport() {
     // fetchIncoterms()
     (async () => {
       try {
+        console.log("Loading Factor Cost - Incoterms Payload:", { INCO1: "", BEZEI: "" });
         const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+        console.log("Loading Factor Cost - Incoterms Response:", res);
         setIncotermsList(Array.isArray(res) ? res : res?.data || []);
       } catch (err) {
         console.error("Error fetching Incoterms:", err);
@@ -355,6 +360,7 @@ function LoadingFactorCostReport() {
     setIsSearching(true);
 
     try {
+      console.log("Loading Factor Cost - FetchLoadingFactorandCost Payload:", payload);
       const res: any = await service.FetchLoadingFactorandCost(payload);
       console.log("API Response:", res);
 

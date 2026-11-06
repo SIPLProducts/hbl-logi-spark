@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, type FormEvent } from "react";
 import { Eye, EyeOff, LogIn, User, Lock, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
-import { toast } from "sonner";
 import Swal from "sweetalert2";
 // @ts-ignore
 import service from "../services/generalservice_service.js";
@@ -126,7 +125,9 @@ function LoginPage() {
         },
       };
 
+      console.log("Login - GlobalUserAuth Payload:", loginPayload);
       const response = await service.GlobalUserAuth(loginPayload);
+      console.log("Login - GlobalUserAuth Response:", response);
 
       if (response && (response.STATUS === "INACTIVE" || response.ZEXPIRY === "X")) {
         Swal.fire({
@@ -397,7 +398,7 @@ function LoginPage() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => toast.info("Please contact your administrator")}
+                    onClick={() => navigate({ to: "/forgot-password" })}
                     className="text-[12px] font-medium text-[#0b2249] hover:text-accent hover:underline cursor-pointer"
                   >
                     Forgot Password?

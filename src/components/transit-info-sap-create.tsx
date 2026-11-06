@@ -801,9 +801,11 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     };
 
     try {
+      console.log("Transit Info - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Payload:", payload);
       const res: any = isSap
         ? await service.GlobalReferenceNoFetch(payload)
         : await service.GlobalReferenceNoFetchwithoutsap(payload);
+      console.log("Transit Info - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Response:", res);
 
       if (res?.STATUS === "FALSE") {
         Swal.fire({ icon: "error", title: "Error", text: res?.MESSAGE || "No matching reference details found." });
@@ -1030,6 +1032,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         const multiResponse: any = isSap
           ? await service.TransitInfoSave(invoiceRecords)
           : await service.TransitInfoNonSap(invoiceRecords);
+        console.log("Transit Info - TransitInfoSave / TransitInfoNonSap Response:", multiResponse);
 
         if (
           multiResponse?.STATUS?.toUpperCase() === "TRUE" ||
@@ -1097,10 +1100,14 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
       if (isSap) {
         // With SAP
+        console.log("Transit Info - TransitInfoSave Payload:", payload);
         response = await service.TransitInfoSave(payload);
+        console.log("Transit Info - TransitInfoSave Response:", response);
       } else {
         // Without SAP
+        console.log("Transit Info - TransitInfoNonSap Payload:", payload);
         response = await service.TransitInfoNonSap(payload);
+        console.log("Transit Info - TransitInfoNonSap Response:", response);
       }
 
       console.log(response);
@@ -1211,10 +1218,14 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
       if (isSap) {
         // WITH SAP
+        console.log("Transit Info - global_Fields_SearchOption Payload:", payload);
         res = await service.global_Fields_SearchOption(payload);
+        console.log("Transit Info - global_Fields_SearchOption Response:", res);
       } else {
         // WITHOUT SAP
+        console.log("Transit Info - global_Fields_SearchOption_WithoutSap Payload:", payload);
         res = await service.global_Fields_SearchOption_WithoutSap(payload);
+        console.log("Transit Info - global_Fields_SearchOption_WithoutSap Response:", res);
       }
 
       console.log("SEARCH RESPONSE", res);
@@ -1514,6 +1525,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     );
     console.log(JSON.stringify(payload, null, 2));
 
+    console.log("Transit Info - TransitInfoChangeWithSap / TransitInfoChangeWithoutSap Payload:", [payload]);
     const response =
       isSap
         ? await service.TransitInfoChangeWithSap([payload])
@@ -1690,9 +1702,11 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     };
 
     try {
+      console.log("Transit Info - TransitInfoDeleteWithSap / TransitInfoDeleteWithOutSap Payload:", payload);
       const res: any = isSap
         ? await service.TransitInfoDeleteWithSap(payload)
         : await service.TransitInfoDeleteWithOutSap(payload);
+      console.log("Transit Info - TransitInfoDeleteWithSap / TransitInfoDeleteWithOutSap Response:", res);
 
       if (res?.STATUS === "TRUE" || res?.STATUS === true || res?.NUMBER === "200") {
         await Swal.fire({

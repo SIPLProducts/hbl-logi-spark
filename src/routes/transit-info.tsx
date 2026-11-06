@@ -238,6 +238,7 @@ function TransitInfoPage() {
       setTransporterLoading(true);
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Transit Info - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();
@@ -293,7 +294,9 @@ function TransitInfoPage() {
         SCREEN: "TRANSIT INFO",
       };
 
+      console.log("Transit Info - OutwardCountGlobalWithSap Payload:", payload);
       const response = await service.OutwardCountGlobalWithSap(payload);
+      console.log("Transit Info - OutwardCountGlobalWithSap Response:", response);
 
       setPendingCount(response?.ZPEND_CNT || 0);
       setCompletedCount(response?.ZCONF_CNT || 0);
@@ -362,9 +365,13 @@ function TransitInfoPage() {
 
       let res;
       if (searchSap === "with") {
+        console.log("Transit Info - fetchOrderInfoFiltered Payload:", payload);
         res = await service.fetchOrderInfoFiltered(payload);
+        console.log("Transit Info - fetchOrderInfoFiltered Response:", res);
       } else if (searchSap === "without") {
+        console.log("Transit Info - fetchGlobalFilteredNonSap Payload:", payload);
         res = await service.fetchGlobalFilteredNonSap(payload);
+        console.log("Transit Info - fetchGlobalFilteredNonSap Response:", res);
       } else {
         setLoading(false);
         Swal.fire({ icon: "error", title: "Error", text: "Invalid SAP Type selected" });

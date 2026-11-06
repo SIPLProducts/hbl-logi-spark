@@ -22,10 +22,13 @@ import { Route as InvoiceLoadDetailsRouteImport } from './routes/invoice-load-de
 import { Route as InsuranceClaimTrackingRouteImport } from './routes/insurance-claim-tracking'
 import { Route as GateInOutProcessRouteImport } from './routes/gate-in-out-process'
 import { Route as FreightBillingRouteImport } from './routes/freight-billing'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DispatchOrdersRouteImport } from './routes/dispatch-orders'
 import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ResetPasswordIndexRouteImport } from './routes/reset-password.index'
 import { Route as ReportsIndexRouteImport } from './routes/reports.index'
+import { Route as ResetPasswordUserRouteImport } from './routes/reset-password.$user'
 import { Route as ReportsTransitEwayBillRouteImport } from './routes/reports.transit-eway-bill'
 import { Route as ReportsTransitDamageInfoReportRouteImport } from './routes/reports.transit-damage-info-report'
 import { Route as ReportsSitReportRouteImport } from './routes/reports.sit-report'
@@ -109,6 +112,11 @@ const FreightBillingRoute = FreightBillingRouteImport.update({
   path: '/freight-billing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DispatchOrdersRoute = DispatchOrdersRouteImport.update({
   id: '/dispatch-orders',
   path: '/dispatch-orders',
@@ -124,9 +132,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordIndexRoute = ResetPasswordIndexRouteImport.update({
+  id: '/reset-password/',
+  path: '/reset-password/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsIndexRoute = ReportsIndexRouteImport.update({
   id: '/reports/',
   path: '/reports/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordUserRoute = ResetPasswordUserRouteImport.update({
+  id: '/reset-password/$user',
+  path: '/reset-password/$user',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsTransitEwayBillRoute = ReportsTransitEwayBillRouteImport.update({
@@ -226,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/freight-billing': typeof FreightBillingRoute
   '/gate-in-out-process': typeof GateInOutProcessRoute
   '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
@@ -256,12 +275,15 @@ export interface FileRoutesByFullPath {
   '/reports/sit-report': typeof ReportsSitReportRoute
   '/reports/transit-damage-info-report': typeof ReportsTransitDamageInfoReportRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
+  '/reset-password/$user': typeof ResetPasswordUserRoute
   '/reports/': typeof ReportsIndexRoute
+  '/reset-password/': typeof ResetPasswordIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/freight-billing': typeof FreightBillingRoute
   '/gate-in-out-process': typeof GateInOutProcessRoute
   '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
@@ -292,13 +314,16 @@ export interface FileRoutesByTo {
   '/reports/sit-report': typeof ReportsSitReportRoute
   '/reports/transit-damage-info-report': typeof ReportsTransitDamageInfoReportRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
+  '/reset-password/$user': typeof ResetPasswordUserRoute
   '/reports': typeof ReportsIndexRoute
+  '/reset-password': typeof ResetPasswordIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/freight-billing': typeof FreightBillingRoute
   '/gate-in-out-process': typeof GateInOutProcessRoute
   '/insurance-claim-tracking': typeof InsuranceClaimTrackingRoute
@@ -329,7 +354,9 @@ export interface FileRoutesById {
   '/reports/sit-report': typeof ReportsSitReportRoute
   '/reports/transit-damage-info-report': typeof ReportsTransitDamageInfoReportRoute
   '/reports/transit-eway-bill': typeof ReportsTransitEwayBillRoute
+  '/reset-password/$user': typeof ResetPasswordUserRoute
   '/reports/': typeof ReportsIndexRoute
+  '/reset-password/': typeof ResetPasswordIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -337,6 +364,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/forgot-password'
     | '/freight-billing'
     | '/gate-in-out-process'
     | '/insurance-claim-tracking'
@@ -367,12 +395,15 @@ export interface FileRouteTypes {
     | '/reports/sit-report'
     | '/reports/transit-damage-info-report'
     | '/reports/transit-eway-bill'
+    | '/reset-password/$user'
     | '/reports/'
+    | '/reset-password/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/forgot-password'
     | '/freight-billing'
     | '/gate-in-out-process'
     | '/insurance-claim-tracking'
@@ -403,12 +434,15 @@ export interface FileRouteTypes {
     | '/reports/sit-report'
     | '/reports/transit-damage-info-report'
     | '/reports/transit-eway-bill'
+    | '/reset-password/$user'
     | '/reports'
+    | '/reset-password'
   id:
     | '__root__'
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/forgot-password'
     | '/freight-billing'
     | '/gate-in-out-process'
     | '/insurance-claim-tracking'
@@ -439,13 +473,16 @@ export interface FileRouteTypes {
     | '/reports/sit-report'
     | '/reports/transit-damage-info-report'
     | '/reports/transit-eway-bill'
+    | '/reset-password/$user'
     | '/reports/'
+    | '/reset-password/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DispatchRoute: typeof DispatchRoute
   DispatchOrdersRoute: typeof DispatchOrdersRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   FreightBillingRoute: typeof FreightBillingRoute
   GateInOutProcessRoute: typeof GateInOutProcessRoute
   InsuranceClaimTrackingRoute: typeof InsuranceClaimTrackingRoute
@@ -476,7 +513,9 @@ export interface RootRouteChildren {
   ReportsSitReportRoute: typeof ReportsSitReportRoute
   ReportsTransitDamageInfoReportRoute: typeof ReportsTransitDamageInfoReportRoute
   ReportsTransitEwayBillRoute: typeof ReportsTransitEwayBillRoute
+  ResetPasswordUserRoute: typeof ResetPasswordUserRoute
   ReportsIndexRoute: typeof ReportsIndexRoute
+  ResetPasswordIndexRoute: typeof ResetPasswordIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -572,6 +611,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FreightBillingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dispatch-orders': {
       id: '/dispatch-orders'
       path: '/dispatch-orders'
@@ -593,11 +639,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password/': {
+      id: '/reset-password/'
+      path: '/reset-password'
+      fullPath: '/reset-password/'
+      preLoaderRoute: typeof ResetPasswordIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports/': {
       id: '/reports/'
       path: '/reports'
       fullPath: '/reports/'
       preLoaderRoute: typeof ReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password/$user': {
+      id: '/reset-password/$user'
+      path: '/reset-password/$user'
+      fullPath: '/reset-password/$user'
+      preLoaderRoute: typeof ResetPasswordUserRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports/transit-eway-bill': {
@@ -726,6 +786,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DispatchRoute: DispatchRoute,
   DispatchOrdersRoute: DispatchOrdersRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   FreightBillingRoute: FreightBillingRoute,
   GateInOutProcessRoute: GateInOutProcessRoute,
   InsuranceClaimTrackingRoute: InsuranceClaimTrackingRoute,
@@ -756,7 +817,9 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsSitReportRoute: ReportsSitReportRoute,
   ReportsTransitDamageInfoReportRoute: ReportsTransitDamageInfoReportRoute,
   ReportsTransitEwayBillRoute: ReportsTransitEwayBillRoute,
+  ResetPasswordUserRoute: ResetPasswordUserRoute,
   ReportsIndexRoute: ReportsIndexRoute,
+  ResetPasswordIndexRoute: ResetPasswordIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

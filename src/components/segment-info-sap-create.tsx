@@ -687,6 +687,7 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     (async () => {
       try {
         const res: any = await service.getssc();
+        console.log("Segment Info - getssc Response:", res);
         const data: any = Array.isArray(res) && res.length > 0 ? res[0] : {};
         setSupplierList(data.SUPPLIERS || []);
         setSegmentList(data.SEGMENTS || []);
@@ -809,9 +810,11 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     };
 
     try {
+      console.log("Segment Info - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Payload:", obj);
       const res: any = isSap
         ? await service.GlobalReferenceNoFetch(obj)
         : await service.GlobalReferenceNoFetchwithoutsap(obj);
+      console.log("Segment Info - GlobalReferenceNoFetch / GlobalReferenceNoFetchwithoutsap Response:", res);
       populateReferenceRows(Array.isArray(res) ? res : []);
     } catch (err) {
       console.error("GlobalReference fetch error:", err);
@@ -950,10 +953,15 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
     setLoadingGet(true);
     try {
+      console.log("Segment Info - SegmentInfoOutwardFetch Payload:", {
+        INV_GET: invGetPayload,
+        SCREEN: "WITHSAP",
+      });
       const res: any = await service.SegmentInfoOutwardFetch({
         INV_GET: invGetPayload,
         SCREEN: "WITHSAP",
       });
+      console.log("Segment Info - SegmentInfoOutwardFetch Response:", res);
       if (res && res.length > 0) {
         patchForm(res[0]);
         setSearchResults([]);
@@ -1024,10 +1032,15 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     });
 
     try {
+      console.log("Segment Info - SegmentInfoOutwardwithoutSapFetch Payload:", {
+        INV_GET: invGetPayload,
+        SCREEN: "WITHOUTSAP",
+      });
       const res: any = await service.SegmentInfoOutwardwithoutSapFetch({
         INV_GET: invGetPayload,
         SCREEN: "WITHOUTSAP",
       });
+      console.log("Segment Info - SegmentInfoOutwardwithoutSapFetch Response:", res);
       if (res?.STATUS === "FALSE") {
         Swal.fire("Error", res?.MESSAGE || "Error fetching invoice details", "error");
       } else if (res) {
@@ -1049,7 +1062,9 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       return;
     }
     try {
+      console.log("Segment Info - fetchzoneTat Payload:", { STATE: branchDesc });
       const res: any = await service.fetchzoneTat({ STATE: branchDesc });
+      console.log("Segment Info - fetchzoneTat Response:", res);
       setField("BRANCH_ZONE", res?.ZZONE || "");
     } catch (err) {
       console.error("Error fetching Zone:", err);
@@ -1067,7 +1082,9 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     else payload.INV_NO = invNo;
 
     try {
+      console.log("Segment Info - fetchTAT / fetchNonSapTAT Payload:", payload);
       const res: any = isSap ? await service.fetchTAT(payload) : await service.fetchNonSapTAT(payload);
+      console.log("Segment Info - fetchTAT / fetchNonSapTAT Response:", res);
       if (res?.TAT || res?.ETA) {
         setForm((p) => ({ ...p, TAT_DAYS: res.TAT || "", ETA_DATE: res.ETA || "" }));
       } else {
@@ -1112,9 +1129,11 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
     setLoadingSearch(true);
     try {
+      console.log("Segment Info - global_Fields_SearchOption / global_Fields_SearchOption_WithoutSap Payload:", payload);
       const res: any = isSap
         ? await service.global_Fields_SearchOption(payload)
         : await service.global_Fields_SearchOption_WithoutSap(payload);
+      console.log("Segment Info - global_Fields_SearchOption / global_Fields_SearchOption_WithoutSap Response:", res);
 
       if (res?.NUMBER === "100" && res?.STATUS === "FALSE") {
         setSearchResults([]);
@@ -1152,7 +1171,9 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
       return;
     }
     try {
+      console.log("Segment Info - fetchzoneTat Payload:", { STATE: branchDesc });
       const res: any = await service.fetchzoneTat({ STATE: branchDesc });
+      console.log("Segment Info - fetchzoneTat Response:", res);
       updateSearchField(index, "ZBRANCH_ZONE", res?.ZZONE || "");
     } catch (err) {
       console.error("Error fetching Zone for branch:", err);
@@ -1202,9 +1223,11 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
     };
 
     try {
+      console.log("Segment Info - SegmentInfoChangeWithSap / SegmentInfoChangeWithoutSap Payload:", { CHANGE: [changePayload] });
       const res: any = isSap
         ? await service.SegmentInfoChangeWithSap({ CHANGE: [changePayload] })
         : await service.SegmentInfoChangeWithoutSap({ CHANGE: [changePayload] });
+      console.log("Segment Info - SegmentInfoChangeWithSap / SegmentInfoChangeWithoutSap Response:", res);
 
       if (res?.STATUS === "TRUE" || res?.NUMBER === "200") {
         await Swal.fire({
@@ -1237,9 +1260,11 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
 
     const payload = { DELETE: [{ ZREFNO: row.ZREFNO, ZINV_NO: row.ZINV_NUM, ZLINE_NO: row.ZLINE_NO }] };
     try {
+      console.log("Segment Info - SegmentInfoDeleteWithSap / SegmentInfoDeleteWithoutSap Payload:", payload);
       const res: any = isSap
         ? await service.SegmentInfoDeleteWithSap(payload)
         : await service.SegmentInfoDeleteWithoutSap(payload);
+      console.log("Segment Info - SegmentInfoDeleteWithSap / SegmentInfoDeleteWithoutSap Response:", res);
 
       if (res?.STATUS === "TRUE" || res?.STATUS === true) {
         setSearchResults((prev) => prev.filter((_, i) => i !== index));
@@ -1300,7 +1325,9 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           ZUSER: loggedInUser,
           ZUSER_CH: "",
         }));
+        console.log("Segment Info - SegmentInfoOutwardSave Payload:", { SAVE: saveArray });
         res = await service.SegmentInfoOutwardSave({ SAVE: saveArray });
+        console.log("Segment Info - SegmentInfoOutwardSave Response:", res);
       } else {
         const createArray = selectedItems.map((item) => ({
           REFNO: item.referenceNumber || 0,
@@ -1323,7 +1350,9 @@ export function SegmentInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           TAT: form.TAT_DAYS || "",
           ETA: form.ETA_DATE || "",
         }));
+        console.log("Segment Info - SegmentInfoNonSap Payload:", { CREATE: createArray });
         res = await service.SegmentInfoNonSap({ CREATE: createArray });
+        console.log("Segment Info - SegmentInfoNonSap Response:", res);
       }
 
       if (res?.STATUS === "true" || res?.NUMBER === "200") {

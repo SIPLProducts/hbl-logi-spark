@@ -232,6 +232,7 @@ function InsuranceReport() {
   async function fetchTransportersPlantsDivisions() {
     try {
       const res: any = await service.fetchVendorCode();
+      console.log("Insurance - fetchVendorCode Response:", res);
       const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
       // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
       const loginPlantRows = buildLoginPlantRows();
@@ -286,6 +287,7 @@ function InsuranceReport() {
   async function fetchCustomers() {
     try {
       const res: any = await service.getpdb();
+      console.log("Insurance - getpdb Response:", res);
       const list = res?.[0]?.CUSTOMER || [];
       setCustomerList(
         list.map((c: any) => ({
@@ -301,6 +303,7 @@ function InsuranceReport() {
   async function fetchBranchesAndLocations() {
     try {
       const res: any = await service.getssc();
+      console.log("Insurance - getssc Response:", res);
       if (res && res.length > 0) {
         const data = res[0];
         const destLoc = data.DEST_LOC || [];
@@ -316,7 +319,9 @@ function InsuranceReport() {
 
   async function fetchIncoterms() {
     try {
+      console.log("Insurance - Incoterms Payload:", { INCO1: "", BEZEI: "" });
       const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+      console.log("Insurance - Incoterms Response:", res);
       const list = Array.isArray(res) ? res : res?.data || [];
       setIncotermsList(
         list.map((i: any) => ({ value: i.INCO1, label: `${i.INCO1} - ${i.BEZEI}` }))
@@ -393,7 +398,9 @@ function InsuranceReport() {
 
     setLoading(true);
     try {
+      console.log("Insurance - FetchInsuranceReports Payload:", payload);
       const res: any = await service.FetchInsuranceReports(payload);
+      console.log("Insurance - FetchInsuranceReports Response:", res);
 
       if (res && res.ERROR_TYPE === "E") {
         setFilteredData([]);

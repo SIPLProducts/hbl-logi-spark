@@ -826,6 +826,7 @@ function CreateDispatch() {
       if (!sap) return;
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Vendor Code (F4) Response:", res);
         // Response may be an array with a single object or an object directly
         const data = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
@@ -1811,10 +1812,12 @@ function SearchDispatch() {
         VEHICLE_TYPE: vehicleTypeList,
       };
 
+      console.log("Filter Payload:", payload);
       const rawRes =
         sap === "with"
           ? await service.fetchDispatchFiltered(payload)
           : await service.fetchDispatchFilteredNonSap(payload);
+      console.log("Filter Response:", rawRes);
 
       // This endpoint sometimes double-encodes its array as a JSON string
       // (e.g. "[{\"ZREFNO\":...}]") instead of returning it already parsed — detect that
@@ -1936,6 +1939,7 @@ function SearchDispatch() {
       if (!sap) return;
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Vendor Code (F4) Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();

@@ -357,6 +357,7 @@ function TransitDamageInfoPage() {
       setTransporterLoading(true);
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Transit Damage Info - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();
@@ -465,9 +466,13 @@ function TransitDamageInfoPage() {
       let res;
 
       if (searchSap === "with") {
+        console.log("Transit Damage Info - fetchOrderInfoFiltered Payload:", payload);
         res = await service.fetchOrderInfoFiltered(payload);
+        console.log("Transit Damage Info - fetchOrderInfoFiltered Response:", res);
       } else if (searchSap === "without") {
+        console.log("Transit Damage Info - fetchGlobalFilteredNonSap Payload:", payload);
         res = await service.fetchGlobalFilteredNonSap(payload);
+        console.log("Transit Damage Info - fetchGlobalFilteredNonSap Response:", res);
       } else {
         Swal.fire({
           icon: "error",
@@ -950,7 +955,9 @@ function TransitDamageInfoPage() {
         SCREEN: "TRANSIT DAMAGE INFO",
       };
 
+      console.log("Transit Damage Info - OutwardCountGlobalWithSap Payload:", payload);
       const response = await service.OutwardCountGlobalWithSap(payload);
+      console.log("Transit Damage Info - OutwardCountGlobalWithSap Response:", response);
 
       setPendingCount(response?.ZPEND_CNT || 0);
       setCompletedCount(response?.ZCONF_CNT || 0);

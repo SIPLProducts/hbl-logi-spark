@@ -210,6 +210,7 @@ function BusinessShareMatrixReport() {
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Business Share Matrix - fetchVendorCode Response:", res);
         setTransporterList(res?.[0]?.VEND_CODE || []);
       } catch (err) {
         console.error("Error fetching transporters", err);
@@ -221,6 +222,7 @@ function BusinessShareMatrixReport() {
     (async () => {
       try {
         const res: any = await service.getssc();
+        console.log("Business Share Matrix - getssc Response:", res);
         if (res && res.length > 0) {
           const data = res[0];
           setSegmentList(data.SEGMENTS || []);
@@ -236,6 +238,7 @@ function BusinessShareMatrixReport() {
     (async () => {
       try {
         const res: any = await service.getpdb();
+        console.log("Business Share Matrix - getpdb Response:", res);
         const list = (res?.[0]?.CUSTOMER || []).map((item: any) => ({
           ...item,
           searchText: `${item.CUSTOMER} - ${item.CUSTOMER_NAME}`,
@@ -249,7 +252,9 @@ function BusinessShareMatrixReport() {
     // fetchIncoterms()
     (async () => {
       try {
+        console.log("Business Share Matrix - Incoterms Payload:", { INCO1: "", BEZEI: "" });
         const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+        console.log("Business Share Matrix - Incoterms Response:", res);
         setIncotermsList(Array.isArray(res) ? res : res?.data || []);
       } catch (err) {
         console.error("Error fetching Incoterms:", err);
@@ -345,7 +350,9 @@ function BusinessShareMatrixReport() {
     setIsSearching(true);
 
     try {
+      console.log("Business Share Matrix - FetchBusinessShareMatrix Payload:", payload);
       const res: any = await service.FetchBusinessShareMatrix(payload);
+      console.log("Business Share Matrix - FetchBusinessShareMatrix Response:", res);
 
       // ERROR RESPONSE HANDLING
       if (res?.ERROR_TYPE === "E") {

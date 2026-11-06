@@ -603,6 +603,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     (async () => {
       try {
         const res: any = await service.gettypeofvehicle();
+        console.log("Invoice Load Details - gettypeofvehicle Response:", res);
         setVehicleTypes(Array.isArray(res) ? res : []);
       } catch (err) {
         console.error("Vehicle type fetch failed:", err);
@@ -632,9 +633,11 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     };
 
     try {
+      console.log("Invoice Load Details - GlobalReferenceNoFetchwithoutsap / GlobalReferenceNoFetch Payload:", payload);
       const res: any = isWithout
         ? await service.GlobalReferenceNoFetchwithoutsap(payload)
         : await service.GlobalReferenceNoFetch(payload);
+      console.log("Invoice Load Details - GlobalReferenceNoFetchwithoutsap / GlobalReferenceNoFetch Response:", res);
       populateReferenceRows(Array.isArray(res) ? res : []);
     } catch (err) {
       console.error("Reference lookup failed:", err);
@@ -913,10 +916,15 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     });
 
     try {
+      console.log("Invoice Load Details - Invoiceloaddetailsfetch Payload:", {
+        INV_GET: invGetPayload,
+        SCREEN: "WITHSAP",
+      });
       const res: any = await service.Invoiceloaddetailsfetch({
         INV_GET: invGetPayload,
         SCREEN: "WITHSAP",
       });
+      console.log("Invoice Load Details - Invoiceloaddetailsfetch Response:", res);
 
       if (Array.isArray(res) && res.length > 0) {
         const built: LoadRow[] = [];
@@ -1004,10 +1012,15 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     });
 
     try {
+      console.log("Invoice Load Details - Invoiceloaddetailsfetch Payload:", {
+        INV_GET: invGetPayload,
+        SCREEN: "WITHOUTSAP",
+      });
       const res: any = await service.Invoiceloaddetailsfetch({
         INV_GET: invGetPayload,
         SCREEN: "WITHOUTSAP",
       });
+      console.log("Invoice Load Details - Invoiceloaddetailsfetch Response:", res);
 
       if (Array.isArray(res) && res.length > 0) {
         const built: LoadRow[] = [];
@@ -1102,12 +1115,19 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     const row = rows.find((r) => r.id === rowId);
     if (!row?.ZTRUC_TYPE) return;
     try {
+      console.log("Invoice Load Details - sapget Payload:", {
+        TRUCK: row.ZTRUC_TYPE,
+        ZACT_LOAD: Number(row.ZACT_LOAD),
+        ZACT_VOL: Number(row.ZACT_VOL),
+        ZTRUC_WT: Number(row.ZTRUC_WT),
+      });
       const res: any = await service.sapget({
         TRUCK: row.ZTRUC_TYPE,
         ZACT_LOAD: Number(row.ZACT_LOAD),
         ZACT_VOL: Number(row.ZACT_VOL),
         ZTRUC_WT: Number(row.ZTRUC_WT),
       });
+      console.log("Invoice Load Details - sapget Response:", res);
       const data = Array.isArray(res) ? res[0] : res;
       if (!data) return;
       // PART LOAD: only the loading factor (weight) comes from this response — nothing else is patched.
@@ -1160,9 +1180,11 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     const payload = { global: "INVOICE LOAD DETAILS", ZUSER: user.USER, data };
 
     try {
+      console.log("Invoice Load Details - global_Fields_SearchOption_WithoutSap / global_Fields_SearchOption Payload:", payload);
       const res: any = isWithout
         ? await service.global_Fields_SearchOption_WithoutSap(payload)
         : await service.global_Fields_SearchOption(payload);
+      console.log("Invoice Load Details - global_Fields_SearchOption_WithoutSap / global_Fields_SearchOption Response:", res);
 
       if (res?.NUMBER === "100" && res?.STATUS === "FALSE") {
         setSearchResults([]);
@@ -1255,6 +1277,71 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     if (!confirmResult.isConfirmed) return;
 
     try {
+      console.log("Invoice Load Details - InvoiceloaddetailsNonSap / InvoiceloaddetailsSave Payload:", isWithout ? {
+          CHANGE: "X",
+          NSAP_LOAD: [
+            {
+              MANDT: "",
+              ZMAPID: row.ZMAPID,
+              VBELN: row.VBELN,
+              POSNR: row.POSNR,
+              ZLINE_NO: row.ZLINE_NO,
+              ZREFNO: row.ZREFNO,
+              ZWORK_ORDER: row.ZWORK_ORDER,
+              ZLRNO: row.ZLRNO,
+              ZSO_NO: row.ZSO_NO,
+              ZODN_NO: row.ZODN_NO,
+              ZTRUC_TYPE: row.ZTRUC_TYPE,
+              ZTRUC_WT: row.ZTRUC_WT,
+              ZACT_LOAD: row.ZACT_LOAD,
+              ZTRUC_VOL: row.ZTRUC_VOL,
+              ZACT_VOL: row.ZACT_VOL,
+              ZLF_VOL: row.ZLF_VOL,
+              ZLF_WT: row.ZLF_WT,
+              ZWEEK_SF: row.ZWEEK_SF,
+              ZEWAYBILL_NO: row.ZEWAYBILL_NO,
+              ZEWAYBILL_DT: row.ZEWAYBILL_DT,
+              ZPLANT: row.ZPLANT,
+              ZDIVISION: row.ZDIVISION,
+              ZCREATED_DT: row.ZCREATED_DT,
+              ZVEH_TYPE: row.ZVEH_TYPE,
+              ZUSER: row.ZUSER,
+              ZUSER_CH: user.USER,
+            },
+          ],
+        } : {
+          CHANGE: "X",
+          INV_SAP: [
+            {
+              ZMAPID: row.ZMAPID,
+              VBELN: row.VBELN,
+              POSNR: row.POSNR,
+              ZLINE_NO: row.ZLINE_NO,
+              ZREFNO: row.ZREFNO,
+              ZWORK_ORDER: row.ZWORK_ORDER,
+              ZLRNO: row.ZLRNO,
+              ZTRANSPORTER: row.ZTRANSPORTER,
+              ZSO_NO: row.ZSO_NO,
+              ZODN_NO: row.ZODN_NO,
+              ZTRUC_TYPE: row.ZTRUC_TYPE,
+              ZTRUC_WT: row.ZTRUC_WT,
+              ZACT_LOAD: row.ZACT_LOAD,
+              ZTRUC_VOL: row.ZTRUC_VOL,
+              ZACT_VOL: row.ZACT_VOL,
+              ZLF_VOL: row.ZLF_VOL,
+              ZLF_WT: row.ZLF_WT,
+              ZWEEK_SF: row.ZWEEK_SF,
+              ZEWAYBILL_NO: row.ZEWAYBILL_NO,
+              ZEWAYBILL_DT: row.ZEWAYBILL_DT,
+              ZPLANT: row.ZPLANT,
+              ZDIVISION: row.ZDIVISION,
+              ZCREATED_DT: row.ZCREATED_DT,
+              ZVEH_TYPE: row.ZVEH_TYPE,
+              ZUSER: row.ZUSER,
+              ZUSER_CH: user.USER,
+            },
+          ],
+        });
       const res: any = isWithout
         ? await service.InvoiceloaddetailsNonSap({
           CHANGE: "X",
@@ -1322,6 +1409,7 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
             },
           ],
         });
+      console.log("Invoice Load Details - InvoiceloaddetailsNonSap / InvoiceloaddetailsSave Response:", res);
 
       if (res?.NUMBER === "200" || res?.STATUS === "true") {
         Swal.fire('Success', 'Invoice updated successfully', 'success');
@@ -1352,9 +1440,11 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
     const payload = { DELETE: [{ ZREFNO: row.ZREFNO, ZINV_NO: row.VBELN, ZLINE_NO: row.ZLINE_NO }] };
 
     try {
+      console.log("Invoice Load Details - InvoiceloaddetailsDeleteWithoutsap / InvoiceloaddetailsDeleteWithsap Payload:", payload);
       const res: any = isWithout
         ? await service.InvoiceloaddetailsDeleteWithoutsap(payload)
         : await service.InvoiceloaddetailsDeleteWithsap(payload);
+      console.log("Invoice Load Details - InvoiceloaddetailsDeleteWithoutsap / InvoiceloaddetailsDeleteWithsap Response:", res);
 
       if (res?.STATUS === "TRUE" || res?.STATUS === true || res?.NUMBER === "200") {
         setSearchResults((prev) => prev.filter((_, i) => i !== index));
@@ -1461,8 +1551,10 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
           })),
         };
         console.debug("InvoiceloaddetailsNonSap payload:", payload);
+        console.log("Invoice Load Details - InvoiceloaddetailsNonSap Payload:", payload);
         res = await service.InvoiceloaddetailsNonSap(payload);
         console.debug("InvoiceloaddetailsNonSap response:", res);
+        console.log("Invoice Load Details - InvoiceloaddetailsNonSap Response:", res);
       } else {
         const payload = {
           CHANGE: "",
@@ -1473,8 +1565,10 @@ function InvoiceLoadDetailsSapCreate({ mode = "with" }: { mode?: "with" | "witho
           })),
         };
         console.debug("InvoiceloaddetailsSave payload:", payload);
+        console.log("Invoice Load Details - InvoiceloaddetailsSave Payload:", payload);
         res = await service.InvoiceloaddetailsSave(payload);
         console.debug("InvoiceloaddetailsSave response:", res);
+        console.log("Invoice Load Details - InvoiceloaddetailsSave Response:", res);
       }
 
       if (res?.NUMBER === "200" || res?.STATUS === "TRUE" || res?.STATUS === true) {
@@ -2467,6 +2561,7 @@ function InvoiceFilterDownload({
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Invoice Load Details - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         const transporters: string[] = Array.isArray(data.VEND_CODE)
           ? Array.from(new Set(data.VEND_CODE.map((v: any) => String(v.TRANSPORTER)).filter(Boolean)))
@@ -2527,10 +2622,12 @@ function InvoiceFilterDownload({
     };
 
     try {
+      console.log("Invoice Load Details - fetchOrderInfoFiltered / fetchGlobalFilteredNonSap Payload:", payload);
       const res: any =
         mode === "with"
           ? await service.fetchOrderInfoFiltered(payload)
           : await service.fetchGlobalFilteredNonSap(payload);
+      console.log("Invoice Load Details - fetchOrderInfoFiltered / fetchGlobalFilteredNonSap Response:", res);
 
       if (res?.STATUS === "FALSE") {
         setCompletedRows([]);
@@ -3232,11 +3329,17 @@ function LeScreenShell({
     if (!sap) return;
     (async () => {
       try {
+        console.log("Invoice Load Details - OutwardCountGlobalWithSap Payload:", {
+          INOUT: "OUTWARD",
+          TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
+          SCREEN: "INVOICE LOAD DETAILS",
+        });
         const res: any = await service.OutwardCountGlobalWithSap({
           INOUT: "OUTWARD",
           TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
           SCREEN: "INVOICE LOAD DETAILS",
         });
+        console.log("Invoice Load Details - OutwardCountGlobalWithSap Response:", res);
         setPendingCount(res?.ZPEND_CNT ?? 0);
         setCompletedCount(res?.ZCONF_CNT ?? 0);
       } catch (err) {

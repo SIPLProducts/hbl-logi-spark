@@ -113,7 +113,9 @@ function UserCreationPage() {
         DEL_USER: userId,
       };
 
+      console.log("User Creation - UserCreationDelete Payload:", payload);
       const res = await service.UserCreationDelete(payload);
+      console.log("User Creation - UserCreationDelete Response:", res);
 
       if (res.STATUS === "TRUE") {
         Swal.fire({

@@ -159,6 +159,7 @@ function SegmentInfoPage() {
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Segment Info - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) && res.length > 0 ? res[0] : {};
         setTransporterList(data.VEND_CODE || []);
       } catch (err) {
@@ -172,11 +173,17 @@ function SegmentInfoPage() {
     if (!(direction === "outward" && sap)) return;
     (async () => {
       try {
+        console.log("Segment Info - OutwardCountGlobalWithSap Payload:", {
+          INOUT: "OUTWARD",
+          TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
+          SCREEN: "SEGMENT INFO",
+        });
         const res: any = await service.OutwardCountGlobalWithSap({
           INOUT: "OUTWARD",
           TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
           SCREEN: "SEGMENT INFO",
         });
+        console.log("Segment Info - OutwardCountGlobalWithSap Response:", res);
         setPendingCount(res?.ZPEND_CNT || 0);
         setCompletedCount(res?.ZCONF_CNT || 0);
       } catch (err) {
@@ -264,10 +271,12 @@ function SegmentInfoPage() {
     };
 
     try {
+      console.log("Segment Info - fetchOrderInfoFiltered / fetchGlobalFilteredNonSap Payload:", payload);
       const res: any =
         searchSap === "with"
           ? await service.fetchOrderInfoFiltered(payload)
           : await service.fetchGlobalFilteredNonSap(payload);
+      console.log("Segment Info - fetchOrderInfoFiltered / fetchGlobalFilteredNonSap Response:", res);
 
       if (res?.STATUS === "FALSE") {
         setSegmentData([]);

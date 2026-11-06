@@ -187,6 +187,7 @@ function PendingPodsReport() {
     (async () => {
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Pending Pods - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();
@@ -226,6 +227,7 @@ function PendingPodsReport() {
     (async () => {
       try {
         const res: any = await service.getpdb();
+        console.log("Pending Pods - getpdb Response:", res);
         const list = (res?.[0]?.CUSTOMER || []).map((item: any) => ({
           ...item,
           searchText: `${item.CUSTOMER} - ${item.CUSTOMER_NAME}`,
@@ -240,6 +242,7 @@ function PendingPodsReport() {
     (async () => {
       try {
         const res: any = await service.getssc();
+        console.log("Pending Pods - getssc Response:", res);
         if (res && res.length > 0) {
           const data = res[0];
           setBranchList(data.BRANCH || []);
@@ -255,7 +258,9 @@ function PendingPodsReport() {
     // fetchIncoterms()
     (async () => {
       try {
+        console.log("Pending Pods - Incoterms Payload:", { INCO1: "", BEZEI: "" });
         const res: any = await service.Incoterms({ INCO1: "", BEZEI: "" });
+        console.log("Pending Pods - Incoterms Response:", res);
         setIncotermsList(Array.isArray(res) ? res : res?.data || []);
       } catch (err) {
         console.error("Error fetching Incoterms:", err);
@@ -355,6 +360,7 @@ function PendingPodsReport() {
     setIsSearching(true);
 
     try {
+      console.log("Pending Pods - FetchPendingPodReport Payload:", payload);
       const res: any = await service.FetchPendingPodReport(payload);
       console.log("API Response:", res);
 

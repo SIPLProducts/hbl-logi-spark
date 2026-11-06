@@ -351,6 +351,7 @@ function InsuranceClaimTrackingPage() {
       setTransporterLoading(true);
       try {
         const res: any = await service.fetchVendorCode();
+        console.log("Insurance Claim Tracking - fetchVendorCode Response:", res);
         const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
         // Plants / divisions from the logged-in user's login response (PLANTS + DIV)
         const loginPlantRows = buildLoginPlantRows();
@@ -407,7 +408,9 @@ function InsuranceClaimTrackingPage() {
       setTransporterLoading(true);
 
       const payload = { ZUSER: getLoggedInUser(), SEARCH: search };
+      console.log("Insurance Claim Tracking - fetchTransporterF4 Payload:", payload);
       const res = await service.fetchTransporterF4(payload); // adjust to your real endpoint name
+      console.log("Insurance Claim Tracking - fetchTransporterF4 Response:", res);
 
       const list = Array.isArray(res) ? res : res?.DATA || res?.ITEMS || [];
 
@@ -490,9 +493,13 @@ function InsuranceClaimTrackingPage() {
       let res;
 
       if (searchSap === "with") {
+        console.log("Insurance Claim Tracking - fetchOrderInfoFiltered Payload:", payload);
         res = await service.fetchOrderInfoFiltered(payload);
+        console.log("Insurance Claim Tracking - fetchOrderInfoFiltered Response:", res);
       } else if (searchSap === "without") {
+        console.log("Insurance Claim Tracking - fetchGlobalFilteredNonSap Payload:", payload);
         res = await service.fetchGlobalFilteredNonSap(payload);
+        console.log("Insurance Claim Tracking - fetchGlobalFilteredNonSap Response:", res);
       } else {
         setLoading(false);
 
@@ -1022,7 +1029,9 @@ function InsuranceClaimTrackingPage() {
         SCREEN: "INSURANCE CLAIM STATUS",
       };
 
+      console.log("Insurance Claim Tracking - OutwardCountGlobalWithSap Payload:", payload);
       const response = await service.OutwardCountGlobalWithSap(payload);
+      console.log("Insurance Claim Tracking - OutwardCountGlobalWithSap Response:", response);
 
       setPendingCount(response?.ZPEND_CNT || 0);
       setCompletedCount(response?.ZCONF_CNT || 0);
