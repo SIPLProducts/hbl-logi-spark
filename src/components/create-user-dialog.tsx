@@ -100,6 +100,7 @@ export function CreateUserDialog({
     "Service Level",
     "Transit Damage Info",
     "Insurance Claim Tracking",
+    "Driver Number Blocking",
     "User Creation",
     // One access entry for the whole Reports section — it covers every Report sub-screen
     // (the sidebar shows all of them when "Reports" is granted).

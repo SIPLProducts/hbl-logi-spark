@@ -190,6 +190,7 @@ function LoginPage() {
         servicelevel: "/service-level",
         transitdamageinfo: "/transit-damage-info",
         insuranceclaimtracking: "/insurance-claim-tracking",
+        drivernumberblocking: "/driver-number-blocking",
         usercreation: "/user-creation",
       };
 
@@ -221,6 +222,7 @@ function LoginPage() {
         "servicelevel",
         "transitdamageinfo",
         "insuranceclaimtracking",
+        "drivernumberblocking",
         "usercreation",
       ];
 

@@ -23,6 +23,7 @@ import { Route as InsuranceClaimTrackingRouteImport } from './routes/insurance-c
 import { Route as GateInOutProcessRouteImport } from './routes/gate-in-out-process'
 import { Route as FreightBillingRouteImport } from './routes/freight-billing'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as DriverNumberBlockingRouteImport } from './routes/driver-number-blocking'
 import { Route as DispatchOrdersRouteImport } from './routes/dispatch-orders'
 import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as IndexRouteImport } from './routes/index'
@@ -115,6 +116,11 @@ const FreightBillingRoute = FreightBillingRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DriverNumberBlockingRoute = DriverNumberBlockingRouteImport.update({
+  id: '/driver-number-blocking',
+  path: '/driver-number-blocking',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DispatchOrdersRoute = DispatchOrdersRouteImport.update({
@@ -244,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/driver-number-blocking': typeof DriverNumberBlockingRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/freight-billing': typeof FreightBillingRoute
   '/gate-in-out-process': typeof GateInOutProcessRoute
@@ -283,6 +290,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/driver-number-blocking': typeof DriverNumberBlockingRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/freight-billing': typeof FreightBillingRoute
   '/gate-in-out-process': typeof GateInOutProcessRoute
@@ -323,6 +331,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dispatch': typeof DispatchRoute
   '/dispatch-orders': typeof DispatchOrdersRoute
+  '/driver-number-blocking': typeof DriverNumberBlockingRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/freight-billing': typeof FreightBillingRoute
   '/gate-in-out-process': typeof GateInOutProcessRoute
@@ -364,6 +373,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/driver-number-blocking'
     | '/forgot-password'
     | '/freight-billing'
     | '/gate-in-out-process'
@@ -403,6 +413,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/driver-number-blocking'
     | '/forgot-password'
     | '/freight-billing'
     | '/gate-in-out-process'
@@ -442,6 +453,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dispatch'
     | '/dispatch-orders'
+    | '/driver-number-blocking'
     | '/forgot-password'
     | '/freight-billing'
     | '/gate-in-out-process'
@@ -482,6 +494,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DispatchRoute: typeof DispatchRoute
   DispatchOrdersRoute: typeof DispatchOrdersRoute
+  DriverNumberBlockingRoute: typeof DriverNumberBlockingRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   FreightBillingRoute: typeof FreightBillingRoute
   GateInOutProcessRoute: typeof GateInOutProcessRoute
@@ -616,6 +629,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/driver-number-blocking': {
+      id: '/driver-number-blocking'
+      path: '/driver-number-blocking'
+      fullPath: '/driver-number-blocking'
+      preLoaderRoute: typeof DriverNumberBlockingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dispatch-orders': {
@@ -786,6 +806,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DispatchRoute: DispatchRoute,
   DispatchOrdersRoute: DispatchOrdersRoute,
+  DriverNumberBlockingRoute: DriverNumberBlockingRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   FreightBillingRoute: FreightBillingRoute,
   GateInOutProcessRoute: GateInOutProcessRoute,

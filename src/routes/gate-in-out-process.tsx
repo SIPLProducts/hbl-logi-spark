@@ -232,10 +232,10 @@ function GateInOutProcessPage() {
         setFetchedPlantDivisions(
           Array.isArray(data.PLANT)
             ? data.PLANT.map((p: any) => ({
-                plant: String(p.PLANT ?? "").trim(),
-                division: String(p.DIVISION ?? "").trim(),
-                divText: String(p.DIV_TEXT ?? "").trim(),
-              }))
+              plant: String(p.PLANT ?? "").trim(),
+              division: String(p.DIVISION ?? "").trim(),
+              divText: String(p.DIV_TEXT ?? "").trim(),
+            }))
             : [],
         );
         setFetchedTransporters(transporters);
@@ -2798,6 +2798,8 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
   const [loadingSave, setLoadingSave] = useState(false);
   const [activeProvisionRow, setActiveProvisionRow] = useState<number | null>(null);
   const [activeSearchProvisionRow, setActiveSearchProvisionRow] = useState<number | null>(null);
+  // Validation state: GPS Live Location is mandatory when TYPE_OF_TRANSPORTER is "FULL TRUCK LOAD"
+  const [isGpsMandatory, setIsGpsMandatory] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -2981,6 +2983,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
     if (selectedRefs.length === 0) {
       setInvoiceF4List([]);
       setInvoiceNumber("");
+      setIsGpsMandatory(false);
       return;
     }
 
@@ -3555,6 +3558,16 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
 
       const { HEADER, ITEMS } = res[0];
 
+      // Check TYPE_OF_TRANSPORTER in the Items API response:
+      // If "FULL TRUCK LOAD", GPS Live Location is mandatory; otherwise optional.
+      const hasFullTruckLoad = res.some((entry: any) =>
+        Array.isArray(entry?.ITEMS) &&
+        entry.ITEMS.some((item: any) =>
+          String(item?.TYPE_OF_TRANSPORTER || "").trim().toUpperCase() === "FULL TRUCK LOAD"
+        )
+      );
+      setIsGpsMandatory(hasFullTruckLoad);
+
       setEwayApplicable(HEADER.EWAY_BILL_APPLICABLE || "");
       setEwayDate(HEADER.EWAY_BILL_DATE || "");
       setEwayNumber(HEADER.EWAY_BILL_NUMBER || "");
@@ -3686,6 +3699,16 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
       }
 
       const { HEADER } = res[0];
+
+      // Check TYPE_OF_TRANSPORTER in the Items API response:
+      // If "FULL TRUCK LOAD", GPS Live Location is mandatory; otherwise optional.
+      const hasFullTruckLoad = res.some((entry: any) =>
+        Array.isArray(entry?.ITEMS) &&
+        entry.ITEMS.some((item: any) =>
+          String(item?.TYPE_OF_TRANSPORTER || "").trim().toUpperCase() === "FULL TRUCK LOAD"
+        )
+      );
+      setIsGpsMandatory(hasFullTruckLoad);
 
       setEwayApplicable(HEADER.EWAY_BILL_APPLICABLE || "");
       setEwayDate(HEADER.EWAY_BILL_DATE || "");
@@ -3954,6 +3977,20 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         });
         return;
       }
+      // GPS Live Location validation: mandatory if TYPE_OF_TRANSPORTER is "FULL TRUCK LOAD"
+      const isFtlTransporter =
+        String(r.typeOfTransporter || "").trim().toUpperCase() === "FULL TRUCK LOAD" ||
+        (isGpsMandatory && !r.typeOfTransporter);
+      if (isFtlTransporter && (!r.gpsLiveLocation || !r.gpsLiveLocation.trim())) {
+        Swal.fire({
+          icon: "warning",
+          title: "Validation Error",
+          text: `GPS Live Location is mandatory.`,
+          confirmButtonColor: "#0b2249",
+        });
+        return;
+      }
+
     }
     // 1. Collect all selected Invoice Numbers across Items table rows (or fallback to top invoiceNumber)
     const selectedInvoices: string[] = [];
@@ -4198,6 +4235,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
         setFullReferenceData([]);
         setInvoiceF4List([]);
         setInvoiceNumber("");
+        setIsGpsMandatory(false);
         setSearchType("");
         setSearchValue("");
         setIsAllGateSelected(false);
@@ -4296,6 +4334,17 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           });
           return;
         }
+        const isFtl = String(cleanItem.TYPE_OF_TRANSPORTER || "").trim().toUpperCase() === "FULL TRUCK LOAD";
+        if (isFtl && (!cleanItem.GPS_LIVE_LOCATION || !String(cleanItem.GPS_LIVE_LOCATION).trim())) {
+          Swal.fire({
+            icon: "warning",
+            title: "Validation Error",
+            text: "GPS Live Location is mandatory.",
+            confirmButtonColor: "#0b2249",
+          });
+          return;
+        }
+
         cleanItems = [formatGateItemForPayload(cleanItem)];
 
         // ZDIS_UPLD: if no new file was picked, send the already-stored document's base64
@@ -5412,6 +5461,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                         {activeGateColumns.map((c) => (
                           <TableHead key={c} className="whitespace-nowrap">
                             {c}
+                            {c === "GPS Live Location" &&
+                              (isGpsMandatory ||
+                                gateRows.some(
+                                  (r) => String(r.typeOfTransporter || "").trim().toUpperCase() === "FULL TRUCK LOAD"
+                                )) && <span className="text-rose-500 ml-0.5">*</span>}
                           </TableHead>
                         ))}
                         <TableHead className="whitespace-nowrap text-center">Dispatch Documents Uploading</TableHead>
@@ -5623,6 +5677,11 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                 );
                               }
 
+                              const isRowGpsMandatory =
+                                field === "gpsLiveLocation" &&
+                                (String(row.typeOfTransporter || "").trim().toUpperCase() === "FULL TRUCK LOAD" ||
+                                  (isGpsMandatory && !row.typeOfTransporter));
+
                               return (
                                 <TableCell key={c} className="p-1">
                                   <Input
@@ -5631,6 +5690,7 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
                                       "h-7 min-w-[140px]",
                                       field === "noOfVehicles" && "bg-muted/60 cursor-not-allowed opacity-70"
                                     )}
+                                    placeholder={isRowGpsMandatory ? "Required *" : ""}
                                     value={val}
                                     disabled={field === "noOfVehicles"}
                                     readOnly={field === "noOfVehicles"}

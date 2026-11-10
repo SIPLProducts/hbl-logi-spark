@@ -36,6 +36,7 @@ const ACTIVITY_SCREEN_MAP: Record<string, string> = {
   servicelevel: "/service-level",
   transitdamageinfo: "/transit-damage-info",
   insuranceclaimtracking: "/insurance-claim-tracking",
+  drivernumberblocking: "/driver-number-blocking",
   usercreation: "/user-creation",
 };
 

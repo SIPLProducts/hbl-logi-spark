@@ -13,6 +13,7 @@ import {
   Gauge,
   AlertTriangle,
   ShieldCheck,
+  ShieldAlert,
   UserPlus,
   ChevronsLeft,
   ChevronsRight,
@@ -80,6 +81,7 @@ const groups: { items: NavItem[] }[] = [
   },
   {
     items: [
+      { title: "Driver Number Blocking", to: "/driver-number-blocking", icon: ShieldAlert, key: normalizeKey("Driver Number Blocking") },
       { title: "User Creation", to: "/user-creation", icon: UserPlus, key: normalizeKey("User Creation") },
     ],
   },
@@ -127,7 +129,8 @@ export function AppSidebar() {
     const values: string[] = (raw as any[]).map(
       (a) => a?.ACTIVITY ?? a?.ACT ?? ""
     );
-    return new Set(values.map((v) => normalizeKey(v)));
+    const keySet = new Set(values.map((v) => normalizeKey(v)));
+    return keySet;
   }, [user]);
 
   const showDashboard = allowedKeys.has(DASHBOARD_KEY);
