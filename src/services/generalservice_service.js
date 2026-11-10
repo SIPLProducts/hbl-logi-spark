@@ -105,7 +105,7 @@ export const downloadDocument = async (url, title) => {
                     fileName = decoded;
                 }
             }
-        } catch (_e) {}
+        } catch (_e) { }
     }
     if (!fileName) {
         fileName = (title && typeof title === "string" ? title.trim() : "") || "document";
@@ -293,7 +293,15 @@ export const reportsApi = {
     SearchGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/Search', 'PUT', data),
     DeleteGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/Delete', 'PUT', data),
     FilterRecordsGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/FilterRecords', 'PUT', data),
-    ChangeGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/Change', 'PUT', data)
+    ChangeGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/Change', 'PUT', data),
+    FetchBusinessShareMatrix: (data) => request('api/external/LE/Reports/FetchBusinessShareMatrix', 'PUT', data),
+    FetchEwayBillReports: (data) => request('api/external/LE/Reports/FetchEwayBillReports', 'PUT', data),
+
+    //Driver Number Blocking Screen APIs
+
+    SaveDriverNumberBlockingScreen: (data) => request('api/external/LE/DriverNumberBlockingScreen/Save', 'POST', data),
+    DisplayDriverNumberBlockingScreen: () => request('api/external/LE/DriverNumberBlockingScreen/Display', 'GET'),
+    DeleteDriverNumberBlockingScreen: (data) => request('api/external/LE/DriverNumberBlockingScreen/Delete', 'POST', data),
 
 
 };

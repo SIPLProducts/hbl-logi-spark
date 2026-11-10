@@ -106,12 +106,70 @@ const REPORT_TYPE_OPTIONS = [
 
 // Report level radios shown on the screen. They reuse the existing report types, so the
 // API mode, results table and Excel / PDF downloads work unchanged:
-//   Item Level   → "All"    (mode "A", item-level records)
-//   Header Level → "Header" (mode "H")
+//   Item Level   → "All"    (API mode "I", item-level records)
+//   Header Level → "Header" (API mode "H")
 const REPORT_LEVEL_OPTIONS = [
   { value: "All", label: "Item Level" },
   { value: "Header", label: "Header Level" },
 ];
+
+type Col = { key: string; label: string; total?: boolean };
+
+// Item Level → all fields (API mode "I")
+const ITEM_COLUMNS: Col[] = [
+  { key: "SL_NO", label: "SL No" },
+  { key: "REFNO", label: "Ref No" },
+  { key: "WORK_ORDER", label: "Work Order" },
+  { key: "MONTH_NAME", label: "Month" },
+  { key: "FIN_QUARTER", label: "Quarter" },
+  { key: "FIN_YEAR", label: "Financial Year" },
+  { key: "PLANT", label: "Plant" },
+  { key: "DIVISION", label: "Division" },
+  { key: "SUB_DIV", label: "Sub Division" },
+  { key: "VEHICLE", label: "Vehicle Type" },
+  { key: "DESTINATION", label: "Destination" },
+  { key: "STATE", label: "State" },
+  { key: "ZONE", label: "Zone" },
+  { key: "PRODUCT", label: "Product" },
+  { key: "TRUCK_TYPE", label: "Truck Type" },
+  { key: "NO_TRUCKS", label: "No. of Trucks", total: true },
+  { key: "ACTUAL_LOAD", label: "Actual Load" },
+  { key: "TRANSPORTER", label: "Transporter" },
+  { key: "VENDOR_CODE", label: "Vendor Code" },
+  { key: "LR_NO", label: "LR No" },
+  { key: "LR_DATE", label: "LR Date" },
+  { key: "FREIGHT", label: "Freight", total: true },
+  { key: "DELOAD", label: "Deload", total: true },
+  { key: "DEUNLOAD", label: "De-Unload", total: true },
+  { key: "UNLOAD", label: "Unload", total: true },
+  { key: "COMMISSION", label: "Commission", total: true },
+  { key: "OTHER_AMT", label: "Other Amount", total: true },
+  { key: "TOTAL_FREIGHT", label: "Total Freight", total: true },
+  { key: "VEH_REJECTED", label: "Vehicle Rejected" },
+  { key: "ON_TIME", label: "On Time" },
+  { key: "ON_DELIVERY", label: "On Delivery" },
+  { key: "ON_POD", label: "On POD" },
+  { key: "ON_FREIGHT", label: "On Freight" },
+  { key: "DAMAGE", label: "Damage" },
+  { key: "ACCIDENT", label: "Accident" },
+  { key: "PROHIBITED", label: "Prohibited" },
+  { key: "TRANSIT_LOAD", label: "Transit Load" },
+  { key: "FEEDBACK", label: "Feedback" },
+  { key: "RATING", label: "Rating" },
+  { key: "TRANSIT_STATUS", label: "Transit Status" },
+  { key: "POD_STATUS", label: "POD Status" },
+  { key: "BILL_STATUS", label: "Bill Status" },
+  { key: "DAMAGE_STATUS", label: "Damage Status" },
+  { key: "CLAIM_STATUS", label: "Claim Status" },
+  { key: "REMARKS", label: "Remarks" },
+];
+
+// Header Level → same list minus the item-only fields (API mode "H")
+const HEADER_EXCLUDE = [
+  "WORK_ORDER", "DIVISION", "SUB_DIV", "DESTINATION", "STATE", "ZONE", "PRODUCT",
+  "TRUCK_TYPE", "NO_TRUCKS", "ACTUAL_LOAD", "LR_NO", "LR_DATE", "COMMISSION",
+];
+const HEADER_COLUMNS: Col[] = ITEM_COLUMNS.filter((c) => !HEADER_EXCLUDE.includes(c.key));
 
 function getLoggedInUser(): any {
   try {
@@ -133,6 +191,7 @@ function createArray(value: any, key: string) {
 }
 
 // Mirrors Angular BusinessShareMatrixComponent.formatDate
+// (no longer used by the new API, which expects YYYY-MM-DD — kept for reference)
 function formatDate(date: string) {
   if (!date) return "";
   return date.split("-").join("");
@@ -304,6 +363,22 @@ function BusinessShareMatrixReport() {
   const toDateInvalid = touched && !toDate;
   const reportTypeInvalid = touched && !reportType;
 
+  // Columns shown in the table / Excel / PDF — Item Level shows all fields, Header Level a subset
+  const columns = selectedReportType === "All" ? ITEM_COLUMNS : HEADER_COLUMNS;
+
+  // The new API returns no totals, so they are computed from the rows
+  const columnTotals = useMemo(() => {
+    const t: Record<string, number> = {};
+    columns.forEach((c) => {
+      if (c.total) {
+        t[c.key] = Number(
+          filteredData.reduce((s, r) => s + (Number(r[c.key]) || 0), 0).toFixed(2),
+        );
+      }
+    });
+    return t;
+  }, [filteredData, columns]);
+
   // onSearch()
   const onSearch = async () => {
     setTouched(true);
@@ -317,33 +392,26 @@ function BusinessShareMatrixReport() {
 
     const payload = {
       inward_outward: createArray(inout, "inout"),
-      from_date: formatDate(fromDate),
-      to_date: formatDate(toDate),
       // SAP / Non-SAP field — same key and shape as the other report screens ([{ type: "SAP" }, …])
       sap_nonsap: createArray(sapType, "type"),
-      transporter_group: createArray(transGroup, "TRANSPORTER_GROUP"),
-      transporter: createArray(transporter, "TRANSPORTER"),
-      plant: createArray(werks, "plant"),
-      product: createArray(matnr, "product"),
-      division: createArray(division, "DIVISION"),
-      // CUSTOMER_GROUP is read from the form but never declared as a control, so it's always empty
-      customer_group: [] as { CUSTOMER_GROUP: string }[],
-      customer: createArray(customer, "CUSTOMER"),
-      // BRANCH has no rendered control in the Angular template, so this is always empty
-      branch: [] as { branch: string }[],
-      destination_location: createArray(destLocation, "destination_location"),
-      segment: createArray(segment, "segment"),
-      incoterms: createArray(incoterms, "incoterms"),
-      mode:
-        reportType === "All"
-          ? "A"
-          : reportType === "Header"
-            ? "H"
-            : reportType === "HeaderWithPlant"
-              ? "P"
-              : reportType === "HeaderWithInOut"
-                ? "S"
-                : "",
+      from_date: fromDate, // API expects YYYY-MM-DD (with dashes)
+      to_date: toDate,
+      plant: createArray(
+        Array.from(new Set(werks.map((v) => plantList.find((p: any) => p.PLANT_TEXT === v)?.PLANT_DESC ?? v))),
+        "plant",
+      ),
+      // Division → DIV_TEXT only (the description shown in the dropdown)
+      division: createArray(
+        Array.from(new Set(division.map((v) => divisionList.find((d: any) => d.DIVISION === v)?.DIV_TEXT ?? v))),
+        "division",
+      ),
+      transaction_type: createArray(transGroup, "transaction_type"),
+      transporter: createArray(transporter, "transporter"),
+      vendor_code: createArray(transporterCode, "vendor_code"),
+      month: (monthWise[0] || "").toUpperCase(), // OCTOBER / ALL / ""
+      quarter: quarterWise[0] || "", // Q3 / ALL / ""
+      year: yearWise[0] || "", // FY 26-27 / ALL / ""
+      mode: reportType === "All" ? "I" : reportType === "Header" ? "H" : "",
     };
     console.log("Payload:", payload);
 
@@ -370,10 +438,10 @@ function BusinessShareMatrixReport() {
         return;
       }
 
-      // Mode "All" ("A") returns the rows as a flat top-level array, while the
-      // other modes wrap them as [{ DATA: [...], TOTAL_* }].
+      // Both modes now return the rows as a flat top-level array
+      // (the [{ DATA: [...], TOTAL_* }] wrapper is still handled if it ever comes back).
       const hasDataWrapper = Array.isArray(res?.[0]?.DATA);
-      const data = hasDataWrapper ? res[0].DATA : reportType === "All" ? res : [];
+      const data = hasDataWrapper ? res[0].DATA : res;
       setFilteredData(data);
       setOriginalData(data);
       setTotals(hasDataWrapper ? res[0] : {});
@@ -434,143 +502,14 @@ function BusinessShareMatrixReport() {
       return;
     }
 
-    let exportData: any[] = [];
-
-    if (selectedReportType === "All") {
-      exportData = filteredData.map((row: any) => ({
-        "Reference No": row.REFERENCE_NUMBER || "",
-        "In/Out": row.INWARD_OUTWARD || "",
-        "SAP Type": row.SAP_NONSAP || "",
-        Plant: row.PLANT || "",
-        "Vehicle Type": row.TRANSPORTER_GROUP || "",
-        Transporter: row.TRANSPORTER || "",
-        "No. of Vehicles": row.NO_OF_VEHICLES_PLACED || 0,
-        "Basic Charge": row.BASIC_CHARGE || 0,
-        "Detention Loading": row.DETENTION_LOADING || 0,
-        "Detention Unloading": row.DETENTION_UNLOADING || 0,
-        "Loading Charge": row.LOADING_CHARGE || 0,
-        "Unloading Charge": row.UNLOADING_CHARGE || 0,
-        "Routing Charges": row.ROUTING_CHARGES || 0,
-        "Transshipment Charges": row.TRANSHIPMENT_CHARGES || 0,
-        "Other Charges": row.OTHER_CHARGES || 0,
-        "Deduction Charges": row.DEDUCTION_CHARGES || 0,
-        "Total Amount": row.FREIGHT_AMOUNT || 0,
-      }));
-
-      exportData.push({
-        "Reference No": "TOTAL",
-        "In/Out": "",
-        "SAP Type": "",
-        Plant: "",
-        "Vehicle Type": "",
-        Transporter: "",
-        "No. of Vehicles": totals.TOTAL_VEHICLES || 0,
-        "Basic Charge": totals.TOTAL_BASIC_CHARGE || 0,
-        "Detention Loading": totals.TOTAL_DETENTION_LOADING || 0,
-        "Detention Unloading": totals.TOTAL_DETENTION_UNLOADING || 0,
-        "Loading Charge": totals.TOTAL_LOADING_CHARGE || 0,
-        "Unloading Charge": totals.TOTAL_UNLOADING_CHARGE || 0,
-        "Routing Charges": totals.TOTAL_ROUTING_CHARGES || 0,
-        "Transshipment Charges": totals.TOTAL_TRANSHIPMENT_CHARGES || 0,
-        "Other Charges": totals.TOTAL_OTHER_CHARGES || 0,
-        "Deduction Charges": totals.TOTAL_DEDUCTION_CHARGES || 0,
-        "Total Amount": totals.TOTAL_FREIGHT_AMOUNT || 0,
-      });
-    } else if (selectedReportType === "Header") {
-      exportData = filteredData.map((row: any) => ({
-        Transporter: row.TRANSPORTER || "",
-        "No. of Vehicles": row.NO_OF_VEHICLES_PLACED || 0,
-        "Basic Charge": row.BASIC_CHARGE || 0,
-        "Detention Loading": row.DETENTION_LOADING || 0,
-        "Detention Unloading": row.DETENTION_UNLOADING || 0,
-        "Loading Charge": row.LOADING_CHARGE || 0,
-        "Unloading Charge": row.UNLOADING_CHARGE || 0,
-        "Routing Charges": row.ROUTING_CHARGES || 0,
-        "Transshipment Charges": row.TRANSHIPMENT_CHARGES || 0,
-        "Other Charges": row.OTHER_CHARGES || 0,
-        "Deduction Charges": row.DEDUCTION_CHARGES || 0,
-        "Total Amount": row.FREIGHT_AMOUNT || 0,
-      }));
-
-      exportData.push({
-        Transporter: "TOTAL",
-        "No. of Vehicles": totals.TOTAL_VEHICLES || 0,
-        "Basic Charge": totals.TOTAL_BASIC_CHARGE || 0,
-        "Detention Loading": totals.TOTAL_DETENTION_LOADING || 0,
-        "Detention Unloading": totals.TOTAL_DETENTION_UNLOADING || 0,
-        "Loading Charge": totals.TOTAL_LOADING_CHARGE || 0,
-        "Unloading Charge": totals.TOTAL_UNLOADING_CHARGE || 0,
-        "Routing Charges": totals.TOTAL_ROUTING_CHARGES || 0,
-        "Transshipment Charges": totals.TOTAL_TRANSHIPMENT_CHARGES || 0,
-        "Other Charges": totals.TOTAL_OTHER_CHARGES || 0,
-        "Deduction Charges": totals.TOTAL_DEDUCTION_CHARGES || 0,
-        "Total Amount": totals.TOTAL_FREIGHT_AMOUNT || 0,
-      });
-    } else if (selectedReportType === "HeaderWithPlant") {
-      exportData = filteredData.map((row: any) => ({
-        Transporter: row.TRANSPORTER || "",
-        Plant: row.PLANT || "",
-        "No. of Vehicles": row.NO_OF_VEHICLES_PLACED || 0,
-        "Basic Charge": row.BASIC_CHARGE || 0,
-        "Detention Loading": row.DETENTION_LOADING || 0,
-        "Detention Unloading": row.DETENTION_UNLOADING || 0,
-        "Loading Charge": row.LOADING_CHARGE || 0,
-        "Unloading Charge": row.UNLOADING_CHARGE || 0,
-        "Routing Charges": row.ROUTING_CHARGES || 0,
-        "Transshipment Charges": row.TRANSHIPMENT_CHARGES || 0,
-        "Other Charges": row.OTHER_CHARGES || 0,
-        "Deduction Charges": row.DEDUCTION_CHARGES || 0,
-        "Total Amount": row.FREIGHT_AMOUNT || 0,
-      }));
-
-      exportData.push({
-        Transporter: "TOTAL",
-        Plant: "",
-        "No. of Vehicles": totals.TOTAL_VEHICLES || 0,
-        "Basic Charge": totals.TOTAL_BASIC_CHARGE || 0,
-        "Detention Loading": totals.TOTAL_DETENTION_LOADING || 0,
-        "Detention Unloading": totals.TOTAL_DETENTION_UNLOADING || 0,
-        "Loading Charge": totals.TOTAL_LOADING_CHARGE || 0,
-        "Unloading Charge": totals.TOTAL_UNLOADING_CHARGE || 0,
-        "Routing Charges": totals.TOTAL_ROUTING_CHARGES || 0,
-        "Transshipment Charges": totals.TOTAL_TRANSHIPMENT_CHARGES || 0,
-        "Other Charges": totals.TOTAL_OTHER_CHARGES || 0,
-        "Deduction Charges": totals.TOTAL_DEDUCTION_CHARGES || 0,
-        "Total Amount": totals.TOTAL_FREIGHT_AMOUNT || 0,
-      });
-    } else if (selectedReportType === "HeaderWithInOut") {
-      exportData = filteredData.map((row: any) => ({
-        Transporter: row.TRANSPORTER || "",
-        "Inward/Outward": row.INWARD_OUTWARD || "",
-        "No. of Vehicles": row.NO_OF_VEHICLES_PLACED || 0,
-        "Basic Charge": row.BASIC_CHARGE || 0,
-        "Detention Loading": row.DETENTION_LOADING || 0,
-        "Detention Unloading": row.DETENTION_UNLOADING || 0,
-        "Loading Charge": row.LOADING_CHARGE || 0,
-        "Unloading Charge": row.UNLOADING_CHARGE || 0,
-        "Routing Charges": row.ROUTING_CHARGES || 0,
-        "Transshipment Charges": row.TRANSHIPMENT_CHARGES || 0,
-        "Other Charges": row.OTHER_CHARGES || 0,
-        "Deduction Charges": row.DEDUCTION_CHARGES || 0,
-        "Total Amount": row.FREIGHT_AMOUNT || 0,
-      }));
-
-      exportData.push({
-        Transporter: "TOTAL",
-        "Inward/Outward": "",
-        "No. of Vehicles": totals.TOTAL_VEHICLES || 0,
-        "Basic Charge": totals.TOTAL_BASIC_CHARGE || 0,
-        "Detention Loading": totals.TOTAL_DETENTION_LOADING || 0,
-        "Detention Unloading": totals.TOTAL_DETENTION_UNLOADING || 0,
-        "Loading Charge": totals.TOTAL_LOADING_CHARGE || 0,
-        "Unloading Charge": totals.TOTAL_UNLOADING_CHARGE || 0,
-        "Routing Charges": totals.TOTAL_ROUTING_CHARGES || 0,
-        "Transshipment Charges": totals.TOTAL_TRANSHIPMENT_CHARGES || 0,
-        "Other Charges": totals.TOTAL_OTHER_CHARGES || 0,
-        "Deduction Charges": totals.TOTAL_DEDUCTION_CHARGES || 0,
-        "Total Amount": totals.TOTAL_FREIGHT_AMOUNT || 0,
-      });
-    }
+    const exportData: any[] = filteredData.map((row: any) =>
+      Object.fromEntries(columns.map((c) => [c.label, row[c.key] ?? ""])),
+    );
+    exportData.push(
+      Object.fromEntries(
+        columns.map((c, i) => [c.label, i === 0 ? "TOTAL" : c.total ? columnTotals[c.key] : ""]),
+      ),
+    );
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook: XLSX.WorkBook = {
@@ -594,211 +533,9 @@ function BusinessShareMatrixReport() {
 
     doc.text(`Business Share Matrix Report - ${selectedReportType}`, 14, 10);
 
-    let tableColumn: string[] = [];
-    let tableRows: any[] = [];
-
-    if (selectedReportType === "All") {
-      tableColumn = [
-        "Reference No",
-        "In/Out",
-        "SAP Type",
-        "Plant",
-        "Vehicle Type",
-        "Transporter",
-        "No. of Vehicles",
-        "Basic Charge",
-        "Detention Loading",
-        "Detention Unloading",
-        "Loading Charge",
-        "Unloading Charge",
-        "Routing Charges",
-        "Transshipment Charges",
-        "Other Charges",
-        "Deduction Charges",
-        "Total Amount",
-      ];
-
-      tableRows = filteredData.map((row: any) => [
-        row.REFERENCE_NUMBER || "",
-        row.INWARD_OUTWARD || "",
-        row.SAP_NONSAP || "",
-        row.PLANT || "",
-        row.TRANSPORTER_GROUP || "",
-        row.TRANSPORTER || "",
-        row.NO_OF_VEHICLES_PLACED || 0,
-        row.BASIC_CHARGE || 0,
-        row.DETENTION_LOADING || 0,
-        row.DETENTION_UNLOADING || 0,
-        row.LOADING_CHARGE || 0,
-        row.UNLOADING_CHARGE || 0,
-        row.ROUTING_CHARGES || 0,
-        row.TRANSHIPMENT_CHARGES || 0,
-        row.OTHER_CHARGES || 0,
-        row.DEDUCTION_CHARGES || 0,
-        row.FREIGHT_AMOUNT || 0,
-      ]);
-
-      tableRows.push([
-        "TOTAL",
-        "",
-        "",
-        "",
-        "",
-        "",
-        totals.TOTAL_VEHICLES || 0,
-        totals.TOTAL_BASIC_CHARGE || 0,
-        totals.TOTAL_DETENTION_LOADING || 0,
-        totals.TOTAL_DETENTION_UNLOADING || 0,
-        totals.TOTAL_LOADING_CHARGE || 0,
-        totals.TOTAL_UNLOADING_CHARGE || 0,
-        totals.TOTAL_ROUTING_CHARGES || 0,
-        totals.TOTAL_TRANSHIPMENT_CHARGES || 0,
-        totals.TOTAL_OTHER_CHARGES || 0,
-        totals.TOTAL_DEDUCTION_CHARGES || 0,
-        totals.TOTAL_FREIGHT_AMOUNT || 0,
-      ]);
-    } else if (selectedReportType === "Header") {
-      tableColumn = [
-        "Transporter",
-        "No. of Vehicles",
-        "Basic Charge",
-        "Detention Loading",
-        "Detention Unloading",
-        "Loading Charge",
-        "Unloading Charge",
-        "Routing Charges",
-        "Transshipment Charges",
-        "Other Charges",
-        "Deduction Charges",
-        "Total Amount",
-      ];
-
-      tableRows = filteredData.map((row: any) => [
-        row.TRANSPORTER || "",
-        row.NO_OF_VEHICLES_PLACED || 0,
-        row.BASIC_CHARGE || 0,
-        row.DETENTION_LOADING || 0,
-        row.DETENTION_UNLOADING || 0,
-        row.LOADING_CHARGE || 0,
-        row.UNLOADING_CHARGE || 0,
-        row.ROUTING_CHARGES || 0,
-        row.TRANSHIPMENT_CHARGES || 0,
-        row.OTHER_CHARGES || 0,
-        row.DEDUCTION_CHARGES || 0,
-        row.FREIGHT_AMOUNT || 0,
-      ]);
-
-      tableRows.push([
-        "TOTAL",
-        totals.TOTAL_VEHICLES || 0,
-        totals.TOTAL_BASIC_CHARGE || 0,
-        totals.TOTAL_DETENTION_LOADING || 0,
-        totals.TOTAL_DETENTION_UNLOADING || 0,
-        totals.TOTAL_LOADING_CHARGE || 0,
-        totals.TOTAL_UNLOADING_CHARGE || 0,
-        totals.TOTAL_ROUTING_CHARGES || 0,
-        totals.TOTAL_TRANSHIPMENT_CHARGES || 0,
-        totals.TOTAL_OTHER_CHARGES || 0,
-        totals.TOTAL_DEDUCTION_CHARGES || 0,
-        totals.TOTAL_FREIGHT_AMOUNT || 0,
-      ]);
-    } else if (selectedReportType === "HeaderWithPlant") {
-      tableColumn = [
-        "Transporter",
-        "Plant",
-        "No. of Vehicles",
-        "Basic Charge",
-        "Detention Loading",
-        "Detention Unloading",
-        "Loading Charge",
-        "Unloading Charge",
-        "Routing Charges",
-        "Transshipment Charges",
-        "Other Charges",
-        "Deduction Charges",
-        "Total Amount",
-      ];
-
-      tableRows = filteredData.map((row: any) => [
-        row.TRANSPORTER || "",
-        row.PLANT || "",
-        row.NO_OF_VEHICLES_PLACED || 0,
-        row.BASIC_CHARGE || 0,
-        row.DETENTION_LOADING || 0,
-        row.DETENTION_UNLOADING || 0,
-        row.LOADING_CHARGE || 0,
-        row.UNLOADING_CHARGE || 0,
-        row.ROUTING_CHARGES || 0,
-        row.TRANSHIPMENT_CHARGES || 0,
-        row.OTHER_CHARGES || 0,
-        row.DEDUCTION_CHARGES || 0,
-        row.FREIGHT_AMOUNT || 0,
-      ]);
-
-      tableRows.push([
-        "TOTAL",
-        "",
-        totals.TOTAL_VEHICLES || 0,
-        totals.TOTAL_BASIC_CHARGE || 0,
-        totals.TOTAL_DETENTION_LOADING || 0,
-        totals.TOTAL_DETENTION_UNLOADING || 0,
-        totals.TOTAL_LOADING_CHARGE || 0,
-        totals.TOTAL_UNLOADING_CHARGE || 0,
-        totals.TOTAL_ROUTING_CHARGES || 0,
-        totals.TOTAL_TRANSHIPMENT_CHARGES || 0,
-        totals.TOTAL_OTHER_CHARGES || 0,
-        totals.TOTAL_DEDUCTION_CHARGES || 0,
-        totals.TOTAL_FREIGHT_AMOUNT || 0,
-      ]);
-    } else if (selectedReportType === "HeaderWithInOut") {
-      tableColumn = [
-        "Transporter",
-        "Inward/Outward",
-        "No. of Vehicles",
-        "Basic Charge",
-        "Detention Loading",
-        "Detention Unloading",
-        "Loading Charge",
-        "Unloading Charge",
-        "Routing Charges",
-        "Transshipment Charges",
-        "Other Charges",
-        "Deduction Charges",
-        "Total Amount",
-      ];
-
-      tableRows = filteredData.map((row: any) => [
-        row.TRANSPORTER || "",
-        row.INWARD_OUTWARD || "",
-        row.NO_OF_VEHICLES_PLACED || 0,
-        row.BASIC_CHARGE || 0,
-        row.DETENTION_LOADING || 0,
-        row.DETENTION_UNLOADING || 0,
-        row.LOADING_CHARGE || 0,
-        row.UNLOADING_CHARGE || 0,
-        row.ROUTING_CHARGES || 0,
-        row.TRANSHIPMENT_CHARGES || 0,
-        row.OTHER_CHARGES || 0,
-        row.DEDUCTION_CHARGES || 0,
-        row.FREIGHT_AMOUNT || 0,
-      ]);
-
-      tableRows.push([
-        "TOTAL",
-        "",
-        totals.TOTAL_VEHICLES || 0,
-        totals.TOTAL_BASIC_CHARGE || 0,
-        totals.TOTAL_DETENTION_LOADING || 0,
-        totals.TOTAL_DETENTION_UNLOADING || 0,
-        totals.TOTAL_LOADING_CHARGE || 0,
-        totals.TOTAL_UNLOADING_CHARGE || 0,
-        totals.TOTAL_ROUTING_CHARGES || 0,
-        totals.TOTAL_TRANSHIPMENT_CHARGES || 0,
-        totals.TOTAL_OTHER_CHARGES || 0,
-        totals.TOTAL_DEDUCTION_CHARGES || 0,
-        totals.TOTAL_FREIGHT_AMOUNT || 0,
-      ]);
-    }
+    const tableColumn: string[] = columns.map((c) => c.label);
+    const tableRows: any[] = filteredData.map((row: any) => columns.map((c) => row[c.key] ?? ""));
+    tableRows.push(columns.map((c, i) => (i === 0 ? "TOTAL" : c.total ? columnTotals[c.key] : "")));
 
     autoTable(doc, {
       head: [tableColumn],
@@ -849,81 +586,81 @@ function BusinessShareMatrixReport() {
 
       {/* FILTER CARD */}
       <div className="flex-1 overflow-y-auto scrollbar-elegant px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 space-y-5">
-            <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-5">
-          <MultiSelectField
-            label="Inward/Outward"
-            options={INOUT_OPTIONS}
-            value={inout}
-            onChange={setInout}
-            error={inoutInvalid ? "Inward/Outward is required" : undefined}
-          />
+        <div className="bg-surface border border-hairline rounded-2xl shadow-elegant p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-5">
+            <MultiSelectField
+              label="Inward/Outward"
+              options={INOUT_OPTIONS}
+              value={inout}
+              onChange={setInout}
+              error={inoutInvalid ? "Inward/Outward is required" : undefined}
+            />
 
-          <MultiSelectField
-            label="SAP/Non-SAP"
-            options={SAP_TYPE_OPTIONS}
-            value={sapType}
-            onChange={setSapType}
-          />
+            <MultiSelectField
+              label="SAP/Non-SAP"
+              options={SAP_TYPE_OPTIONS}
+              value={sapType}
+              onChange={setSapType}
+            />
 
-          <DateField
-            label="From Date"
-            value={fromDate}
-            onChange={setFromDate}
-            error={fromDateInvalid ? "From Date is required" : undefined}
-          />
+            <DateField
+              label="From Date"
+              value={fromDate}
+              onChange={setFromDate}
+              error={fromDateInvalid ? "From Date is required" : undefined}
+            />
 
-          <DateField
-            label="To Date"
-            value={toDate}
-            onChange={setToDate}
-            error={toDateInvalid ? "To Date is required" : undefined}
-          />
+            <DateField
+              label="To Date"
+              value={toDate}
+              onChange={setToDate}
+              error={toDateInvalid ? "To Date is required" : undefined}
+            />
 
-          <MultiSelectField
-            label="Vehicle Type"
-            options={TRANS_GROUP_OPTIONS}
-            value={transGroup}
-            onChange={setTransGroup}
-          />
+            <MultiSelectField
+              label="Vehicle Type"
+              options={TRANS_GROUP_OPTIONS}
+              value={transGroup}
+              onChange={setTransGroup}
+            />
 
-          <MultiSelectField
-            label="Transporter"
-            options={transporterOptions}
-            value={transporter}
-            onChange={setTransporter}
-            searchable
-          />
+            <MultiSelectField
+              label="Transporter"
+              options={transporterOptions}
+              value={transporter}
+              onChange={setTransporter}
+              searchable
+            />
 
-          <MultiSelectField
-            label="Transporter Code"
-            options={transporterCodeOptions}
-            value={transporterCode}
-            onChange={setTransporterCode}
-            searchable
-          />
+            <MultiSelectField
+              label="Transporter Code"
+              options={transporterCodeOptions}
+              value={transporterCode}
+              onChange={setTransporterCode}
+              searchable
+            />
 
-          <MultiSelectField
-            label="Month Wise"
-            options={MONTH_OPTIONS}
-            value={monthWise}
-            onChange={setMonthWise}
-          />
+            <MultiSelectField
+              label="Month Wise"
+              options={MONTH_OPTIONS}
+              value={monthWise}
+              onChange={setMonthWise}
+            />
 
-          <MultiSelectField
-            label="Quarter Wise"
-            options={QUARTER_OPTIONS}
-            value={quarterWise}
-            onChange={setQuarterWise}
-          />
-          <MultiSelectField
-            label="Year Wise"
-            options={YEAR_OPTIONS}
-            value={yearWise}
-            onChange={setYearWise}
-          />
+            <MultiSelectField
+              label="Quarter Wise"
+              options={QUARTER_OPTIONS}
+              value={quarterWise}
+              onChange={setQuarterWise}
+            />
+            <MultiSelectField
+              label="Year Wise"
+              options={YEAR_OPTIONS}
+              value={yearWise}
+              onChange={setYearWise}
+            />
 
-          {/* <div>
+            {/* <div>
             <label className={LABEL}>Year Wise</label>
             <input
               type="text"
@@ -937,15 +674,15 @@ function BusinessShareMatrixReport() {
             />
           </div> */}
 
-          <MultiSelectField
-            label="Plant"
-            options={plantOptions}
-            value={werks}
-            onChange={setWerks}
-            searchable
-          />
+            <MultiSelectField
+              label="Plant"
+              options={plantOptions}
+              value={werks}
+              onChange={setWerks}
+              searchable
+            />
 
-          {/* Product — commented out for now
+            {/* Product — commented out for now
           <MultiSelectField
             label="Product"
             options={PRODUCT_OPTIONS}
@@ -954,15 +691,15 @@ function BusinessShareMatrixReport() {
           />
           */}
 
-          <MultiSelectField
-            label="Division"
-            options={divisionOptions}
-            value={division}
-            onChange={setDivision}
-            searchable
-          />
+            <MultiSelectField
+              label="Division"
+              options={divisionOptions}
+              value={division}
+              onChange={setDivision}
+              searchable
+            />
 
-          {/* Customer Name, Destination Location, Segment, Incoterms — commented out for now
+            {/* Customer Name, Destination Location, Segment, Incoterms — commented out for now
           <MultiSelectField
             label="Customer Name"
             options={customerOptions}
@@ -996,30 +733,30 @@ function BusinessShareMatrixReport() {
             searchable
           />
           */}
-        </div>
-
-        {/* REPORT TYPE (radio) */}
-        <div className="mt-4 pt-4 border-t border-hairline space-y-2">
-          {/* Item Level / Header Level — only one can be selected */}
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
-            {REPORT_LEVEL_OPTIONS.map((opt) => (
-              <label key={opt.value} className="inline-flex items-center gap-2 text-[12.5px] text-foreground cursor-pointer">
-                <input
-                  type="radio"
-                  name="report-type"
-                  checked={reportType === opt.value}
-                  onChange={() => setReportType(opt.value)}
-                  className="size-3.5 accent-primary"
-                />
-                {opt.label}
-              </label>
-            ))}
-            {reportTypeInvalid && (
-              <span className="text-[11px] text-destructive">Please select report type</span>
-            )}
           </div>
 
-          {/* Previous four report type radios — commented out for now
+          {/* REPORT TYPE (radio) */}
+          <div className="mt-4 pt-4 border-t border-hairline space-y-2">
+            {/* Item Level / Header Level — only one can be selected */}
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {REPORT_LEVEL_OPTIONS.map((opt) => (
+                <label key={opt.value} className="inline-flex items-center gap-2 text-[12.5px] text-foreground cursor-pointer">
+                  <input
+                    type="radio"
+                    name="report-type"
+                    checked={reportType === opt.value}
+                    onChange={() => setReportType(opt.value)}
+                    className="size-3.5 accent-primary"
+                  />
+                  {opt.label}
+                </label>
+              ))}
+              {reportTypeInvalid && (
+                <span className="text-[11px] text-destructive">Please select report type</span>
+              )}
+            </div>
+
+            {/* Previous four report type radios — commented out for now
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             {REPORT_TYPE_OPTIONS.slice(0, 2).map((opt) => (
               <label key={opt.value} className="inline-flex items-center gap-2 text-[12.5px] text-foreground cursor-pointer">
@@ -1055,213 +792,103 @@ function BusinessShareMatrixReport() {
             )}
           </div>
           */}
-        </div>
+          </div>
 
-        <div className="mt-5 flex justify-end gap-2.5">
-          <button
-            type="button"
-            onClick={resetForm}
-            className="h-9 px-4 rounded-md border border-input bg-background text-foreground text-[12.5px] font-semibold hover:bg-muted inline-flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <RotateCcw className="size-3.5" />
-            Clear Filters
-          </button>
-          <button
-            type="button"
-            onClick={onSearch}
-            disabled={isSearching}
-            className="h-9 px-5 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:pointer-events-none disabled:cursor-not-allowed"
-          >
-            <Filter className="size-3.5" />
-            {isSearching ? "Executing..." : "Execute Report"}
-          </button>
-        </div>
-      </div>
-
-      {/* TABLE CARD */}
-      <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden">
-        <div className="px-5 py-4 border-b border-hairline flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
-            Business Share Matrix Detailed
-          </h3>
-          <div className="flex items-center gap-2">
-            <label className="text-[12px] text-muted-foreground">Search:</label>
-            <input
-              type="text"
-              onChange={onFilter}
-              className="h-8 rounded-md border border-input bg-background px-2.5 text-[12.5px] text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-            />
+          <div className="mt-5 flex justify-end gap-2.5">
             <button
-              onClick={exportToExcel}
-              // Excel — green
-              className="h-8 px-3 rounded-md bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-[12px] font-semibold shadow-cta inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              type="button"
+              onClick={resetForm}
+              className="h-9 px-4 rounded-md border border-input bg-background text-foreground text-[12.5px] font-semibold hover:bg-muted inline-flex items-center justify-center gap-2 cursor-pointer"
             >
-              <FileSpreadsheet className="size-3.5" />
-              Export Excel
+              <RotateCcw className="size-3.5" />
+              Clear Filters
             </button>
             <button
-              onClick={downloadPDF}
-              // PDF — red
-              className="h-8 px-3 rounded-md bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white text-[12px] font-semibold shadow-cta inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              type="button"
+              onClick={onSearch}
+              disabled={isSearching}
+              className="h-9 px-5 rounded-md bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[12.5px] font-semibold shadow-cta hover:-translate-y-0.5 transition-transform inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:pointer-events-none disabled:cursor-not-allowed"
             >
-              <FileText className="size-3.5" />
-              Export PDF
+              <Filter className="size-3.5" />
+              {isSearching ? "Executing..." : "Execute Report"}
             </button>
           </div>
         </div>
 
-        {filteredData.length === 0 ? (
-          <div className="p-12 grid place-items-center text-center">
-            <div className="size-14 rounded-full bg-muted grid place-items-center mb-4">
-              <Grid3x3 className="size-7 text-muted-foreground" />
+        {/* TABLE CARD */}
+        <div className="bg-surface border border-hairline rounded-2xl shadow-elegant overflow-hidden">
+          <div className="px-5 py-4 border-b border-hairline flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-display text-[14px] font-semibold text-foreground tracking-tight">
+              Business Share Matrix Detailed
+            </h3>
+            <div className="flex items-center gap-2">
+              <label className="text-[12px] text-muted-foreground">Search:</label>
+              <input
+                type="text"
+                onChange={onFilter}
+                className="h-8 rounded-md border border-input bg-background px-2.5 text-[12.5px] text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+              <button
+                onClick={exportToExcel}
+                // Excel — green
+                className="h-8 px-3 rounded-md bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-[12px] font-semibold shadow-cta inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <FileSpreadsheet className="size-3.5" />
+                Export Excel
+              </button>
+              <button
+                onClick={downloadPDF}
+                // PDF — red
+                className="h-8 px-3 rounded-md bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white text-[12px] font-semibold shadow-cta inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <FileText className="size-3.5" />
+                Export PDF
+              </button>
             </div>
-            <p className="text-[12.5px] text-muted-foreground">
-              Fill filters and click execute to see results.
-            </p>
           </div>
-        ) : selectedReportType === "All" ? (
-          <div className="overflow-x-auto max-h-[560px]">
-            <table className="w-full text-left border-collapse text-[12px]">
-              <thead className="sticky top-0 z-30">
-                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
-                  {[
-                    "Reference No",
-                    "In/Out",
-                    "SAP Type",
-                    "Plant",
-                    "Vehicle Type",
-                    "Transporter",
-                    "No. of Vehicles",
-                    "Basic Charge",
-                    "Detention Loading",
-                    "Detention Unloading",
-                    "Loading Charge",
-                    "Unloading Charge",
-                    "Routing Charges",
-                    "Transshipment Charges",
-                    "Other Charges",
-                    "Deduction Charges",
-                    "Total Amount",
-                  ].map((h) => (
-                    <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
-                      {h}
-                    </th>
+
+          {filteredData.length === 0 ? (
+            <div className="p-12 grid place-items-center text-center">
+              <div className="size-14 rounded-full bg-muted grid place-items-center mb-4">
+                <Grid3x3 className="size-7 text-muted-foreground" />
+              </div>
+              <p className="text-[12.5px] text-muted-foreground">
+                Fill filters and click execute to see results.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto max-h-[560px]">
+              <table className="w-full text-left border-collapse text-[12px]">
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
+                    {columns.map((c) => (
+                      <th key={c.key} className="px-3 py-2.5 whitespace-nowrap text-left">{c.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-hairline/70">
+                  {filteredData.map((row, i) => (
+                    <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
+                      {columns.map((c) => (
+                        <td key={c.key} className="px-3 py-2 whitespace-nowrap">{row[c.key]}</td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-hairline/70">
-                {filteredData.map((row, i) => (
-                  <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.REFERENCE_NUMBER}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.INWARD_OUTWARD}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.SAP_NONSAP}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.PLANT}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.TRANSPORTER_GROUP}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.TRANSPORTER}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.NO_OF_VEHICLES_PLACED}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.BASIC_CHARGE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.DETENTION_LOADING}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.DETENTION_UNLOADING}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.LOADING_CHARGE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.UNLOADING_CHARGE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.ROUTING_CHARGES}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.TRANSHIPMENT_CHARGES}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.OTHER_CHARGES}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.DEDUCTION_CHARGES}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.FREIGHT_AMOUNT}</td>
+                </tbody>
+                <tfoot>
+                  <tr className="bg-muted/60 font-semibold">
+                    {columns.map((c, i) => (
+                      <td key={c.key} className="px-3 py-2 whitespace-nowrap">
+                        {i === 0 ? "Total" : c.total ? columnTotals[c.key] : ""}
+                      </td>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-muted/60 font-semibold">
-                  <td colSpan={6} className="px-3 py-2 whitespace-nowrap">Total</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_VEHICLES}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_BASIC_CHARGE}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_DETENTION_LOADING}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_DETENTION_UNLOADING}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_LOADING_CHARGE}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_UNLOADING_CHARGE}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_ROUTING_CHARGES}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_TRANSHIPMENT_CHARGES}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_OTHER_CHARGES}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_DEDUCTION_CHARGES}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_FREIGHT_AMOUNT}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        ) : (
-          <div className="overflow-x-auto max-h-[560px]">
-            <table className="w-full text-left border-collapse text-[12px]">
-              <thead className="sticky top-0 z-30">
-                <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Transporter</th>
-                  {selectedReportType === "HeaderWithPlant" && (
-                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Plant</th>
-                  )}
-                  {selectedReportType === "HeaderWithInOut" && (
-                    <th className="px-3 py-2.5 whitespace-nowrap text-left">Inward/Outward</th>
-                  )}
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">No Of Vehicles Placed</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Basic Charge</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Detention Loading</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Detention Unloading</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Loading Charge</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Unloading Charge</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Routing Charges</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Transhipment Charges</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Other Charges</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Deduction Charges</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Total Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-hairline/70">
-                {filteredData.map((row, i) => (
-                  <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.TRANSPORTER}</td>
-                    {selectedReportType === "HeaderWithPlant" && (
-                      <td className="px-3 py-2 whitespace-nowrap">{row.PLANT}</td>
-                    )}
-                    {selectedReportType === "HeaderWithInOut" && (
-                      <td className="px-3 py-2 whitespace-nowrap">{row.INWARD_OUTWARD}</td>
-                    )}
-                    <td className="px-3 py-2 whitespace-nowrap">{row.NO_OF_VEHICLES_PLACED}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.BASIC_CHARGE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.DETENTION_LOADING}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.DETENTION_UNLOADING}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.LOADING_CHARGE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.UNLOADING_CHARGE}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.ROUTING_CHARGES}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.TRANSHIPMENT_CHARGES}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.OTHER_CHARGES}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.DEDUCTION_CHARGES}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{row.FREIGHT_AMOUNT}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-muted/60 font-semibold">
-                  <td className="px-3 py-2 whitespace-nowrap">Total</td>
-                  {selectedReportType === "HeaderWithPlant" && <td className="px-3 py-2 whitespace-nowrap" />}
-                  {selectedReportType === "HeaderWithInOut" && <td className="px-3 py-2 whitespace-nowrap" />}
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_VEHICLES}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_BASIC_CHARGE}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_DETENTION_LOADING}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_DETENTION_UNLOADING}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_LOADING_CHARGE}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_UNLOADING_CHARGE}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_ROUTING_CHARGES}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_TRANSHIPMENT_CHARGES}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_OTHER_CHARGES}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_DEDUCTION_CHARGES}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">{totals.TOTAL_FREIGHT_AMOUNT}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        )}
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </div>
   );
 }

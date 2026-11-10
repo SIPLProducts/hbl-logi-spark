@@ -11,6 +11,9 @@ import {
 // @ts-ignore
 import service from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { cn } from "@/lib/utils";
 import { GateDatePicker } from "@/components/ui/date-picker";
 
@@ -19,8 +22,8 @@ import { GateDatePicker } from "@/components/ui/date-picker";
  * Same filter fields, options, radios, layout and styling as the Business Share
  * Matrix report. All code below is local to this screen.
  *
- * The E-Way Bill Report API is not available yet: "Execute Report" validates the filters
- * and the payload is built, ready to send once the API is provided.
+ * "Execute Report" validates the filters, builds the payload and calls
+ * service.FetchEwayBillReports (PUT /le/transit_eway/tway?sap-client=234).
  * ──────────────────────────────────────────────────────────────────────────── */
 
 type Option = { label: string; value: string };
@@ -58,6 +61,51 @@ const MONTH_OPTIONS: Option[] = [
 const QUARTER_OPTIONS: Option[] = ["Q1", "Q2", "Q3", "Q4"].map((quarter) => ({ value: quarter, label: quarter }));
 const YEAR_OPTIONS: Option[] = ["FY 26-27"].map((year) => ({ value: year, label: year }));
 
+// Result columns (API response keys → table / Excel / PDF headings)
+type Col = { key: string; label: string };
+
+const REPORT_COLUMNS: Col[] = [
+  { key: "SLNO", label: "SL No" },
+  { key: "REFNO", label: "Ref No" },
+  { key: "MAPID", label: "Map ID" },
+  { key: "WORK_ORDER", label: "Work Order" },
+  { key: "MONTH", label: "Month" },
+  { key: "FIN_QUARTER", label: "Quarter" },
+  { key: "FIN_YEAR", label: "Financial Year" },
+  { key: "PLANT", label: "Plant" },
+  { key: "DIVISION", label: "Division" },
+  { key: "SUB_DIVISION", label: "Sub Division" },
+  { key: "VEH_TYPE", label: "Vehicle Type" },
+  { key: "SO_NO", label: "SO No" },
+  { key: "CUST_NAME", label: "Customer Name" },
+  { key: "CUST_GRP", label: "Customer Group" },
+  { key: "CONSIGNEE", label: "Consignee" },
+  { key: "DEST", label: "Destination" },
+  { key: "DEST_STATE", label: "Destination State" },
+  { key: "DEST_ZONE", label: "Destination Zone" },
+  { key: "TRANSPORTER", label: "Transporter" },
+  { key: "LR_NO", label: "LR No" },
+  { key: "LR_DATE", label: "LR Date" },
+  { key: "PHY_DISP", label: "Physical Dispatch" },
+  { key: "INV_NO", label: "Invoice No" },
+  { key: "INV_DATE", label: "Invoice Date" },
+  { key: "ODN_NO", label: "ODN No" },
+  { key: "INV_BASIC", label: "Invoice Basic" },
+  { key: "INV_GST", label: "Invoice GST" },
+  { key: "VEHICLE_NO", label: "Vehicle No" },
+  { key: "DRIVER_NAME", label: "Driver Name" },
+  { key: "DRIVER_NO", label: "Driver No" },
+  { key: "EWAY_APPL", label: "E-Way Applicable" },
+  { key: "EWAY_NO", label: "E-Way No" },
+  { key: "EWAY_DATE", label: "E-Way Date" },
+  { key: "EWAY_VALID", label: "E-Way Valid" },
+  { key: "KMS", label: "KMs" },
+  { key: "LIVE_EXPIRED", label: "Live / Expired" },
+  { key: "TRANSIT_REACHED", label: "Transit Reached" },
+  { key: "UNLOADED", label: "Unloaded" },
+  { key: "REMARKS", label: "Remarks" },
+];
+
 // Logged-in user from the login response (PLANTS / DIV / USER)
 function getLoggedInUser(): any {
   try {
@@ -91,6 +139,7 @@ function toPayloadArray(value: string[] | string, key: string) {
 }
 
 // "2026-10-21" → "20261021"
+// (no longer used by the new API, which expects YYYY-MM-DD — kept for reference)
 function toPayloadDate(date: string) {
   return date ? date.split("-").join("") : "";
 }
@@ -116,7 +165,7 @@ function EWayBillReport() {
   const [touched, setTouched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Results (filled once the report API is available)
+  // Results
   const [results, setResults] = useState<any[]>([]);
   const [searchText, setSearchText] = useState("");
 
@@ -186,32 +235,66 @@ function EWayBillReport() {
       return;
     }
 
-    // Payload — same keys and shapes as the other report screens; sent once the API is available
+    // Payload — keys and shapes as defined by the E-Way Bill Report API
     const payload = {
       inward_outward: toPayloadArray(inout, "inout"),
       sap_nonsap: toPayloadArray(sapType, "type"),
-      from_date: toPayloadDate(fromDate),
-      to_date: toPayloadDate(toDate),
-      transporter_group: toPayloadArray(vehicleType, "TRANSPORTER_GROUP"),
-      transporter: toPayloadArray(transporter, "TRANSPORTER"),
-      transporter_code: toPayloadArray(transporterCode, "TRANSPORTER_CODE"),
-      month: toPayloadArray(monthWise, "month"),
-      quarter: toPayloadArray(quarterWise, "quarter"),
-      year: yearWise,
-      plant: toPayloadArray(plant, "plant"),
-      division: toPayloadArray(division, "division"),
-      ZUSER: getLoggedInUser()?.USER || "",
+      from_date: fromDate, // API expects YYYY-MM-DD (with dashes)
+      to_date: toDate,
+      // Plant → PLANT_DESC only (e.g. "HBL PE-SHPT")
+      plant: toPayloadArray(
+        Array.from(new Set(plant.map((v) => plantList.find((p: any) => p.PLANT_TEXT === v)?.PLANT_DESC ?? v))),
+        "plant",
+      ),
+      // Division → DIV_TEXT only (the description shown in the dropdown)
+      division: toPayloadArray(
+        Array.from(new Set(division.map((v) => divisionList.find((d: any) => d.DIVISION === v)?.DIV_TEXT ?? v))),
+        "division",
+      ),
+      transaction_type: toPayloadArray(vehicleType, "transaction_type"),
+      transporter: toPayloadArray(transporter, "transporter"),
+      vendor_code: toPayloadArray(transporterCode, "vendor_code"),
+      vehicle_type: toPayloadArray(vehicleType, "vehicle_type"),
+      dispatch_from: fromDate,
+      dispatch_to: toDate,
+      month: (monthWise[0] || "").toUpperCase(), // OCTOBER / ALL / ""
+      quarter: quarterWise[0] || "", // Q3 / ALL / ""
+      year: yearWise[0] || "", // FY 26-27 / ALL / ""
     };
-    void payload;
 
     setIsSearching(true);
     try {
-      // TODO: call the E-Way Bill Report API with `payload` and setResults(...) once it is available.
-      Swal.fire({
-        icon: "info",
-        title: "Not available yet",
-        text: "The E-Way Bill Report API is not connected yet.",
-      });
+      console.log("E Way Bill Report - FetchEwayBillReports Payload:", payload);
+      const res: any = await service.FetchEwayBillReports(payload);
+      console.log("E Way Bill Report - FetchEwayBillReports Response:", res);
+
+      // ERROR RESPONSE HANDLING
+      if (res?.ERROR_TYPE === "E") {
+        setResults([]);
+        Swal.fire({ icon: "warning", title: "No Data", text: res?.MESSAGE });
+        return;
+      }
+
+      // SAFE ARRAY CHECK
+      if (!Array.isArray(res)) {
+        setResults([]);
+        return;
+      }
+
+      // The API returns the rows nested like [[[ {...} ]]] — flatten to a plain list of rows
+      const data = (res as any[]).flat(Infinity).filter((r) => r && typeof r === "object");
+      setResults(data);
+      setSearchText("");
+
+      if (data.length > 0) {
+        Swal.fire({ icon: "success", title: "Success", text: "Data fetched successfully!" });
+      } else {
+        Swal.fire({ icon: "warning", title: "No Data", text: "No records found" });
+      }
+    } catch (err) {
+      console.error("API Error:", err);
+      setResults([]);
+      Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch data. Please try again." });
     } finally {
       setIsSearching(false);
     }
@@ -238,7 +321,18 @@ function EWayBillReport() {
       Swal.fire({ icon: "info", title: "No Data", text: "There is no data to export." });
       return;
     }
-    // TODO: export `visibleResults` as E_Way_Bill_Report.xlsx once the report columns are known.
+
+    const exportData: any[] = visibleResults.map((row: any) =>
+      Object.fromEntries(REPORT_COLUMNS.map((c) => [c.label, row?.[c.key] ?? ""])),
+    );
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook: XLSX.WorkBook = {
+      Sheets: { "E-Way Bill Report": worksheet },
+      SheetNames: ["E-Way Bill Report"],
+    };
+    XLSX.writeFile(workbook, "E_Way_Bill_Report.xlsx");
+
+    Swal.fire("Success", "Excel exported successfully.", "success");
   };
 
   const onExportPdf = () => {
@@ -246,7 +340,33 @@ function EWayBillReport() {
       Swal.fire({ icon: "info", title: "No Data", text: "There is no data to export." });
       return;
     }
-    // TODO: export `visibleResults` as E_Way_Bill_Report.pdf once the report columns are known.
+
+    const doc = new jsPDF("l", "mm", "a2");
+    doc.text("E-Way Bill Report", 14, 10);
+
+    const tableColumn: string[] = REPORT_COLUMNS.map((c) => c.label);
+    const tableRows: any[] = visibleResults.map((row: any) => REPORT_COLUMNS.map((c) => row?.[c.key] ?? ""));
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 15,
+      styles: {
+        fontSize: 7,
+        cellWidth: "wrap",
+      },
+      headStyles: {
+        fillColor: [41, 128, 185],
+        fontSize: 7,
+      },
+      bodyStyles: {
+        fontSize: 7,
+      },
+    });
+
+    doc.save(`E_Way_Bill_Report_${Date.now()}.pdf`);
+
+    Swal.fire("Success", "PDF downloaded successfully.", "success");
   };
 
   return (
@@ -408,9 +528,9 @@ function EWayBillReport() {
               <table className="w-full text-left border-collapse text-[12px]">
                 <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
-                    {Object.keys(visibleResults[0] || {}).map((h) => (
-                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
-                        {h}
+                    {REPORT_COLUMNS.map((c) => (
+                      <th key={c.key} className="px-3 py-2.5 whitespace-nowrap text-left">
+                        {c.label}
                       </th>
                     ))}
                   </tr>
@@ -418,9 +538,9 @@ function EWayBillReport() {
                 <tbody className="divide-y divide-hairline/70">
                   {visibleResults.map((row, i) => (
                     <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
-                      {Object.keys(visibleResults[0] || {}).map((key) => (
-                        <td key={key} className="px-3 py-2 whitespace-nowrap">
-                          {String(row?.[key] ?? "")}
+                      {REPORT_COLUMNS.map((c) => (
+                        <td key={c.key} className="px-3 py-2 whitespace-nowrap">
+                          {String(row?.[c.key] ?? "")}
                         </td>
                       ))}
                     </tr>
