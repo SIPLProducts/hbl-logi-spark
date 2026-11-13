@@ -1254,7 +1254,7 @@ export function ShipmentDetailsSapCreate({ mode = "with" }: { mode?: "with" | "w
         }).then(() => {
           // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
           if (action === "next" || action === "previous") handOffSapMode(mode);
-          if (action === "next") navigate({ to: "/segment-info" });
+          if (action === "next") navigate({ to: "/transit-info" });
           else if (action === "previous") navigate({ to: "/invoice-load-details" });
           else resetForm();
         });

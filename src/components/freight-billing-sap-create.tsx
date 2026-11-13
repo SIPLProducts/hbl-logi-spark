@@ -11,6 +11,7 @@ import {
   FileText,
   ExternalLink,
   Download,
+  Check,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -283,6 +284,7 @@ const POST_PA_EDITABLE_FIELDS: { field: string; type: string; readonly?: boolean
   { field: "ZJVDT", type: "date" },
   { field: "ZUTRNUM", type: "text" },
   { field: "ZUTRDT", type: "date" },
+  { field: "ZFIXCOST", type: "number" }, // Fixed Amount for Costing
 ];
 
 
@@ -361,6 +363,131 @@ function computeTotal(b: Breakdown) {
     0,
   );
   return sum - (Number(b.Deduction) || 0);
+}
+
+/* Single-select dropdown with a search box (used for Sales Person). Looks like the
+   native select it replaces (same `className` on the trigger) and calls `onChange`
+   with the chosen option's value, exactly like the select's onChange did.
+   Large lists: only the first SEARCHABLE_PAGE_SIZE options are rendered, the search
+   is debounced, and further options load in pages as the list is scrolled. */
+const SEARCHABLE_PAGE_SIZE = 50;
+const SEARCHABLE_DEBOUNCE_MS = 300;
+
+function SearchableSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  placeholder: string;
+  className: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  // Debounced copy of `search` — filtering runs only after typing pauses.
+  const [query, setQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(SEARCHABLE_PAGE_SIZE);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setQuery(search), SEARCHABLE_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [search]);
+
+  // New search → start again from the first page.
+  useEffect(() => {
+    setVisibleCount(SEARCHABLE_PAGE_SIZE);
+  }, [query]);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q))
+    : options;
+  const visible = filtered.slice(0, visibleCount);
+  const selectedLabel = options.find((o) => o.value === value)?.label || value;
+
+  // Lazy loading: render the next page when the list is scrolled near its end.
+  const onListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (visibleCount < filtered.length && el.scrollTop + el.clientHeight >= el.scrollHeight - 24) {
+      setVisibleCount((c) => c + SEARCHABLE_PAGE_SIZE);
+    }
+  };
+
+  const resetSearch = () => {
+    setSearch("");
+    setQuery("");
+    setVisibleCount(SEARCHABLE_PAGE_SIZE);
+  };
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) resetSearch();
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title={selectedLabel}
+          className={className + " flex items-center justify-between gap-1 text-left cursor-pointer"}
+        >
+          <span className={"truncate" + (value ? "" : " text-muted-foreground")}>
+            {selectedLabel || placeholder}
+          </span>
+          <ChevronDown className={"size-3.5 shrink-0 opacity-60 transition-transform" + (open ? " rotate-180" : "")} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] min-w-56 p-0 bg-white dark:bg-surface border border-hairline shadow-elegant"
+        align="start"
+      >
+        <div className="p-1.5 border-b border-hairline">
+          <div className="relative">
+            <Search className="size-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search Sales Person..."
+              className="h-7 w-full rounded-md border border-input bg-white dark:bg-surface pl-6 pr-2 text-[12px] outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+            />
+          </div>
+        </div>
+        <div className="max-h-56 overflow-y-auto p-1" onScroll={onListScroll}>
+          {search !== query ? (
+            <div className="px-2 py-1.5 text-[12px] text-muted-foreground">Searching…</div>
+          ) : filtered.length === 0 ? (
+            <div className="px-2 py-1.5 text-[12px] text-muted-foreground">No matches</div>
+          ) : (
+            visible.map((o, idx) => (
+              <button
+                key={`${o.value}-${idx}`}
+                type="button"
+                onClick={() => {
+                  onChange(o.value);
+                  setOpen(false);
+                  resetSearch();
+                }}
+                className={
+                  "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-[12px] hover:bg-muted/60 cursor-pointer" +
+                  (o.value === value ? " bg-muted font-semibold" : "")
+                }
+              >
+                <span className="truncate flex-1">{o.label}</span>
+                {o.value === value && <Check className="size-3.5 shrink-0 text-primary" />}
+              </button>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 // Multi-select combo for the Invoice Number field, populated from the
@@ -884,6 +1011,25 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
   const [invoiceF4List, setInvoiceF4List] = useState<string[]>([]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [transportationType, setTransportationType] = useState("");
+  const [supplierList, setSupplierList] = useState<any[]>([]);
+  const [salesPerson, setSalesPerson] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res: any = await service.getssc();
+        console.log("Freight Billing - getssc Response:", res);
+        const data: any = Array.isArray(res) && res.length > 0 ? res[0] : {};
+        setSupplierList(data.SUPPLIERS || []);
+      } catch (err) {
+        console.error("F4 fetch error", err);
+      }
+    })();
+  }, []);
+
+  // Company Vehicle: the Account checkbox is disabled and "Fixed Amount for Costing" is shown (sent as ZFIXCOST)
+  const isCompanyVehicle = transportationType === "Company vehicle";
+  const [fixedAmountForCosting, setFixedAmountForCosting] = useState("");
 
   // Freight Billing document uploads: record key -> { b64, name }
   const [fbDocs, setFbDocs] = useState<Record<string, { b64: string; name: string }>>({});
@@ -1025,8 +1171,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
     setFullReferenceData([]);
     setInvoiceF4List([]);
     setInvoiceNumber("");
+    setSalesPerson("");
     setFbDocs({});
     setTransportationType("");
+    setFixedAmountForCosting("");
     setSearchOptionsList([]);
     setShowForm(true);
     setTypeOfRateContract("");
@@ -1253,6 +1401,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         LINE_NO: selectedRow.LINE_NO,
         BILLNO: freightBillNo,
         BILLDATE: freightBillDate,
+        ZSALE_PERSON: salesPerson,
+        SALE_PERSON: salesPerson,
+        SALES_PERSON: salesPerson,
+        SALES_EMP: salesPerson,
 
         PRO_CHK: provision ? "X" : "",
         ACC_CHK: account ? "X" : "",
@@ -1314,6 +1466,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
         ZUTRDT: utrDate,
         ZGSTAMT: (provision ? provisionGst : 0) + (account ? freightGst : 0),
         ZRATECON: typeOfRateContract,
+        // Fixed Amount for Costing — only for Company vehicle, otherwise empty
+        ZFIXCOST: isCompanyVehicle ? fixedAmountForCosting : "",
       };
 
       // Multiple invoices selected → one separate record per invoice in the same SAVE / CREATE
@@ -1350,6 +1504,10 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
               WORKORDER: ownerRow.WORK_ORDER_NO,
               LRNO: ownerRow.LR_NO,
               TRANSPORTER: ownerRow.TRANSPORTER,
+              ZSALE_PERSON: salesPerson,
+              SALE_PERSON: salesPerson,
+              SALES_PERSON: salesPerson,
+              SALES_EMP: salesPerson,
             };
           })
           : [record];
@@ -1467,10 +1625,27 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
       }
 
       setSearchOptionsList(
-        res.HEADER.map((item: any) => ({
-          ...item,
-          isEdit: false,
-        }))
+        res.HEADER.map((item: any) => {
+          const salesVal =
+            item[" ZSALE_PERSON"] !== undefined && item[" ZSALE_PERSON"] !== null
+              ? item[" ZSALE_PERSON"]
+              : item.ZSALE_PERSON !== undefined && item.ZSALE_PERSON !== null
+              ? item.ZSALE_PERSON
+              : item.SALE_PERSON !== undefined && item.SALE_PERSON !== null
+              ? item.SALE_PERSON
+              : item.SALES_PERSON !== undefined && item.SALES_PERSON !== null
+              ? item.SALES_PERSON
+              : item.sales_person !== undefined && item.sales_person !== null
+              ? item.sales_person
+              : "";
+          return {
+            ...item,
+            ZSALE_PERSON: salesVal,
+            " ZSALE_PERSON": salesVal,
+            SALE_PERSON: salesVal,
+            isEdit: false,
+          };
+        })
       );
 
       setShowForm(false);
@@ -1526,7 +1701,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
 
           ZODN_NO: row.ZODN_NO,
           ZSONO: row.ZSONO,
-          ZSALE_PERSON: row.ZSALE_PERSON,
+          ZSALE_PERSON: row.ZSALE_PERSON ?? row[" ZSALE_PERSON"] ?? row.SALE_PERSON ?? "",
+          SALE_PERSON: row.SALE_PERSON ?? row.ZSALE_PERSON ?? row[" ZSALE_PERSON"] ?? "",
           ZBILLDATE: row.ZBILLDATE,
           ZPHY_DATE: row.ZPHY_DATE,
           ZFRT_CHARGES: row.ZFRT_CHARGES,
@@ -1549,6 +1725,8 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
           ZPROVDT: row.ZPROVDT,
           ZPROVAMT: row.ZPROVAMT,
           ZRATECON: row.ZRATECON || "",
+          // Fixed Amount for Costing (value from the row, editable in the table)
+          ZFIXCOST: row.ZFIXCOST || "",
 
 
 
@@ -2126,6 +2304,7 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">JV Date</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">UTR Number</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">UTR Date</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap text-left">Fixed Amount for Costing</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Freight Bill</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Unloading Charges Approval</th>
                   <th className="px-3 py-2.5 whitespace-nowrap text-left">Detention Charges</th>
@@ -2148,24 +2327,40 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                     <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZINV_NO}</td>
                     <td className="px-3 py-2 whitespace-nowrap text-center">{item.ZLINE_NO}</td>
 
-                    {PRE_PA_EDITABLE_FIELDS.map(({ field, type }) => (
-                      <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
-                        {item.isEdit ? (
-                          <input
-                            type={type}
-                            className={GREEN_INPUT}
-                            value={item[field] || ""}
-                            onChange={(e) => {
-                              const list = [...searchOptionsList];
-                              list[index] = { ...list[index], [field]: e.target.value };
-                              setSearchOptionsList(list);
-                            }}
-                          />
-                        ) : (
-                          item[field]
-                        )}
-                      </td>
-                    ))}
+                    {PRE_PA_EDITABLE_FIELDS.map(({ field, type }) => {
+                      const cellValue =
+                        field === "ZSALE_PERSON"
+                          ? (item.ZSALE_PERSON ?? item[" ZSALE_PERSON"] ?? item.SALE_PERSON ?? "")
+                          : (item[field] ?? "");
+                      return (
+                        <td key={field} className="px-3 py-2 whitespace-nowrap text-center">
+                          {item.isEdit ? (
+                            <input
+                              type={type}
+                              className={GREEN_INPUT}
+                              value={cellValue}
+                              onChange={(e) => {
+                                const list = [...searchOptionsList];
+                                list[index] = {
+                                  ...list[index],
+                                  [field]: e.target.value,
+                                  ...(field === "ZSALE_PERSON"
+                                    ? {
+                                        ZSALE_PERSON: e.target.value,
+                                        " ZSALE_PERSON": e.target.value,
+                                        SALE_PERSON: e.target.value,
+                                      }
+                                    : {}),
+                                };
+                                setSearchOptionsList(list);
+                              }}
+                            />
+                          ) : (
+                            cellValue
+                          )}
+                        </td>
+                      );
+                    })}
 
                     <td className="px-3 py-2 whitespace-nowrap text-center">
                       <button
@@ -2639,11 +2834,37 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                 className={GREEN_INPUT}
               />
             </div>
+            {isWithout && (
+              <div>
+                <label className={LABEL}>Sales Person</label>
+                <SearchableSelect
+                  value={salesPerson}
+                  onChange={setSalesPerson}
+                  options={supplierList.map((s: any) => ({
+                    value: s.SUPPLIER_NAME,
+                    label: `${s.SUPPLIER} - ${s.SUPPLIER_NAME}`,
+                  }))}
+                  placeholder="Select Sales Person"
+                  className={GREEN_INPUT}
+                />
+              </div>
+            )}
             <div>
               <label className={LABEL}>Transportation Type</label>
               <select
                 value={transportationType}
-                onChange={(e) => setTransportationType(e.target.value)}
+                onChange={(e) => {
+                  const selectedType = e.target.value;
+                  setTransportationType(selectedType);
+
+                  if (selectedType === "Company vehicle") {
+                    // Company Vehicle → Account is not allowed, so untick it
+                    setAccount(false);
+                  } else {
+                    // Any other type → the Fixed Amount for Costing field is hidden, so clear it
+                    setFixedAmountForCosting("");
+                  }
+                }}
                 className={GREEN_INPUT}
               >
                 <option value="">Select Transportation Type</option>
@@ -2670,9 +2891,17 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                 />
                 Provision
               </label> */}
-              <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300">
+              <label
+                className={
+                  "inline-flex items-center gap-2 text-[12px] font-semibold text-emerald-700 dark:text-emerald-300" +
+                  (isCompanyVehicle ? " opacity-50 cursor-not-allowed" : "")
+                }
+                title={isCompanyVehicle ? "Account is not available for Company vehicle" : undefined}
+              >
                 <input
                   type="checkbox"
+                  // Disabled when Transportation Type is Company vehicle
+                  disabled={isCompanyVehicle}
                   checked={account}
                   onChange={(e) => {
                     setAccount(e.target.checked);
@@ -2686,6 +2915,20 @@ export function FreightBillingSapCreate({ mode = "with" }: { mode?: "with" | "wi
                 Account
               </label>
             </div>
+
+            {/* Fixed Amount for Costing — shown only when Transportation Type is Company vehicle */}
+            {isCompanyVehicle && (
+              <div className="animate-in fade-in slide-in-from-top-2">
+                <label className={LABEL}>Fixed Amount for Costing</label>
+                <input
+                  type="number"
+                  value={fixedAmountForCosting}
+                  onChange={(e) => setFixedAmountForCosting(e.target.value)}
+                  placeholder="Enter Fixed Amount"
+                  className={GREEN_INPUT}
+                />
+              </div>
+            )}
 
             {/* provision && (
               <>

@@ -67,7 +67,7 @@ const groups: { items: NavItem[] }[] = [
   },
   {
     items: [
-      { title: "Segment Info", to: "/segment-info", icon: Split, key: normalizeKey("Segment Info") },
+      // { title: "Segment Info", to: "/segment-info", icon: Split, key: normalizeKey("Segment Info") },
       { title: "Transit Info", to: "/transit-info", icon: RouteIcon, key: normalizeKey("Transit Info") },
     ],
   },
@@ -81,7 +81,7 @@ const groups: { items: NavItem[] }[] = [
   },
   {
     items: [
-      { title: "Driver Number Blocking", to: "/driver-number-blocking", icon: ShieldAlert, key: normalizeKey("Driver Number Blocking") },
+      { title: "Blocking Master", to: "/driver-number-blocking", icon: ShieldAlert, key: normalizeKey("Blocking Master") },
       { title: "User Creation", to: "/user-creation", icon: UserPlus, key: normalizeKey("User Creation") },
     ],
   },
@@ -130,6 +130,8 @@ export function AppSidebar() {
       (a) => a?.ACTIVITY ?? a?.ACT ?? ""
     );
     const keySet = new Set(values.map((v) => normalizeKey(v)));
+    // "Driver Number Blocking" was renamed to "Blocking Master" — users saved with the old name keep access
+    if (keySet.has(normalizeKey("Driver Number Blocking"))) keySet.add(normalizeKey("Blocking Master"));
     return keySet;
   }, [user]);
 

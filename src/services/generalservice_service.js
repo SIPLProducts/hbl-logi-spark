@@ -296,12 +296,20 @@ export const reportsApi = {
     ChangeGateInOutWithoutSap: (data) => request('api/external/LE/GateInOut/WithoutSap/Change', 'PUT', data),
     FetchBusinessShareMatrix: (data) => request('api/external/LE/Reports/FetchBusinessShareMatrix', 'PUT', data),
     FetchEwayBillReports: (data) => request('api/external/LE/Reports/FetchEwayBillReports', 'PUT', data),
+    FetchMasterReports: (data) => request('api/external/LE/Reports/FetchMasterReports', 'POST', data),
+    FetchPodStatusReports: (data) => request('api/external/LE/Reports/FetchPodStatusReports', 'PUT', data),
+    FetchProductWiseReports: (data) => request('api/external/LE/Reports/FetchProductWiseReports', 'POST', data),
+    FetchProvisionReports: (data) => request('api/external/LE/Reports/FetchProvisionReports', 'POST', data),
 
-    //Driver Number Blocking Screen APIs
+
+    //Blocking Master (Driver Number Blocking) Screen APIs
 
     SaveDriverNumberBlockingScreen: (data) => request('api/external/LE/DriverNumberBlockingScreen/Save', 'POST', data),
     DisplayDriverNumberBlockingScreen: () => request('api/external/LE/DriverNumberBlockingScreen/Display', 'GET'),
     DeleteDriverNumberBlockingScreen: (data) => request('api/external/LE/DriverNumberBlockingScreen/Delete', 'POST', data),
+    SaveVehicleNumberBlocking: (data) => request('api/external/LE/VehicleNumberBlocking/Save', 'POST', data),
+    DisplayVehicleNumberBlocking: () => request('api/external/LE/VehicleNumberBlocking/Display', 'GET'),
+    DeleteVehicleNumberBlocking: (data) => request('api/external/LE/VehicleNumberBlocking/Delete', 'POST', data),
 
 
 };

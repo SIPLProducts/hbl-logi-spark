@@ -93,14 +93,14 @@ export function CreateUserDialog({
     "Gate In Out",
     "Shipment Details",
     "Invoice Load Details",
-    "Segment Info",
+    // "Segment Info",
     "Vehicle Info",
     "Transit Info",
     "Freight Billing",
     "Service Level",
     "Transit Damage Info",
     "Insurance Claim Tracking",
-    "Driver Number Blocking",
+    "Blocking Master",
     "User Creation",
     // One access entry for the whole Reports section — it covers every Report sub-screen
     // (the sidebar shows all of them when "Reports" is granted).
@@ -328,7 +328,10 @@ export function CreateUserDialog({
 
       // Pre-fill screens/plants/divisions so editing a user shows their existing selections
       {
-        const acts = initialValues?.activities ?? [];
+        // "Driver Number Blocking" was renamed to "Blocking Master" — show old entries under the new name
+        const acts = (initialValues?.activities ?? []).map((a) =>
+          a === "Driver Number Blocking" ? "Blocking Master" : a
+        );
         const hadReportEntries = acts.some((a) => legacyReportScreens.includes(a));
         const rest = acts.filter((a) => !legacyReportScreens.includes(a));
         setSelectedScreens(hadReportEntries && !rest.includes("Reports") ? [...rest, "Reports"] : rest);

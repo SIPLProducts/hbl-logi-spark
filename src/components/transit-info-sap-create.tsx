@@ -1048,7 +1048,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
           // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
           if (action === "next" || action === "previous") handOffSapMode(mode);
           if (action === "next") navigate({ to: "/freight-billing" });
-          else if (action === "previous") navigate({ to: "/segment-info" });
+          else if (action === "previous") navigate({ to: "/shipment-details" });
           else resetAll();
         } else {
           Swal.fire({
@@ -1126,7 +1126,7 @@ export function TransitInfoSapCreate({ mode = "with" }: { mode?: "with" | "witho
         // Carry this screen's Supply / Other than Supply mode to the next/previous screen.
         if (action === "next" || action === "previous") handOffSapMode(mode);
         if (action === "next") navigate({ to: "/freight-billing" });
-        else if (action === "previous") navigate({ to: "/segment-info" });
+        else if (action === "previous") navigate({ to: "/shipment-details" });
         else resetAll();
       } else {
         Swal.fire({

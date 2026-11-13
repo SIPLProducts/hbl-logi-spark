@@ -37,6 +37,7 @@ const ACTIVITY_SCREEN_MAP: Record<string, string> = {
   transitdamageinfo: "/transit-damage-info",
   insuranceclaimtracking: "/insurance-claim-tracking",
   drivernumberblocking: "/driver-number-blocking",
+  blockingmaster: "/driver-number-blocking", // new name of Driver Number Blocking
   usercreation: "/user-creation",
 };
 

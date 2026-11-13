@@ -191,6 +191,7 @@ function LoginPage() {
         transitdamageinfo: "/transit-damage-info",
         insuranceclaimtracking: "/insurance-claim-tracking",
         drivernumberblocking: "/driver-number-blocking",
+        blockingmaster: "/driver-number-blocking", // new name of Driver Number Blocking
         usercreation: "/user-creation",
       };
 
@@ -223,6 +224,7 @@ function LoginPage() {
         "transitdamageinfo",
         "insuranceclaimtracking",
         "drivernumberblocking",
+        "blockingmaster",
         "usercreation",
       ];
 

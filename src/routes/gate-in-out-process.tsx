@@ -144,6 +144,49 @@ function GateInOutProcessPage() {
   useConsumeSapModeHandOff();
   const [selectedId, setSelectedId] = useState<string>("");
   const [pendingCount, setPendingCount] = useState(0);
+
+  // ── Plant multi-select beside the Pending / Completed counts ──
+  // Same API and logic as the Plant dropdown in Dispatch Orders: the vendor-code F4 list,
+  // replaced by the logged-in user's plants when the login data has them.
+  const [countsPlant, setCountsPlant] = useState<string[]>([]);
+  const [countsPlantOptions, setCountsPlantOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadCountsPlants = async () => {
+      try {
+        const res: any = await service.fetchVendorCode();
+        console.log("Gate In Out - fetchVendorCode (Plant dropdown) Response:", res);
+        const data: any = Array.isArray(res) ? res[0] ?? {} : res ?? {};
+
+        // Plants of the logged-in user (login response PLANTS + DIV)
+        const loginPlantRows = buildCountsLoginPlantRows();
+        if (loginPlantRows) data.PLANT = loginPlantRows;
+
+        // Keep each plant code only once (leading zeros ignored), shown as "<code>_<description>"
+        const plantRows: any[] = Array.isArray(data.PLANT) ? data.PLANT : [];
+        const seenPlantCodes = new Set<string>();
+        const plantOptions: string[] = [];
+        for (const row of plantRows) {
+          const code = String(row?.PLANT ?? "").trim().replace(/^0+(?=\d)/, "");
+          if (!code || seenPlantCodes.has(code)) continue;
+          seenPlantCodes.add(code);
+          const description = String(row?.PLANT_DESC || "").split("_")[0].trim();
+          plantOptions.push(`${row.PLANT}_${description}`);
+        }
+        setCountsPlantOptions(plantOptions);
+      } catch (err) {
+        console.error("Gate In Out - Plant dropdown F4 fetch failed:", err);
+      }
+    };
+    void loadCountsPlants();
+  }, []);
+
+  // Selected plants for the Pending / Completed counts payload, e.g. PLANTS: [{ plant: "1100_HBL NCPP-SHPT" }]
+  // Nothing selected → PLANTS: []
+  const countsPlantPayload: { plant: string }[] = [];
+  for (const selectedPlant of countsPlant) {
+    countsPlantPayload.push({ plant: selectedPlant });
+  }
   const [completedCount, setCompletedCount] = useState(0);
   const [fetchedPlants, setFetchedPlants] = useState<string[]>([]);
   const [fetchedDivisions, setFetchedDivisions] = useState<string[]>([]);
@@ -174,11 +217,13 @@ function GateInOutProcessPage() {
           INOUT: "OUTWARD",
           TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
           SCREEN: "GATE IN OUT",
+          PLANTS: countsPlantPayload,
         });
         const res: any = await service.OutwardCountGlobalWithSap({
           INOUT: "OUTWARD",
           TRANS_TYPE: sap === "with" ? "WITHSAP" : "WITHOUTSAP",
           SCREEN: "GATE IN OUT",
+          PLANTS: countsPlantPayload,
         });
         console.log("Gate In Out Process - OutwardCountGlobalWithSap Response:", res);
         setPendingCount(res?.ZPEND_CNT ?? 0);
@@ -187,7 +232,7 @@ function GateInOutProcessPage() {
         console.error("Count fetch failed:", err);
       }
     })();
-  }, [sap]);
+  }, [sap, countsPlant]);
 
   const resetFilters = () => {
     setFromDate(undefined);
@@ -653,6 +698,17 @@ function GateInOutProcessPage() {
                   </>
                 )}
                 <div className="ml-auto flex items-center gap-1.5">
+                  {/* Plant (multi-select) — same options as the Dispatch Orders Plant dropdown */}
+                  <div className="w-[170px]">
+                    <CountsPlantMultiSelect
+                      options={countsPlantOptions.map((p) => ({ label: p, value: p }))}
+                      value={countsPlant}
+                      onChange={setCountsPlant}
+                      placeholder="Select Plant"
+                      searchable
+                    />
+                  </div>
+                  <div className="h-6 w-px bg-hairline mx-1 hidden sm:block" />
                   <span className="inline-flex items-center gap-1.5 h-6 px-2 rounded-md border border-amber-300/60 bg-amber-100 dark:bg-amber-500/15 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
                     <span className="size-1.5 rounded-full bg-warning" />
                     Pending
@@ -5969,6 +6025,160 @@ function GateInOutCreate({ mode }: { mode: SapMode }) {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+
+/* ── Plant dropdown beside the Pending / Completed counts (local to this screen) ── */
+
+// Plants / divisions of the logged-in user (login response PLANTS + DIV), one row per
+// plant + division: { PLANT: WERKS, PLANT_DESC, DIVISION, PLANT_TEXT, DIV_TEXT }.
+// Returns null when the login data has no plants, so the F4 list is used instead.
+function buildCountsLoginPlantRows(): any[] | null {
+  let loginUser: any = null;
+  try {
+    loginUser = JSON.parse(localStorage.getItem("currentUser") || localStorage.getItem("userData") || "null");
+  } catch {
+    loginUser = null;
+  }
+  const loginPlants: any[] = Array.isArray(loginUser?.PLANTS) ? loginUser.PLANTS : [];
+  const loginDivisions: any[] = Array.isArray(loginUser?.DIV) ? loginUser.DIV : [];
+  if (loginPlants.length === 0) return null;
+
+  const rows: any[] = [];
+  for (const plant of loginPlants) {
+    const plantCode = String(plant?.WERKS ?? "").trim();
+    if (!plantCode) continue;
+    const plantDesc = String(plant?.PLANT_DESC ?? "").trim();
+    const plantDivisions = loginDivisions.filter((d) => String(d?.PLANT ?? "").trim() === plantCode);
+    if (plantDivisions.length === 0) {
+      rows.push({ PLANT: plantCode, PLANT_DESC: plantDesc, DIVISION: "", PLANT_TEXT: `${plantCode}_${plantDesc}_`, DIV_TEXT: `${plantCode}_` });
+      continue;
+    }
+    for (const division of plantDivisions) {
+      const divisionName = String(division?.DIVISION ?? "").trim();
+      rows.push({
+        PLANT: plantCode,
+        PLANT_DESC: plantDesc,
+        DIVISION: divisionName,
+        PLANT_TEXT: `${plantCode}_${plantDesc}_${divisionName}`,
+        DIV_TEXT: division?.DIV_TEXT || `${plantCode}_${divisionName}`,
+      });
+    }
+  }
+  return rows;
+}
+
+// Multi-select with search + Select All — same behaviour and design as Dispatch Orders' Plant field
+function CountsPlantMultiSelect({
+  options,
+  value,
+  onChange,
+  placeholder = "Select",
+  searchable = false,
+}: {
+  options: { label: string; value: string }[];
+  value: string[];
+  onChange: (v: string[]) => void;
+  placeholder?: string;
+  searchable?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close the list when clicking outside it
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch("");
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const filtered =
+    searchable && search ? options.filter((o) => o.label?.toLowerCase().includes(search.toLowerCase())) : options;
+
+  const toggle = (v: string) => {
+    if (value.includes(v)) onChange(value.filter((x) => x !== v));
+    else onChange([...value, v]);
+  };
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((o) => value.includes(o.value));
+
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      onChange(value.filter((v) => !filtered.find((o) => o.value === v)));
+    } else {
+      onChange(Array.from(new Set([...value, ...filtered.map((o) => o.value)])));
+    }
+  };
+
+  const displayLabel = () => {
+    if (value.length === 0) return "";
+    if (value.length === 1) {
+      const opt = options.find((o) => o.value === value[0]);
+      return opt?.label ?? value[0];
+    }
+    return `${value.length} Selected`;
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={
+          "h-7 w-full bg-white dark:bg-surface border border-input rounded-md px-2.5 text-[12px] outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30 flex items-center justify-between gap-2 text-left " +
+          (value.length === 0 ? "text-muted-foreground" : "text-foreground")
+        }
+      >
+        <span className="truncate">{displayLabel() || placeholder}</span>
+        <ChevronDown className={"size-3.5 shrink-0 transition-transform" + (open ? " rotate-180" : "")} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-50 mt-1 min-w-full w-max max-w-[420px] rounded-md border border-hairline bg-surface shadow-elegant max-h-60 overflow-y-auto">
+          {searchable && (
+            <div className="p-1.5 sticky top-0 bg-surface border-b border-hairline">
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="h-7 w-full rounded border border-input bg-background px-2 text-[12px] text-foreground outline-none focus:border-accent"
+              />
+            </div>
+          )}
+
+          {options.length > 0 && (
+            <label
+              className={`flex items-center gap-2 px-3 py-1.5 text-[12.5px] font-medium text-foreground hover:bg-muted cursor-pointer border-b border-hairline sticky bg-surface z-10 ${searchable ? "top-[41px]" : "top-0"}`}
+            >
+              <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} className="size-3.5" />
+              <span>Select All</span>
+            </label>
+          )}
+
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-[12px] text-muted-foreground">No options</div>
+          ) : (
+            filtered.map((o) => (
+              <label
+                key={o.value}
+                className="flex items-center gap-2 px-3 py-1.5 text-[12.5px] text-foreground hover:bg-muted cursor-pointer"
+              >
+                <input type="checkbox" checked={value.includes(o.value)} onChange={() => toggle(o.value)} className="size-3.5" />
+                <span className="whitespace-normal break-words">{o.label}</span>
+              </label>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
