@@ -822,7 +822,11 @@ function DriverNumberBlockingPage() {
                 <input
                   type="text"
                   value={vehicleNumber}
-                  onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    // Vehicle Number: only letters and digits (same rule as Gate In-Out) — no spaces,
+                    // "/", "-", "_" or other special characters; shown in capitals
+                    setVehicleNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase())
+                  }
                   placeholder="Enter vehicle number"
                   disabled={isVehicleSubmitting}
                   className="h-[34px] w-full rounded border border-input bg-background px-3 font-mono text-[12px] text-foreground placeholder:text-muted-foreground outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-60"

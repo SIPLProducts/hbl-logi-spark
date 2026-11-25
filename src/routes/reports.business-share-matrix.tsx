@@ -529,7 +529,7 @@ function BusinessShareMatrixReport() {
       return;
     }
 
-    const doc = new jsPDF("l", "mm", "a2");
+    const doc = new jsPDF("l", "mm", "a0");
 
     doc.text(`Business Share Matrix Report - ${selectedReportType}`, 14, 10);
 
@@ -541,16 +541,19 @@ function BusinessShareMatrixReport() {
       head: [tableColumn],
       body: tableRows,
       startY: 15,
+      margin: { left: 8, right: 8 },
+      tableWidth: "auto",
       styles: {
-        fontSize: 7,
-        cellWidth: "wrap",
+        fontSize: 5,
+        cellPadding: 0.8,
+        overflow: "linebreak",
       },
       headStyles: {
         fillColor: [41, 128, 185],
-        fontSize: 7,
+        fontSize: 5,
       },
       bodyStyles: {
-        fontSize: 7,
+        fontSize: 5,
       },
     });
 

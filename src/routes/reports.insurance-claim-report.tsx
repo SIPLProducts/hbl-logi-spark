@@ -11,6 +11,9 @@ import {
 // @ts-ignore
 import service from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { cn } from "@/lib/utils";
 import { GateDatePicker } from "@/components/ui/date-picker";
 
@@ -19,8 +22,7 @@ import { GateDatePicker } from "@/components/ui/date-picker";
  * Same filter fields, options, radios, layout and styling as the Business Share
  * Matrix report. All code below is local to this screen.
  *
- * The Insurance Claim Report API is not available yet: "Execute Report" validates the filters
- * and the payload is built, ready to send once the API is provided.
+ * "Execute Report" validates the filters and calls the FetchInsuranceClaimReports API.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 type Option = { label: string; value: string };
@@ -51,12 +53,93 @@ const VEHICLE_TYPE_OPTIONS: Option[] = [
 ];
 
 const MONTH_OPTIONS: Option[] = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-].map((month) => ({ value: month, label: month }));
+  { value: "ALL", label: "ALL" },
+  ...[
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ].map((month) => ({ value: month, label: month })),
+];
 
-const QUARTER_OPTIONS: Option[] = ["Q1", "Q2", "Q3", "Q4"].map((quarter) => ({ value: quarter, label: quarter }));
-const YEAR_OPTIONS: Option[] = ["FY 26-27"].map((year) => ({ value: year, label: year }));
+const QUARTER_OPTIONS: Option[] = [
+  { value: "ALL", label: "ALL" },
+  ...["Q1", "Q2", "Q3", "Q4"].map((quarter) => ({ value: quarter, label: quarter })),
+];
+
+const YEAR_OPTIONS: Option[] = [
+  { value: "ALL", label: "ALL" },
+  ...["FY 26-27"].map((year) => ({ value: year, label: year })),
+];
+
+// Result columns (API response keys → table / Excel / PDF headings), in the API's order
+type Col = { key: string; label: string };
+
+const REPORT_COLUMNS: Col[] = [
+  { key: "SNO", label: "S.No" },
+  { key: "PLANT", label: "Plant" },
+  { key: "DIVISION", label: "Division" },
+  { key: "MAP_ID", label: "Map ID" },
+  { key: "REF_NO", label: "Reference No" },
+  { key: "WORK_ORDER", label: "Work Order" },
+  { key: "TRANSPORTER", label: "Transporter" },
+  { key: "LR_NO", label: "LR No" },
+  { key: "VEHICLE_NO", label: "Vehicle No" },
+  { key: "REP_DATE", label: "Reported Date" },
+  { key: "FISCAL_YEAR", label: "Fiscal Year" },
+  { key: "SO_NO", label: "SO No" },
+  { key: "CUSTOMER", label: "Customer" },
+  { key: "LOCATION", label: "Location" },
+  { key: "INVOICE_DATE", label: "Invoice Date" },
+  { key: "INV_BASIC", label: "Invoice Basic Amount" },
+  { key: "DAMAGE_RMK", label: "Damage Remarks" },
+  { key: "CLAIM_STATUS", label: "Claim Status" },
+  { key: "CLAIM_INFO", label: "Claim Info" },
+  { key: "CLAIM_REF", label: "Claim Ref" },
+  { key: "LOSS_DCL", label: "Loss Declaration" },
+  { key: "SALVAGE_VAL", label: "Salvage Value" },
+  { key: "CLM_DOC_ST", label: "Claim Doc Status" },
+  { key: "COURIER_DET", label: "Courier Details" },
+  { key: "PAY_STATUS", label: "Payment Status" },
+  { key: "PAY_INFO", label: "Payment Info" },
+  { key: "UTR", label: "UTR" },
+  { key: "CLM_SET_DT", label: "Claim Settlement Date" },
+  { key: "CLM_RECEIVED", label: "Claim Received Date" },
+  { key: "SUPP_DOCS", label: "Supporting Docs" },
+  { key: "BILL_NO", label: "Bill No" },
+];
+
+function getRowValue(row: any, key: string): any {
+  if (!row) return "";
+  const val =
+    row[key] ??
+    (key === "SNO" ? row.SL_NO ?? row.SLNO : undefined) ??
+    (key === "MAP_ID" ? row.MAPID : undefined) ??
+    (key === "REF_NO" ? row.REFERENCE_NO ?? row.REFNO : undefined) ??
+    (key === "WORK_ORDER" ? row.WORKORDER : undefined) ??
+    (key === "LR_NO" ? row.LRNO : undefined) ??
+    (key === "VEHICLE_NO" ? row.VEHICLENO : undefined) ??
+    (key === "REP_DATE" ? row.REPORTED_DATE ?? row.REPDATE : undefined) ??
+    (key === "FISCAL_YEAR" ? row.FIN_YEAR ?? row.FINANCIAL_YEAR : undefined) ??
+    (key === "SO_NO" ? row.SONO : undefined) ??
+    (key === "CUSTOMER" ? row.CUST_NAME ?? row.CUSTOMER_NAME : undefined) ??
+    (key === "INVOICE_DATE" ? row.INVOICEDATE : undefined) ??
+    (key === "INV_BASIC" ? row.INVBASIC : undefined) ??
+    (key === "DAMAGE_RMK" ? row.DAMAGE_REMARKS ?? row.DAMAGERMK : undefined) ??
+    (key === "CLAIM_STATUS" ? row.CLAIMSTATUS : undefined) ??
+    (key === "CLAIM_INFO" ? row.CLAIMINFO : undefined) ??
+    (key === "CLAIM_REF" ? row.CLAIMREF : undefined) ??
+    (key === "LOSS_DCL" ? row.LOSSDCL : undefined) ??
+    (key === "SALVAGE_VAL" ? row.SALVAGEVAL : undefined) ??
+    (key === "CLM_DOC_ST" ? row.CLMDOCST : undefined) ??
+    (key === "COURIER_DET" ? row.COURIERDET : undefined) ??
+    (key === "PAY_STATUS" ? row.PAYSTATUS : undefined) ??
+    (key === "PAY_INFO" ? row.PAYINFO : undefined) ??
+    (key === "CLM_SET_DT" ? row.CLMSETDT : undefined) ??
+    (key === "CLM_RECEIVED" ? row.CLMRECEIVED : undefined) ??
+    (key === "SUPP_DOCS" ? row.SUPPDOCS ?? row.DOCUMENT : undefined) ??
+    (key === "BILL_NO" ? row.BILLNO : undefined);
+  if (val === null || val === undefined) return "";
+  return val;
+}
 
 // Logged-in user from the login response (PLANTS / DIV / USER)
 function getLoggedInUser(): any {
@@ -174,7 +257,10 @@ function InsuranceClaimReport() {
     const text = searchText.trim().toLowerCase();
     if (!text) return results;
     return results.filter((row) =>
-      Object.values(row || {}).some((v) => String(v ?? "").toLowerCase().includes(text)),
+      REPORT_COLUMNS.some((col) => {
+        const val = getRowValue(row, col.key);
+        return String(val ?? "").toLowerCase().includes(text);
+      }),
     );
   }, [results, searchText]);
 
@@ -186,32 +272,57 @@ function InsuranceClaimReport() {
       return;
     }
 
-    // Payload — same keys and shapes as the other report screens; sent once the API is available
+    // Payload — keys and shapes as defined by the Insurance Claim Report API
     const payload = {
       inward_outward: toPayloadArray(inout, "inout"),
       sap_nonsap: toPayloadArray(sapType, "type"),
-      from_date: toPayloadDate(fromDate),
-      to_date: toPayloadDate(toDate),
-      transporter_group: toPayloadArray(vehicleType, "TRANSPORTER_GROUP"),
-      transporter: toPayloadArray(transporter, "TRANSPORTER"),
-      transporter_code: toPayloadArray(transporterCode, "TRANSPORTER_CODE"),
-      month: toPayloadArray(monthWise, "month"),
-      quarter: toPayloadArray(quarterWise, "quarter"),
-      year: yearWise,
-      plant: toPayloadArray(plant, "plant"),
-      division: toPayloadArray(division, "division"),
-      ZUSER: getLoggedInUser()?.USER || "",
+      from_date: fromDate,
+      to_date: toDate,
+      plant: toPayloadArray(
+        Array.from(new Set(plant.map((v) => plantList.find((p: any) => p.PLANT_TEXT === v)?.PLANT_DESC ?? v))),
+        "plant",
+      ),
+      division: toPayloadArray(Array.from(new Set(division)), "division"),
+      transaction_type: toPayloadArray(vehicleType, "transaction_type"),
+      transporter: toPayloadArray(transporter, "transporter"),
+      vendor_code: toPayloadArray(transporterCode, "vendor_code"),
+      vehicle_type: toPayloadArray(vehicleType, "vehicle_type"),
+      month: monthWise.includes("ALL") || monthWise.length === 0 ? "ALL" : (monthWise[0] || "").toUpperCase(),
+      quarter: quarterWise.includes("ALL") || quarterWise.length === 0 ? "ALL" : quarterWise[0] || "ALL",
+      year: yearWise.includes("ALL") || yearWise.length === 0 ? "ALL" : yearWise[0] || "ALL",
     };
-    void payload;
 
     setIsSearching(true);
     try {
-      // TODO: call the Insurance Claim Report API with `payload` and setResults(...) once it is available.
-      Swal.fire({
-        icon: "info",
-        title: "Not available yet",
-        text: "The Insurance Claim Report API is not connected yet.",
-      });
+      console.log("Insurance Claim Report - FetchInsuranceClaimReports Payload:", payload);
+      const res: any = await service.FetchInsuranceClaimReports(payload);
+      console.log("Insurance Claim Report - FetchInsuranceClaimReports Response:", res);
+
+      // ERROR RESPONSE HANDLING (API returns an object with a MESSAGE instead of rows)
+      if (!Array.isArray(res)) {
+        setResults([]);
+        Swal.fire({
+          icon: "warning",
+          title: "No Data",
+          text: res?.MESSAGE || res?.MSG || "No records found",
+        });
+        return;
+      }
+
+      // Rows may come nested ([[{...}]]) — flatten to a plain list of rows
+      const data = (res as any[]).flat(Infinity).filter((r) => r && typeof r === "object");
+      setResults(data);
+      setSearchText("");
+
+      if (data.length > 0) {
+        Swal.fire({ icon: "success", title: "Success", text: "Data fetched successfully!" });
+      } else {
+        Swal.fire({ icon: "warning", title: "No Data", text: "No records found" });
+      }
+    } catch (err) {
+      console.error("Insurance Claim Report API Error:", err);
+      setResults([]);
+      Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch data. Please try again." });
     } finally {
       setIsSearching(false);
     }
@@ -238,7 +349,18 @@ function InsuranceClaimReport() {
       Swal.fire({ icon: "info", title: "No Data", text: "There is no data to export." });
       return;
     }
-    // TODO: export `visibleResults` as Insurance_Claim_Report.xlsx once the report columns are known.
+
+    const exportData: any[] = visibleResults.map((row: any) =>
+      Object.fromEntries(REPORT_COLUMNS.map((c) => [c.label, getRowValue(row, c.key)])),
+    );
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook: XLSX.WorkBook = {
+      Sheets: { "Insurance Claim Report": worksheet },
+      SheetNames: ["Insurance Claim Report"],
+    };
+    XLSX.writeFile(workbook, "Insurance_Claim_Report.xlsx");
+
+    Swal.fire("Success", "Excel exported successfully.", "success");
   };
 
   const onExportPdf = () => {
@@ -246,7 +368,29 @@ function InsuranceClaimReport() {
       Swal.fire({ icon: "info", title: "No Data", text: "There is no data to export." });
       return;
     }
-    // TODO: export `visibleResults` as Insurance_Claim_Report.pdf once the report columns are known.
+
+    // A0 landscape keeps all 31 columns on one page horizontally
+    const doc = new jsPDF("l", "mm", "a0");
+    doc.text("Insurance Claim Report", 14, 10);
+
+    const tableColumn: string[] = REPORT_COLUMNS.map((c) => c.label);
+    const tableRows: any[] = visibleResults.map((row: any) =>
+      REPORT_COLUMNS.map((c) => String(getRowValue(row, c.key))),
+    );
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 15,
+      margin: { left: 6, right: 6 },
+      tableWidth: "auto",
+      styles: { fontSize: 5, cellPadding: 0.8, overflow: "linebreak" },
+      headStyles: { fillColor: [41, 128, 185], fontSize: 5 },
+      bodyStyles: { fontSize: 5 },
+    });
+
+    doc.save("Insurance_Claim_Report.pdf");
+    Swal.fire("Success", "PDF exported successfully.", "success");
   };
 
   return (
@@ -406,9 +550,9 @@ function InsuranceClaimReport() {
               <table className="w-full text-left border-collapse text-[12px]">
                 <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
-                    {Object.keys(visibleResults[0] || {}).map((h) => (
-                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
-                        {h}
+                    {REPORT_COLUMNS.map((c) => (
+                      <th key={c.key} className="px-3 py-2.5 whitespace-nowrap text-left">
+                        {c.label}
                       </th>
                     ))}
                   </tr>
@@ -416,9 +560,9 @@ function InsuranceClaimReport() {
                 <tbody className="divide-y divide-hairline/70">
                   {visibleResults.map((row, i) => (
                     <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
-                      {Object.keys(visibleResults[0] || {}).map((key) => (
-                        <td key={key} className="px-3 py-2 whitespace-nowrap">
-                          {String(row?.[key] ?? "")}
+                      {REPORT_COLUMNS.map((c) => (
+                        <td key={c.key} className="px-3 py-2 whitespace-nowrap">
+                          {String(getRowValue(row, c.key))}
                         </td>
                       ))}
                     </tr>

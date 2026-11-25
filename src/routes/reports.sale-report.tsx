@@ -11,6 +11,9 @@ import {
 // @ts-ignore
 import service from "../services/generalservice_service.js";
 import Swal from "sweetalert2";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { cn } from "@/lib/utils";
 import { GateDatePicker } from "@/components/ui/date-picker";
 
@@ -19,8 +22,7 @@ import { GateDatePicker } from "@/components/ui/date-picker";
  * Same filter fields, options, radios, layout and styling as the Business Share
  * Matrix report. All code below is local to this screen.
  *
- * The Sale Report API is not available yet: "Execute Report" validates the filters
- * and the payload is built, ready to send once the API is provided.
+ * "Execute Report" validates the filters and calls the FetchSaleReports API.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 type Option = { label: string; value: string };
@@ -51,12 +53,97 @@ const VEHICLE_TYPE_OPTIONS: Option[] = [
 ];
 
 const MONTH_OPTIONS: Option[] = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-].map((month) => ({ value: month, label: month }));
+  { value: "ALL", label: "ALL" },
+  ...[
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ].map((month) => ({ value: month, label: month })),
+];
 
-const QUARTER_OPTIONS: Option[] = ["Q1", "Q2", "Q3", "Q4"].map((quarter) => ({ value: quarter, label: quarter }));
-const YEAR_OPTIONS: Option[] = ["FY 26-27"].map((year) => ({ value: year, label: year }));
+const QUARTER_OPTIONS: Option[] = [
+  { value: "ALL", label: "ALL" },
+  ...["Q1", "Q2", "Q3", "Q4"].map((quarter) => ({ value: quarter, label: quarter })),
+];
+
+const YEAR_OPTIONS: Option[] = [
+  { value: "ALL", label: "ALL" },
+  ...["FY 26-27"].map((year) => ({ value: year, label: year })),
+];
+
+// Result columns (API response keys → table / Excel / PDF headings), in the API's order
+type Col = { key: string; label: string };
+
+const REPORT_COLUMNS: Col[] = [
+  { key: "SL_NO", label: "Sl No" },
+  { key: "REF_NO", label: "Reference No" },
+  { key: "MAP_ID", label: "Map ID" },
+  { key: "WORK_ORDER", label: "Work Order" },
+  { key: "MONTH", label: "Month" },
+  { key: "FIN_QTR", label: "Financial Quarter" },
+  { key: "FIN_YEAR", label: "Financial Year" },
+  { key: "PLANT", label: "Plant" },
+  { key: "DIVISION", label: "Division" },
+  { key: "SUB_DIVISION", label: "Sub Division" },
+  { key: "VEHICLE_TYPE", label: "Vehicle Type" },
+  { key: "SO_NO", label: "SO No" },
+  { key: "CUST_NAME", label: "Customer Name" },
+  { key: "CUST_GROUP", label: "Customer Group" },
+  { key: "CONSIGNEE", label: "Consignee" },
+  { key: "DESTINATION", label: "Destination" },
+  { key: "DEST_STATE", label: "Destination State" },
+  { key: "DEST_ZONE", label: "Destination Zone" },
+  { key: "PRODUCT", label: "Product" },
+  { key: "LINE_ITEM", label: "Line Item" },
+  { key: "MAT_TYPE", label: "Material Type" },
+  { key: "MAT_DESC", label: "Material Description" },
+  { key: "NO_OF_SETS", label: "No Of Sets" },
+  { key: "AH_LOADED", label: "AH Loaded" },
+  { key: "SHIP_WEIGHT", label: "Shipment Weight" },
+  { key: "ORDER_TYPE", label: "Order Type" },
+  { key: "TRUCK_TYPE", label: "Truck Type" },
+  { key: "NO_OF_TRUCKS", label: "No Of Trucks" },
+  { key: "TRANSPORTER", label: "Transporter" },
+  { key: "LR_NO", label: "LR No" },
+  { key: "LR_DATE", label: "LR Date" },
+  { key: "PHY_DISPATCH", label: "Physical Dispatch Date" },
+  { key: "INVOICE_NO", label: "Invoice No" },
+  { key: "INVOICE_DATE", label: "Invoice Date" },
+  { key: "ODN_NO", label: "ODN No" },
+  { key: "INV_BASIC", label: "Invoice Basic Amount" },
+  { key: "INV_WITH_GST", label: "Invoice Amount With GST" },
+  { key: "VEHICLE_NO", label: "Vehicle No" },
+  { key: "DRIVER_NAME", label: "Driver Name" },
+  { key: "DRIVER_NO", label: "Driver No" },
+  { key: "INCO_TERMS", label: "Incoterms" },
+  { key: "EWAY_APPL", label: "E-Way Bill Applicable" },
+  { key: "EWAY_NO", label: "E-Way Bill No" },
+  { key: "EWAY_DATE", label: "E-Way Bill Date" },
+  { key: "EWAY_VALID", label: "E-Way Bill Validity" },
+  { key: "KMS", label: "Distance (KMs)" },
+  { key: "LIVE_EXPIRED", label: "Live / Expired" },
+  { key: "TRANSIT_ST", label: "Transit Status" },
+  { key: "UNLOAD_ST", label: "Unloading Status" },
+  { key: "TAT_TYPE", label: "TAT Type" },
+  { key: "TAT_DAYS", label: "TAT Days" },
+  { key: "ETA", label: "ETA" },
+  { key: "PHY_ARRIVED", label: "Physical Arrived Date" },
+  { key: "SALE", label: "Sale" },
+  { key: "SHIP_AGE", label: "Shipment Age" },
+];
+
+function getRowValue(row: any, key: string): any {
+  if (!row) return "";
+  const val =
+    row[key] ??
+    (key === "REF_NO" ? row.REFERENCE_NO : undefined) ??
+    (key === "FIN_QTR" ? row.FINANCIAL_QUARTER : undefined) ??
+    (key === "FIN_YEAR" ? row.FINANCIAL_YEAR : undefined) ??
+    (key === "CUST_NAME" ? row.CUSTOMER_NAME : undefined) ??
+    (key === "CUST_GROUP" ? row.CUSTOMER_GROUP : undefined);
+
+  if (val === null || val === undefined) return "";
+  return val;
+}
 
 // Logged-in user from the login response (PLANTS / DIV / USER)
 function getLoggedInUser(): any {
@@ -186,32 +273,61 @@ function SaleReport() {
       return;
     }
 
-    // Payload — same keys and shapes as the other report screens; sent once the API is available
+    // Payload — keys and shapes as defined by the Sale Report API
     const payload = {
       inward_outward: toPayloadArray(inout, "inout"),
       sap_nonsap: toPayloadArray(sapType, "type"),
-      from_date: toPayloadDate(fromDate),
-      to_date: toPayloadDate(toDate),
-      transporter_group: toPayloadArray(vehicleType, "TRANSPORTER_GROUP"),
-      transporter: toPayloadArray(transporter, "TRANSPORTER"),
-      transporter_code: toPayloadArray(transporterCode, "TRANSPORTER_CODE"),
-      month: toPayloadArray(monthWise, "month"),
-      quarter: toPayloadArray(quarterWise, "quarter"),
-      year: yearWise,
-      plant: toPayloadArray(plant, "plant"),
-      division: toPayloadArray(division, "division"),
-      ZUSER: getLoggedInUser()?.USER || "",
+      from_date: fromDate, // YYYY-MM-DD
+      to_date: toDate, // YYYY-MM-DD
+      // Plant → PLANT_DESC only (e.g. "HBL PE-SHPT")
+      plant: toPayloadArray(
+        Array.from(new Set(plant.map((v) => plantList.find((p: any) => p.PLANT_TEXT === v)?.PLANT_DESC ?? v))),
+        "plant",
+      ),
+      // Division → division code (e.g. "PE")
+      division: toPayloadArray(Array.from(new Set(division)), "division"),
+      transaction_type: toPayloadArray(vehicleType, "transaction_type"),
+      transporter: toPayloadArray(transporter, "transporter"),
+      vendor_code: toPayloadArray(transporterCode, "vendor_code"),
+      vehicle_type: toPayloadArray(vehicleType, "vehicle_type"),
+      dispatch_from: fromDate,
+      dispatch_to: toDate,
+      month: monthWise.includes("ALL") ? "ALL" : (monthWise[0] || "").toUpperCase(),
+      quarter: quarterWise.includes("ALL") ? "ALL" : quarterWise[0] || "",
+      year: yearWise.includes("ALL") ? "ALL" : yearWise[0] || "",
     };
-    void payload;
 
     setIsSearching(true);
     try {
-      // TODO: call the Sale Report API with `payload` and setResults(...) once it is available.
-      Swal.fire({
-        icon: "info",
-        title: "Not available yet",
-        text: "The Sale Report API is not connected yet.",
-      });
+      console.log("Sale Report - FetchSaleReports Payload:", payload);
+      const res: any = await service.FetchSaleReports(payload);
+      console.log("Sale Report - FetchSaleReports Response:", res);
+
+      // ERROR RESPONSE HANDLING (API returns an object with a MESSAGE instead of rows)
+      if (!Array.isArray(res)) {
+        setResults([]);
+        Swal.fire({
+          icon: "warning",
+          title: "No Data",
+          text: res?.MESSAGE || res?.MSG || "No records found",
+        });
+        return;
+      }
+
+      // Rows may come nested ([[{...}]]) — flatten to a plain list of rows
+      const data = (res as any[]).flat(Infinity).filter((r) => r && typeof r === "object");
+      setResults(data);
+      setSearchText("");
+
+      if (data.length > 0) {
+        Swal.fire({ icon: "success", title: "Success", text: "Data fetched successfully!" });
+      } else {
+        Swal.fire({ icon: "warning", title: "No Data", text: "No records found" });
+      }
+    } catch (err) {
+      console.error("Sale Report API Error:", err);
+      setResults([]);
+      Swal.fire({ icon: "error", title: "Error", text: "Failed to fetch data. Please try again." });
     } finally {
       setIsSearching(false);
     }
@@ -238,7 +354,18 @@ function SaleReport() {
       Swal.fire({ icon: "info", title: "No Data", text: "There is no data to export." });
       return;
     }
-    // TODO: export `visibleResults` as Sale_Report.xlsx once the report columns are known.
+
+    const exportData: any[] = visibleResults.map((row: any) =>
+      Object.fromEntries(REPORT_COLUMNS.map((c) => [c.label, getRowValue(row, c.key)])),
+    );
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook: XLSX.WorkBook = {
+      Sheets: { "Sale Report": worksheet },
+      SheetNames: ["Sale Report"],
+    };
+    XLSX.writeFile(workbook, "Sale_Report.xlsx");
+
+    Swal.fire("Success", "Excel exported successfully.", "success");
   };
 
   const onExportPdf = () => {
@@ -246,7 +373,29 @@ function SaleReport() {
       Swal.fire({ icon: "info", title: "No Data", text: "There is no data to export." });
       return;
     }
-    // TODO: export `visibleResults` as Sale_Report.pdf once the report columns are known.
+
+    // Many columns: A0 landscape keeps all 55 columns on one page horizontally
+    const doc = new jsPDF("l", "mm", "a0");
+    doc.text("Sale Report", 14, 10);
+
+    const tableColumn: string[] = REPORT_COLUMNS.map((c) => c.label);
+    const tableRows: any[] = visibleResults.map((row: any) =>
+      REPORT_COLUMNS.map((c) => String(getRowValue(row, c.key))),
+    );
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 15,
+      margin: { left: 6, right: 6 },
+      tableWidth: "auto",
+      styles: { fontSize: 4.5, cellPadding: 0.8, overflow: "linebreak" },
+      headStyles: { fillColor: [41, 128, 185], fontSize: 4.5 },
+      bodyStyles: { fontSize: 4.5 },
+    });
+
+    doc.save("Sale_Report.pdf");
+    Swal.fire("Success", "PDF exported successfully.", "success");
   };
 
   return (
@@ -407,9 +556,9 @@ function SaleReport() {
               <table className="w-full text-left border-collapse text-[12px]">
                 <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-primary text-[10px] font-bold uppercase tracking-[0.12em] text-primary-foreground">
-                    {Object.keys(visibleResults[0] || {}).map((h) => (
-                      <th key={h} className="px-3 py-2.5 whitespace-nowrap text-left">
-                        {h}
+                    {REPORT_COLUMNS.map((c) => (
+                      <th key={c.key} className="px-3 py-2.5 whitespace-nowrap text-left">
+                        {c.label}
                       </th>
                     ))}
                   </tr>
@@ -417,9 +566,9 @@ function SaleReport() {
                 <tbody className="divide-y divide-hairline/70">
                   {visibleResults.map((row, i) => (
                     <tr key={i} className={i % 2 === 0 ? "bg-surface hover:bg-muted/50" : "bg-surface-2/40 hover:bg-muted/50"}>
-                      {Object.keys(visibleResults[0] || {}).map((key) => (
-                        <td key={key} className="px-3 py-2 whitespace-nowrap">
-                          {String(row?.[key] ?? "")}
+                      {REPORT_COLUMNS.map((c) => (
+                        <td key={c.key} className="px-3 py-2 whitespace-nowrap">
+                          {String(getRowValue(row, c.key))}
                         </td>
                       ))}
                     </tr>

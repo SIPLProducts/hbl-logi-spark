@@ -300,6 +300,10 @@ export const reportsApi = {
     FetchPodStatusReports: (data) => request('api/external/LE/Reports/FetchPodStatusReports', 'PUT', data),
     FetchProductWiseReports: (data) => request('api/external/LE/Reports/FetchProductWiseReports', 'POST', data),
     FetchProvisionReports: (data) => request('api/external/LE/Reports/FetchProvisionReports', 'POST', data),
+    FetchSaleReports: (data) => request('api/external/LE/Reports/FetchSaleReports', 'POST', data),
+    FetchSitReports: (data) => request('api/external/LE/Reports/FetchSitReports', 'POST', data),
+    FetchTransitDamageReports: (data) => request('api/external/LE/Reports/FetchTransitDamageReports', 'POST', data),
+    FetchInsuranceClaimReports: (data) => request('api/external/LE/Reports/FetchInsuranceClaimReports', 'POST', data),
 
 
     //Blocking Master (Driver Number Blocking) Screen APIs

@@ -158,13 +158,7 @@ function LoginPage() {
       localStorage.setItem("currentUser", JSON.stringify(response));
       localStorage.setItem("isLoggedIn", "true");
 
-      await Swal.fire({
-        icon: "success",
-        title: response?.MESSAGE || "Login Successful",
-        text: `Welcome ${response?.FIRST_NAME ?? ""} ${response?.LAST_NAME ?? ""}`,
-        timer: 1500,
-        showConfirmButton: false,
-      });
+      // "Login Successful" popup is now shown after the application opens (see below, after navigate)
 
       // navigate({ to: "/" });
       const activities = response?.ACTIVITIES ?? response?.ACTIVITY ?? [];
@@ -240,6 +234,15 @@ function LoginPage() {
 
       navigate({
         to: firstScreen || "/",
+      });
+
+      // Show the welcome popup on the first screen of the application (not on the login page)
+      Swal.fire({
+        icon: "success",
+        title: response?.MESSAGE || "Login Successful",
+        text: `Welcome ${response?.FIRST_NAME ?? ""} ${response?.LAST_NAME ?? ""}`,
+        timer: 1500,
+        showConfirmButton: false,
       });
 
     } catch (err: any) {

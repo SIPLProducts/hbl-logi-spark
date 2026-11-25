@@ -425,8 +425,8 @@ function MasterReport() {
       return;
     }
 
-    // Many columns: A1 landscape keeps them readable
-    const doc = new jsPDF("l", "mm", "a1");
+    // Many columns: A0 landscape keeps all 71 columns on one page horizontally
+    const doc = new jsPDF("l", "mm", "a0");
     doc.text("Master Report", 14, 10);
 
     const tableColumn: string[] = REPORT_COLUMNS.map((c) => c.label);
@@ -436,9 +436,11 @@ function MasterReport() {
       head: [tableColumn],
       body: tableRows,
       startY: 15,
-      styles: { fontSize: 5, cellWidth: "wrap" },
-      headStyles: { fillColor: [41, 128, 185], fontSize: 5 },
-      bodyStyles: { fontSize: 5 },
+      margin: { left: 6, right: 6 },
+      tableWidth: "auto",
+      styles: { fontSize: 4, cellPadding: 0.6, overflow: "linebreak" },
+      headStyles: { fillColor: [41, 128, 185], fontSize: 4 },
+      bodyStyles: { fontSize: 4 },
     });
 
     doc.save("Master_Report.pdf");

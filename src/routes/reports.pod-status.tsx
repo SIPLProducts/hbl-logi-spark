@@ -338,7 +338,7 @@ function PodStatusReport() {
       return;
     }
 
-    const doc = new jsPDF("l", "mm", "a2");
+    const doc = new jsPDF("l", "mm", "a0");
     doc.text("POD Status", 14, 10);
 
     const tableColumn: string[] = REPORT_COLUMNS.map((c) => c.label);
@@ -348,9 +348,11 @@ function PodStatusReport() {
       head: [tableColumn],
       body: tableRows,
       startY: 15,
-      styles: { fontSize: 7, cellWidth: "wrap" },
-      headStyles: { fillColor: [41, 128, 185], fontSize: 7 },
-      bodyStyles: { fontSize: 7 },
+      margin: { left: 8, right: 8 },
+      tableWidth: "auto",
+      styles: { fontSize: 5, cellPadding: 0.8, overflow: "linebreak" },
+      headStyles: { fillColor: [41, 128, 185], fontSize: 5 },
+      bodyStyles: { fontSize: 5 },
     });
 
     doc.save("POD_Status.pdf");
